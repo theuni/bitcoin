@@ -10,6 +10,9 @@ packages:
 - "unzip"
 - "nsis"
 - "faketime"
+- "autoconf2.13"
+- "libtool"
+- "automake"
 reference_datetime: "2011-01-30 00:00:00"
 remotes:
 - "url": "https://github.com/bitcoin/bitcoin.git"
@@ -23,9 +26,9 @@ script: |
   STAGING=$HOME/staging
   mkdir -p $STAGING
   cd $STAGING
-  unzip ../qt-win32-4.8.3-gitian-r1.zip
-  unzip ../boost-win32-1.50.0-gitian3.zip
-  unzip ../bitcoin-deps-0.0.6.zip
+  unzip ../build/qt-win32-4.8.3-gitian-r1.zip
+  unzip ../build/boost-win32-1.50.0-gitian3.zip
+  unzip ../build/bitcoin-deps-0.0.6.zip
   find -type f | xargs touch --date="$REFERENCE_DATETIME"
   cd $HOME/build/
   #
@@ -40,7 +43,7 @@ script: |
   cd src
   ./autogen.sh
   CPPFLAGS="-I$STAGING/include" LDFLAGS="-L$STAGING/lib" ./configure --prefix=$STAGING --host=i586-mingw32msvc --with-qt-bindir=$STAGING/bin --with-qt-plugindir=$STAGING/plugins  --with-qt-incdir=$STAGING/include --with-boost=$STAGING
-  make
+  make $MAKEOPTS
   i586-mingw32msvc-strip bitcoind.exe
   mkdir $OUTDIR/daemon
   cp bitcoin-qt.exe $OUTDIR/
@@ -50,7 +53,7 @@ script: |
   git archive HEAD | tar -x -C nsis
   cd nsis/src
   mkdir ../release
-  cp ../../release/* ../release/
+  cp ../../src/*.exe ../release/
   cp ../../src/*.exe .
   makensis ../share/setup.nsi
   cp ../share/bitcoin-*-win32-setup.exe $OUTDIR/
