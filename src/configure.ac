@@ -10,6 +10,9 @@ AC_INIT([Bitcoin],[_CLIENT_VERSION_MAJOR._CLIENT_VERSION_MINOR._CLIENT_VERSION_R
 AC_CONFIG_MACRO_DIR([m4])
 AC_CANONICAL_HOST
 
+dnl faketime breaks configure and is only needed for make. Disable it here.
+unset FAKETIME
+
 dnl ==============================================================
 dnl Setup for automake
 dnl ==============================================================
@@ -18,6 +21,10 @@ dnl reset CXXFLAGS if empty (autoconf adds its own defaults otherwise)
 :${CXXFLAGS=""}
 
 AM_INIT_AUTOMAKE([no-define subdir-objects foreign])
+
+dnl faketime messes with timestamps and causes configure to be re-run.
+dnl maintainer-mode can be used to bypass this.
+AM_MAINTAINER_MODE([enable])
 
 dnl make the compilation flags quiet unless V=1 is used
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
@@ -193,14 +200,16 @@ if test x$use_hardening != xno; then
 
   AX_CHECK_PREPROC_FLAG([-D_FORTIFY_SOURCE=2],[HARDENED_CPPFLAGS="$HARDENED_CPPFLAGS -D_FORTIFY_SOURCE=2"])
 
-  AX_CHECK_LINK_FLAG([-pie], [HARDENED_LDFLAGS="$HARDENED_LDFLAGS -pie"])
   AX_CHECK_LINK_FLAG([-Wl,--dynamicbase], [HARDENED_LDFLAGS="$HARDENED_LDFLAGS -Wl,--dynamicbase"])
   AX_CHECK_LINK_FLAG([-Wl,--nxcompat], [HARDENED_LDFLAGS="$HARDENED_LDFLAGS -Wl,--nxcompat"])
 
-  # -fstack-protector-all can produce broken binaries with mingw
   if test x$TARGET_OS != xwindows; then
+    # -fstack-protector-all can produce broken binaries with mingw
     AX_CHECK_COMPILE_FLAG([-fno-stack-protector],[HARDENED_CXXFLAGS="$HARDENED_CXXFLAGS -fno-stack-protector"])
     AX_CHECK_COMPILE_FLAG([-fstack-protector-all],[HARDENED_CXXFLAGS="$HARDENED_CXXFLAGS -fstack-protector-all"])
+
+    # -pie will link successfully with mingw, but it's unsupported and leads to undeterministic binaries
+    AX_CHECK_LINK_FLAG([-pie], [HARDENED_LDFLAGS="$HARDENED_LDFLAGS -pie"])
   fi
 
   CXXFLAGS="$CXXFLAGS $HARDENED_CXXFLAGS"
