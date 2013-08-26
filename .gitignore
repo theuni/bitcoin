@@ -1,4 +1,8 @@
+*.tar.gz
+
+*.exe
 src/*.exe
+src/*/*.exe
 src/bitcoin
 src/bitcoind
 src/test/test_bitcoin
@@ -17,6 +21,7 @@ src/bitcoin-config.h.in
 src/build-aux/
 src/qt/Makefile.in
 src/stamp-h1
+share/setup.nsi
 
 src/leveldb/.deps/
 
@@ -42,6 +47,8 @@ src/qt/test/moc*.cpp
 *.patch
 .bitcoin
 *.a
+*.pb.cc
+*.pb.h
 
 # Compilation and Qt preprocessor part
 *.qm
