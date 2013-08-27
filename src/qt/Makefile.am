@@ -3,7 +3,7 @@ include $(top_srcdir)/src/Makefile.include
 AM_CPPFLAGS =  $(INCLUDES) -I$(top_builddir)/src/obj \
   -I$(top_srcdir)/src/leveldb/include -I$(top_srcdir)/src \
   -I$(top_srcdir)/src/leveldb/helpers -I$(top_builddir)/src/qt \
-  $(BOOST_INCLUDES)
+  -I$(top_builddir)/src/qt/forms $(BOOST_INCLUDES)
 AM_LDFLAGS = $(PTHREAD_CFLAGS)
 bin_PROGRAMS = bitcoin-qt
 noinst_LIBRARIES = libbitcoinqt.a
@@ -31,26 +31,6 @@ QT_TS = locale/bitcoin_ach.ts locale/bitcoin_af_ZA.ts locale/bitcoin_ar.ts \
   locale/bitcoin_uk.ts locale/bitcoin_vi.ts locale/bitcoin_vi_VN.ts \
   locale/bitcoin_zh_CN.ts locale/bitcoin_zh_TW.ts
 
-QT_QM = locale/bitcoin_ach.qm locale/bitcoin_af_ZA.qm locale/bitcoin_ar.qm \
-  locale/bitcoin_be_BY.qm locale/bitcoin_bg.qm locale/bitcoin_bs.qm \
-  locale/bitcoin_ca_ES.qm locale/bitcoin_ca.qm locale/bitcoin_cs.qm \
-  locale/bitcoin_cy.qm locale/bitcoin_da.qm locale/bitcoin_de.qm \
-  locale/bitcoin_el_GR.qm locale/bitcoin_en.qm locale/bitcoin_eo.qm \
-  locale/bitcoin_es_CL.qm locale/bitcoin_es.qm locale/bitcoin_et.qm \
-  locale/bitcoin_eu_ES.qm locale/bitcoin_fa_IR.qm locale/bitcoin_fa.qm \
-  locale/bitcoin_fi.qm locale/bitcoin_fr_CA.qm locale/bitcoin_fr.qm \
-  locale/bitcoin_gu_IN.qm locale/bitcoin_he.qm locale/bitcoin_hi_IN.qm \
-  locale/bitcoin_hr.qm locale/bitcoin_hu.qm locale/bitcoin_id_ID.qm \
-  locale/bitcoin_it.qm locale/bitcoin_ja.qm locale/bitcoin_kk_KZ.qm \
-  locale/bitcoin_ko_KR.qm locale/bitcoin_la.qm locale/bitcoin_lt.qm \
-  locale/bitcoin_lv_LV.qm locale/bitcoin_ms_MY.qm locale/bitcoin_nb.qm \
-  locale/bitcoin_nl.qm locale/bitcoin_pl.qm locale/bitcoin_pt_BR.qm \
-  locale/bitcoin_pt_PT.qm locale/bitcoin_ro_RO.qm locale/bitcoin_ru.qm \
-  locale/bitcoin_sk.qm locale/bitcoin_sq.qm locale/bitcoin_sr.qm \
-  locale/bitcoin_sv.qm locale/bitcoin_th_TH.qm locale/bitcoin_tr.qm \
-  locale/bitcoin_uk.qm locale/bitcoin_vi.qm locale/bitcoin_vi_VN.qm \
-  locale/bitcoin_zh_CN.qm locale/bitcoin_zh_TW.qm
-
 QT_FORMS_UI = forms/aboutdialog.ui forms/addressbookpage.ui \
   forms/askpassphrasedialog.ui forms/editaddressdialog.ui forms/intro.ui \
   forms/optionsdialog.ui forms/overviewpage.ui forms/qrcodedialog.ui \
@@ -77,12 +57,6 @@ QT_MOC = intro.moc overviewpage.moc rpcconsole.moc
 QT_QRC_CPP = qrc_bitcoin.cpp
 QT_QRC = bitcoin.qrc
 
-QT_FORMS_H = forms/ui_aboutdialog.h forms/ui_addressbookpage.h \
-  forms/ui_askpassphrasedialog.h forms/ui_editaddressdialog.h forms/ui_intro.h \
-  forms/ui_optionsdialog.h forms/ui_overviewpage.h forms/ui_qrcodedialog.h \
-  forms/ui_rpcconsole.h forms/ui_sendcoinsdialog.h forms/ui_sendcoinsentry.h \
-  forms/ui_signverifymessagedialog.h forms/ui_transactiondescdialog.h
-
 PROTOBUF_CC = paymentrequest.pb.cc
 PROTOBUF_H = paymentrequest.pb.h
 PROTOBUF_PROTO = paymentrequest.proto
@@ -99,6 +73,30 @@ BITCOIN_QT_H  = aboutdialog.h addressbookpage.h addresstablemodel.h \
   transactionrecord.h transactiontablemodel.h transactionview.h walletframe.h \
   walletmodel.h walletstack.h walletview.h
 
+RES_ICONS = res/icons/bitcoin.png res/icons/address-book.png \
+  res/icons/quit.png res/icons/send.png res/icons/toolbar.png \
+  res/icons/connect0_16.png res/icons/connect1_16.png \
+  res/icons/connect2_16.png res/icons/connect3_16.png \
+  res/icons/connect4_16.png res/icons/transaction0.png \
+  res/icons/transaction2.png res/icons/clock1.png res/icons/clock2.png \
+  res/icons/clock3.png res/icons/clock4.png res/icons/clock5.png \
+  res/icons/configure.png res/icons/receive.png res/icons/editpaste.png \
+  res/icons/editcopy.png res/icons/add.png res/icons/bitcoin_testnet.png \
+  res/icons/toolbar_testnet.png res/icons/edit.png res/icons/history.png \
+  res/icons/overview.png res/icons/export.png res/icons/synced.png \
+  res/icons/remove.png res/icons/tx_mined.png res/icons/tx_input.png \
+  res/icons/tx_output.png res/icons/tx_inout.png res/icons/lock_closed.png \
+  res/icons/lock_open.png res/icons/key.png res/icons/filesave.png \
+  res/icons/qrcode.png res/icons/debugwindow.png res/icons/bitcoin.ico \
+  res/icons/bitcoin_testnet.ico
+
+RES_IMAGES = res/images/about.png res/images/splash.png \
+  res/images/splash_testnet.png
+
+RES_MOVIES = res/movies/update_spinner.mng
+
+BITCOIN_RC = res/bitcoin-qt-res.rc
+
 libbitcoinqt_a_CPPFLAGS = $(AM_CPPFLAGS) $(QT_INCLUDES) \
   -I$(top_srcdir)/src/qt/forms $(QT_DBUS_INCLUDES)
 libbitcoinqt_a_SOURCES = aboutdialog.cpp addressbookpage.cpp \
@@ -112,16 +110,20 @@ libbitcoinqt_a_SOURCES = aboutdialog.cpp addressbookpage.cpp \
   signverifymessagedialog.cpp splashscreen.cpp transactiondesc.cpp \
   transactiondescdialog.cpp transactionfilterproxy.cpp transactionrecord.cpp \
   transactiontablemodel.cpp transactionview.cpp walletframe.cpp \
-  walletmodel.cpp walletstack.cpp walletview.cpp $(QT_FORMS_H) $(QT_QM) \
-  $(QT_QRC_CPP) $(BITCOIN_QT_H) $(QT_FORMS_UI) $(QT_QRC) $(QT_TS) $(PROTOBUF_PROTO)
+  walletmodel.cpp walletstack.cpp walletview.cpp $(BITCOIN_QT_H) \
+  $(QT_FORMS_UI) $(QT_QRC) $(QT_TS) $(PROTOBUF_PROTO) $(RES_ICONS) \
+  $(RES_IMAGES) $(RES_MOVIES)
 
-nodist_libbitcoinqt_a_SOURCES = $(QT_MOC_CPP) $(QT_MOC) $(PROTOBUF_CC) $(PROTOBUF_H)
+nodist_libbitcoinqt_a_SOURCES = $(QT_MOC_CPP) $(QT_MOC) $(PROTOBUF_CC) \
+  $(PROTOBUF_H) $(QT_QRC_CPP)
 
-BUILT_SOURCES = $(QT_FORMS_H) $(QT_MOC_CPP) $(QT_QRC_CPP) $(QT_QM) $(QT_MOC) \
-  $(PROTOBUF_H) $(PROTOBUF_CC)
+BUILT_SOURCES = $(nodist_libbitcoinqt_a_SOURCES)
 
 if TARGET_DARWIN
   libbitcoinqt_a_SOURCES += macdockiconhandler.mm macnotificationhandler.mm
+endif
+if TARGET_WINDOWS
+  libbitcoinqt_a_SOURCES += $(BITCOIN_RC)
 endif
 if USE_QRCODE
   libbitcoinqt_a_SOURCES += qrcodedialog.cpp
@@ -134,13 +136,19 @@ bitcoin_qt_CPPFLAGS = $(AM_CPPFLAGS) $(QT_INCLUDES) \
 bitcoin_qt_SOURCES = bitcoin.cpp
 bitcoin_qt_LDADD = libbitcoinqt.a $(LIBBITCOIN) $(LIBLEVELDB) $(LIBMEMENV) \
   $(BOOST_LIBS) $(QT_LIBS) $(QT_DBUS_LIBS)
-$(QT_QRC_CPP): $(QT_QRC) $(QT_QM)
-	@test -f $(RCC) && $(RCC) -name bitcoin -o $@ $< || \
+
+# forms/foo.h -> forms/ui_foo.h
+QT_FORMS_H=$(join $(dir $(QT_FORMS_UI)),$(addprefix ui_, $(notdir $(QT_FORMS_UI:.ui=.h))))
+
+#locale/foo.ts -> locale/foo.qm
+QT_QM=$(QT_TS:.ts=.qm)
+
+.SECONDARY: $(QT_QM)
+
+$(QT_QRC_CPP): $(QT_QRC) $(QT_QM) $(QT_FORMS_H) $(RES_ICONS) $(RES_IMAGES) $(RES_MOVIES)
+	@cd $(abs_srcdir); test -f $(RCC) && $(RCC) -name bitcoin -o $(abs_builddir)/$@ $< || \
 	  echo error: could not build $@
 	sed -i '/^\*\*.*Created:/d' $@
 	sed -i '/^\*\*.*by:/d' $@
 
-CLEANFILES = $(BUILT_SOURCES)
-
-EXTRA_DIST = res
-
+CLEANFILES = $(BUILT_SOURCES) $(QT_QM) $(QT_FORMS_H)

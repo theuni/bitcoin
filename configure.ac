@@ -115,6 +115,7 @@ AC_PROG_OBJC
 AC_PROG_MKDIR_P
 AC_CHECK_TOOL(AR, ar)
 AC_CHECK_TOOL(RANLIB, ranlib)
+AC_PATH_TOOL(WINDRES, windres)
 AC_PATH_PROG([GIT], [git], git)
 AC_PATH_PROGS([MOC], [moc moc-qt4], moc, $qt_bin_path:$PATH)
 AC_PATH_PROGS([UIC], [uic uic-qt4], uic, $qt_bin_path:$PATH)
@@ -516,13 +517,13 @@ if test x$use_qt = xyes; then
     AC_MSG_ERROR("qt support requested but protoc was not found. use --without-qt")
   fi
   if test x$UIC = x; then
-    AC_MSG_WARN("qt support requested but uic was not found.")
+    AC_MSG_ERROR("qt support requested but uic was not found. use --without-qt")
   fi
   if test x$RCC = x; then
-    AC_MSG_WARN("qt support requested but rcc was not found.")
+    AC_MSG_ERROR("qt support requested but rcc was not found. use --without-qt")
   fi
   if test x$LRELEASE = x; then
-    AC_MSG_WARN("qt support requested but lrelease was not found.")
+    AC_MSG_ERROR("qt support requested but lrelease was not found. use --without-qt")
   fi
   if test x$use_tests = xyes; then
     if test x$have_qt_test = xno; then
@@ -582,6 +583,7 @@ if test x$use_tests = xyes; then
 fi
 
 AM_CONDITIONAL([TARGET_DARWIN], [test x$TARGET_OS = xdarwin])
+AM_CONDITIONAL([TARGET_WINDOWS], [test x$TARGET_OS = xwindows])
 AM_CONDITIONAL([USE_QRCODE], [test x$use_qr = xyes])
 
 AC_DEFINE(CLIENT_VERSION_MAJOR, _CLIENT_VERSION_MAJOR, [Major version])

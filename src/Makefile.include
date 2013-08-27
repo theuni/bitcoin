@@ -18,10 +18,15 @@ $(LIBBITCOINQT):
 	$(OBJC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	  $(CPPFLAGS) $(AM_CXXFLAGS) $(QT_INCLUDES) $(CXXFLAGS)  -c -o $@ $<
 
+.rc.o:
+	@test -f $(WINDRES) && $(WINDRES) -i $< -o $@ || \
+          echo error: could not build $@
+
 ui_%.h: %.ui
-	@test -f $(UIC) && $(UIC) -o $@ $< || echo error: could not build $@
-	sed -i '/^\*\*.*Created:/d' $@
-	sed -i '/^\*\*.*by:/d' $@
+	@test -d $(abs_builddir)/$(@D) || $(MKDIR_P) $(abs_builddir)/$(@D)
+	@test -f $(UIC) && $(UIC) -o $(abs_builddir)/$@ $(abs_srcdir)/$< || echo error: could not build $(abs_builddir)/$@
+	sed -i '/^\*\*.*Created:/d' $(abs_builddir)/$@
+	sed -i '/^\*\*.*by:/d' $(abs_builddir)/$@
 
 %.moc: %.cpp
 	$(MOC) $(QT_INCLUDES) $(MOC_DEFS) -o $@ $<
@@ -34,8 +39,9 @@ moc_%.cpp: %.h
 	sed -i '/^\*\*.*by:/d' $@
 
 %.qm: %.ts
-	@test -f $(LRELEASE) && $(LRELEASE) $< $@ || \
-	  echo error: could not build $@
+	@test -d $(abs_builddir)/$(@D) || $(MKDIR_P) $(abs_builddir)/$(@D)
+	@test -f $(LRELEASE) && $(LRELEASE) $(abs_srcdir)/$< -qm $(abs_builddir)/$@ || \
+	 echo error: could not build $(abs_builddir)/$@
 
 %.pb.cc %.pb.h: %.proto
 	test -f $(PROTOC) && $(PROTOC) --cpp_out=$(@D) --proto_path=$(abspath $(<D) $<)  || \
