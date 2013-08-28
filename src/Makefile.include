@@ -25,18 +25,15 @@ $(LIBBITCOINQT):
 ui_%.h: %.ui
 	@test -d $(abs_builddir)/$(@D) || $(MKDIR_P) $(abs_builddir)/$(@D)
 	@test -f $(UIC) && $(UIC) -o $(abs_builddir)/$@ $(abs_srcdir)/$< || echo error: could not build $(abs_builddir)/$@
-	sed -i '/^\*\*.*Created:/d' $(abs_builddir)/$@
-	sed -i '/^\*\*.*by:/d' $(abs_builddir)/$@
+	$(SED) -i.bak -e '/^\*\*.*Created:/,+1d' $(abs_builddir)/$@ && rm $(abs_builddir)/$@.bak
 
 %.moc: %.cpp
 	$(MOC) $(QT_INCLUDES) $(MOC_DEFS) -o $@ $<
-	sed -i '/^\*\*.*Created:/d' $@
-	sed -i '/^\*\*.*by:/d' $@
+	$(SED) -i.bak -e '/^\*\*.*Created:/,+1d' $@ && rm $@.bak
 
 moc_%.cpp: %.h
 	$(MOC) $(QT_INCLUDES) $(MOC_DEFS) -o $@ $<
-	sed -i '/^\*\*.*Created:/d' $@
-	sed -i '/^\*\*.*by:/d' $@
+	$(SED) -i.bak -e '/^\*\*.*Created:/,+1d' $@ && rm $@.bak
 
 %.qm: %.ts
 	@test -d $(abs_builddir)/$(@D) || $(MKDIR_P) $(abs_builddir)/$(@D)
