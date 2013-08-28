@@ -217,6 +217,23 @@ dnl Check for pthread compile/link requirements
 AX_PTHREAD
 INCLUDES="$INCLUDES $PTHREAD_CFLAGS"
 
+# The following macro will add the necessary defines to bitcoin-config.h, but
+# they also need to be passed down to any subprojects. Pull the results out of
+# the cache and add them to CPPFLAGS.
+AC_SYS_LARGEFILE
+
+if test x$ac_cv_sys_file_offset_bits != x &&
+   test x$ac_cv_sys_file_offset_bits != xno &&
+   test x$ac_cv_sys_file_offset_bits != xunknown; then
+  CPPFLAGS="$CPPFLAGS -D_FILE_OFFSET_BITS=$ac_cv_sys_file_offset_bits"
+fi
+
+if test x$ac_cv_sys_large_files != x &&
+   test x$ac_cv_sys_large_files != xno &&
+   test x$ac_cv_sys_large_files != xunknown; then
+  CPPFLAGS="$CPPFLAGS -D_LARGE_FILES=$ac_cv_sys_large_files"
+fi
+
 AX_CHECK_LINK_FLAG([-Wl,--large-address-aware], [LDFLAGS="$LDFLAGS -Wl,--large-address-aware"])
 
 if test x$use_hardening != xno; then
