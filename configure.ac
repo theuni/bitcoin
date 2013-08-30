@@ -62,9 +62,9 @@ AC_ARG_WITH([qt],
 
 dnl compile with full warnings and debugging symbols
 AC_ARG_ENABLE(debug,
-    AS_HELP_STRING([--enable-debug],[compile with debug symbols (default is no)]),
+    AS_HELP_STRING([--enable-debug],[compile with debug symbols (default is yes)]),
     [use_debug=$enableval],
-    [use_debug=no])
+    [use_debug=yes])
     AC_MSG_CHECKING([if compiling with debugging symbols])
 
 AC_ARG_ENABLE(tests,
@@ -206,7 +206,7 @@ case $host in
      ;;
 esac
 
-if test x$use_debug != xno; then
+if test x$use_debug == xyes; then
   CXXFLAGS="$DEBUG_CXXFLAGS $CXXFLAGS"
 else
   CXXFLAGS="$RELEASE_CXXFLAGS $CXXFLAGS"
