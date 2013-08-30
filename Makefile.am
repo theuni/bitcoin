@@ -2,6 +2,8 @@ ACLOCAL_AMFLAGS = -I src/m4
 SUBDIRS = src
 .PHONY: windows-deploy osx-deploy FORCE
 
+GZIP_ENV="-9n"
+
 BITCOIND_BIN=$(top_builddir)/src/bitcoind$(EXEEXT)
 BITCOIN_QT_BIN=$(top_builddir)/src/qt/bitcoin-qt$(EXEEXT)
 BITCOIN_WIN_INSTALLER=$(PACKAGE)-$(PACKAGE_VERSION)-win32-setup$(EXEEXT)
