@@ -247,6 +247,8 @@ if test x$use_hardening != xno; then
 
   AX_CHECK_LINK_FLAG([-Wl,--dynamicbase], [HARDENED_LDFLAGS="$HARDENED_LDFLAGS -Wl,--dynamicbase"])
   AX_CHECK_LINK_FLAG([-Wl,--nxcompat], [HARDENED_LDFLAGS="$HARDENED_LDFLAGS -Wl,--nxcompat"])
+  AX_CHECK_LINK_FLAG([-Wl,-z,relro], [LDFLAGS="-Wl,-z,relro"])
+  AX_CHECK_LINK_FLAG([-Wl,-z,now], [LDFLAGS="-Wl,-z,now"])
 
   if test x$TARGET_OS != xwindows; then
     # -fstack-protector-all can produce broken binaries with mingw
