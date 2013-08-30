@@ -195,7 +195,9 @@ case $host in
        AX_CHECK_LINK_FLAG([$base_frameworks],[LDFLAGS="$LDFLAGS $base_frameworks"],[AC_MSG_ERROR(could not find base frameworks)])
      fi
 
-     RELEASE_CXXFLAGS="$RELEASE_CXXFLAGS -isysroot /Developer/SDKs/MacOSX10.5.sdk -mmacosx-version-min=10.5 -arch i386 -O3"
+     AX_CHECK_COMPILE_FLAG([-mmacosx-version-min=10.5],[RELEASE_CXXFLAGS="$RELEASE_CXXFLAGS -mmacosx-version-min=10.5"])
+     AX_CHECK_COMPILE_FLAG([-arch i386],[RELEASE_CXXFLAGS="$RELEASE_CXXFLAGS -arch i386"])
+     RELEASE_CXXFLAGS="$RELEASE_CXXFLAGS -O3"
      CPPFLAGS="$CPPFLAGS -DMAC_OSX"
      TESTDEFS="-DBOOST_TEST_DYN_LINK"
      ;;
