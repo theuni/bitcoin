@@ -13,7 +13,9 @@ packages:
 - "autoconf2.13"
 - "libtool"
 - "automake"
-reference_datetime: "2011-01-30 00:00:00"
+- "pkg-config"
+
+reference_datetime: "2013-06-01 00:00:00"
 remotes:
 - "url": "https://github.com/bitcoin/bitcoin.git"
   "dir": "bitcoin"
@@ -31,27 +33,25 @@ script: |
   unzip ../build/boost-win32-1.50.0-gitian3.zip
   unzip ../build/bitcoin-deps-0.0.6.zip
   unzip ../build/protobuf-win32-2.5.0-gitian-r2.zip
-  find -type f | xargs touch --date="$REFERENCE_DATETIME"
   cd $HOME/build/
   #
   cd bitcoin
-  export LD_PRELOAD=/usr/lib/faketime/libfaketime.so.1
-  export FAKETIME=$REFERENCE_DATETIME
-  export TZ=UTC
   export PATH=$STAGING/host/bin:$PATH
+  export TAR_OPTIONS=--mtime=`echo $REFERENCE_DATETIME | awk '{ print $1 }'`
   ./autogen.sh
-  ./configure --disable-debug --bindir=$STAGING/bin/bitcoin --prefix=$STAGING --host=i586-mingw32msvc --with-qt-plugindir=$STAGING/plugins  --with-qt-incdir=$STAGING/include --with-qt-bindir=$STAGING/host/bin --with-boost=$STAGING --disable-maintainer-mode --with-protoc-bindir=$STAGING/host/bin --disable-dependency-tracking CPPFLAGS="-I$STAGING/include" LDFLAGS="-L$STAGING/lib" CXXFLAGS="-frandom-seed=bitcoin"
+  ./configure --disable-debug --bindir=$OUTDIR --prefix=$STAGING --host=i586-mingw32msvc --with-qt-plugindir=$STAGING/plugins  --with-qt-incdir=$STAGING/include --with-qt-bindir=$STAGING/host/bin --with-boost=$STAGING --disable-maintainer-mode --with-protoc-bindir=$STAGING/host/bin --disable-dependency-tracking CPPFLAGS="-I$STAGING/include" LDFLAGS="-L$STAGING/lib" CXXFLAGS="-frandom-seed=bitcoin"
   make dist
   mkdir -p distsrc
   cd distsrc
   tar --strip-components=1 -xf ../bitcoin-*.tar.*
-  ./configure --disable-debug --bindir=$STAGING/bin/bitcoin --prefix=$STAGING --host=i586-mingw32msvc --with-qt-plugindir=$STAGING/plugins  --with-qt-incdir=$STAGING/include --with-qt-bindir=$STAGING/host/bin --with-boost=$STAGING --disable-maintainer-mode --with-protoc-bindir=$STAGING/host/bin --disable-dependency-tracking CPPFLAGS="-I$STAGING/include" LDFLAGS="-L$STAGING/lib" CXXFLAGS="-frandom-seed=bitcoin"
+  ./configure --disable-debug --bindir=$OUTDIR --prefix=$STAGING --host=i586-mingw32msvc --with-qt-plugindir=$STAGING/plugins  --with-qt-incdir=$STAGING/include --with-qt-bindir=$STAGING/host/bin --with-boost=$STAGING --disable-maintainer-mode --with-protoc-bindir=$STAGING/host/bin --disable-dependency-tracking CPPFLAGS="-I$STAGING/include" LDFLAGS="-L$STAGING/lib" CXXFLAGS="-frandom-seed=bitcoin"
+  export LD_PRELOAD=/usr/lib/faketime/libfaketime.so.1
+  export FAKETIME=$REFERENCE_DATETIME
+  export TZ=UTC
   make $MAKEOPTS
   make windows-deploy
-
+  make install-strip
   cp -f bitcoin-*setup*.exe $OUTDIR/
-
-  cp -f release/*.exe $OUTDIR/
 
   mkdir -p $OUTDIR/src
   cp -f ../bitcoin-*.tar.* $OUTDIR/src
