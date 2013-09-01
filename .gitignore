@@ -51,6 +51,10 @@ src/qt/test/moc*.cpp
 *.pb.cc
 *.pb.h
 
+*.log
+*.trs
+*.dmg
+
 # Compilation and Qt preprocessor part
 *.qm
 Makefile
