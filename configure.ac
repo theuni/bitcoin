@@ -601,7 +601,7 @@ if test x$use_qt = xyes; then
   dnl enable qr support
   AC_MSG_CHECKING([if qr should be enabled])
   if test x$have_qrencode = xno; then
-    if test x$use_qr != xno; then
+    if test x$use_qr == xyes; then
      AC_MSG_ERROR("QR support requested but cannot be built. use --without-qrencode")
     fi
     AC_MSG_RESULT(no)
