@@ -278,7 +278,7 @@ fi
 
 dnl this flag screws up non-darwin gcc even when the check fails. special-case it.
 if test x$TARGET_OS = xdarwin; then
-  AX_CHECK_LINK_FLAG([-dead-strip], [LDFLAGS="$LDFLAGS -dead_strip"])
+  AX_CHECK_LINK_FLAG([-Wl,-dead_strip], [LDFLAGS="$LDFLAGS -Wl,-dead_strip"])
 fi
 
 AC_CHECK_HEADERS([stdio.h stdlib.h unistd.h strings.h sys/types.h sys/stat.h])
