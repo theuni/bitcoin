@@ -370,9 +370,7 @@ if test x$use_pkgconfig = xyes; then
         if test x$use_qr != xno; then
           PKG_CHECK_MODULES([QR], [libqrencode], [INCLUDES="$QR_CFLAGS"; LIBS="$LIBS $QR_LIBS"; have_qrencode=yes], [have_qrencode=no])
         fi
-        if test x$use_proto != xno; then
-          PKG_CHECK_MODULES([PROTOBUF], [protobuf], [INCLUDES="$PROTOBUF_CFLAGS"; LIBS="$LIBS $PROTOBUF_LIBS"; have_protobuf=yes], [have_protobuf=no])
-        fi
+        PKG_CHECK_MODULES([PROTOBUF], [protobuf], [INCLUDES="$PROTOBUF_CFLAGS"; LIBS="$LIBS $PROTOBUF_LIBS"; have_protobuf=yes], [AC_MSG_ERROR(libprotobuf not found.)])
       fi
     ]
   )
