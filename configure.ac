@@ -14,6 +14,13 @@ AH_TOP([#ifndef BITCOIN_CONFIG_H])
 AH_TOP([#define BITCOIN_CONFIG_H])
 AH_BOTTOM([#endif //BITCOIN_CONFIG_H])
 
+# This m4 will only be used if a system copy cannot be found. This is helpful
+# on systems where autotools are installed but the pkg-config macros are not in
+# a default location. It is currently used for building on OSX where autotools
+# are preinstalled but pkg-config comes from macports or homebrew. It should
+# probably be removed when building on <= 10.6 is no longer supported.
+m4_include([pkg.m4])
+
 dnl reset CXXFLAGS if empty (autoconf adds its own defaults otherwise)
 : ${CFLAGS=""}
 : ${CXXFLAGS=""}
@@ -125,6 +132,7 @@ AC_PATH_PROG([RCC], [rcc],, $qt_bin_path:$PATH)
 AC_PATH_PROG([LRELEASE], [lrelease],, $qt_bin_path:$PATH)
 AC_PATH_PROG([PROTOC], [protoc],, $protoc_bin_path:$PATH)
 AC_PATH_PROG(CCACHE,ccache)
+PKG_PROG_PKG_CONFIG
 
 ## TODO: Remove these hard-coded paths and flags. They are here for the sake of
 ##       compatibility with the legacy buildsystem.
