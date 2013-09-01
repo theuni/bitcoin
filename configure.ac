@@ -118,13 +118,13 @@ AC_PROG_SED
 AC_CHECK_TOOL(AR, ar)
 AC_CHECK_TOOL(RANLIB, ranlib)
 AC_PATH_TOOL(WINDRES, windres)
-AC_PATH_PROG([GIT], [git], git)
-AC_PATH_PROGS([MOC], [moc moc-qt4], moc, $qt_bin_path:$PATH)
-AC_PATH_PROGS([UIC], [uic uic-qt4], uic, $qt_bin_path:$PATH)
-AC_PATH_PROG([RCC], [rcc], rcc, $qt_bin_path:$PATH)
-AC_PATH_PROG([LRELEASE], [lrelease], lrelease, $qt_bin_path:$PATH)
-AC_PATH_PROG([PROTOC], [protoc], protoc, $protoc_bin_path:$PATH)
-AC_PATH_PROG(CCACHE,ccache,none)
+AC_PATH_PROG([GIT], [git])
+AC_PATH_PROGS([MOC], [moc moc-qt4],, $qt_bin_path:$PATH)
+AC_PATH_PROGS([UIC], [uic uic-qt4],, $qt_bin_path:$PATH)
+AC_PATH_PROG([RCC], [rcc],, $qt_bin_path:$PATH)
+AC_PATH_PROG([LRELEASE], [lrelease],, $qt_bin_path:$PATH)
+AC_PATH_PROG([PROTOC], [protoc],, $protoc_bin_path:$PATH)
+AC_PATH_PROG(CCACHE,ccache)
 
 ## TODO: Remove these hard-coded paths and flags. They are here for the sake of
 ##       compatibility with the legacy buildsystem.
@@ -478,7 +478,7 @@ AC_LANG_POP
 
 if test "x$use_ccache" != "xno"; then
   AC_MSG_CHECKING(if ccache should be enabled)
-  if test x"$CCACHE" = x"none"; then
+  if test x$CCACHE = x; then
     if test "x$use_ccache" = "xyes"; then
       AC_MSG_ERROR([ccache not found.]);
     else
