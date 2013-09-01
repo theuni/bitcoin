@@ -148,6 +148,7 @@ QT_QM=$(QT_TS:.ts=.qm)
 $(QT_QRC_CPP): $(QT_QRC) $(QT_QM) $(QT_FORMS_H) $(RES_ICONS) $(RES_IMAGES) $(RES_MOVIES)
 	@cd $(abs_srcdir); test -f $(RCC) && $(RCC) -name bitcoin -o $(abs_builddir)/$@ $< || \
 	  echo error: could not build $@
-	$(SED) -i.bak -e '/^\*\*.*Created:/,+1d' $@ && rm $@.bak
+	$(SED) -i.bak -e '/^\*\*.*Created:/d' $@ && rm $@.bak
+	$(SED) -i.bak -e '/^\*\*.*by:/d' $@ && rm $@.bak
 
 CLEANFILES = $(BUILT_SOURCES) $(QT_QM) $(QT_FORMS_H)
