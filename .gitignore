@@ -22,6 +22,7 @@ src/build-aux/
 src/qt/Makefile.in
 src/stamp-h1
 share/setup.nsi
+share/qt/Info.plist
 
 src/leveldb/.deps/
 
