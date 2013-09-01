@@ -358,7 +358,7 @@ if test x$use_pkgconfig = xyes; then
     [PKG_CHECK_MODULES],
     [
       PKG_CHECK_MODULES([SSL], [libssl], [INCLUDES="$INCLUDES $SSL_CFLAGS"; LIBS="$LIBS $SSL_LIBS"], [AC_MSG_ERROR(openssl  not found.)])
-      PKG_CHECK_MODULES([CRYPTO], [libcrypto], [INCLUDES="$CRYPTO_CFLAGS"; LIBS="$LIBS $CRYPTO_LIBS"], [AC_MSG_ERROR(libcrypto  not found.)])
+      PKG_CHECK_MODULES([CRYPTO], [libcrypto], [INCLUDES="$INCLUDES $CRYPTO_CFLAGS"; LIBS="$LIBS $CRYPTO_LIBS"], [AC_MSG_ERROR(libcrypto  not found.)])
 
       if test x$use_qt = xyes; then
         PKG_CHECK_MODULES([QT], [QtCore QtGui QtNetwork], [QT_INCLUDES="$QT_CFLAGS"; have_qt=yes], [have_qt=no])
@@ -369,9 +369,9 @@ if test x$use_pkgconfig = xyes; then
           PKG_CHECK_MODULES([QT_DBUS], [QtDBus], [QT_DBUS_INCLUDES="$QT_DBUS_CFLAGS"; have_qt_dbus=yes], [have_qt_dbus=no])
         fi
         if test x$use_qr != xno; then
-          PKG_CHECK_MODULES([QR], [libqrencode], [INCLUDES="$QR_CFLAGS"; LIBS="$LIBS $QR_LIBS"; have_qrencode=yes], [have_qrencode=no])
+          PKG_CHECK_MODULES([QR], [libqrencode], [have_qrencode=yes], [have_qrencode=no])
         fi
-        PKG_CHECK_MODULES([PROTOBUF], [protobuf], [INCLUDES="$PROTOBUF_CFLAGS"; LIBS="$LIBS $PROTOBUF_LIBS"; have_protobuf=yes], [AC_MSG_ERROR(libprotobuf not found.)])
+        PKG_CHECK_MODULES([PROTOBUF], [protobuf], [have_protobuf=yes], [AC_MSG_ERROR(libprotobuf not found.)])
       fi
     ]
   )
