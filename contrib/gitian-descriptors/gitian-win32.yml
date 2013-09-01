@@ -49,7 +49,7 @@ script: |
   export FAKETIME=$REFERENCE_DATETIME
   export TZ=UTC
   make $MAKEOPTS
-  make windows-deploy
+  make deploy
   make install-strip
   cp -f bitcoin-*setup*.exe $OUTDIR/
 
