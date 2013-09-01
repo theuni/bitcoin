@@ -184,8 +184,11 @@ case $host in
        AC_CHECK_PROG([BREW],brew, brew)
        if test x$BREW = xbrew; then
          dnl add default homebrew paths
-         CPPFLAGS="$CPPFLAGS -I/usr/local/opt/berkeley-db4/include"
-         LDFLAGS="$LDFLAGS -L/usr/local/opt/berkeley-db4/lib"
+         openssl_prefix=`$BREW --prefix openssl`
+         bdb_prefix=`$BREW --prefix berkeley-db4`
+         export PKG_CONFIG_PATH="$openssl_prefix/lib/pkgconfig:$PKG_CONFIG_PATH"
+         CPPFLAGS="$CPPFLAGS -I$bdb_prefix/include"
+         LDFLAGS="$LDFLAGS -L/$bdb_prefix/lib"
        fi
      fi
 
