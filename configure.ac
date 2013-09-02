@@ -119,12 +119,13 @@ AC_PROG_CC
 AC_PROG_CPP
 AC_PROG_INSTALL
 AC_PROG_OBJC
-AC_PROG_OBJCXX
+m4_ifdef([AC_PROG_OBJCXX],[AC_PROG_OBJCXX])
 AC_PROG_MKDIR_P
 AC_PROG_SED
-AC_CHECK_TOOL(AR, ar)
-AC_CHECK_TOOL(RANLIB, ranlib)
+AC_PATH_TOOL(AR, ar)
+AC_PATH_TOOL(RANLIB, ranlib)
 AC_PATH_TOOL(WINDRES, windres)
+AC_PATH_TOOL(STRIP, strip)
 AC_PATH_PROG([GIT], [git])
 AC_PATH_PROGS([MOC], [moc moc-qt4],, $qt_bin_path:$PATH)
 AC_PATH_PROGS([UIC], [uic uic-qt4],, $qt_bin_path:$PATH)
@@ -186,7 +187,7 @@ case $host in
        if test x$PORT = xport; then
          dnl add default macports paths
          CPPFLAGS="$CPPFLAGS -I/opt/local/include -I/opt/local/include/db48"
-         LDFLAGS="$LDFLAGS -L/opt/local/lib -L/opt/local/lib/db48"
+         LIBS="$LIBS -L/opt/local/lib -L/opt/local/lib/db48"
        fi
 
        AC_CHECK_PROG([BREW],brew, brew)
@@ -196,14 +197,14 @@ case $host in
          bdb_prefix=`$BREW --prefix berkeley-db4`
          export PKG_CONFIG_PATH="$openssl_prefix/lib/pkgconfig:$PKG_CONFIG_PATH"
          CPPFLAGS="$CPPFLAGS -I$bdb_prefix/include"
-         LDFLAGS="$LDFLAGS -L/$bdb_prefix/lib"
+         LIBS="$LIBS -L/$bdb_prefix/lib"
        fi
      fi
 
      if test x$use_qt = xyes; then
        MOC_DEFS="-DQ_OS_MAC"
        base_frameworks="-framework Foundation -framework ApplicationServices -framework AppKit"
-       AX_CHECK_LINK_FLAG([$base_frameworks],[LDFLAGS="$LDFLAGS $base_frameworks"],[AC_MSG_ERROR(could not find base frameworks)])
+       AX_CHECK_LINK_FLAG([[$base_frameworks]],[LIBS="$LIBS $base_frameworks"],[AC_MSG_ERROR(could not find base frameworks)])
      fi
 
      AX_CHECK_COMPILE_FLAG([-mmacosx-version-min=10.5],[RELEASE_CXXFLAGS="$RELEASE_CXXFLAGS -mmacosx-version-min=10.5"])
@@ -248,7 +249,7 @@ if test x$ac_cv_sys_large_files != x &&
   CPPFLAGS="$CPPFLAGS -D_LARGE_FILES=$ac_cv_sys_large_files"
 fi
 
-AX_CHECK_LINK_FLAG([-Wl,--large-address-aware], [LDFLAGS="$LDFLAGS -Wl,--large-address-aware"])
+AX_CHECK_LINK_FLAG([[-Wl,--large-address-aware]], [LDFLAGS="$LDFLAGS -Wl,--large-address-aware"])
 
 if test x$use_hardening != xno; then
   AX_CHECK_COMPILE_FLAG([-Wstack-protector],[HARDENED_CXXFLAGS="$HARDENED_CXXFLAGS -Wstack-protector"])
@@ -256,10 +257,10 @@ if test x$use_hardening != xno; then
 
   AX_CHECK_PREPROC_FLAG([-D_FORTIFY_SOURCE=2],[HARDENED_CPPFLAGS="$HARDENED_CPPFLAGS -D_FORTIFY_SOURCE=2"])
 
-  AX_CHECK_LINK_FLAG([-Wl,--dynamicbase], [HARDENED_LDFLAGS="$HARDENED_LDFLAGS -Wl,--dynamicbase"])
-  AX_CHECK_LINK_FLAG([-Wl,--nxcompat], [HARDENED_LDFLAGS="$HARDENED_LDFLAGS -Wl,--nxcompat"])
-  AX_CHECK_LINK_FLAG([-Wl,-z,relro], [LDFLAGS="-Wl,-z,relro"])
-  AX_CHECK_LINK_FLAG([-Wl,-z,now], [LDFLAGS="-Wl,-z,now"])
+  AX_CHECK_LINK_FLAG([[-Wl,--dynamicbase]], [HARDENED_LDFLAGS="$HARDENED_LDFLAGS -Wl,--dynamicbase"])
+  AX_CHECK_LINK_FLAG([[-Wl,--nxcompat]], [HARDENED_LDFLAGS="$HARDENED_LDFLAGS -Wl,--nxcompat"])
+  AX_CHECK_LINK_FLAG([[-Wl,-z,relro]], [LDFLAGS="-Wl,-z,relro"])
+  AX_CHECK_LINK_FLAG([[-Wl,-z,now]], [LDFLAGS="-Wl,-z,now"])
 
   if test x$TARGET_OS != xwindows; then
     # -fstack-protector-all can produce broken binaries with mingw
@@ -267,7 +268,7 @@ if test x$use_hardening != xno; then
     AX_CHECK_COMPILE_FLAG([-fstack-protector-all],[HARDENED_CXXFLAGS="$HARDENED_CXXFLAGS -fstack-protector-all"])
 
     # -pie will link successfully with mingw, but it's unsupported and leads to undeterministic binaries
-    AX_CHECK_LINK_FLAG([-pie], [HARDENED_LDFLAGS="$HARDENED_LDFLAGS -pie"])
+    AX_CHECK_LINK_FLAG([[-pie]], [HARDENED_LDFLAGS="$HARDENED_LDFLAGS -pie"])
   fi
 
   CXXFLAGS="$CXXFLAGS $HARDENED_CXXFLAGS"
@@ -278,7 +279,7 @@ fi
 
 dnl this flag screws up non-darwin gcc even when the check fails. special-case it.
 if test x$TARGET_OS = xdarwin; then
-  AX_CHECK_LINK_FLAG([-Wl,-dead_strip], [LDFLAGS="$LDFLAGS -Wl,-dead_strip"])
+  AX_CHECK_LINK_FLAG([[-Wl,-dead_strip]], [LDFLAGS="$LDFLAGS -Wl,-dead_strip"])
 fi
 
 AC_CHECK_HEADERS([stdio.h stdlib.h unistd.h strings.h sys/types.h sys/stat.h])
