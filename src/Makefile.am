@@ -55,7 +55,7 @@ leveldb/libmemenv.a:
 	@echo "Building LevelDB ..." && cd leveldb && CXX="$(CXX)" CC="$(CC)" \
 	  PLATFORM=$(TARGET_OS) AR="$(AR)" $(MAKE) $(LEVELDB_TARGET_FLAGS) OPT="$(CXXFLAGS) $(CPPFLAGS)" libmemenv.a
 
-CLEANFILES = leveldb/libleveldb.a leveldb/libmemenv.a
+CLEANFILES = leveldb/libleveldb.a leveldb/libmemenv.a *.gcda *.gcno
 
 DISTCLEANFILES = obj/build.h
 
@@ -63,4 +63,5 @@ EXTRA_DIST = leveldb Makefile.include
 
 clean-local:
 	-$(MAKE) -C leveldb clean
-
+	rm -f leveldb/port/*.gcno leveldb/db/*.gcno leveldb/table/*.gcno leveldb/helpers/*.gcno
+	rm -f leveldb/util/*.gcno leveldb/helpers/memenv/*.gcno

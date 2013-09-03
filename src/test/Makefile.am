@@ -35,3 +35,4 @@ test_bitcoin_SOURCES = accounting_tests.cpp alert_tests.cpp \
   transaction_tests.cpp uint160_tests.cpp uint256_tests.cpp util_tests.cpp \
   wallet_tests.cpp $(TEST_DATA_FILES)
 
+CLEANFILES = *.gcda *.gcno

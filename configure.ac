@@ -103,6 +103,12 @@ AC_ARG_ENABLE([ccache],
   [use_ccache=$enableval],
   [use_ccache=auto])
 
+AC_ARG_ENABLE([lcov],
+  [AS_HELP_STRING([--enable-lcov],
+  [enable lcov testing (default is no)])],
+  [use_lcov=yes],
+  [use_lcov=no])
+
 AC_ARG_WITH([qt-incdir],[AS_HELP_STRING([--with-qt-incdir=INC_DIR],[specify qt include path (overridden by pkgconfig)])], [qt_include_path=$withval], [])
 AC_ARG_WITH([qt-libdir],[AS_HELP_STRING([--with-qt-libdir=LIB_DIR],[specify qt lib path (overridden by pkgconfig)])], [qt_lib_path=$withval], [])
 AC_ARG_WITH([qt-bindir],[AS_HELP_STRING([--with-qt-bindir=BIN_DIR],[specify qt bin path])], [qt_bin_path=$withval], [])
@@ -126,6 +132,10 @@ AC_PATH_TOOL(AR, ar)
 AC_PATH_TOOL(RANLIB, ranlib)
 AC_PATH_TOOL(WINDRES, windres)
 AC_PATH_TOOL(STRIP, strip)
+AC_PATH_TOOL(GCOV, gcov)
+AC_PATH_PROG(LCOV, lcov)
+AC_PATH_PROG(JAVA, java)
+AC_PATH_PROG(GENHTML, genhtml)
 AC_PATH_PROG([GIT], [git])
 AC_PATH_PROGS([MOC], [moc moc-qt4],, $qt_bin_path:$PATH)
 AC_PATH_PROGS([UIC], [uic uic-qt4],, $qt_bin_path:$PATH)
@@ -225,6 +235,25 @@ else
 fi
 
 AC_LANG_PUSH([C++])
+
+if test x$use_lcov == xyes; then
+  if test x$LCOV == x; then
+    AC_MSG_ERROR("lcov testing requested but lcov not found")
+  fi
+  if test x$GCOV == x; then
+    AC_MSG_ERROR("lcov testing requested but gcov not found")
+  fi
+  if test x$JAVA == x; then
+    AC_MSG_ERROR("lcov testing requested but java not found")
+  fi
+  if test x$GENHTML == x; then
+    AC_MSG_ERROR("lcov testing requested but genhtml not found")
+  fi
+  LCOV="$LCOV --gcov-tool=$GCOV"
+  AX_CHECK_COMPILE_FLAG([--coverage],[CXXFLAGS="$CXXFLAGS --coverage"],
+    [AC_MSG_ERROR("lcov testing requested but --coverage flag does not work")])
+fi
+
 dnl Require little endian
 AC_C_BIGENDIAN([AC_MSG_ERROR("Big Endian not supported")])
 
@@ -628,6 +657,7 @@ fi
 AM_CONDITIONAL([TARGET_DARWIN], [test x$TARGET_OS = xdarwin])
 AM_CONDITIONAL([TARGET_WINDOWS], [test x$TARGET_OS = xwindows])
 AM_CONDITIONAL([USE_QRCODE], [test x$use_qr = xyes])
+AM_CONDITIONAL([USE_LCOV],[test x$use_lcov == xyes])
 
 AC_DEFINE(CLIENT_VERSION_MAJOR, _CLIENT_VERSION_MAJOR, [Major version])
 AC_DEFINE(CLIENT_VERSION_MINOR, _CLIENT_VERSION_MINOR, [Minor version])
@@ -661,4 +691,5 @@ AC_SUBST(BUILD_QT)
 AC_SUBST(BUILD_TEST)
 AC_SUBST(BUILD_TEST_QT)
 AC_CONFIG_FILES([Makefile src/Makefile src/test/Makefile src/qt/Makefile src/qt/test/Makefile share/setup.nsi share/qt/Info.plist])
+AC_CONFIG_FILES([contrib/test-scripts/run-bitcoind-for-test.sh],[chmod +x contrib/test-scripts/run-bitcoind-for-test.sh])
 AC_OUTPUT
