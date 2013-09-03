@@ -28,7 +28,7 @@ obj/build.h: FORCE
 	@$(MKDIR_P) $(abs_top_builddir)/src/obj
 	@$(top_srcdir)/share/genbuild.sh $(abs_top_builddir)/src/obj/build.h \
 	  $(abs_top_srcdir)
-version.cpp: obj/build.h
+version.o: obj/build.h
 
 libbitcoin_a_SOURCES = addrman.cpp alert.cpp bitcoinrpc.cpp bloom.cpp \
   chainparams.cpp checkpoints.cpp core.cpp crypter.cpp db.cpp hash.cpp \
