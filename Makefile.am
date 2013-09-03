@@ -146,7 +146,7 @@ COVERAGE_INFO = baseline_filtered_combined.info baseline.info block_test.info \
 .INTERMEDIATE: $(COVERAGE_INFO)
 cov: test_bitcoin.coverage/.dirstamp total.coverage/.dirstamp
 
-EXTRA_DIST = $(top_srcdir)/share/genbuild.sh $(WINDOWS_PACKAGING) $(OSX_PACKAGING)
+EXTRA_DIST = $(top_srcdir)/share/genbuild.sh contrib/test-scripts/pull-tester.sh $(WINDOWS_PACKAGING) $(OSX_PACKAGING)
 
 CLEANFILES = $(OSX_DMG) $(BITCOIN_WIN_INSTALLER)
 

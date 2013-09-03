@@ -1,0 +1,37 @@
+#!/bin/bash
+# Param1: The prefix to mingw staging
+# Param2: Number of make jobs. Defaults to 1.
+
+set -e
+set -o xtrace
+
+MINGWPREFIX=$1
+JOBS=${2-1}
+DISTDIR=@PACKAGE@-@VERSION@
+
+cd @abs_top_srcdir@
+make distdir
+mv $DISTDIR linux-build
+cd linux-build
+./configure
+make -j$JOBS
+make check
+
+#Test code coverage
+cd @abs_top_srcdir@
+make distdir
+mv $DISTDIR linux-coverage-build
+cd linux-coverage-build
+./configure --enable-lcov
+make -j$JOBS
+make check
+make cov
+
+#Test win32 build
+cd @abs_top_srcdir@
+make distdir
+mv $DISTDIR win32-build
+cd win32-build
+./configure --prefix=$MINGWPREFIX --host=i586-mingw32msvc --with-qt-bindir=$MINGWPREFIX/host/bin --with-qt-plugindir=$MINGWPREFIX/plugins --with-qt-incdir=$MINGWPREFIX/include --with-boost=$MINGWPREFIX --with-protoc-bindir=$MINGWPREFIX/host/bin CPPFLAGS=-I$MINGWPREFIX/include LDFLAGS=-L$MINGWPREFIX/lib
+make -j$JOBS
+make check
