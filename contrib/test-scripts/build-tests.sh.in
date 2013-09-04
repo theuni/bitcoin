@@ -32,7 +32,6 @@ mv $DISTDIR linux-coverage-build
 cd linux-coverage-build
 ./configure --enable-lcov --with-comparison-tool="$JAVA_COMPARISON_TOOL"
 make -j$JOBS
-make check
 make cov
 
 #Test win32 build

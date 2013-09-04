@@ -23,6 +23,11 @@ WINDOWS_PACKAGING = $(top_srcdir)/share/pixmaps/bitcoin.ico \
 OSX_PACKAGING = $(OSX_DEPLOY_SCRIPT) $(OSX_FANCY_PLIST) $(OSX_INSTALLER_ICONS) \
   $(top_srcdir)/contrib/macdeploy/background.png
 
+COVERAGE_INFO = baseline_filtered_combined.info baseline.info block_test.info \
+  leveldb_baseline.info test_bitcoin_filtered.info total_coverage.info \
+  baseline_filtered.info block_test_filtered.info \
+  leveldb_baseline_filtered.info test_bitcoin_coverage.info test_bitcoin.info
+
 dist-hook:
 	-$(MAKE) -C $(top_distdir)/src/leveldb clean
 	-$(GIT) archive --format=tar HEAD -- src/version.cpp | $(AMTAR) -C $(top_distdir) -xf -
@@ -78,7 +83,6 @@ $(OSX_DMG): $(OSX_APP_BUILT) $(OSX_PACKAGING)
 	$(OSX_DEPLOY_SCRIPT) $(OSX_APP) -add-qt-tr da,de,es,hu,ru,uk,zh_CN,zh_TW -dmg -fancy $(OSX_FANCY_PLIST) -verbose 2
 	rm -rf $(OSX_APP)
 
-.INTERMEDIATE: $(OSX_APP_BUILT)
 
 if TARGET_DARWIN
 deploy: $(OSX_DMG)
@@ -105,7 +109,7 @@ baseline_filtered_combined.info: leveldb_baseline_filtered.info baseline_filtere
 	$(LCOV) -a leveldb_baseline_filtered.info -a baseline_filtered.info -o $@
 
 test_bitcoin.info: baseline_filtered_combined.info
-	$(MAKE) check
+	$(MAKE) -C src/ check
 	$(LCOV) -c -d $(abs_builddir)/src -t test_bitcoin -o $@
 	$(LCOV) -z -d $(abs_builddir)/src
 	$(LCOV) -z -d $(abs_builddir)/src/leveldb
@@ -114,7 +118,7 @@ test_bitcoin_filtered.info: test_bitcoin.info
 	$(LCOV) -r $< "/usr/include/*" -o $@
 
 block_test.info: test_bitcoin_filtered.info
-	@TIMEOUT=120 contrib/test-scripts/run-bitcoind-for-test.sh $(JAVA) -Xmx2G -jar $(JAVA_COMPARISON_TOOL) .bitcoin/comptool 1 18444
+	@TIMEOUT=15 contrib/test-scripts/run-bitcoind-for-test.sh $(JAVA) -Xmx2G -jar $(JAVA_COMPARISON_TOOL) 1 18444
 	$(LCOV) -c -d $(abs_builddir)/src --t BitcoinJBlockTest -o $@
 	$(LCOV) -z -d $(abs_builddir)/src
 	$(LCOV) -z -d $(abs_builddir)/src/leveldb
@@ -136,19 +140,20 @@ total.coverage/.dirstamp: total_coverage.info
 	$(GENHTML) -s $< -o $(@D)
 	@touch $@
 
+cov: test_bitcoin.coverage/.dirstamp total.coverage/.dirstamp
+
 endif
 
-COVERAGE_INFO = baseline_filtered_combined.info baseline.info block_test.info \
-  leveldb_baseline.info test_bitcoin_filtered.info total_coverage.info \
-  baseline_filtered.info block_test_filtered.info \
-  leveldb_baseline_filtered.info test_bitcoin_coverage.info test_bitcoin.info
-
-.INTERMEDIATE: $(COVERAGE_INFO)
-cov: test_bitcoin.coverage/.dirstamp total.coverage/.dirstamp
+if USE_COMPARISON_TOOL
+check-local:
+	@TIMEOUT=900 contrib/test-scripts/run-bitcoind-for-test.sh $(JAVA) -Xmx2G -jar $(JAVA_COMPARISON_TOOL) 1 18444
+endif
 
 EXTRA_DIST = $(top_srcdir)/share/genbuild.sh contrib/test-scripts/pull-tester.sh $(WINDOWS_PACKAGING) $(OSX_PACKAGING)
 
 CLEANFILES = $(OSX_DMG) $(BITCOIN_WIN_INSTALLER)
+
+.INTERMEDIATE: $(OSX_APP_BUILT) $(COVERAGE_INFO)
 
 clean-local:
 	rm -rf test_bitcoin.coverage/ total.coverage/
