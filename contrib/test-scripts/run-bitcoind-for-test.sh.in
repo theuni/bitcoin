@@ -14,9 +14,14 @@ wait $WAITER
 
 if [ -n "$TIMEOUT" ]; then
   timeout -k 5s "$TIMEOUT"s "$@"
+  RETURN=$?
 else
   "$@"
+  RETURN=$?
 fi
 
 (sleep 15 && kill -0 $BITCOIND 2>/dev/null && kill -9 $BITCOIND $$)&
 kill $BITCOIND && wait $BITCOIND
+
+# timeout returns 124 on timeout, otherwise the return value of the child
+exit $RETURN
