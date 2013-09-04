@@ -79,6 +79,11 @@ AC_ARG_ENABLE(tests,
     [use_tests=$enableval],
     [use_tests=yes])
 
+AC_ARG_WITH([comparison-tool],
+    AS_HELP_STRING([with-comparison-tool],[path to java comparison tool (requires --enable-tests)]),
+    [use_comparison_tool=$withval],
+    [use_comparison_tool=no])
+
 AC_ARG_WITH([qrencode],
   [AS_HELP_STRING([--with-qrencode],
   [enable QR code support (default is yes if qt is enabled and libqrencode is found)])],
@@ -235,6 +240,9 @@ else
 fi
 
 AC_LANG_PUSH([C++])
+if test x$use_comparison_tool != xno; then
+  AC_SUBST(JAVA_COMPARISON_TOOL, $use_comparison_tool)
+fi
 
 if test x$use_lcov == xyes; then
   if test x$LCOV == x; then
@@ -248,6 +256,9 @@ if test x$use_lcov == xyes; then
   fi
   if test x$GENHTML == x; then
     AC_MSG_ERROR("lcov testing requested but genhtml not found")
+  fi
+  if test x$use_comparison_tool == x; then
+    AC_MSG_ERROR("lcov testing requested but comparison tool was not specified")
   fi
   LCOV="$LCOV --gcov-tool=$GCOV"
   AX_CHECK_COMPILE_FLAG([--coverage],[CXXFLAGS="$CXXFLAGS --coverage"],
@@ -658,6 +669,7 @@ AM_CONDITIONAL([TARGET_DARWIN], [test x$TARGET_OS = xdarwin])
 AM_CONDITIONAL([TARGET_WINDOWS], [test x$TARGET_OS = xwindows])
 AM_CONDITIONAL([USE_QRCODE], [test x$use_qr = xyes])
 AM_CONDITIONAL([USE_LCOV],[test x$use_lcov == xyes])
+AM_CONDITIONAL([USE_COMPARISON_TOOL],[test x$use_comparison_tool != x])
 
 AC_DEFINE(CLIENT_VERSION_MAJOR, _CLIENT_VERSION_MAJOR, [Major version])
 AC_DEFINE(CLIENT_VERSION_MINOR, _CLIENT_VERSION_MINOR, [Minor version])

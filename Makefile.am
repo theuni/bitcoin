@@ -114,7 +114,7 @@ test_bitcoin_filtered.info: test_bitcoin.info
 	$(LCOV) -r $< "/usr/include/*" -o $@
 
 block_test.info: test_bitcoin_filtered.info
-	@TIMEOUT=120 contrib/test-scripts/run-bitcoind-for-test.sh $(JAVA) -Xmx2G -jar $(top_srcdir)/contrib/test-scripts/BitcoindComparisonTool.jar .bitcoin/comptool 1 18444
+	@TIMEOUT=120 contrib/test-scripts/run-bitcoind-for-test.sh $(JAVA) -Xmx2G -jar $(JAVA_COMPARISON_TOOL) .bitcoin/comptool 1 18444
 	$(LCOV) -c -d $(abs_builddir)/src --t BitcoinJBlockTest -o $@
 	$(LCOV) -z -d $(abs_builddir)/src
 	$(LCOV) -z -d $(abs_builddir)/src/leveldb
