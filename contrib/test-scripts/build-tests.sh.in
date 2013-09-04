@@ -34,11 +34,12 @@ cd linux-coverage-build
 make -j$JOBS
 make cov
 
-#Test win32 build
-cd @abs_top_srcdir@
-make distdir
-mv $DISTDIR win32-build
-cd win32-build
-./configure --prefix=$MINGWPREFIX --host=i586-mingw32msvc --with-qt-bindir=$MINGWPREFIX/host/bin --with-qt-plugindir=$MINGWPREFIX/plugins --with-qt-incdir=$MINGWPREFIX/include --with-boost=$MINGWPREFIX --with-protoc-bindir=$MINGWPREFIX/host/bin --with-comparison-tool="$JAVA_COMPARISON_TOOL" CPPFLAGS=-I$MINGWPREFIX/include LDFLAGS=-L$MINGWPREFIX/lib
-make -j$JOBS
-make check
+# win32 build disabled until pull-tester has updated dependencies
+##Test win32 build
+#cd @abs_top_srcdir@
+#make distdir
+#mv $DISTDIR win32-build
+#cd win32-build
+#./configure --prefix=$MINGWPREFIX --host=i586-mingw32msvc --with-qt-bindir=$MINGWPREFIX/host/bin --with-qt-plugindir=$MINGWPREFIX/plugins --with-qt-incdir=$MINGWPREFIX/include --with-boost=$MINGWPREFIX --with-protoc-bindir=$MINGWPREFIX/host/bin --with-comparison-tool="$JAVA_COMPARISON_TOOL" CPPFLAGS=-I$MINGWPREFIX/include LDFLAGS=-L$MINGWPREFIX/lib
+#make -j$JOBS
+#make check
