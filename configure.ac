@@ -397,6 +397,12 @@ dnl a working version is available, else fall back to sleep. sleep was removed
 dnl after 1.56.
 dnl If neither is available, abort.
 dnl If sleep_for is used, boost_chrono becomes a requirement.
+
+dnl The following tests need Boost's CPPFLAGS included, since they may add
+dnl include paths necessary for compilation.
+TEMP_CPPFLAGS="$CPPFLAGS"
+CPPFLAGS="$CPPFLAGS $BOOST_INCLUDES"
+
 if test x$ax_cv_boost_chrono = xyes; then
 TEMP_LIBS="$LIBS"
 LIBS="$LIBS $BOOST_LIBS $BOOST_CHRONO_LIB"
@@ -438,6 +444,8 @@ fi
 if test x$boost_sleep != xyes; then
   AC_MSG_ERROR(No working boost sleep implementation found)
 fi
+
+CPPFLAGS="$TEMP_CPPFLAGS"
 
 if test x$use_pkgconfig = xyes; then
 
