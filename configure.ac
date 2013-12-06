@@ -253,6 +253,14 @@ case $host in
        AX_CHECK_LINK_FLAG([[$base_frameworks]],[LIBS="$LIBS $base_frameworks"],[AC_MSG_ERROR(could not find base frameworks)])
      ])
 
+     if test "x$build_vendor" != "xapple"; then
+       AC_PATH_TOOL([INSTALLNAMETOOL], [install_name_tool], install_name_tool)
+       AC_PATH_TOOL([OTOOL], [otool], otool)
+       AC_PATH_PROGS([GENISOIMAGE], [genisoimage mkisofs],genisoimage)
+     else
+       BUILD_OS="apple"
+     fi
+
      CPPFLAGS="$CPPFLAGS -DMAC_OSX"
      TESTDEFS="-DBOOST_TEST_DYN_LINK"
      ;;
@@ -712,6 +720,7 @@ if test x$use_tests = xyes; then
 fi
 
 AM_CONDITIONAL([TARGET_DARWIN], [test x$TARGET_OS = xdarwin])
+AM_CONDITIONAL([BUILD_DARWIN], [test x$BUILD_OS = xapple])
 AM_CONDITIONAL([TARGET_WINDOWS], [test x$TARGET_OS = xwindows])
 AM_CONDITIONAL([USE_QRCODE], [test x$use_qr = xyes])
 AM_CONDITIONAL([USE_LCOV],[test x$use_lcov == xyes])
