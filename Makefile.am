@@ -21,7 +21,8 @@ WINDOWS_PACKAGING = $(top_srcdir)/share/pixmaps/bitcoin.ico \
   $(top_srcdir)/doc/README_windows.txt
 
 OSX_PACKAGING = $(OSX_DEPLOY_SCRIPT) $(OSX_FANCY_PLIST) $(OSX_INSTALLER_ICONS) \
-  $(top_srcdir)/contrib/macdeploy/background.png
+  $(top_srcdir)/contrib/macdeploy/background.png \
+  $(top_srcdir)/contrib/macdeploy/DS_Store
 
 COVERAGE_INFO = baseline_filtered_combined.info baseline.info block_test.info \
   leveldb_baseline.info test_bitcoin_filtered.info total_coverage.info \
@@ -79,9 +80,19 @@ OSX_APP_BUILT=$(OSX_APP)/Contents/PkgInfo $(OSX_APP)/Contents/Resources/empty.lp
   $(OSX_APP)/Contents/Resources/bitcoin.icns $(OSX_APP)/Contents/Info.plist \
   $(OSX_APP)/Contents/MacOS/Bitcoin-Qt
 
+if BUILD_DARWIN
 $(OSX_DMG): $(OSX_APP_BUILT) $(OSX_PACKAGING)
 	$(OSX_DEPLOY_SCRIPT) $(OSX_APP) -add-qt-tr da,de,es,hu,ru,uk,zh_CN,zh_TW -dmg -fancy $(OSX_FANCY_PLIST) -verbose 2
 
+else
+$(OSX_DMG): $(OSX_APP_BUILT) $(OSX_PACKAGING)
+	INSTALLNAMETOOL=$(INSTALLNAMETOOL)  OTOOL=$(OTOOL) STRIP=$(STRIP) $(OSX_DEPLOY_SCRIPT) $(OSX_APP) -verbose 2
+	cp contrib/macdeploy/DS_Store dist/.DS_Store
+	mkdir -p dist/.background
+	cp contrib/macdeploy/background.png dist/.background
+	cd dist; ln -s /Applications Applications
+	$(GENISOIMAGE) -no-cache-inodes -l -probe -V "Bitcoin-Qt" -no-pad -r -apple -o $@ dist
+endif
 
 if TARGET_DARWIN
 appbundle: $(OSX_APP_BUILT)
