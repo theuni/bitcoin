@@ -1,0 +1,43 @@
+---
+name: "qt"
+suites:
+- "precise"
+architectures:
+- "amd64"
+packages:
+- "mingw-w64"
+- "g++-mingw-w64"
+- "zip"
+- "unzip"
+- "faketime"
+- "unzip"
+reference_datetime: "2011-01-30 00:00:00"
+remotes: []
+files:
+- "qt-everywhere-opensource-src-5.1.1.tar.gz"
+- "bitcoin-deps-win32-gitian-r9.zip"
+script: |
+  #
+  HOST=i686-w64-mingw32
+  INSTDIR="$HOME/qt/"
+  # Integrity Check
+  echo "4c05742db52325e96b1d610a2388140dcc1e3d03d93faea2b2d3791015b186f6  qt-everywhere-opensource-src-5.1.1.tar.gz" | sha256sum -c
+
+  mkdir $INSTDIR
+  mkdir -p $INSTDIR/host/bin
+  #
+  # Need mingw-compiled openssl from bitcoin-deps:
+  unzip bitcoin-deps-win32-gitian-r9.zip
+  DEPSDIR=`pwd`
+
+  tar xzf qt-everywhere-opensource-src-5.1.1.tar.gz
+  cd qt-everywhere-opensource-src-5.1.1
+  sed -i s'|QT_NO_TRANSLATION|QT_NO_TRANSLATION QT_NO_COMPRESS|' qtbase/src/tools/bootstrap/bootstrap.pro
+  OPENSSL_LIBS="-L$DEPSDIR/lib -lssl -lcrypto -lgdi32" ./configure -prefix / -headerdir /include/qt5 -plugindir /plugins/qt5 -translationdir /translations/qt5 -hostprefix $INSTDIR/host -hostbindir $INSTDIR/host/bin/qt5 -xplatform win32-g++ -device-option CROSS_COMPILE=i686-w64-mingw32- -I "$DEPSDIR/include" -L "$DEPSDIR/lib" -sysroot $INSTDIR -confirm-license -release -opensource -static -qt-pcre -system-zlib -no-icu -no-glib -no-audio-backend -no-javascript-jit -no-sql-sqlite -no-nis -no-cups -no-iconv -no-dbus -no-gif -no-opengl -nomake examples -no-feature-style-plastique -no-feature-style-cleanlooks -no-feature-style-motif -no-feature-style-cde -no-feature-style-windowsce -no-feature-style-windowsmobile -no-feature-style-s60 -no-pch -openssl-linked -no-sql-odbc -no-compile-examples -no-qml-debug -no-sm -skip qtactiveqt -skip qtdeclarative -skip qtdoc -skip qtgraphicaleffects -skip qtjsbackend -skip qtmultimedia -skip qtquick1 -skip qtquickcontrols -skip qtscript -skip qtsensors -skip qtserialport -skip qtsvg -skip qtwebkit -skip qtwebkit-examples -skip qtx11extras -skip qtxmlpatterns
+  make -j8 module-qtbase
+  make module-qtbase-install_subtargets
+  make -j8 module-qttranslations
+  make module-qttranslations-install_subtargets
+  cd $INSTDIR
+  zip -r qt5-win32-5.1.1-gitian-r1.zip *
+  mv qt5-win32-5.1.1-gitian-r1.zip $OUTDIR
