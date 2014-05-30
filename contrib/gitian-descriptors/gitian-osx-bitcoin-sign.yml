@@ -1,0 +1,33 @@
+---
+name: "bitcoin"
+suites:
+- "precise"
+architectures:
+- "i386"
+packages:
+- "faketime"
+
+reference_datetime: "2013-06-01 00:00:00"
+remotes: []
+files:
+- "osx-native-depends-r3.tar.gz"
+- "osx-bitcoin-unsigned.tar.gz"
+- "osx-bitcoin-signature.tar.gz"
+
+script: |
+  HOST=x86_64-apple-darwin11
+
+  mkdir -p osx-cross-depends
+  tar -C osx-cross-depends -xf osx-native-depends-r3.tar.gz
+  export PATH=`pwd`/osx-cross-depends/native-prefix/bin:$PATH
+  export CODESIGN_ALLOCATE=${HOST}-codesign_allocate
+  export PAGESTUFF=${HOST}-pagestuff
+
+  tar xf osx-bitcoin-unsigned.tar.gz
+  ./detached-sig-apply.sh -i osx-bitcoin-signature.tar.gz -o dist/Bitcoin-Qt.app
+
+  export LD_PRELOAD=/usr/lib/faketime/libfaketime.so.1
+  export FAKETIME=$REFERENCE_DATETIME
+  export TZ=UTC
+  genisoimage -no-cache-inodes -D -l -probe -V "Bitcoin-Qt" -no-pad -r -apple -o Bitcoin-Qt-uncompressed.dmg dist
+  dmg dmg Bitcoin-Qt-uncompressed.dmg $OUTDIR/Bitcoin-Qt.dmg
