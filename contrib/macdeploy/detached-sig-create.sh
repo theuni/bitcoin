@@ -138,13 +138,13 @@ rm -rf ${TEMPDIR} ${TEMPLIST}
 mkdir -p ${TEMPDIR}
 
 if [ -z ${NODEPS} ]; then
-  ${CODESIGN} -f --file-list "${TEMPLIST}" ${CODESIGNARGS} ${IN}/Contents/Frameworks/*/Versions/*
-  ${CODESIGN} -f --file-list "${TEMPLIST}" ${CODESIGNARGS} ${IN}/Contents/Frameworks/*.dylib
-  ${CODESIGN} -f --file-list "${TEMPLIST}" ${CODESIGNARGS} ${IN}/Contents/PlugIns/*/*.dylib
+  eval "${CODESIGN} -f --file-list ${TEMPLIST} ${CODESIGNARGS} ${IN}/Contents/Frameworks/*/Versions/*"
+  eval "${CODESIGN} -f --file-list ${TEMPLIST} ${CODESIGNARGS} ${IN}/Contents/Frameworks/*.dylib"
+  eval "${CODESIGN} -f --file-list ${TEMPLIST} ${CODESIGNARGS} ${IN}/Contents/PlugIns/*/*.dylib"
 fi
 
 if [ -z ${DEPSONLY} ]; then
-  ${CODESIGN} -f --file-list ${TEMPLIST} ${CODESIGNARGS} ${IN}/
+  eval "${CODESIGN} -f --file-list ${TEMPLIST} ${CODESIGNARGS} ${IN}/"
 fi
 
 for i in `grep -v CodeResources ${TEMPLIST}`; do
