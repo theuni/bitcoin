@@ -63,6 +63,12 @@ AC_ARG_ENABLE([upnp-default],
   [use_upnp_default=$enableval],
   [use_upnp_default=no])
 
+AC_ARG_ENABLE([libsecp256k1],
+  [AS_HELP_STRING([--enable-libsecp256k1],
+  [use libsecp256k1 for EC operations (default is no)])],
+  [use_libsecp256k1=$enableval],
+  [use_libsecp256k1=no])
+
 AC_ARG_ENABLE(tests,
     AS_HELP_STRING([--enable-tests],[compile tests (default is yes)]),
     [use_tests=$enableval],
@@ -664,6 +670,14 @@ else
   AC_MSG_RESULT([no])
 fi
 
+AC_MSG_CHECKING([whether to use libsecp256k1])
+if test x$use_libsecp256k1 = xyes; then
+  AC_DEFINE(USE_SECP256K1, 1,[Define this symbol if you have libsecp256k1])
+  AC_MSG_RESULT([yes])
+else
+  AC_MSG_RESULT([no])
+fi
+
 if test "x$use_tests$build_bitcoind$use_qt" = "xnonono"; then
   AC_MSG_ERROR([No targets! Please specify at least one of: --enable-cli --enable-daemon --enable-gui or --enable-tests])
 fi
@@ -708,4 +722,17 @@ AC_SUBST(BUILD_TEST_QT)
 AC_CONFIG_FILES([Makefile src/Makefile share/setup.nsi share/qt/Info.plist])
 AC_CONFIG_FILES([qa/pull-tester/run-bitcoind-for-test.sh],[chmod +x qa/pull-tester/run-bitcoind-for-test.sh])
 AC_CONFIG_FILES([qa/pull-tester/build-tests.sh],[chmod +x qa/pull-tester/build-tests.sh])
+
+if test x$use_libsecp256k1 = xyes; then
+  dnl boost's m4 checks do something really nasty: they export these vars. As a
+  dnl result, they leak into secp256k1's configure and crazy things happen.
+  dnl Until this is fixed upstream and we've synced, we'll just un-export them.
+  export -n CPPFLAGS
+  export -n LIBS
+  export -n LDFLAGS
+
+  ac_configure_args="${ac_configure_args} --disable-shared --with-pic"
+  AC_CONFIG_SUBDIRS([src/secp256k1])
+fi
+
 AC_OUTPUT
