@@ -114,9 +114,7 @@ libbitcoin_server_a_SOURCES = \
   alert.cpp \
   bloom.cpp \
   checkpoints.cpp \
-  coins.cpp \
   init.cpp \
-  keystore.cpp \
   leveldbwrapper.cpp \
   main.cpp \
   miner.cpp \
@@ -158,11 +156,13 @@ libbitcoin_common_a_SOURCES = \
   base58.cpp \
   allocators.cpp \
   chainparams.cpp \
+  coins.cpp \
   core.cpp \
   core_read.cpp \
   core_write.cpp \
   hash.cpp \
   key.cpp \
+  keystore.cpp \
   netbase.cpp \
   protocol.cpp \
   rpcprotocol.cpp \
