@@ -9,6 +9,7 @@
 #include "net.h"
 #include "main.h"
 #include "miner.h"
+#include "core_io.h"
 #ifdef ENABLE_WALLET
 #include "db.h"
 #include "wallet.h"
@@ -381,9 +382,7 @@ Value getblocktemplate(const Array& params, bool fHelp)
 
         Object entry;
 
-        CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
-        ssTx << tx;
-        entry.push_back(Pair("data", HexStr(ssTx.begin(), ssTx.end())));
+        entry.push_back(Pair("data", EncodeHexTx(tx)));
 
         entry.push_back(Pair("hash", txHash.GetHex()));
 
