@@ -41,6 +41,8 @@ if BUILD_BITCOIN_CLI
   bin_PROGRAMS += bitcoin-cli
 endif
 
+bin_PROGRAMS += bitcoin-tx
+
 .PHONY: FORCE
 # bitcoin core #
 BITCOIN_CORE_H = \
@@ -85,6 +87,7 @@ BITCOIN_CORE_H = \
   txmempool.h \
   ui_interface.h \
   uint256.h \
+  univalue.h \
   util.h \
   version.h \
   walletdb.h \
@@ -168,6 +171,9 @@ libbitcoin_common_a_SOURCES = \
   rpcprotocol.cpp \
   script.cpp \
   sync.cpp \
+  univalue.cpp \
+  univalue_read.cpp \
+  univalue_write.cpp \
   util.cpp \
   version.cpp \
   compat/glibc_sanity.cpp \
@@ -214,6 +220,15 @@ bitcoin_cli_LDADD = \
   $(BOOST_LIBS)
 bitcoin_cli_SOURCES = bitcoin-cli.cpp
 bitcoin_cli_CPPFLAGS = $(BITCOIN_INCLUDES)
+#
+
+# bitcoin-tx binary #
+bitcoin_tx_LDADD = \
+  libbitcoin_common.a \
+  crypto/libbitcoin_crypto.a \
+  $(BOOST_LIBS)
+bitcoin_tx_SOURCES = bitcoin-tx.cpp
+bitcoin_tx_CPPFLAGS = $(BITCOIN_INCLUDES)
 #
 
 if TARGET_WINDOWS
