@@ -1,0 +1,32 @@
+os: linux
+language: cpp
+before_install:
+    - if [ -n "$PACKAGES" ]; then travis_retry sudo apt-get update; fi
+install:
+    - if [ -n "$PACKAGES" ]; then travis_retry sudo apt-get install --no-upgrade -qq $PACKAGES; fi
+before_script:
+    - unset CC; unset CXX
+    - mkdir -p depends/SDKs
+    - if [ "$HOST" = "x86_64-apple-darwin11" ]; then travis_retry wget -q -O sdk.tar.gz $OSX_SDK_URL && tar -C depends/SDKs -xf sdk.tar.gz; fi
+    - make $MAKEOPTS -C depends HOST=$HOST $DEP_OPTS
+script:
+    - depends/$HOST/native/bin/ccache --max-size=$CCACHE_SIZE
+    - ./autogen.sh
+    - ./configure --prefix=`pwd`/depends/$HOST --disable-dependency-tracking --disable-ccache $BITCOIN_OPTS
+    - make $MAKEOPTS $GOAL
+    - if [ "$RUN_TESTS" = "true" ]; then make check; fi
+env:
+  global:
+    - MAKEOPTS=-j3
+    - RUN_TESTS=false
+    - BITCOIN_OPTS="CXXFLAGS=-fvisibility=hidden"
+    - CCACHE_SIZE=300M
+    - secure: "lKRw9HREjapkUY3oZM8GvebngYC9+XHUVM5EZjg6XQOTXecH1JsFNuE1aEWMvVebCyc84jeiIR+ReMJPqncGtZF34D40JbH2JF7zwUUPkq4oP8kFzQ7kpgBGvmEEYRJW1971yKVe7oHSyXdlV/15PlkAtwsXS7SQf1rl/E3dXDY="
+  matrix:
+    - HOST=arm-linux-gnueabihf PACKAGES="gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf binutils-arm-linux-gnueabihf" DEP_OPTS="NO_QT=1" GOAL="install"
+    - HOST=x86_64-unknown-linux-gnu DEP_OPTS="NO_QT=1 NO_WALLET=1 NO_UPNP=1" RUN_TESTS=true GOAL="install"
+    - HOST=x86_64-unknown-linux-gnu RUN_TESTS=true GOAL="install"
+    - HOST=i686-pc-linux-gnu PACKAGES="gcc-multilib g++-multilib" RUN_TESTS=true GOAL="install"
+    - HOST=x86_64-apple-darwin11 PACKAGES="gcc-multilib g++-multilib cmake libcap-dev libz-dev libbz2-dev" GOAL="deploy"
+    - HOST=x86_64-w64-mingw32 PACKAGES="gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 binutils-mingw-w64-x86-64 mingw-w64-dev" GOAL="deploy"
+    - HOST=i686-w64-mingw32 PACKAGES="gcc-mingw-w64-i686 g++-mingw-w64-i686 binutils-mingw-w64-i686 mingw-w64-dev" GOAL="deploy"
