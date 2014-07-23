@@ -1,0 +1,28 @@
+language: cpp
+cache:
+  directories:
+  - depends/built
+install:
+    - if [ -n "$PACKAGES" ]; then sudo apt-get install -qq $PACKAGES; fi
+before_script:
+    - unset CC; unset CXX
+    - mkdir -p depends/SDKs
+    - if [ "$HOST" = "x86_64-apple-darwin11" ]; then wget -q -O sdk.tar.gz $OSX_SDK_URL && tar -C depends/SDKs -xf sdk.tar.gz; fi
+    - make $MAKEOPTS -C depends HOST=$HOST
+    - make -C depends HOST=$HOST install
+script:
+    - ./autogen.sh
+    - ./configure --prefix=`pwd`/depends/$HOST $GLOBALOPTS $OPTS
+    - make $MAKEOPTS
+os: linux
+env:
+  global:
+    - MAKEOPTS=-j2
+    - GLOBALOPTS=--disable-dependency-tracking
+    - secure: "lKRw9HREjapkUY3oZM8GvebngYC9+XHUVM5EZjg6XQOTXecH1JsFNuE1aEWMvVebCyc84jeiIR+ReMJPqncGtZF34D40JbH2JF7zwUUPkq4oP8kFzQ7kpgBGvmEEYRJW1971yKVe7oHSyXdlV/15PlkAtwsXS7SQf1rl/E3dXDY="
+  matrix:
+    - HOST=x86_64-unknown-linux-gnu
+    - HOST=i686-pc-linux-gnu PACKAGES="gcc-multilib g++-multilib"
+    - HOST=x86_64-w64-mingw32 PACKAGES="gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 binutils-mingw-w64-x86-64 mingw-w64-dev"
+    - HOST=i686-w64-mingw32 PACKAGES="gcc-mingw-w64-i686 g++-mingw-w64-i686 binutils-mingw-w64-i686 mingw-w64-dev"
+    - HOST=x86_64-apple-darwin11 PACKAGES="gcc-multilib g++-multilib cmake libcap-dev libz-dev libbz2-dev"
