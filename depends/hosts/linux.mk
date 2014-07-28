@@ -17,4 +17,4 @@ x86_64_linux_RANLIB=ranlib
 x86_64_linux_STRIP=strip
 
 linux_revision=1
-linux_packages=libxcb xcb_proto libXau xproto dbus expat freetype fontconfig libX11 xextproto libXext xtrans
+linux_packages=libxcb xcb_proto libXau xproto dbus expat freetype fontconfig libX11 xextproto libXext xtrans zeromq
