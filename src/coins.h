@@ -247,7 +247,7 @@ private:
 
 public:
     CCoinsKeyHasher();
-    uint64_t operator()(const uint256& key) const {
+    size_t operator()(const uint256& key) const {
         return key.GetHash(salt);
     }
 };
