@@ -13,7 +13,7 @@ script:
     - depends/$HOST/native/bin/ccache --max-size=$CCACHE_SIZE
     - ./autogen.sh
     - ./configure --prefix=`pwd`/depends/$HOST --disable-dependency-tracking $BITCOIN_OPTS
-    - make $MAKEOPTS $GOAL
+    - make V=1 $MAKEOPTS $GOAL
 after_script:
     - if [ "$RUN_TESTS" = "true" ]; then make check; fi
 os: linux
