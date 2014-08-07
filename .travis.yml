@@ -1,14 +1,14 @@
-os: linux
 language: cpp
-before_install:
-    - if [ -n "$PACKAGES" ]; then travis_retry sudo apt-get update; fi
+cache:
+  directories:
+  - depends/built
 install:
+    - if [ -n "$PACKAGES" ]; then travis_retry sudo apt-get update; fi
     - if [ -n "$PACKAGES" ]; then travis_retry sudo apt-get install –no-upgrade -qq $PACKAGES; fi
 before_script:
     - unset CC; unset CXX
     - mkdir -p depends/SDKs
     - if [ "$HOST" = "x86_64-apple-darwin11" ]; then travis_retry wget -q -O sdk.tar.gz $OSX_SDK_URL && tar -C depends/SDKs -xf sdk.tar.gz; fi
-    - travis_retry make $MAKEOPTS -C depends HOST=$HOST $DEP_OPTS download
     - make $MAKEOPTS -C depends HOST=$HOST $DEP_OPTS
 script:
     - depends/$HOST/native/bin/ccache --max-size=$CCACHE_SIZE
@@ -17,6 +17,7 @@ script:
     - make $MAKEOPTS $GOAL
 after_script:
     - if [ "$RUN_TESTS" = "true" ]; then make check; fi
+os: linux
 env:
   global:
     - MAKEOPTS=-j3
