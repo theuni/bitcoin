@@ -14,6 +14,46 @@
 
 #include <boost/variant.hpp>
 
+/* Binary script data base class
+
+   Allows arbitrary structures to be written to a script without CScript
+   knowing anything about them.
+*/
+class CScriptBinaryData
+{
+public:
+    template <typename T>
+    CScriptBinaryData(const T& in)
+    {
+        size_t size = in.size();
+        if (size)
+        {
+            assert(size <= UCHAR_MAX);
+            m_vch.resize(size+1);
+            m_vch.front() = size;
+            std::copy(in.begin(), in.end(), m_vch.begin() + 1);
+        }
+    }
+
+    inline std::vector<unsigned char>::const_iterator begin() const
+    {
+        return m_vch.begin();
+    }
+
+    inline std::vector<unsigned char>::const_iterator end() const
+    {
+        return m_vch.end();
+    }
+
+    inline std::vector<unsigned char>::size_type size() const
+    {
+        return m_vch.size();
+    }
+
+private:
+    std::vector<unsigned char> m_vch;
+};
+
 static const unsigned int MAX_SCRIPT_ELEMENT_SIZE = 520; // bytes
 
 /** Script opcodes */
@@ -364,6 +404,12 @@ public:
 
 
     CScript& operator<<(int64_t b) { return push_int64(b); }
+
+    CScript& operator<<(const CScriptBinaryData& data)
+    {
+        insert(end(), data.begin(), data.end());
+        return *this;
+    }
 
     CScript& operator<<(opcodetype opcode)
     {
