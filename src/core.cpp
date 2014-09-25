@@ -5,7 +5,9 @@
 
 #include "core.h"
 
+#include "hash.h"
 #include "tinyformat.h"
+#include "utilstrencodings.h"
 
 #include <boost/foreach.hpp>
 
