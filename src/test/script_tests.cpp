@@ -582,7 +582,7 @@ BOOST_AUTO_TEST_CASE(script_CHECKMULTISIG12)
     key3.MakeNewKey(true);
 
     CScript scriptPubKey12;
-    scriptPubKey12 << OP_1 << key1.GetPubKey() << key2.GetPubKey() << OP_2 << OP_CHECKMULTISIG;
+    scriptPubKey12 << OP_1 << CScriptBinaryData(key1.GetPubKey()) << CScriptBinaryData(key2.GetPubKey()) << OP_2 << OP_CHECKMULTISIG;
 
     CMutableTransaction txFrom12 = BuildCreditingTransaction(scriptPubKey12);
     CMutableTransaction txTo12 = BuildSpendingTransaction(CScript(), txFrom12);
@@ -608,7 +608,7 @@ BOOST_AUTO_TEST_CASE(script_CHECKMULTISIG23)
     key4.MakeNewKey(false);
 
     CScript scriptPubKey23;
-    scriptPubKey23 << OP_2 << key1.GetPubKey() << key2.GetPubKey() << key3.GetPubKey() << OP_3 << OP_CHECKMULTISIG;
+    scriptPubKey23 << OP_2 << CScriptBinaryData(key1.GetPubKey()) << CScriptBinaryData(key2.GetPubKey()) << CScriptBinaryData(key3.GetPubKey()) << OP_3 << OP_CHECKMULTISIG;
 
     CMutableTransaction txFrom23 = BuildCreditingTransaction(scriptPubKey23);
     CMutableTransaction txTo23 = BuildSpendingTransaction(CScript(), txFrom23);
@@ -695,7 +695,7 @@ BOOST_AUTO_TEST_CASE(script_combineSigs)
     BOOST_CHECK(combined == scriptSigCopy || combined == scriptSig);
 
     // P2SH, single-signature case:
-    CScript pkSingle; pkSingle << keys[0].GetPubKey() << OP_CHECKSIG;
+    CScript pkSingle; pkSingle << CScriptBinaryData(keys[0].GetPubKey()) << OP_CHECKSIG;
     keystore.AddCScript(pkSingle);
     scriptPubKey = GetScriptForDestination(CScriptID(pkSingle));
     SignSignature(keystore, txFrom, txTo, 0);
