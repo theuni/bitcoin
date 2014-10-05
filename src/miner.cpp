@@ -323,7 +323,8 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn)
         indexDummy.nHeight = pindexPrev->nHeight + 1;
         CCoinsViewCache viewNew(pcoinsTip);
         CValidationState state;
-        if (!ConnectBlock(*pblock, state, &indexDummy, viewNew, true))
+        CBlockUndo blockundo;
+        if (!ConnectBlock(*pblock, state, &indexDummy, viewNew, blockundo, true))
             throw std::runtime_error("CreateNewBlock() : ConnectBlock failed");
     }
 

@@ -9,6 +9,7 @@
 #include <list>
 
 #include "coins.h"
+#include "coinsbyaddress.h"
 #include "core.h"
 #include "sync.h"
 
@@ -70,6 +71,9 @@ private:
     CMinerPolicyEstimator* minerPolicyEstimator;
 
     CFeeRate minRelayFee; // Passed to constructor to avoid dependency on main
+    const bool& fTxOutsByAddressIndex;
+    CCoinsMapByAddress mapCoinsByAddress; // only used if -txoutsbyaddressindex
+
     uint64_t totalTxSize; // sum of all mempool tx' byte sizes
 
 public:
@@ -78,7 +82,7 @@ public:
     std::map<COutPoint, CInPoint> mapNextTx;
     std::map<uint256, std::pair<double, CAmount> > mapDeltas;
 
-    CTxMemPool(const CFeeRate& _minRelayFee);
+    CTxMemPool(const CFeeRate& _minRelayFee, const bool& _fTxOutsByAddressIndex);
     ~CTxMemPool();
 
     /*
@@ -100,6 +104,7 @@ public:
     void pruneSpent(const uint256& hash, CCoins &coins);
     unsigned int GetTransactionsUpdated() const;
     void AddTransactionsUpdated(unsigned int n);
+    void GetCoinsByAddress(CScript& script, CCoinsByAddress& coinsByAddress);
 
     /** Affect CreateNewBlock prioritisation of transactions */
     void PrioritiseTransaction(const uint256 hash, const std::string strHash, double dPriorityDelta, const CAmount& nFeeDelta);

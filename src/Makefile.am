@@ -77,6 +77,7 @@ BITCOIN_CORE_H = \
   clientversion.h \
   coincontrol.h \
   coins.h \
+  coinsbyaddress.h \
   compat.h \
   core.h \
   core_io.h \
@@ -208,6 +209,7 @@ libbitcoin_common_a_SOURCES = \
   base58.cpp \
   chainparams.cpp \
   coins.cpp \
+  coinsbyaddress.cpp \
   core.cpp \
   core_read.cpp \
   core_write.cpp \

@@ -350,9 +350,10 @@ public:
 };
 
 
-CTxMemPool::CTxMemPool(const CFeeRate& _minRelayFee) :
+CTxMemPool::CTxMemPool(const CFeeRate& _minRelayFee, const bool& _fTxOutsByAddressIndex) :
     nTransactionsUpdated(0),
-    minRelayFee(_minRelayFee)
+    minRelayFee(_minRelayFee),
+    fTxOutsByAddressIndex(_fTxOutsByAddressIndex)
 {
     // Sanity checks off by default for performance, because otherwise
     // accepting transactions becomes O(N^2) where N is the number
@@ -391,6 +392,17 @@ unsigned int CTxMemPool::GetTransactionsUpdated() const
     return nTransactionsUpdated;
 }
 
+void CTxMemPool::GetCoinsByAddress(CScript& script, CCoinsByAddress& coinsByAddress)
+{
+    LOCK(cs);
+    CCoinsMapByAddress::iterator it = mapCoinsByAddress.find(script);
+    if (it != mapCoinsByAddress.end())
+    {
+        BOOST_FOREACH(const COutPoint &outpoint, it->second.setCoins)
+            coinsByAddress.setCoins.insert(outpoint);
+    }
+}
+
 void CTxMemPool::AddTransactionsUpdated(unsigned int n)
 {
     LOCK(cs);
@@ -411,6 +423,11 @@ bool CTxMemPool::addUnchecked(const uint256& hash, const CTxMemPoolEntry &entry)
             mapNextTx[tx.vin[i].prevout] = CInPoint(&tx, i);
         nTransactionsUpdated++;
         totalTxSize += entry.GetTxSize();
+
+        if (fTxOutsByAddressIndex)
+            for (unsigned int i = 0; i < tx.vout.size(); i++)
+                if (!tx.vout[i].IsNull() && !tx.vout[i].scriptPubKey.IsUnspendable())
+                    mapCoinsByAddress[tx.vout[i].scriptPubKey].setCoins.insert(COutPoint(hash, (uint32_t)i));
     }
     return true;
 }
@@ -439,6 +456,22 @@ void CTxMemPool::remove(const CTransaction &tx, std::list<CTransaction>& removed
             totalTxSize -= mapTx[hash].GetTxSize();
             mapTx.erase(hash);
             nTransactionsUpdated++;
+        }
+        if (fTxOutsByAddressIndex)
+        {
+            for (unsigned int i = 0; i < tx.vout.size(); i++)
+            {
+                if (tx.vout[i].IsNull() || tx.vout[i].scriptPubKey.IsUnspendable())
+                    continue;
+
+                CCoinsMapByAddress::iterator it = mapCoinsByAddress.find(tx.vout[i].scriptPubKey);
+                if (it != mapCoinsByAddress.end())
+                {
+                    it->second.setCoins.erase(COutPoint(hash, (uint32_t)i));
+                    if (it->second.setCoins.empty())
+                        mapCoinsByAddress.erase(it);
+                }
+            }
         }
     }
 }

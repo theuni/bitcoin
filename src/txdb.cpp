@@ -5,9 +5,12 @@
 
 #include "txdb.h"
 
+#include "coinsbyaddress.h"
 #include "core.h"
 #include "pow.h"
 #include "uint256.h"
+#include "script/compressor.h"
+#include "ui_interface.h"
 
 #include <stdint.h>
 
@@ -22,6 +25,14 @@ void static BatchWriteCoins(CLevelDBBatch &batch, const uint256 &hash, const CCo
         batch.Write(make_pair('c', hash), coins);
 }
 
+void static BatchWriteCoins(CLevelDBBatch &batch, const CScript &script, const CCoinsByAddress &coins) {
+    CScriptCompressor cscript(const_cast<CScript&>(script));
+    if (coins.IsEmpty())
+        batch.Erase(make_pair('d', cscript));
+    else
+        batch.Write(make_pair('d', cscript), coins);
+}
+
 void static BatchWriteHashBestChain(CLevelDBBatch &batch, const uint256 &hash) {
     batch.Write('B', hash);
 }
@@ -31,6 +42,11 @@ CCoinsViewDB::CCoinsViewDB(size_t nCacheSize, bool fMemory, bool fWipe) : db(Get
 
 bool CCoinsViewDB::GetCoins(const uint256 &txid, CCoins &coins) const {
     return db.Read(make_pair('c', txid), coins);
+}
+
+bool CCoinsViewDB::GetCoinsByAddress(CScript &script, CCoinsByAddress &coins) const {
+    CScriptCompressor cscript(script);
+    return db.Read(make_pair('d', cscript), coins);
 }
 
 bool CCoinsViewDB::HaveCoins(const uint256 &txid) const {
@@ -57,11 +73,32 @@ bool CCoinsViewDB::BatchWrite(CCoinsMap &mapCoins, const uint256 &hashBlock) {
         CCoinsMap::iterator itOld = it++;
         mapCoins.erase(itOld);
     }
+    if (fTxOutsByAddressIndex && pcoinsByAddress) // only if -txoutsbyaddressindex
+    {
+        for (CCoinsMapByAddress::iterator it = pcoinsByAddress->cacheCoinsByAddress.begin(); it != pcoinsByAddress->cacheCoinsByAddress.end();) {
+            BatchWriteCoins(batch, it->first, it->second);
+            CCoinsMapByAddress::iterator itOld = it++;
+            pcoinsByAddress->cacheCoinsByAddress.erase(itOld);
+        }
+        pcoinsByAddress->cacheCoinsByAddress.clear();
+    }
     if (hashBlock != uint256(0))
         BatchWriteHashBestChain(batch, hashBlock);
 
     LogPrint("coindb", "Committing %u changed transactions (out of %u) to coin database...\n", (unsigned int)changed, (unsigned int)count);
     return db.WriteBatch(batch);
+}
+
+bool CCoinsViewDB::WriteFlag(const std::string &name, bool fValue) {
+    return db.Write(std::make_pair('F', name), fValue ? '1' : '0');
+}
+
+bool CCoinsViewDB::ReadFlag(const std::string &name, bool &fValue) {
+    char ch;
+    if (!db.Read(std::make_pair('F', name), ch))
+        return false;
+    fValue = ch == '1';
+    return true;
 }
 
 CBlockTreeDB::CBlockTreeDB(size_t nCacheSize, bool fMemory, bool fWipe) : CLevelDBWrapper(GetDataDir() / "blocks" / "index", nCacheSize, fMemory, fWipe) {
@@ -101,6 +138,9 @@ bool CBlockTreeDB::ReadLastBlockFile(int &nFile) {
 }
 
 bool CCoinsViewDB::GetStats(CCoinsStats &stats) const {
+    int64_t nTotalCount = GetPrefixCount('c') + GetPrefixCount('d');
+    uiInterface.ShowProgress(_("Calculating index stats..."), 0);
+
     /* It seems that there are no "const iterators" for LevelDB.  Since we
        only need read operations on it, use a const-cast to get around
        that restriction.  */
@@ -111,6 +151,7 @@ bool CCoinsViewDB::GetStats(CCoinsStats &stats) const {
     stats.hashBlock = GetBestBlock();
     ss << stats.hashBlock;
     CAmount nTotalAmount = 0;
+    int64_t progress = 0;
     while (pcursor->Valid()) {
         boost::this_thread::interruption_point();
         try {
@@ -118,7 +159,12 @@ bool CCoinsViewDB::GetStats(CCoinsStats &stats) const {
             CDataStream ssKey(slKey.data(), slKey.data()+slKey.size(), SER_DISK, CLIENT_VERSION);
             char chType;
             ssKey >> chType;
+
+            if (progress % 1000 == 0 && nTotalCount > 0)
+                uiInterface.ShowProgress(_("Calculating index stats..."), std::max(1, std::min(99, (int)(((double)(progress)) / (double)nTotalCount * 100))));
+
             if (chType == 'c') {
+                progress++;
                 leveldb::Slice slValue = pcursor->value();
                 CDataStream ssValue(slValue.data(), slValue.data()+slValue.size(), SER_DISK, CLIENT_VERSION);
                 CCoins coins;
@@ -142,14 +188,185 @@ bool CCoinsViewDB::GetStats(CCoinsStats &stats) const {
                 stats.nSerializedSize += 32 + slValue.size();
                 ss << VARINT(0);
             }
+            if (chType == 'd') {
+                progress++;
+                leveldb::Slice slValue = pcursor->value();
+                CDataStream ssValue(slValue.data(), slValue.data()+slValue.size(), SER_DISK, CLIENT_VERSION);
+                CCoinsByAddress coinsByAddress;
+                ssValue >> coinsByAddress;
+                stats.nAddresses++;
+                stats.nAddressesOutputs += coinsByAddress.setCoins.size();
+            }
+            pcursor->Next();
+        } catch (std::exception &e) {
+            uiInterface.ShowProgress(_("Calculating index stats..."), 100);
+            return error("%s : Deserialize or I/O error - %s", __func__, e.what());
+        }
+    }
+    if (mapBlockIndex.count(GetBestBlock()))
+        stats.nHeight = mapBlockIndex.find(GetBestBlock())->second->nHeight;
+    stats.hashSerialized = ss.GetHash();
+    stats.nTotalAmount = nTotalAmount;
+    delete pcursor;
+    uiInterface.ShowProgress(_("Calculating index stats..."), 100);
+    return true;
+}
+int64_t CCoinsViewDB::GetPrefixCount(char prefix) const
+{
+    leveldb::Iterator *pcursor = const_cast<CLevelDBWrapper*>(&db)->NewIterator();
+    CDataStream ssKeySet(SER_DISK, CLIENT_VERSION);
+    ssKeySet << prefix;
+    pcursor->Seek(ssKeySet.str());
+
+    int64_t i = 0;
+    while (pcursor->Valid()) {
+        boost::this_thread::interruption_point();
+        try {
+            leveldb::Slice slKey = pcursor->key();
+            CDataStream ssKey(slKey.data(), slKey.data()+slKey.size(), SER_DISK, CLIENT_VERSION);
+            char chType;
+            ssKey >> chType;
+            if (chType != prefix)
+                break;
+            i++;
+            pcursor->Next();
+        } catch (std::exception &e) {
+            return 0;
+        }
+    }
+    delete pcursor;
+    return i;
+}
+
+bool CCoinsViewDB::DeleteAllCoinsByAddress()
+{
+    leveldb::Iterator *pcursor = const_cast<CLevelDBWrapper*>(&db)->NewIterator();
+    CDataStream ssKeySet(SER_DISK, CLIENT_VERSION);
+    ssKeySet << 'd';
+    pcursor->Seek(ssKeySet.str());
+
+    std::vector<std::string> v;
+    int64_t i = 0;
+    while (pcursor->Valid()) {
+        boost::this_thread::interruption_point();
+        try {
+            leveldb::Slice slKey = pcursor->key();
+            CDataStream ssKey(slKey.data(), slKey.data()+slKey.size(), SER_DISK, CLIENT_VERSION);
+            char chType;
+            ssKey >> chType;
+            if (chType != 'd')
+                break;
+
+            v.push_back(slKey.ToString());
+            if (v.size() >= 10000)
+            {
+                i += v.size();
+                leveldb::WriteBatch batch;
+                BOOST_FOREACH(const std::string& slice, v)
+                    batch.Delete(leveldb::Slice(slice));
+                db.WriteBatch(batch);
+                v.clear();
+            }
+
             pcursor->Next();
         } catch (std::exception &e) {
             return error("%s : Deserialize or I/O error - %s", __func__, e.what());
         }
     }
-    stats.nHeight = mapBlockIndex.find(GetBestBlock())->second->nHeight;
-    stats.hashSerialized = ss.GetHash();
-    stats.nTotalAmount = nTotalAmount;
+    if (!v.empty())
+    {
+        i += v.size();
+        leveldb::WriteBatch batch;
+        BOOST_FOREACH(const std::string& slice, v)
+            batch.Delete(leveldb::Slice(slice));
+        db.WriteBatch(batch);
+    }
+    if (i > 0)
+        LogPrintf("Address index with %d addresses successfully deleted.\n", i);
+
+    delete pcursor;
+    return true;
+}
+
+bool CCoinsViewDB::GenerateAllCoinsByAddress()
+{
+    LogPrintf("Building address index for -txoutsbyaddressindex. Be patient...\n");
+    int64_t nTxCount = GetPrefixCount('c');
+
+    leveldb::Iterator *pcursor = const_cast<CLevelDBWrapper*>(&db)->NewIterator();
+    CDataStream ssKeySet(SER_DISK, CLIENT_VERSION);
+    ssKeySet << 'c';
+    pcursor->Seek(ssKeySet.str());
+
+    CCoinsMapByAddress mapCoinsByAddress;
+    int64_t i = 0;
+    int64_t progress = 0;
+    while (pcursor->Valid()) {
+        boost::this_thread::interruption_point();
+        try {
+            leveldb::Slice slKey = pcursor->key();
+            CDataStream ssKey(slKey.data(), slKey.data()+slKey.size(), SER_DISK, CLIENT_VERSION);
+            char chType;
+            ssKey >> chType;
+            if (chType != 'c')
+                break;
+
+            if (progress % 1000 == 0 && nTxCount > 0)
+                uiInterface.ShowProgress(_("Building address index..."), (int)(((double)progress / (double)nTxCount) * (double)100));
+            progress++;
+
+            leveldb::Slice slValue = pcursor->value();
+            CDataStream ssValue(slValue.data(), slValue.data()+slValue.size(), SER_DISK, CLIENT_VERSION);
+            CCoins coins;
+            ssValue >> coins;
+            uint256 txhash;
+            ssKey >> txhash;
+
+            for (unsigned int j = 0; j < coins.vout.size(); j++)
+            {
+                if (coins.vout[j].IsNull() || coins.vout[j].scriptPubKey.IsUnspendable())
+                    continue;
+
+                if (!mapCoinsByAddress.count(coins.vout[j].scriptPubKey))
+                {
+                    CCoinsByAddress coinsByAddress;
+                    GetCoinsByAddress(const_cast<CScript&>(coins.vout[j].scriptPubKey), coinsByAddress);
+                    mapCoinsByAddress.insert(make_pair(coins.vout[j].scriptPubKey, coinsByAddress));
+                }
+                mapCoinsByAddress[coins.vout[j].scriptPubKey].setCoins.insert(COutPoint(txhash, (uint32_t)j));
+            }
+
+            if (mapCoinsByAddress.size() >= 10000)
+            {
+                i += mapCoinsByAddress.size();
+                CLevelDBBatch batch;
+                for (CCoinsMapByAddress::iterator it = mapCoinsByAddress.begin(); it != mapCoinsByAddress.end();) {
+                    BatchWriteCoins(batch, it->first, it->second);
+                    CCoinsMapByAddress::iterator itOld = it++;
+                    mapCoinsByAddress.erase(itOld);
+                }
+                db.WriteBatch(batch);
+                mapCoinsByAddress.clear();
+            }
+
+            pcursor->Next();
+        } catch (std::exception &e) {
+            return error("%s : Deserialize or I/O error - %s", __func__, e.what());
+        }
+    }
+    if (!mapCoinsByAddress.empty())
+    {
+       i += mapCoinsByAddress.size();
+       CLevelDBBatch batch;
+       for (CCoinsMapByAddress::iterator it = mapCoinsByAddress.begin(); it != mapCoinsByAddress.end();) {
+           BatchWriteCoins(batch, it->first, it->second);
+           CCoinsMapByAddress::iterator itOld = it++;
+           mapCoinsByAddress.erase(itOld);
+       }
+       db.WriteBatch(batch);
+    }
+    LogPrintf("Address index with %d addresses successfully built.\n", i);
+    delete pcursor;
     return true;
 }
 

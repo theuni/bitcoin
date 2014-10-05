@@ -245,6 +245,7 @@ std::string HelpMessage(HelpMessageMode mode)
     strUsage += "  -sysperms              " + _("Create new files with system default permissions, instead of umask 077 (only effective with disabled wallet functionality)") + "\n";
 #endif
     strUsage += "  -txindex               " + _("Maintain a full transaction index, used by the getrawtransaction rpc call (default: 0)") + "\n";
+    strUsage += "  -txoutsbyaddressindex  " + _("Maintain an address to unspent outputs index (rpc: gettxoutsbyaddress). The index is built on first use. (default: 0)") + "\n";
 
     strUsage += "\n" + _("Connection options:") + "\n";
     strUsage += "  -addnode=<ip>          " + _("Add a node to connect to and attempt to keep the connection open") + "\n";
@@ -988,6 +989,58 @@ bool AppInit2(boost::thread_group& threadGroup)
                     strLoadError = _("You need to rebuild the database using -reindex to change -txindex");
                     break;
                 }
+
+                // Check -txoutsbyaddressindex
+                pcoinsdbview->ReadFlag("txoutsbyaddressindex", fTxOutsByAddressIndex);
+                if (mapArgs.count("-txoutsbyaddressindex"))
+                {
+                    if (GetBoolArg("-txoutsbyaddressindex", false))
+                    {
+                        // build index
+                        if (!fTxOutsByAddressIndex)
+                        {
+                            if (!pcoinsdbview->DeleteAllCoinsByAddress())
+                            {
+                                strLoadError = _("Error deleting txoutsbyaddressindex");
+                                break;
+                            }
+                            if (!pcoinsdbview->GenerateAllCoinsByAddress())
+                            {
+                                strLoadError = _("Error building txoutsbyaddressindex");
+                                break;
+                            }
+                            CCoinsStats stats;
+                            if (!pcoinsdbview->GetStats(stats))
+                            {
+                                strLoadError = _("Error GetStats for txoutsbyaddressindex");
+                                break;
+                            }
+                            if (stats.nTransactionOutputs != stats.nAddressesOutputs)
+                            {
+                                strLoadError = _("Error compare stats for txoutsbyaddressindex");
+                                break;
+                            }
+                            pcoinsdbview->WriteFlag("txoutsbyaddressindex", true);
+                            fTxOutsByAddressIndex = true;
+                        }
+                    }
+                    else
+                    {
+                        if (fTxOutsByAddressIndex)
+                        {
+                            // remove index
+                            pcoinsdbview->DeleteAllCoinsByAddress();
+                            pcoinsdbview->WriteFlag("txoutsbyaddressindex", false);
+                            fTxOutsByAddressIndex = false;
+                        }
+                    }
+                }
+                else if (fTxOutsByAddressIndex)
+                    return InitError(_("You need to provide -txoutsbyaddressindex. Do -txoutsbyaddressindex=0 to delete the index."));
+
+                // Init -txoutsbyaddressindex
+                if (fTxOutsByAddressIndex)
+                    pcoinsByAddress = new CCoinsViewByAddress(pcoinsdbview);
 
                 uiInterface.InitMessage(_("Verifying blocks..."));
                 if (!CVerifyDB().VerifyDB(pcoinsdbview, GetArg("-checklevel", 3),

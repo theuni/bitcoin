@@ -15,6 +15,7 @@
 #include <vector>
 
 class CCoins;
+class CCoinsByAddress;
 class uint256;
 
 // -dbcache default (MiB)
@@ -33,10 +34,16 @@ public:
     CCoinsViewDB(size_t nCacheSize, bool fMemory = false, bool fWipe = false);
 
     bool GetCoins(const uint256 &txid, CCoins &coins) const;
+    bool GetCoinsByAddress(CScript &script, CCoinsByAddress &coins) const;
     bool HaveCoins(const uint256 &txid) const;
     uint256 GetBestBlock() const;
     bool BatchWrite(CCoinsMap &mapCoins, const uint256 &hashBlock);
+    bool WriteFlag(const std::string &name, bool fValue);
+    bool ReadFlag(const std::string &name, bool &fValue);
     bool GetStats(CCoinsStats &stats) const;
+    int64_t GetPrefixCount(char prefix) const;
+    bool DeleteAllCoinsByAddress();   // removes txoutsbyaddressindex
+    bool GenerateAllCoinsByAddress(); // creates txoutsbyaddressindex
 };
 
 /** Access to the block database (blocks/index/) */

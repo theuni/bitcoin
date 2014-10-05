@@ -148,6 +148,7 @@ public:
     }
 
     bool WriteBatch(CLevelDBBatch& batch, bool fSync = false) throw(leveldb_error);
+    bool WriteBatch(leveldb::WriteBatch& batch, bool fSync = false) throw(leveldb_error);
 
     // not available for LevelDB; provide for compatibility with BDB
     bool Flush()

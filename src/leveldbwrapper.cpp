@@ -85,3 +85,10 @@ bool CLevelDBWrapper::WriteBatch(CLevelDBBatch& batch, bool fSync) throw(leveldb
     HandleError(status);
     return true;
 }
+
+bool CLevelDBWrapper::WriteBatch(leveldb::WriteBatch& batch, bool fSync) throw(leveldb_error)
+{
+    leveldb::Status status = pdb->Write(fSync ? syncoptions : writeoptions, &batch);
+    HandleError(status);
+    return true;
+}
