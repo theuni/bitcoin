@@ -20,9 +20,6 @@
 #include <utility>
 #include <vector>
 
-#include <boost/tuple/tuple.hpp>
-#include <boost/type_traits/is_fundamental.hpp>
-
 class CAutoFile;
 class CDataStream;
 class CScript;
