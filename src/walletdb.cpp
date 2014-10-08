@@ -23,6 +23,44 @@ using namespace std;
 
 static uint64_t nAccountingEntryNumber = 0;
 
+namespace {
+
+class CAccEntryMeta
+{
+public:
+    const std::string m_account;
+    const uint64_t m_num;
+    CAccEntryMeta(const std::string& account, const uint64_t num) : m_account(account), m_num(num){}
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
+        READWRITE(std::string("acentry"));
+        READWRITE(this->m_account);
+        READWRITE(this->m_num);
+    }
+};
+
+class CDestDataMeta
+{
+public:
+    const std::string m_address;
+    const std::string m_key;
+    CDestDataMeta(std::string address, std::string key) : m_address(address), m_key(key){}
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
+        READWRITE(std::string("destdata"));
+        READWRITE(this->m_address);
+        READWRITE(this->m_key);
+    }
+};
+
+} // anon namespace
+
 //
 // CWalletDB
 //
@@ -179,7 +217,7 @@ bool CWalletDB::WriteAccount(const string& strAccount, const CAccount& account)
 
 bool CWalletDB::WriteAccountingEntry(const uint64_t nAccEntryNum, const CAccountingEntry& acentry)
 {
-    return Write(boost::make_tuple(string("acentry"), acentry.strAccount, nAccEntryNum), acentry);
+    return Write(CAccEntryMeta(acentry.strAccount, nAccEntryNum), acentry);
 }
 
 bool CWalletDB::WriteAccountingEntry(const CAccountingEntry& acentry)
@@ -212,7 +250,7 @@ void CWalletDB::ListAccountCreditDebit(const string& strAccount, list<CAccountin
         // Read next record
         CDataStream ssKey(SER_DISK, CLIENT_VERSION);
         if (fFlags == DB_SET_RANGE)
-            ssKey << boost::make_tuple(string("acentry"), (fAllAccounts? string("") : strAccount), uint64_t(0));
+            ssKey << CAccEntryMeta((fAllAccounts? string("") : strAccount), uint64_t(0));
         CDataStream ssValue(SER_DISK, CLIENT_VERSION);
         int ret = ReadAtCursor(pcursor, ssKey, ssValue, fFlags);
         fFlags = DB_NEXT;
@@ -971,11 +1009,11 @@ bool CWalletDB::Recover(CDBEnv& dbenv, std::string filename)
 bool CWalletDB::WriteDestData(const std::string &address, const std::string &key, const std::string &value)
 {
     nWalletDBUpdated++;
-    return Write(boost::make_tuple(std::string("destdata"), address, key), value);
+    return Write(CDestDataMeta(address, key), value);
 }
 
 bool CWalletDB::EraseDestData(const std::string &address, const std::string &key)
 {
     nWalletDBUpdated++;
-    return Erase(boost::make_tuple(string("destdata"), address, key));
+    return Erase(CDestDataMeta(address, key));
 }
