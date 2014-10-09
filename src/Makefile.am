@@ -86,6 +86,7 @@ BITCOIN_CORE_H = \
   init.h \
   key.h \
   keystore.h \
+  keywrapper.h \
   leveldbwrapper.h \
   limitedmap.h \
   main.h \
@@ -214,6 +215,7 @@ libbitcoin_common_a_SOURCES = \
   core_write.cpp \
   hash.cpp \
   key.cpp \
+  keywrapper.cpp \
   keystore.cpp \
   netbase.cpp \
   protocol.cpp \
