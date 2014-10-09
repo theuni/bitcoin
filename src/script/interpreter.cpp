@@ -12,6 +12,7 @@
 #include "key.h"
 #include "script/script.h"
 #include "uint256.h"
+#include "pubkey.h"
 #include "util.h"
 
 using namespace std;

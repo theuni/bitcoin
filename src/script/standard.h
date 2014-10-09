@@ -6,7 +6,7 @@
 #ifndef H_BITCOIN_SCRIPT_STANDARD
 #define H_BITCOIN_SCRIPT_STANDARD
 
-#include "key.h"
+#include "pubkey.h"
 #include "script/script.h"
 #include "script/interpreter.h"
 

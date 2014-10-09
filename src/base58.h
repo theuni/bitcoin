@@ -16,12 +16,15 @@
 
 #include "chainparams.h"
 #include "key.h"
+#include "pubkey.h"
 #include "script/script.h"
 #include "script/standard.h"
 #include "allocators.h"
 
 #include <string>
 #include <vector>
+
+class CKey;
 
 /**
  * Encode a byte sequence as a base58-encoded string.
