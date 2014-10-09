@@ -18,6 +18,7 @@
 #include "key.h"
 #include "script/script.h"
 #include "script/standard.h"
+#include "allocators.h"
 
 #include <string>
 #include <vector>

@@ -8,6 +8,7 @@
 
 #include "key.h"
 #include "sync.h"
+#include "allocators.h"
 
 #include <boost/signals2/signal.hpp>
 #include <boost/variant.hpp>
