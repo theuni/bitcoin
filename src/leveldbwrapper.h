@@ -5,7 +5,7 @@
 #ifndef BITCOIN_LEVELDBWRAPPER_H
 #define BITCOIN_LEVELDBWRAPPER_H
 
-#include "serialize.h"
+#include "serialize_streams.h"
 #include "util.h"
 #include "version.h"
 

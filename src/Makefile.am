@@ -107,6 +107,7 @@ BITCOIN_CORE_H = \
   script/sign.h \
   script/standard.h \
   serialize.h \
+  serialize_streams.h \
   sync.h \
   threadsafety.h \
   timedata.h \

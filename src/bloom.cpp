@@ -7,6 +7,7 @@
 #include "core.h"
 #include "script/script.h"
 #include "script/standard.h"
+#include "serialize_streams.h"
 
 #include <math.h>
 #include <stdlib.h>

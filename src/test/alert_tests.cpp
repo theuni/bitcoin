@@ -9,7 +9,7 @@
 #include "alert.h"
 #include "data/alertTests.raw.h"
 
-#include "serialize.h"
+#include "serialize_streams.h"
 #include "util.h"
 #include "utilstrencodings.h"
 #include "version.h"

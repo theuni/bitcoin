@@ -11,6 +11,7 @@
 #include "coins.h"
 #include "core.h"
 #include "sync.h"
+#include "serialize_streams.h"
 
 inline bool AllowFree(double dPriority)
 {

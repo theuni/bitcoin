@@ -17,6 +17,7 @@
 #include "sync.h"
 #include "uint256.h"
 #include "utilstrencodings.h"
+#include "serialize_streams.h"
 
 #include <deque>
 #include <stdint.h>

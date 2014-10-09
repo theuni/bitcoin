@@ -6,7 +6,7 @@
 
 #include "core.h"
 #include "script/script.h"
-#include "serialize.h"
+#include "serialize_streams.h"
 #include "univalue/univalue.h"
 #include "util.h"
 #include "utilstrencodings.h"
