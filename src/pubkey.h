@@ -166,6 +166,12 @@ public:
 
     // Derive BIP32 child pubkey.
     bool Derive(CPubKey& pubkeyChild, unsigned char ccChild[32], unsigned int nChild, const unsigned char cc[32]) const;
+
+    // Check whether an element of a signature (r or s) is valid.
+    static bool CheckSignatureElement(const unsigned char* vch, int len, bool half);
+
+    // Check whether the 32-byte array pointed to be vch is valid keydata.
+    static bool Check(const unsigned char *vch);
 };
 
 struct CExtPubKey {

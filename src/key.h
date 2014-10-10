@@ -8,6 +8,7 @@
 
 #include "allocators.h"
 #include "hash.h"
+#include "pubkey.h"
 #include "serialize.h"
 #include "uint256.h"
 
@@ -43,9 +44,6 @@ private:
     // The actual byte data
     unsigned char vch[32];
 
-    // Check whether the 32-byte array pointed to be vch is valid keydata.
-    bool static Check(const unsigned char* vch);
-
 public:
     // Construct an invalid private key.
     CKey() : fValid(false), fCompressed(false)
@@ -80,7 +78,7 @@ public:
             fValid = false;
             return;
         }
-        if (Check(&pbegin[0])) {
+        if (CPubKey::Check(&pbegin[0])) {
             memcpy(vch, (unsigned char*)&pbegin[0], 32);
             fValid = true;
             fCompressed = fCompressedIn;
@@ -130,8 +128,6 @@ public:
     // Load private key and check that public key matches.
     bool Load(CPrivKey& privkey, CPubKey& vchPubKey, bool fSkipCheck);
 
-    // Check whether an element of a signature (r or s) is valid.
-    static bool CheckSignatureElement(const unsigned char* vch, int len, bool half);
 };
 
 struct CExtKey {
