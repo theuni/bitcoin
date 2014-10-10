@@ -12,7 +12,6 @@
 #include "script/script.h"
 #include "uint256.h"
 #include "pubkey.h"
-#include "util.h"
 
 using namespace std;
 
@@ -55,15 +54,15 @@ static inline void popstack(vector<valtype>& stack)
 
 bool static IsCompressedOrUncompressedPubKey(const valtype &vchPubKey) {
     if (vchPubKey.size() < 33)
-        return error("Non-canonical public key: too short");
+        return false;
     if (vchPubKey[0] == 0x04) {
         if (vchPubKey.size() != 65)
-            return error("Non-canonical public key: invalid length for uncompressed key");
+            return false;
     } else if (vchPubKey[0] == 0x02 || vchPubKey[0] == 0x03) {
         if (vchPubKey.size() != 33)
-            return error("Non-canonical public key: invalid length for compressed key");
+            return false;
     } else {
-        return error("Non-canonical public key: neither compressed nor uncompressed");
+        return false;
     }
     return true;
 }
@@ -75,39 +74,39 @@ bool static IsDERSignature(const valtype &vchSig) {
     // excessively padded (do not start with a 0 byte, unless an otherwise negative number follows,
     // in which case a single 0 byte is necessary and even required).
     if (vchSig.size() < 9)
-        return error("Non-canonical signature: too short");
+        return false;
     if (vchSig.size() > 73)
-        return error("Non-canonical signature: too long");
+        return false;
     if (vchSig[0] != 0x30)
-        return error("Non-canonical signature: wrong type");
+        return false;
     if (vchSig[1] != vchSig.size()-3)
-        return error("Non-canonical signature: wrong length marker");
+        return false;
     unsigned int nLenR = vchSig[3];
     if (5 + nLenR >= vchSig.size())
-        return error("Non-canonical signature: S length misplaced");
+        return false;
     unsigned int nLenS = vchSig[5+nLenR];
     if ((unsigned long)(nLenR+nLenS+7) != vchSig.size())
-        return error("Non-canonical signature: R+S length mismatch");
+        return false;
 
     const unsigned char *R = &vchSig[4];
     if (R[-2] != 0x02)
-        return error("Non-canonical signature: R value type mismatch");
+        return false;
     if (nLenR == 0)
-        return error("Non-canonical signature: R length is zero");
+        return false;
     if (R[0] & 0x80)
-        return error("Non-canonical signature: R value negative");
+        return false;
     if (nLenR > 1 && (R[0] == 0x00) && !(R[1] & 0x80))
-        return error("Non-canonical signature: R value excessively padded");
+        return false;
 
     const unsigned char *S = &vchSig[6+nLenR];
     if (S[-2] != 0x02)
-        return error("Non-canonical signature: S value type mismatch");
+        return false;
     if (nLenS == 0)
-        return error("Non-canonical signature: S length is zero");
+        return false;
     if (S[0] & 0x80)
-        return error("Non-canonical signature: S value negative");
+        return false;
     if (nLenS > 1 && (S[0] == 0x00) && !(S[1] & 0x80))
-        return error("Non-canonical signature: S value excessively padded");
+        return false;
 
     return true;
 }
@@ -123,7 +122,7 @@ bool static IsLowDERSignature(const valtype &vchSig) {
     // complement modulo the order could have been used instead, which is
     // one byte shorter when encoded correctly.
     if (!CPubKey::CheckSignatureElement(S, nLenS, true))
-        return error("Non-canonical signature: S value is unnecessarily high");
+        return false;
 
     return true;
 }
@@ -134,7 +133,7 @@ bool static IsDefinedHashtypeSignature(const valtype &vchSig) {
     }
     unsigned char nHashType = vchSig[vchSig.size() - 1] & (~(SIGHASH_ANYONECANPAY));
     if (nHashType < SIGHASH_ALL || nHashType > SIGHASH_SINGLE)
-        return error("Non-canonical signature: unknown hashtype byte");
+        return false;
 
     return true;
 }
@@ -795,7 +794,7 @@ bool EvalScript(vector<vector<unsigned char> >& stack, const CScript& script, un
                     if (stack.size() < 1)
                         return false;
                     if ((flags & SCRIPT_VERIFY_NULLDUMMY) && stacktop(-1).size())
-                        return error("CHECKMULTISIG dummy argument not null");
+                        return false;
                     popstack(stack);
 
                     stack.push_back(fSuccess ? vchTrue : vchFalse);
@@ -931,14 +930,12 @@ public:
 uint256 SignatureHash(const CScript& scriptCode, const CTransaction& txTo, unsigned int nIn, int nHashType)
 {
     if (nIn >= txTo.vin.size()) {
-        LogPrintf("ERROR: SignatureHash() : nIn=%d out of range\n", nIn);
         return 1;
     }
 
     // Check for invalid use of SIGHASH_SINGLE
     if ((nHashType & 0x1f) == SIGHASH_SINGLE) {
         if (nIn >= txTo.vout.size()) {
-            LogPrintf("ERROR: SignatureHash() : nOut=%d out of range\n", nIn);
             return 1;
         }
     }
