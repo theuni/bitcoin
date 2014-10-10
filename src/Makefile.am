@@ -36,6 +36,28 @@ LIBBITCOIN_CRYPTO=crypto/libbitcoin_crypto.a
 LIBBITCOIN_UNIVALUE=univalue/libbitcoin_univalue.a
 LIBBITCOINQT=qt/libbitcoinqt.a
 
+lib_LTLIBRARIES = libbitcoinconsensus.la
+
+libbitcoinconsensus_la_SOURCES = \
+  core.cpp \
+  hash.cpp \
+  keywrapper.cpp \
+  pubkey.cpp \
+  script/script.cpp \
+  script/interpreter.cpp \
+  uint256.cpp \
+  utilstrencodings.cpp \
+  version.cpp
+
+if GLIBC_BACK_COMPAT
+libbitcoinconsensus_la_SOURCES += compat/glibc_compat.cpp
+libbitcoinconsensus_la_SOURCES += compat/glibcxx_compat.cpp
+endif
+
+libbitcoinconsensus_la_LIBADD = $(LIBBITCOIN_CRYPTO) $(SSL_LIBS)
+libbitcoinconsensus_la_LDFLAGS = -no-undefined
+libbitcoinconsensus_la_CPPFLAGS = $(CRYPTO_CFLAGS) -I$(builddir)/obj
+
 noinst_LIBRARIES = \
   libbitcoin_server.a \
   libbitcoin_common.a \
