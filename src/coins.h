@@ -8,6 +8,7 @@
 
 #include "core.h"
 #include "serialize.h"
+#include "txoutcompressor.h"
 #include "uint256.h"
 
 #include <assert.h>
@@ -15,6 +16,8 @@
 
 #include <boost/foreach.hpp>
 #include <boost/unordered_map.hpp>
+
+class CTxInUndo;
 
 /** pruned version of CTransaction: only retains metadata and unspent transaction outputs
  *

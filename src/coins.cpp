@@ -5,6 +5,7 @@
 #include "coins.h"
 
 #include "random.h"
+#include "txundo.h"
 
 #include <assert.h>
 

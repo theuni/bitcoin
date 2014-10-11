@@ -116,6 +116,8 @@ BITCOIN_CORE_H = \
   tinyformat.h \
   txdb.h \
   txmempool.h \
+  txoutcompressor.h \
+  txundo.h \
   ui_interface.h \
   uint256.h \
   util.h \
@@ -227,6 +229,7 @@ libbitcoin_common_a_SOURCES = \
   script/sigcache.cpp \
   script/sign.cpp \
   script/standard.cpp \
+  txoutcompressor.cpp \
   $(BITCOIN_CORE_H)
 
 # util: shared between all executables.

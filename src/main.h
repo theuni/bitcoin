@@ -22,6 +22,8 @@
 #include "sync.h"
 #include "tinyformat.h"
 #include "txmempool.h"
+#include "txoutcompressor.h"
+#include "txundo.h"
 #include "uint256.h"
 
 #include <algorithm>
