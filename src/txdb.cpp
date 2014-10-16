@@ -44,9 +44,9 @@ bool CCoinsViewDB::GetCoins(const uint256 &txid, CCoins &coins) const {
     return db.Read(make_pair('c', txid), coins);
 }
 
-bool CCoinsViewDB::GetCoinsByAddress(CScript &script, CCoinsByAddress &coins) const {
-    CScriptCompressor cscript(script);
-    return db.Read(make_pair('d', cscript), coins);
+bool CCoinsViewDB::GetCoinsByAddress(const CScript &script, CCoinsByAddress &coins) const {
+    CScript temp(script);
+    return db.Read(make_pair('d', CScriptCompressor(temp)), coins);
 }
 
 bool CCoinsViewDB::HaveCoins(const uint256 &txid) const {

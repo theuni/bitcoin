@@ -34,7 +34,7 @@ public:
     CCoinsViewDB(size_t nCacheSize, bool fMemory = false, bool fWipe = false);
 
     bool GetCoins(const uint256 &txid, CCoins &coins) const;
-    bool GetCoinsByAddress(CScript &script, CCoinsByAddress &coins) const;
+    bool GetCoinsByAddress(const CScript &script, CCoinsByAddress &coins) const;
     bool HaveCoins(const uint256 &txid) const;
     uint256 GetBestBlock() const;
     bool BatchWrite(CCoinsMap &mapCoins, const uint256 &hashBlock);

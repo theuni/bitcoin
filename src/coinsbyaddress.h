@@ -48,14 +48,13 @@ public:
     CCoinsMapByAddress cacheCoinsByAddress; // accessed also from CCoinsViewDB in txdb.cpp
     CCoinsViewByAddress(CCoinsViewDB* baseIn);
 
-    bool GetCoinsByAddress(CScript &script, CCoinsByAddress &coins);
+    bool GetCoinsByAddress(const CScript &script, CCoinsByAddress &coins);
 
     // Return a modifiable reference to a CCoinsByAddress.
-    CCoinsByAddress &GetCoinsByAddress(CScript &script, bool fRequireExisting = true);
     CCoinsByAddress &GetCoinsByAddress(const CScript &script, bool fRequireExisting = true);
 
 private:
-    CCoinsMapByAddress::iterator FetchCoinsByAddress(CScript &script, bool fRequireExisting);
+    CCoinsMapByAddress::iterator FetchCoinsByAddress(const CScript &script, bool fRequireExisting);
 };
 
 #endif // BITCOIN_COINSBYADDRESS_H

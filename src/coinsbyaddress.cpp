@@ -9,7 +9,7 @@
 
 CCoinsViewByAddress::CCoinsViewByAddress(CCoinsViewDB* viewIn) : base(viewIn) { }
 
-bool CCoinsViewByAddress::GetCoinsByAddress(CScript &script, CCoinsByAddress &coins) {
+bool CCoinsViewByAddress::GetCoinsByAddress(const CScript &script, CCoinsByAddress &coins) {
     if (cacheCoinsByAddress.count(script)) {
         coins = cacheCoinsByAddress[script];
         return true;
@@ -21,7 +21,7 @@ bool CCoinsViewByAddress::GetCoinsByAddress(CScript &script, CCoinsByAddress &co
     return false;
 }
 
-CCoinsMapByAddress::iterator CCoinsViewByAddress::FetchCoinsByAddress(CScript &script, bool fRequireExisting) {
+CCoinsMapByAddress::iterator CCoinsViewByAddress::FetchCoinsByAddress(const CScript &script, bool fRequireExisting) {
     CCoinsMapByAddress::iterator it = cacheCoinsByAddress.find(script);
     if (it != cacheCoinsByAddress.end())
         return it;
@@ -36,12 +36,8 @@ CCoinsMapByAddress::iterator CCoinsViewByAddress::FetchCoinsByAddress(CScript &s
     return ret;
 }
 
-CCoinsByAddress &CCoinsViewByAddress::GetCoinsByAddress(CScript &script, bool fRequireExisting) {
+CCoinsByAddress &CCoinsViewByAddress::GetCoinsByAddress(const CScript &script, bool fRequireExisting) {
     CCoinsMapByAddress::iterator it = FetchCoinsByAddress(script, fRequireExisting);
     assert(it != cacheCoinsByAddress.end());
     return it->second;
-}
-
-CCoinsByAddress &CCoinsViewByAddress::GetCoinsByAddress(const CScript &script, bool fRequireExisting) {
-    return GetCoinsByAddress(const_cast<CScript&>(script), fRequireExisting);
 }

@@ -392,10 +392,10 @@ unsigned int CTxMemPool::GetTransactionsUpdated() const
     return nTransactionsUpdated;
 }
 
-void CTxMemPool::GetCoinsByAddress(CScript& script, CCoinsByAddress& coinsByAddress)
+void CTxMemPool::GetCoinsByAddress(const CScript& script, CCoinsByAddress& coinsByAddress) const
 {
     LOCK(cs);
-    CCoinsMapByAddress::iterator it = mapCoinsByAddress.find(script);
+    CCoinsMapByAddress::const_iterator it = mapCoinsByAddress.find(script);
     if (it != mapCoinsByAddress.end())
     {
         BOOST_FOREACH(const COutPoint &outpoint, it->second.setCoins)

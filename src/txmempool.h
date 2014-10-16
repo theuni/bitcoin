@@ -104,7 +104,7 @@ public:
     void pruneSpent(const uint256& hash, CCoins &coins);
     unsigned int GetTransactionsUpdated() const;
     void AddTransactionsUpdated(unsigned int n);
-    void GetCoinsByAddress(CScript& script, CCoinsByAddress& coinsByAddress);
+    void GetCoinsByAddress(const CScript& script, CCoinsByAddress& coinsByAddress) const;
 
     /** Affect CreateNewBlock prioritisation of transactions */
     void PrioritiseTransaction(const uint256 hash, const std::string strHash, double dPriorityDelta, const CAmount& nFeeDelta);

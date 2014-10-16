@@ -1731,7 +1731,7 @@ bool static WriteChainState(CValidationState &state) {
     return true;
 }
 
-void static UpdateAddressIndex(CTxOut& txout, const COutPoint& outpoint, bool fInsert)
+void static UpdateAddressIndex(const CTxOut& txout, const COutPoint& outpoint, bool fInsert)
 {
     if (!txout.IsNull() && !txout.scriptPubKey.IsUnspendable())
     {
