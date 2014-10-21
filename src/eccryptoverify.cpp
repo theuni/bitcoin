@@ -1,5 +1,15 @@
 #include "eccryptoverify.h"
 
+#if defined(HAVE_CONFIG_H)
+#include "config/bitcoin-config.h"
+#endif
+
+#ifdef USE_SECP256K1
+#include <secp256k1.h>
+#else
+#include "ecwrapper.h"
+#endif
+
 namespace {
 
 int CompareBigEndian(const unsigned char *c1, size_t c1len, const unsigned char *c2, size_t c2len) {
@@ -58,6 +68,36 @@ bool CheckSignatureElement(const unsigned char *vch, int len, bool half) {
     return vch &&
            CompareBigEndian(vch, len, vchZero, 0) > 0 &&
            CompareBigEndian(vch, len, half ? vchMaxModHalfOrder : vchMaxModOrder, 32) <= 0;
+}
+
+bool Verify(const unsigned char* vchPubKey, const size_t pubKeySize, const uint256 &hash, const std::vector<unsigned char>& vchSig) {
+  if(!vchPubKey || !pubKeySize || !Check(vchPubKey))
+      return false;
+#ifdef USE_SECP256K1
+    if (secp256k1_ecdsa_verify((const unsigned char*)&hash, 32, &vchSig[0], vchSig.size(), vchPubKey, pubKeySize) != 1)
+        return false;
+#else
+    CECKey key;
+    if (!key.SetPubKey(vchPubKey, pubKeySize))
+        return false;
+    if (!key.Verify(hash, vchSig))
+        return false;
+#endif
+    return true;
+}
+
+bool IsFullyValid(const unsigned char* vchPubKey, size_t pubKeySize){
+  if(!vchPubKey || !pubKeySize || !Check(vchPubKey))
+      return false;
+#ifdef USE_SECP256K1
+    if (!secp256k1_ecdsa_pubkey_verify(vchPubKey, pubKeySize))
+        return false;
+#else
+    CECKey key;
+    if (!key.SetPubKey(vchPubKey, pubKeySize))
+        return false;
+#endif
+    return true;
 }
 
 } // namespace eccrypto

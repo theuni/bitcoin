@@ -166,19 +166,7 @@ bool CKey::Load(CPrivKey &privkey, CPubKey &vchPubKey, bool fSkipCheck=false) {
 }
 
 bool CPubKey::Verify(const uint256 &hash, const std::vector<unsigned char>& vchSig) const {
-    if (!IsValid())
-        return false;
-#ifdef USE_SECP256K1
-    if (secp256k1_ecdsa_verify((const unsigned char*)&hash, 32, &vchSig[0], vchSig.size(), begin(), size()) != 1)
-        return false;
-#else
-    CECKey key;
-    if (!key.SetPubKey(begin(), size()))
-        return false;
-    if (!key.Verify(hash, vchSig))
-        return false;
-#endif
-    return true;
+    return eccrypto::Verify(vch, size(), hash, vchSig);
 }
 
 bool CPubKey::RecoverCompact(const uint256 &hash, const std::vector<unsigned char>& vchSig) {
@@ -203,17 +191,7 @@ bool CPubKey::RecoverCompact(const uint256 &hash, const std::vector<unsigned cha
 }
 
 bool CPubKey::IsFullyValid() const {
-    if (!IsValid())
-        return false;
-#ifdef USE_SECP256K1
-    if (!secp256k1_ecdsa_pubkey_verify(begin(), size()))
-        return false;
-#else
-    CECKey key;
-    if (!key.SetPubKey(begin(), size()))
-        return false;
-#endif
-    return true;
+    return eccrypto::IsFullyValid(begin(), size());
 }
 
 bool CPubKey::Decompress() {

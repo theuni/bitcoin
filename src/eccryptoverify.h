@@ -14,6 +14,8 @@ namespace eccrypto {
 
 bool Check(const unsigned char *vch);
 bool CheckSignatureElement(const unsigned char *vch, int len, bool half);
+bool Verify(const unsigned char* vchPubKey, size_t pubKeySize, const uint256 &hash, const std::vector<unsigned char>& vchSig);
+bool IsFullyValid(const unsigned char* vchPubKey, size_t pubKeySize);
 
 } // eccrypto namespace
 #endif
