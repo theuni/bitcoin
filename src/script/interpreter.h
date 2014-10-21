@@ -68,7 +68,7 @@ private:
     unsigned int nIn;
 
 protected:
-    virtual bool VerifySignature(const std::vector<unsigned char>& vchSig, const CPubKey& vchPubKey, const uint256& sighash) const;
+    virtual bool VerifySignature(const std::vector<unsigned char>& vchSig, const std::vector<unsigned char>& vchPubKey, const uint256& sighash) const;
 
 public:
     SignatureChecker(const CTransaction& txToIn, unsigned int nInIn) : txTo(txToIn), nIn(nInIn) {}

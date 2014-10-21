@@ -10,7 +10,7 @@
 #include "crypto/sha1.h"
 #include "crypto/sha2.h"
 #include "eccryptoverify.h"
-#include "key.h"
+#include "hash.h"
 #include "script/script.h"
 #include "uint256.h"
 #include "util.h"
@@ -953,15 +953,14 @@ uint256 SignatureHash(const CScript& scriptCode, const CTransaction& txTo, unsig
     return ss.GetHash();
 }
 
-bool SignatureChecker::VerifySignature(const std::vector<unsigned char>& vchSig, const CPubKey& pubkey, const uint256& sighash) const
+bool SignatureChecker::VerifySignature(const std::vector<unsigned char>& vchSig, const std::vector<unsigned char>& pubkey, const uint256& sighash) const
 {
-    return pubkey.Verify(sighash, vchSig);
+    return eccrypto::Verify(&pubkey[0], pubkey.size(), sighash, vchSig);
 }
 
 bool SignatureChecker::CheckSig(const vector<unsigned char>& vchSigIn, const vector<unsigned char>& vchPubKey, const CScript& scriptCode) const
 {
-    CPubKey pubkey(vchPubKey);
-    if (!pubkey.IsValid())
+    if (vchPubKey.empty() || !eccrypto::Check(&vchPubKey[0]))
         return false;
 
     // Hash type is one byte tacked on to the end of the signature
@@ -973,10 +972,7 @@ bool SignatureChecker::CheckSig(const vector<unsigned char>& vchSigIn, const vec
 
     uint256 sighash = SignatureHash(scriptCode, txTo, nIn, nHashType);
 
-    if (!VerifySignature(vchSig, pubkey, sighash))
-        return false;
-
-    return true;
+    return VerifySignature(vchSig, vchPubKey, sighash);
 }
 
 bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, unsigned int flags, const BaseSignatureChecker& checker)

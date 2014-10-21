@@ -19,8 +19,7 @@ private:
 
 public:
     CachingSignatureChecker(const CTransaction& txToIn, unsigned int nInIn, bool storeIn=true) : SignatureChecker(txToIn, nInIn), store(storeIn) {}
-
-    bool VerifySignature(const std::vector<unsigned char>& vchSig, const CPubKey& vchPubKey, const uint256& sighash) const;
+    bool VerifySignature(const std::vector<unsigned char>& vchSig, const std::vector<unsigned char>& vchPubKey, const uint256& sighash) const;
 };
 
 #endif // H_BITCOIN_SCRIPT_SIGCACHE

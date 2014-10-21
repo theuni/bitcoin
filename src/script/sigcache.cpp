@@ -72,14 +72,14 @@ public:
 
 }
 
-bool CachingSignatureChecker::VerifySignature(const std::vector<unsigned char>& vchSig, const CPubKey& pubkey, const uint256& sighash) const
+bool CachingSignatureChecker::VerifySignature(const std::vector<unsigned char>& vchSig, const std::vector<unsigned char>& vchPubKey, const uint256& sighash) const
 {
     static CSignatureCache signatureCache;
-
+    CPubKey pubkey(vchPubKey);
     if (signatureCache.Get(sighash, vchSig, pubkey))
         return true;
 
-    if (!SignatureChecker::VerifySignature(vchSig, pubkey, sighash))
+    if (!SignatureChecker::VerifySignature(vchSig, vchPubKey, sighash))
         return false;
 
     if (store)
