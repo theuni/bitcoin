@@ -144,6 +144,27 @@ err:
     return ret;
 }
 
+class CECKeyBlank
+{
+public:
+    static inline EC_KEY* Get()
+    {
+      static const CECKeyBlank instance;
+      return EC_KEY_dup(instance.empty_key);
+    }
+private:
+    CECKeyBlank() : empty_key(EC_KEY_new_by_curve_name(NID_secp256k1))
+    {
+        assert(empty_key);
+        EC_KEY_precompute_mult(empty_key, NULL);
+    }
+    ~CECKeyBlank()
+    {
+        EC_KEY_free(empty_key);
+    }
+    EC_KEY* empty_key;
+};
+
 // RAII Wrapper around OpenSSL's EC_KEY
 class CECKey {
 private:
@@ -151,7 +172,7 @@ private:
 
 public:
     CECKey() {
-        pkey = EC_KEY_new_by_curve_name(NID_secp256k1);
+        pkey = CECKeyBlank::Get();
         assert(pkey != NULL);
     }
 
