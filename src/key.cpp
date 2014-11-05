@@ -18,7 +18,7 @@ namespace {
 class CSecp256k1Init {
 public:
     CSecp256k1Init() {
-        secp256k1_start();
+        secp256k1_start(SECP256K1_START_SIGN);
     }
     ~CSecp256k1Init() {
         secp256k1_stop();
@@ -71,7 +71,7 @@ CPubKey CKey::GetPubKey() const {
     return result;
 }
 
-bool CKey::Sign(const uint256 &hash, std::vector<unsigned char>& vchSig, bool lowS) const {
+bool CKey::Sign(const uint256 &hash, std::vector<unsigned char>& vchSig) const {
     if (!fValid)
         return false;
     vchSig.resize(72);
