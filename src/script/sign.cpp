@@ -17,7 +17,7 @@ using namespace std;
 
 typedef vector<unsigned char> valtype;
 
-SignatureCreator::SignatureCreator(const CKeyStore& keystoreIn, const CTransaction& txToIn, unsigned int nInIn, int nHashTypeIn) : BaseSignatureCreator(keystoreIn), txTo(txToIn), nIn(nInIn), nHashType(nHashTypeIn), checker(txTo, nIn) {}
+SignatureCreator::SignatureCreator(const CKeyStore& keystoreIn, const CTransaction& txToIn, unsigned int nInIn, int nHashTypeIn) : keystore(keystoreIn), txTo(txToIn), nIn(nInIn), nHashType(nHashTypeIn), checker(txTo, nIn) {}
 
 bool SignatureCreator::CreateSig(std::vector<unsigned char>& vchSig, const CKeyID& address, const CScript& scriptCode) const
 {
@@ -30,6 +30,16 @@ bool SignatureCreator::CreateSig(std::vector<unsigned char>& vchSig, const CKeyI
         return false;
     vchSig.push_back((unsigned char)nHashType);
     return true;
+}
+
+bool SignatureCreator::GetPubKey(const CKeyID &address, CPubKey& vchPubKeyOut) const
+{
+    return keystore.GetPubKey(address, vchPubKeyOut);
+}
+
+bool SignatureCreator::GetCScript(const CScriptID &hash, CScript& redeemScriptOut) const
+{
+    return keystore.GetCScript(hash, redeemScriptOut);
 }
 
 bool Sign1(const CKeyID& address, const BaseSignatureCreator& creator, const CScript& scriptCode, CScript& scriptSigRet)
@@ -86,12 +96,12 @@ bool Solver(const BaseSignatureCreator& creator, const CScript& scriptPubKey,
         else
         {
             CPubKey vch;
-            creator.KeyStore().GetPubKey(keyID, vch);
+            creator.GetPubKey(keyID, vch);
             scriptSigRet << ToByteVector(vch);
         }
         return true;
     case TX_SCRIPTHASH:
-        return creator.KeyStore().GetCScript(uint160(vSolutions[0]), scriptSigRet);
+        return creator.GetCScript(uint160(vSolutions[0]), scriptSigRet);
 
     case TX_MULTISIG:
         scriptSigRet << OP_0; // workaround CHECKMULTISIG bug
