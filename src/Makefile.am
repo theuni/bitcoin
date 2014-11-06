@@ -301,6 +301,7 @@ bitcoin_cli_LDADD = \
   $(LIBBITCOIN_CRYPTO) \
   $(BOOST_LIBS) \
   $(SSL_LIBS) \
+  $(CRYPTO_LIBS) \
   $(MINIUPNPC_LIBS)
 
 bitcoin_cli_SOURCES = \
