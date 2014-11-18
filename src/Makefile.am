@@ -146,6 +146,7 @@ BITCOIN_CORE_H = \
   wallet/walletdb.h \
   wallet/wallet.h \
   wallet/wallet_ismine.h \
+  zmqports.h \
   compat/byteswap.h \
   compat/endian.h \
   compat/sanity.h
@@ -195,6 +196,7 @@ libbitcoin_server_a_SOURCES = \
   txdb.cpp \
   txmempool.cpp \
   validationinterface.cpp \
+  zmqports.cpp \
   $(JSON_H) \
   $(BITCOIN_CORE_H)
 
@@ -323,7 +325,10 @@ bitcoind_LDADD += libbitcoin_wallet.a
 endif
 
 bitcoind_LDADD += $(BOOST_LIBS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(MINIUPNPC_LIBS)
-#
+
+if ENABLE_ZMQ
+bitcoind_LDADD += $(ZMQ_LIBS)
+endif
 
 # bitcoin-cli binary #
 bitcoin_cli_SOURCES = bitcoin-cli.cpp

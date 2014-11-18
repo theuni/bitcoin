@@ -15,6 +15,8 @@
 class CBasicKeyStore;
 class CWallet;
 class uint256;
+class CTransaction;
+class CBlock;
 
 /** General change type (added, updated, removed). */
 enum ChangeType
@@ -95,6 +97,9 @@ public:
 
     /** New block has been accepted */
     boost::signals2::signal<void (const uint256& hash)> NotifyBlockTip;
+
+    /** New transaction to relay */
+    boost::signals2::signal<void (const CTransaction& tx)> NotifyRelayTx;
 };
 
 extern CClientUIInterface uiInterface;
