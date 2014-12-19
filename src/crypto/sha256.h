@@ -21,6 +21,10 @@ public:
 
     CSHA256();
     CSHA256& Write(const unsigned char* data, size_t len);
+    inline CSHA256& write(const char* data, size_t len)
+    {
+        return Write((const unsigned char*)data, len);
+    }
     void Finalize(unsigned char hash[OUTPUT_SIZE]);
     CSHA256& Reset();
 };

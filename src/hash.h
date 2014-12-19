@@ -152,9 +152,13 @@ public:
 template<typename T>
 uint256 SerializeHash(const T& obj, int nType=SER_GETHASH, int nVersion=PROTOCOL_VERSION)
 {
-    CHashWriter ss(nType, nVersion);
-    ss << obj;
-    return ss.GetHash();
+    CSHA256 sha;
+    ::Serialize(sha, obj, nType, nVersion);
+
+    uint256 result;
+    sha.Finalize(result.begin());
+    sha.Reset().Write(result.begin(), sha.OUTPUT_SIZE).Finalize(result.begin());
+    return result;
 }
 
 unsigned int MurmurHash3(unsigned int nHashSeed, const std::vector<unsigned char>& vDataToHash);
