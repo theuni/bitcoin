@@ -5,8 +5,8 @@ AM_LDFLAGS = $(PTHREAD_CFLAGS) $(LIBTOOL_LDFLAGS)
 if EMBEDDED_LEVELDB
 LEVELDB_CPPFLAGS += -I$(srcdir)/leveldb/include
 LEVELDB_CPPFLAGS += -I$(srcdir)/leveldb/helpers/memenv
-LIBLEVELDB += $(builddir)/leveldb/libleveldb.a
-LIBMEMENV  += $(builddir)/leveldb/libmemenv.a
+LIBLEVELDB += leveldb/libleveldb.a
+LIBMEMENV  += leveldb/libmemenv.a
 
 # NOTE: This dependency is not strictly necessary, but without it make may try to build both in parallel, which breaks the LevelDB build system in a race
 $(LIBLEVELDB): $(LIBMEMENV)
@@ -38,15 +38,15 @@ $(LIBSECP256K1): $(wildcard secp256k1/src/*) $(wildcard secp256k1/include/*)
 # Make is not made aware of per-object dependencies to avoid limiting building parallelization
 # But to build the less dependent modules first, we manually select their order here:
 EXTRA_LIBRARIES = \
-  crypto/libbitcoin_crypto.a \
-  libbitcoin_util.a \
-  libbitcoin_common.a \
-  univalue/libbitcoin_univalue.a \
-  libbitcoin_server.a \
-  libbitcoin_cli.a
+  $(LIBBITCOIN_CRYPTO) \
+  $(LIBBITCOIN_UTIL) \
+  $(LIBBITCOIN_COMMON) \
+  $(LIBBITCOIN_UNIVALUE) \
+  $(LIBBITCOIN_SERVER) \
+  $(LIBBITCOIN_CLI)
 if ENABLE_WALLET
 BITCOIN_INCLUDES += $(BDB_CPPFLAGS)
-EXTRA_LIBRARIES += libbitcoin_wallet.a
+EXTRA_LIBRARIES += $(LIBBITCOIN_WALLET)
 endif
 
 if BUILD_BITCOIN_LIBS
@@ -311,7 +311,7 @@ bitcoind_LDADD = \
   $(LIBSECP256K1)
 
 if ENABLE_WALLET
-bitcoind_LDADD += libbitcoin_wallet.a
+bitcoind_LDADD += $(LIBBITCOIN_WALLET)
 endif
 bitcoind_SOURCES = bitcoind.cpp
 #
@@ -390,7 +390,7 @@ libbitcoinconsensus_la_LIBADD += secp256k1/libsecp256k1.la
 endif
 endif
 
-CLEANFILES = leveldb/libleveldb.a leveldb/libmemenv.a *.gcda *.gcno
+CLEANFILES = $(LIBLEVELDB) $(LIBMEMENV) *.gcda *.gcno
 
 DISTCLEANFILES = obj/build.h
 
