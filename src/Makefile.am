@@ -160,6 +160,7 @@ obj/build.h: FORCE
 libbitcoin_util_a-clientversion.$(OBJEXT): obj/build.h
 
 # server: shared between bitcoind and bitcoin-qt
+libbitcoin_server_la_CXXFLAGS = -shared
 libbitcoin_server_la_CPPFLAGS = $(BITCOIN_INCLUDES) $(MINIUPNPC_CPPFLAGS)
 libbitcoin_server_la_SOURCES = \
   addrman.cpp \
@@ -191,6 +192,7 @@ libbitcoin_server_la_SOURCES = \
 
 # wallet: shared between bitcoind and bitcoin-qt, but only linked
 # when wallet enabled
+libbitcoin_wallet_la_CXXFLAGS = -shared
 libbitcoin_wallet_la_CPPFLAGS = $(BITCOIN_INCLUDES)
 libbitcoin_wallet_la_SOURCES = \
   db.cpp \
@@ -203,6 +205,7 @@ libbitcoin_wallet_la_SOURCES = \
   $(BITCOIN_CORE_H)
 
 # crypto primitives library
+crypto_libbitcoin_crypto_la_CXXFLAGS = -shared
 crypto_libbitcoin_crypto_la_CPPFLAGS = $(BITCOIN_CONFIG_INCLUDES)
 crypto_libbitcoin_crypto_la_SOURCES = \
   crypto/sha1.cpp \
@@ -230,6 +233,7 @@ univalue_libbitcoin_univalue_la_SOURCES = \
   univalue/univalue.h
 
 # common: shared between bitcoind, and bitcoin-qt and non-server tools
+libbitcoin_common_la_CXXFLAGS = -shared
 libbitcoin_common_la_CPPFLAGS = $(BITCOIN_INCLUDES)
 libbitcoin_common_la_SOURCES = \
   allocators.cpp \
@@ -261,6 +265,7 @@ libbitcoin_common_la_SOURCES = \
 # util: shared between all executables.
 # This library *must* be included to make sure that the glibc
 # backward-compatibility objects and their sanity checks are linked.
+libbitcoin_util_la_CXXFLAGS = -shared
 libbitcoin_util_la_CPPFLAGS = $(BITCOIN_INCLUDES)
 libbitcoin_util_la_SOURCES = \
   chainparamsbase.cpp \
@@ -284,6 +289,7 @@ libbitcoin_util_la_SOURCES += compat/glibcxx_compat.cpp
 endif
 
 # cli: shared between bitcoin-cli and bitcoin-qt
+libbitcoin_cli_la_CXXFLAGS = -shared
 libbitcoin_cli_la_CPPFLAGS = $(BITCOIN_INCLUDES)
 libbitcoin_cli_la_SOURCES = \
   rpcclient.cpp \
