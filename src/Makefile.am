@@ -22,14 +22,14 @@ BITCOIN_INCLUDES=-I$(builddir) -I$(builddir)/obj $(BOOST_CPPFLAGS) $(LEVELDB_CPP
 
 BITCOIN_INCLUDES += -I$(srcdir)/secp256k1/include
 
-LIBBITCOIN_SERVER=libbitcoin_server.a
-LIBBITCOIN_WALLET=libbitcoin_wallet.a
-LIBBITCOIN_COMMON=libbitcoin_common.a
-LIBBITCOIN_CLI=libbitcoin_cli.a
-LIBBITCOIN_UTIL=libbitcoin_util.a
-LIBBITCOIN_CRYPTO=crypto/libbitcoin_crypto.a
-LIBBITCOIN_UNIVALUE=univalue/libbitcoin_univalue.a
-LIBBITCOINQT=qt/libbitcoinqt.a
+LIBBITCOIN_SERVER=libbitcoin_server.la
+LIBBITCOIN_WALLET=libbitcoin_wallet.la
+LIBBITCOIN_COMMON=libbitcoin_common.la
+LIBBITCOIN_CLI=libbitcoin_cli.la
+LIBBITCOIN_UTIL=libbitcoin_util.la
+LIBBITCOIN_CRYPTO=crypto/libbitcoin_crypto.la
+LIBBITCOIN_UNIVALUE=univalue/libbitcoin_univalue.la
+LIBBITCOINQT=qt/libbitcoinqt.la
 LIBSECP256K1=secp256k1/libsecp256k1.la
 
 $(LIBSECP256K1): $(wildcard secp256k1/src/*) $(wildcard secp256k1/include/*)
@@ -37,7 +37,7 @@ $(LIBSECP256K1): $(wildcard secp256k1/src/*) $(wildcard secp256k1/include/*)
 
 # Make is not made aware of per-object dependencies to avoid limiting building parallelization
 # But to build the less dependent modules first, we manually select their order here:
-EXTRA_LIBRARIES = \
+EXTRA_LTLIBRARIES = \
   $(LIBBITCOIN_CRYPTO) \
   $(LIBBITCOIN_UTIL) \
   $(LIBBITCOIN_COMMON) \
@@ -46,7 +46,7 @@ EXTRA_LIBRARIES = \
   $(LIBBITCOIN_CLI)
 if ENABLE_WALLET
 BITCOIN_INCLUDES += $(BDB_CPPFLAGS)
-EXTRA_LIBRARIES += $(LIBBITCOIN_WALLET)
+EXTRA_LTLIBRARIES += $(LIBBITCOIN_WALLET)
 endif
 
 if BUILD_BITCOIN_LIBS
@@ -164,8 +164,8 @@ obj/build.h: FORCE
 libbitcoin_util_a-clientversion.$(OBJEXT): obj/build.h
 
 # server: shared between bitcoind and bitcoin-qt
-libbitcoin_server_a_CPPFLAGS = $(BITCOIN_INCLUDES) $(MINIUPNPC_CPPFLAGS)
-libbitcoin_server_a_SOURCES = \
+libbitcoin_server_la_CPPFLAGS = $(BITCOIN_INCLUDES) $(MINIUPNPC_CPPFLAGS)
+libbitcoin_server_la_SOURCES = \
   addrman.cpp \
   alert.cpp \
   bloom.cpp \
@@ -196,8 +196,8 @@ libbitcoin_server_a_SOURCES = \
 
 # wallet: shared between bitcoind and bitcoin-qt, but only linked
 # when wallet enabled
-libbitcoin_wallet_a_CPPFLAGS = $(BITCOIN_INCLUDES)
-libbitcoin_wallet_a_SOURCES = \
+libbitcoin_wallet_la_CPPFLAGS = $(BITCOIN_INCLUDES)
+libbitcoin_wallet_la_SOURCES = \
   db.cpp \
   crypter.cpp \
   rpcdump.cpp \
@@ -208,8 +208,8 @@ libbitcoin_wallet_a_SOURCES = \
   $(BITCOIN_CORE_H)
 
 # crypto primitives library
-crypto_libbitcoin_crypto_a_CPPFLAGS = $(BITCOIN_CONFIG_INCLUDES)
-crypto_libbitcoin_crypto_a_SOURCES = \
+crypto_libbitcoin_crypto_la_CPPFLAGS = $(BITCOIN_CONFIG_INCLUDES)
+crypto_libbitcoin_crypto_la_SOURCES = \
   crypto/sha1.cpp \
   crypto/sha256.cpp \
   crypto/sha512.cpp \
@@ -227,7 +227,7 @@ crypto_libbitcoin_crypto_a_SOURCES = \
   crypto/ripemd160.h
 
 # univalue JSON library
-univalue_libbitcoin_univalue_a_SOURCES = \
+univalue_libbitcoin_univalue_la_SOURCES = \
   univalue/univalue.cpp \
   univalue/univalue_read.cpp \
   univalue/univalue_write.cpp \
@@ -235,8 +235,8 @@ univalue_libbitcoin_univalue_a_SOURCES = \
   univalue/univalue.h
 
 # common: shared between bitcoind, and bitcoin-qt and non-server tools
-libbitcoin_common_a_CPPFLAGS = $(BITCOIN_INCLUDES)
-libbitcoin_common_a_SOURCES = \
+libbitcoin_common_la_CPPFLAGS = $(BITCOIN_INCLUDES)
+libbitcoin_common_la_SOURCES = \
   allocators.cpp \
   arith_uint256.cpp \
   amount.cpp \
@@ -267,8 +267,8 @@ libbitcoin_common_a_SOURCES = \
 # util: shared between all executables.
 # This library *must* be included to make sure that the glibc
 # backward-compatibility objects and their sanity checks are linked.
-libbitcoin_util_a_CPPFLAGS = $(BITCOIN_INCLUDES)
-libbitcoin_util_a_SOURCES = \
+libbitcoin_util_la_CPPFLAGS = $(BITCOIN_INCLUDES)
+libbitcoin_util_la_SOURCES = \
   chainparamsbase.cpp \
   cleanse.cpp \
   clientversion.cpp \
@@ -286,17 +286,17 @@ libbitcoin_util_a_SOURCES = \
   $(BITCOIN_CORE_H)
 
 if GLIBC_BACK_COMPAT
-libbitcoin_util_a_SOURCES += compat/glibc_compat.cpp
-libbitcoin_util_a_SOURCES += compat/glibcxx_compat.cpp
+libbitcoin_util_la_SOURCES += compat/glibc_compat.cpp
+libbitcoin_util_la_SOURCES += compat/glibcxx_compat.cpp
 endif
 
 # cli: shared between bitcoin-cli and bitcoin-qt
-libbitcoin_cli_a_CPPFLAGS = $(BITCOIN_INCLUDES)
-libbitcoin_cli_a_SOURCES = \
+libbitcoin_cli_la_CPPFLAGS = $(BITCOIN_INCLUDES)
+libbitcoin_cli_la_SOURCES = \
   rpcclient.cpp \
   $(BITCOIN_CORE_H)
 
-nodist_libbitcoin_util_a_SOURCES = $(srcdir)/obj/build.h
+nodist_libbitcoin_util_la_SOURCES = $(srcdir)/obj/build.h
 #
 
 # bitcoind binary #
