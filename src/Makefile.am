@@ -247,7 +247,6 @@ libbitcoin_common_la_SOURCES = \
   chainparams.cpp \
   coins.cpp \
   compressor.cpp \
-  consensus/consensus.cpp \
   primitives/block.cpp \
   core_read.cpp \
   core_write.cpp \
@@ -356,6 +355,7 @@ endif
 bitcoin_cli_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
 
 libbitcoinconsensus_int_la_SOURCES = \
+  consensus/consensus.cpp \
   eccryptoverify.cpp \
   ecwrapper.cpp \
   hash.cpp \
