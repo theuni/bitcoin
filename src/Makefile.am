@@ -29,6 +29,7 @@ LIBBITCOIN_CLI=libbitcoin_cli.la
 LIBBITCOIN_UTIL=libbitcoin_util.la
 LIBBITCOIN_CRYPTO=crypto/libbitcoin_crypto.la
 LIBBITCOIN_UNIVALUE=univalue/libbitcoin_univalue.la
+LIBBITCOIN_CONSENSUS_INT=libbitcoinconsensus_int.la
 LIBBITCOINQT=qt/libbitcoinqt.la
 LIBSECP256K1=secp256k1/libsecp256k1.la
 
@@ -43,6 +44,7 @@ EXTRA_LTLIBRARIES = \
   $(LIBBITCOIN_COMMON) \
   $(LIBBITCOIN_UNIVALUE) \
   $(LIBBITCOIN_SERVER) \
+  $(LIBBITCOIN_CONSENSUS_INT) \
   $(LIBBITCOIN_CLI)
 if ENABLE_WALLET
 BITCOIN_INCLUDES += $(BDB_CPPFLAGS)
@@ -240,6 +242,7 @@ univalue_libbitcoin_univalue_la_SOURCES = \
 # common: shared between bitcoind, and bitcoin-qt and non-server tools
 libbitcoin_common_la_CXXFLAGS = -shared
 libbitcoin_common_la_CPPFLAGS = $(BITCOIN_INCLUDES)
+libbitcoin_common_la_LIBADD = $(LIBBITCOIN_CONSENSUS_INT)
 libbitcoin_common_la_SOURCES = \
   allocators.cpp \
   arith_uint256.cpp \
@@ -250,18 +253,12 @@ libbitcoin_common_la_SOURCES = \
   compressor.cpp \
   consensus/consensus.cpp \
   primitives/block.cpp \
-  primitives/transaction.cpp \
   core_read.cpp \
   core_write.cpp \
-  eccryptoverify.cpp \
-  ecwrapper.cpp \
-  hash.cpp \
   key.cpp \
   keystore.cpp \
   netbase.cpp \
   protocol.cpp \
-  pubkey.cpp \
-  script/interpreter.cpp \
   script/script.cpp \
   script/sign.cpp \
   script/standard.cpp \
@@ -283,10 +280,8 @@ libbitcoin_util_la_SOURCES = \
   random.cpp \
   rpcprotocol.cpp \
   sync.cpp \
-  uint256.cpp \
   util.cpp \
   utilmoneystr.cpp \
-  utilstrencodings.cpp \
   utiltime.cpp \
   $(BITCOIN_CORE_H)
 
@@ -334,6 +329,7 @@ bitcoind_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
 bitcoin_cli_LDADD = \
   $(LIBBITCOIN_CLI) \
   $(LIBBITCOIN_UTIL) \
+  $(LIBBITCOIN_CONSENSUS_INT) \
   $(BOOST_LIBS) \
   $(SSL_LIBS) \
   $(CRYPTO_LIBS)
@@ -364,31 +360,37 @@ bitcoin_cli_SOURCES += bitcoin-cli-res.rc
 endif
 bitcoin_cli_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
 
-if BUILD_BITCOIN_LIBS
-include_HEADERS = script/bitcoinconsensus.h
-libbitcoinconsensus_la_SOURCES = \
+libbitcoinconsensus_int_la_SOURCES = \
   eccryptoverify.cpp \
   ecwrapper.cpp \
   hash.cpp \
   primitives/transaction.cpp \
   pubkey.cpp \
-  script/bitcoinconsensus.cpp \
   script/interpreter.cpp \
   script/script.cpp \
   uint256.cpp \
   utilstrencodings.cpp
+
+libbitcoinconsensus_int_la_LDFLAGS = $(RELDFLAGS)
+libbitcoinconsensus_int_la_LIBADD = $(LIBBITCOIN_CRYPTO) $(CRYPTO_LIBS)
+libbitcoinconsensus_int_la_CPPFLAGS = $(CRYPTO_CFLAGS) -I$(builddir)/obj
+if USE_LIBSECP256K1
+libbitcoinconsensus_int_la_LIBADD += secp256k1/libsecp256k1.la
+endif
+
+if BUILD_BITCOIN_LIBS
+include_HEADERS = script/bitcoinconsensus.h
+libbitcoinconsensus_la_SOURCES = script/bitcoinconsensus.cpp
+
+libbitcoinconsensus_la_LDFLAGS = -no-undefined $(RELDFLAGS)
+libbitcoinconsensus_la_LIBADD = $(LIBBITCOIN_CONSENSUS_INT)
+libbitcoinconsensus_la_CPPFLAGS = -DBUILD_BITCOIN_INTERNAL
 
 if GLIBC_BACK_COMPAT
   libbitcoinconsensus_la_SOURCES += compat/glibc_compat.cpp
   libbitcoinconsensus_la_SOURCES += compat/glibcxx_compat.cpp
 endif
 
-libbitcoinconsensus_la_LDFLAGS = -no-undefined $(RELDFLAGS)
-libbitcoinconsensus_la_LIBADD = $(LIBBITCOIN_CRYPTO) $(CRYPTO_LIBS)
-libbitcoinconsensus_la_CPPFLAGS = $(CRYPTO_CFLAGS) -I$(builddir)/obj -DBUILD_BITCOIN_INTERNAL
-if USE_LIBSECP256K1
-libbitcoinconsensus_la_LIBADD += secp256k1/libsecp256k1.la
-endif
 endif
 
 CLEANFILES = $(LIBLEVELDB) $(LIBMEMENV) *.gcda *.gcno
