@@ -14,6 +14,7 @@
 #include "chain.h"
 #include "chainparams.h"
 #include "coins.h"
+#include "consensus/consensus.h"
 #include "primitives/block.h"
 #include "primitives/transaction.h"
 #include "net.h"

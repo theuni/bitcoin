@@ -90,6 +90,7 @@ BITCOIN_CORE_H = \
   coins.h \
   compat.h \
   compressor.h \
+  consensus/consensus.h \
   core_io.h \
   crypter.h \
   db.h \
@@ -246,6 +247,7 @@ libbitcoin_common_la_SOURCES = \
   chainparams.cpp \
   coins.cpp \
   compressor.cpp \
+  consensus/consensus.cpp \
   primitives/block.cpp \
   core_read.cpp \
   core_write.cpp \
