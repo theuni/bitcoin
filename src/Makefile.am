@@ -239,6 +239,7 @@ libbitcoin_common_a_SOURCES = \
   chainparams.cpp \
   coins.cpp \
   compressor.cpp \
+  consensus/consensus.cpp \
   primitives/block.cpp \
   primitives/transaction.cpp \
   core_read.cpp \
