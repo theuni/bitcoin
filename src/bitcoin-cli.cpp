@@ -11,6 +11,12 @@
 #include "utilstrencodings.h"
 
 #include <boost/filesystem/operations.hpp>
+#include <stdio.h>
+
+#include <event2/event.h>
+#include <event2/http.h>
+#include <event2/buffer.h>
+#include <event2/keyvalq_struct.h>
 
 #define _(x) std::string(x) /* Keep the _() around in case gettext or such will be used later to translate non-UI */
 
@@ -96,6 +102,36 @@ static bool AppInitRPC(int argc, char* argv[])
     return true;
 }
 
+/** Reply structure for request_done to fill in */
+struct HTTPReply
+{
+    int status;
+    std::string body;
+};
+
+static void http_request_done(struct evhttp_request *req, void *ctx)
+{
+    HTTPReply *reply = static_cast<HTTPReply*>(ctx);
+    char buffer[256];
+    int nread;
+
+    if (req == NULL) {
+        /* If req is NULL, it means an error occurred while connecting, but
+         * I'm not sure how to find out which one. We also don't really care.
+         */
+        reply->status = 0;
+        return;
+    }
+
+    reply->status = evhttp_request_get_response_code(req);
+
+    struct evbuffer *buf = evhttp_request_get_input_buffer(req);
+    assert(buf);
+    reply->body.reserve(evbuffer_get_length(buf));
+    while ((nread = evbuffer_remove(buf, buffer, sizeof(buffer))) > 0)
+        reply->body.append(buffer, buffer + nread);
+}
+
 Object CallRPC(const string& strMethod, const Array& params)
 {
     if (mapArgs["-rpcuser"] == "" && mapArgs["-rpcpassword"] == "")
@@ -104,48 +140,59 @@ Object CallRPC(const string& strMethod, const Array& params)
               "If the file does not exist, create it with owner-readable-only file permissions."),
                 GetConfigFile().string().c_str()));
 
-    // Connect to localhost
-    bool fUseSSL = GetBoolArg("-rpcssl", false);
-    boost::asio::io_service io_service;
-    boost::asio::ssl::context context(io_service, boost::asio::ssl::context::sslv23);
-    context.set_options(boost::asio::ssl::context::no_sslv2 | boost::asio::ssl::context::no_sslv3);
-    boost::asio::ssl::stream<boost::asio::ip::tcp::socket> sslStream(io_service, context);
-    SSLIOStreamDevice<boost::asio::ip::tcp> d(sslStream, fUseSSL);
-    boost::iostreams::stream< SSLIOStreamDevice<boost::asio::ip::tcp> > stream(d);
+    std::string host = GetArg("-rpcconnect", "127.0.0.1");
+    int port = GetArg("-rpcport", BaseParams().RPCPort());
 
-    const bool fConnected = d.connect(GetArg("-rpcconnect", "127.0.0.1"), GetArg("-rpcport", itostr(BaseParams().RPCPort())));
-    if (!fConnected)
+    // Create event base
+    struct event_base *base = event_base_new(); // XXX RAII
+    if (!base)
+        throw runtime_error("cannot create event_base");
+
+    // Synchronously look up hostname
+    struct evhttp_connection *evcon = evhttp_connection_base_new(base, NULL, host.c_str(), port); // XXX RAII
+    if (evcon == NULL)
+        throw runtime_error("create connection failed");
+    evhttp_connection_set_timeout(evcon, GetArg("-rpctimeout", 30));
+
+    HTTPReply response;
+    struct evhttp_request *req = evhttp_request_new(http_request_done, (void*)&response); // XXX RAII
+    if (req == NULL)
+        throw runtime_error("create http request failed");
+
+    struct evkeyvalq *output_headers = evhttp_request_get_output_headers(req);
+    assert(output_headers);
+    evhttp_add_header(output_headers, "Host", host.c_str());
+    evhttp_add_header(output_headers, "Connection", "close");
+    // Add HTTP basic authentication
+    string strUserPass64 = string("Basic ") + EncodeBase64(mapArgs["-rpcuser"] + ":" + mapArgs["-rpcpassword"]);
+    evhttp_add_header(output_headers, "Authorization", strUserPass64.c_str());
+
+    // Attach request data
+    std::string strRequest = JSONRPCRequest(strMethod, params, 1);
+    struct evbuffer * output_buffer = evhttp_request_get_output_buffer(req);
+    assert(output_buffer);
+    evbuffer_add(output_buffer, strRequest.data(), strRequest.size());
+
+    int r = evhttp_make_request(evcon, req, EVHTTP_REQ_POST, "/");
+    if (r != 0)
+        throw runtime_error("send http request failed");
+
+    event_base_dispatch(base);
+    evhttp_connection_free(evcon);
+    event_base_free(base);
+
+    if (response.status == 0)
         throw CConnectionFailed("couldn't connect to server");
-
-    // HTTP basic authentication
-    string strUserPass64 = EncodeBase64(mapArgs["-rpcuser"] + ":" + mapArgs["-rpcpassword"]);
-    map<string, string> mapRequestHeaders;
-    mapRequestHeaders["Authorization"] = string("Basic ") + strUserPass64;
-
-    // Send request
-    string strRequest = JSONRPCRequest(strMethod, params, 1);
-    string strPost = HTTPPost(strRequest, mapRequestHeaders);
-    stream << strPost << std::flush;
-
-    // Receive HTTP reply status
-    int nProto = 0;
-    int nStatus = ReadHTTPStatus(stream, nProto);
-
-    // Receive HTTP reply message headers and body
-    map<string, string> mapHeaders;
-    string strReply;
-    ReadHTTPMessage(stream, mapHeaders, strReply, nProto, std::numeric_limits<size_t>::max());
-
-    if (nStatus == HTTP_UNAUTHORIZED)
+    else if (response.status == HTTP_UNAUTHORIZED)
         throw runtime_error("incorrect rpcuser or rpcpassword (authorization failed)");
-    else if (nStatus >= 400 && nStatus != HTTP_BAD_REQUEST && nStatus != HTTP_NOT_FOUND && nStatus != HTTP_INTERNAL_SERVER_ERROR)
-        throw runtime_error(strprintf("server returned HTTP error %d", nStatus));
-    else if (strReply.empty())
+    else if (response.status >= 400 && response.status != HTTP_BAD_REQUEST && response.status != HTTP_NOT_FOUND && response.status != HTTP_INTERNAL_SERVER_ERROR)
+        throw runtime_error(strprintf("server returned HTTP error %d", response.status));
+    else if (response.body.empty())
         throw runtime_error("no response from server");
 
     // Parse reply
     Value valReply;
-    if (!read_string(strReply, valReply))
+    if (!read_string(response.body, valReply))
         throw runtime_error("couldn't parse reply from server");
     const Object& reply = valReply.get_obj();
     if (reply.empty())

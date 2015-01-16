@@ -6,6 +6,7 @@
 #include "primitives/block.h"
 #include "primitives/transaction.h"
 #include "main.h"
+#include "httpserver.h"
 #include "rpcserver.h"
 #include "streams.h"
 #include "sync.h"
@@ -52,7 +53,7 @@ static RestErr RESTERR(enum HTTPStatusCode status, string message)
     return re;
 }
 
-static enum RetFormat ParseDataFormat(vector<string>& params, const string strReq)
+static enum RetFormat ParseDataFormat(vector<string>& params, const string& strReq)
 {
     boost::split(params, strReq, boost::is_any_of("."));
     if (params.size() > 1) {
@@ -89,10 +90,8 @@ static bool ParseHashStr(const string& strReq, uint256& v)
     return true;
 }
 
-static bool rest_headers(AcceptedConnection* conn,
-                         const std::string& strReq,
-                         const std::map<std::string, std::string>& mapHeaders,
-                         bool fRun)
+static bool rest_headers(HTTPRequest* req,
+                         const std::string& strReq)
 {
     vector<string> params;
     enum RetFormat rf = ParseDataFormat(params, strReq);
@@ -133,13 +132,15 @@ static bool rest_headers(AcceptedConnection* conn,
     switch (rf) {
     case RF_BINARY: {
         string binaryHeader = ssHeader.str();
-        conn->stream() << HTTPReplyHeader(HTTP_OK, fRun, binaryHeader.size(), "application/octet-stream") << binaryHeader << std::flush;
+        req->WriteHeader("Content-Type", "application/octet-stream");
+        req->WriteReply(HTTP_OK, binaryHeader);
         return true;
     }
 
     case RF_HEX: {
         string strHex = HexStr(ssHeader.begin(), ssHeader.end()) + "\n";
-        conn->stream() << HTTPReply(HTTP_OK, strHex, fRun, false, "text/plain") << std::flush;
+        req->WriteHeader("Content-Type", "text/plain");
+        req->WriteReply(HTTP_OK, strHex);
         return true;
     }
 
@@ -152,10 +153,8 @@ static bool rest_headers(AcceptedConnection* conn,
     return true; // continue to process further HTTP reqs on this cxn
 }
 
-static bool rest_block(AcceptedConnection* conn,
+static bool rest_block(HTTPRequest* req,
                        const std::string& strReq,
-                       const std::map<std::string, std::string>& mapHeaders,
-                       bool fRun,
                        bool showTxDetails)
 {
     vector<string> params;
@@ -184,20 +183,23 @@ static bool rest_block(AcceptedConnection* conn,
     switch (rf) {
     case RF_BINARY: {
         string binaryBlock = ssBlock.str();
-        conn->stream() << HTTPReplyHeader(HTTP_OK, fRun, binaryBlock.size(), "application/octet-stream") << binaryBlock << std::flush;
+        req->WriteHeader("Content-Type", "application/octet-stream");
+        req->WriteReply(HTTP_OK, binaryBlock);
         return true;
     }
 
     case RF_HEX: {
         string strHex = HexStr(ssBlock.begin(), ssBlock.end()) + "\n";
-        conn->stream() << HTTPReply(HTTP_OK, strHex, fRun, false, "text/plain") << std::flush;
+        req->WriteHeader("Content-Type", "text/plain");
+        req->WriteReply(HTTP_OK, strHex);
         return true;
     }
 
     case RF_JSON: {
         Object objBlock = blockToJSON(block, pblockindex, showTxDetails);
         string strJSON = write_string(Value(objBlock), false) + "\n";
-        conn->stream() << HTTPReply(HTTP_OK, strJSON, fRun) << std::flush;
+        req->WriteHeader("Content-Type", "application/json");
+        req->WriteReply(HTTP_OK, strJSON);
         return true;
     }
 
@@ -210,26 +212,17 @@ static bool rest_block(AcceptedConnection* conn,
     return true; // continue to process further HTTP reqs on this cxn
 }
 
-static bool rest_block_extended(AcceptedConnection* conn,
-                       const std::string& strReq,
-                       const std::map<std::string, std::string>& mapHeaders,
-                       bool fRun)
+static bool rest_block_extended(HTTPRequest* req, const std::string& strReq)
 {
-    return rest_block(conn, strReq, mapHeaders, fRun, true);
+    return rest_block(req, strReq, true);
 }
 
-static bool rest_block_notxdetails(AcceptedConnection* conn,
-                       const std::string& strReq,
-                       const std::map<std::string, std::string>& mapHeaders,
-                       bool fRun)
+static bool rest_block_notxdetails(HTTPRequest* req, const std::string& strReq)
 {
-    return rest_block(conn, strReq, mapHeaders, fRun, false);
+    return rest_block(req, strReq, false);
 }
 
-static bool rest_tx(AcceptedConnection* conn,
-                    const std::string& strReq,
-                    const std::map<std::string, std::string>& mapHeaders,
-                    bool fRun)
+static bool rest_tx(HTTPRequest* req, const std::string& strReq)
 {
     vector<string> params;
     enum RetFormat rf = ParseDataFormat(params, strReq);
@@ -250,13 +243,15 @@ static bool rest_tx(AcceptedConnection* conn,
     switch (rf) {
     case RF_BINARY: {
         string binaryTx = ssTx.str();
-        conn->stream() << HTTPReplyHeader(HTTP_OK, fRun, binaryTx.size(), "application/octet-stream") << binaryTx << std::flush;
+        req->WriteHeader("Content-Type", "application/octet-stream");
+        req->WriteReply(HTTP_OK, binaryTx);
         return true;
     }
 
     case RF_HEX: {
         string strHex = HexStr(ssTx.begin(), ssTx.end()) + "\n";
-        conn->stream() << HTTPReply(HTTP_OK, strHex, fRun, false, "text/plain") << std::flush;
+        req->WriteHeader("Content-Type", "text/plain");
+        req->WriteReply(HTTP_OK, strHex);
         return true;
     }
 
@@ -264,7 +259,8 @@ static bool rest_tx(AcceptedConnection* conn,
         Object objTx;
         TxToJSON(tx, hashBlock, objTx);
         string strJSON = write_string(Value(objTx), false) + "\n";
-        conn->stream() << HTTPReply(HTTP_OK, strJSON, fRun) << std::flush;
+        req->WriteHeader("Content-Type", "application/json");
+        req->WriteReply(HTTP_OK, strJSON);
         return true;
     }
 
@@ -279,10 +275,7 @@ static bool rest_tx(AcceptedConnection* conn,
 
 static const struct {
     const char* prefix;
-    bool (*handler)(AcceptedConnection* conn,
-                    const std::string& strURI,
-                    const std::map<std::string, std::string>& mapHeaders,
-                    bool fRun);
+    bool (*handler)(HTTPRequest* req, const std::string& strReq);
 } uri_prefixes[] = {
       {"/rest/tx/", rest_tx},
       {"/rest/block/notxdetails/", rest_block_notxdetails},
@@ -290,28 +283,26 @@ static const struct {
       {"/rest/headers/", rest_headers},
 };
 
-bool HTTPReq_REST(AcceptedConnection* conn,
-                  const std::string& strURI,
-                  const std::map<std::string, std::string>& mapHeaders,
-                  bool fRun)
+bool HTTPReq_REST(HTTPRequest* req)
 {
     try {
         std::string statusmessage;
         if (RPCIsInWarmup(&statusmessage))
             throw RESTERR(HTTP_SERVICE_UNAVAILABLE, "Service temporarily unavailable: " + statusmessage);
 
+        std::string strURI = req->GetURI();
         for (unsigned int i = 0; i < ARRAYLEN(uri_prefixes); i++) {
             unsigned int plen = strlen(uri_prefixes[i].prefix);
             if (strURI.substr(0, plen) == uri_prefixes[i].prefix) {
                 string strReq = strURI.substr(plen);
-                return uri_prefixes[i].handler(conn, strReq, mapHeaders, fRun);
+                return uri_prefixes[i].handler(req, strReq);
             }
         }
     } catch (const RestErr& re) {
-        conn->stream() << HTTPReply(re.status, re.message + "\r\n", false, false, "text/plain") << std::flush;
+        req->WriteHeader("Content-Type", "text/plain");
+        req->WriteReply(re.status, re.message + "\r\n");
         return false;
     }
-
-    conn->stream() << HTTPError(HTTP_NOT_FOUND, false) << std::flush;
+    req->WriteReply(HTTP_NOT_FOUND);
     return false;
 }

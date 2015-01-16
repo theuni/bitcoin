@@ -22,30 +22,21 @@
 class CBlockIndex;
 class CNetAddr;
 
-class AcceptedConnection
+class JSONRequest
 {
 public:
-    virtual ~AcceptedConnection() {}
+    json_spirit::Value id;
+    std::string strMethod;
+    json_spirit::Array params;
 
-    virtual std::iostream& stream() = 0;
-    virtual std::string peer_address_to_string() const = 0;
-    virtual void close() = 0;
+    JSONRequest() { id = json_spirit::Value::null; }
+    void parse(const json_spirit::Value& valRequest);
 };
 
-/** Start RPC threads */
-void StartRPCThreads();
-/**
- * Alternative to StartRPCThreads for the GUI, when no server is
- * used. The RPC thread in this case is only used to handle timeouts.
- * If real RPC threads have already been started this is a no-op.
- */
-void StartDummyRPCThread();
-/** Stop RPC threads */
-void StopRPCThreads();
 /** Query whether RPC is running */
 bool IsRPCRunning();
 
-/** 
+/**
  * Set the RPC warmup status.  When this is done, all RPC calls will error out
  * immediately with RPC_IN_WARMUP.
  */
@@ -70,14 +61,44 @@ void RPCTypeCheck(const json_spirit::Array& params,
 void RPCTypeCheck(const json_spirit::Object& o,
                   const std::map<std::string, json_spirit::Value_type>& typesExpected, bool fAllowNull=false);
 
+/** Opaque base class for timers returned by NewTimerFunc.
+ * This provides no methods at the moment, but makes sure that delete
+ * cleans up the whole state.
+ */
+class RPCTimerBase
+{
+public:
+    virtual ~RPCTimerBase() {}
+};
+
 /**
- * Run func nSeconds from now. Uses boost deadline timers.
+ * RPC timer "driver".
+ */
+class RPCTimerInterface
+{
+public:
+    virtual ~RPCTimerInterface() {}
+    /** Implementation name */
+    virtual const char *Name() = 0;
+    /** Factory function for timers.
+     * RPC will call the function to create a timer that will call func in *seconds* seconds.
+     * @note As the RPC mechanism is backend-neutral, it can use different implementations of timers.
+     * This is needed to cope with the case in which there is no HTTP server, but
+     * only GUI RPC console, and to break the dependency of pcserver on httprpc.
+     */
+    virtual RPCTimerBase* NewTimer(boost::function<void(void)>&, int64_t) = 0;
+};
+
+/** Register factory function for timers */
+void RPCRegisterTimerInterface(RPCTimerInterface *iface);
+/** Unregister factory function for timers */
+void RPCUnregisterTimerInterface(RPCTimerInterface *iface);
+
+/**
+ * Run func nSeconds from now.
  * Overrides previous timer <name> (if any).
  */
 void RPCRunLater(const std::string& name, boost::function<void(void)> func, int64_t nSeconds);
-
-//! Convert boost::asio address to CNetAddr
-extern CNetAddr BoostAsioToCNetAddr(boost::asio::ip::address address);
 
 typedef json_spirit::Value(*rpcfn_type)(const json_spirit::Array& params, bool fHelp);
 
@@ -124,9 +145,6 @@ extern uint256 ParseHashV(const json_spirit::Value& v, std::string strName);
 extern uint256 ParseHashO(const json_spirit::Object& o, std::string strKey);
 extern std::vector<unsigned char> ParseHexV(const json_spirit::Value& v, std::string strName);
 extern std::vector<unsigned char> ParseHexO(const json_spirit::Object& o, std::string strKey);
-
-extern void InitRPCMining();
-extern void ShutdownRPCMining();
 
 extern int64_t nWalletUnlockTime;
 extern CAmount AmountFromValue(const json_spirit::Value& value);
@@ -225,10 +243,9 @@ extern json_spirit::Value getchaintips(const json_spirit::Array& params, bool fH
 extern json_spirit::Value invalidateblock(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value reconsiderblock(const json_spirit::Array& params, bool fHelp);
 
-// in rest.cpp
-extern bool HTTPReq_REST(AcceptedConnection *conn,
-                  const std::string& strURI,
-                  const std::map<std::string, std::string>& mapHeaders,
-                  bool fRun);
+bool StartRPC();
+void InterruptRPC(); /// XXX replace by signal
+void StopRPC();
+std::string JSONRPCExecBatch(const json_spirit::Array& vReq);
 
 #endif // BITCOIN_RPCSERVER_H

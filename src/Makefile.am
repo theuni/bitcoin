@@ -182,6 +182,8 @@ libbitcoin_server_a_SOURCES = \
   rpcnet.cpp \
   rpcrawtransaction.cpp \
   rpcserver.cpp \
+  httprpc.cpp \
+  httpserver.cpp \
   script/sigcache.cpp \
   timedata.cpp \
   txdb.cpp \
@@ -301,7 +303,9 @@ bitcoind_LDADD = \
   $(LIBBITCOIN_CRYPTO) \
   $(LIBLEVELDB) \
   $(LIBMEMENV) \
-  $(LIBSECP256K1)
+  $(LIBSECP256K1) \
+  -levent \
+  -levent_pthreads
 
 if ENABLE_WALLET
 bitcoind_LDADD += libbitcoin_wallet.a
@@ -323,7 +327,8 @@ bitcoin_cli_LDADD = \
   $(LIBBITCOIN_UTIL) \
   $(BOOST_LIBS) \
   $(SSL_LIBS) \
-  $(CRYPTO_LIBS)
+  $(CRYPTO_LIBS) \
+  -levent
 
 bitcoin_cli_SOURCES = \
   bitcoin-cli.cpp
