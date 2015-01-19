@@ -283,8 +283,8 @@ static bool HTTPBindAddresses(struct evhttp *http)
             endpoints.push_back(std::make_pair(host, port));
         }
     } else { // No specific bind address specified, bind to any
+        endpoints.push_back(std::make_pair("::", defaultPort));
         endpoints.push_back(std::make_pair("0.0.0.0", defaultPort));
-        endpoints.push_back(std::make_pair("::", defaultPort)); // XXX fails for some reason
     }
 
     // Bind addresses
@@ -447,17 +447,11 @@ CService HTTPRequest::GetPeer()
     CService peer;
     if (con)
     {
-#if 1 // evhttp_connection_get_addr is only available in very recent libevent, so use alternative (but uglier) way
         // evhttp retains ownership over returned address string
         const char *address = "";
         uint16_t port = 0;
         evhttp_connection_get_peer(con, (char **)&address, &port);
         peer = CService(address, port);
-#else
-        const struct sockaddr* saddr = evhttp_connection_get_addr(con);
-        if (saddr)
-            peer.SetSockAddr(saddr);
-#endif
     }
     return peer;
 }
