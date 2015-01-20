@@ -1,7 +1,7 @@
 Unauthenticated REST Interface
 ==============================
 
-The REST API can be enabled with the `-rest` option.
+The REST API can be enabled with the `-rest` option. It runs on the same port as the JSON-RPC interface.
 
 Supported API
 -------------
