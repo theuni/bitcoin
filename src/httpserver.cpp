@@ -5,6 +5,7 @@
 #include "httpserver.h"
 
 #include "chainparamsbase.h"
+#include "compat.h"
 #include "httprpc.h"
 #include "util.h"
 #include "netbase.h"
@@ -18,12 +19,8 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
-
-#include <sys/stat.h>
-#include <sys/socket.h>
 #include <signal.h>
-#include <fcntl.h>
-#include <unistd.h>
+
 
 #include <event2/event.h>
 #include <event2/http.h>
@@ -348,12 +345,12 @@ bool StartHTTPServer(boost::thread_group& threadGroup)
     }
 
     LogPrint("http", "Starting HTTP server\n");
-    int workQueueDepth = std::max(GetArg("-rpcworkqueue", 16), 1L);
+    int workQueueDepth = std::max((long)GetArg("-rpcworkqueue", 16), 1L);
     workQueue = new WorkQueue<HTTPWorkItem>(workQueueDepth);
 
     threadGroup.create_thread(boost::bind(&ThreadHTTP, base, http));
 
-    int rpcThreads = std::max(GetArg("-rpcthreads", 4), 1L);
+    int rpcThreads = std::max((long)GetArg("-rpcthreads", 4), 1L);
     for (int i = 0; i < rpcThreads; i++)
         threadGroup.create_thread(boost::bind(&HTTPWorkQueueRun, workQueue));
 
