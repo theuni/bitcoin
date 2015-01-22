@@ -9,7 +9,7 @@
 #include "hash.h"
 #include "protocol.h"
 #include "util.h"
-#include "utilstrencodings.h"
+#include "utilstrhex.h"
 
 #include <stdint.h>
 

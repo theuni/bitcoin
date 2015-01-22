@@ -12,6 +12,7 @@
 #include "rpcserver.h"
 #include "timedata.h"
 #include "util.h"
+#include "utilstrhex.h"
 #ifdef ENABLE_WALLET
 #include "wallet.h"
 #include "walletdb.h"

@@ -17,6 +17,7 @@
 #include "script/standard.h"
 #include "txmempool.h"
 #include "uint256.h"
+#include "utilstrhex.h"
 #ifdef ENABLE_WALLET
 #include "wallet.h"
 #endif

@@ -9,6 +9,7 @@
 #include "random.h"
 #include "sync.h"
 #include "utilstrencodings.h"
+#include "utilstrhex.h"
 #include "utilmoneystr.h"
 
 #include <stdint.h>

@@ -12,6 +12,7 @@
 #include "univalue/univalue.h"
 #include "util.h"
 #include "utilstrencodings.h"
+#include "utilstrhex.h"
 #include "version.h"
 
 #include <boost/algorithm/string/classification.hpp>

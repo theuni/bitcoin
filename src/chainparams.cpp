@@ -8,6 +8,7 @@
 #include "random.h"
 #include "util.h"
 #include "utilstrencodings.h"
+#include "utilstrhex.h"
 
 #include <assert.h>
 

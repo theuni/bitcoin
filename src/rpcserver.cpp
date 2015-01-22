@@ -10,6 +10,7 @@
 #include "main.h"
 #include "ui_interface.h"
 #include "util.h"
+#include "utilstrhex.h"
 #ifdef ENABLE_WALLET
 #include "wallet.h"
 #endif

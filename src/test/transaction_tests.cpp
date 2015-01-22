@@ -18,7 +18,7 @@
 #include "script/script_error.h"
 #include "script/standard.h"
 #include "streams.h"
-#include "utilstrencodings.h"
+#include "utilstrhex.h"
 
 #include <map>
 #include <string>

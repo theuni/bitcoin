@@ -13,7 +13,7 @@
 #include "txmempool.h"
 #include "uint256.h"
 #include "util.h"
-#include "utilstrencodings.h"
+#include "utilstrhex.h"
 
 #include <boost/test/unit_test.hpp>
 

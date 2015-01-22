@@ -10,6 +10,7 @@
 #include "script/standard.h"
 #include "sync.h"
 #include "util.h"
+#include "utilstrhex.h"
 #include "utiltime.h"
 #include "wallet.h"
 

@@ -13,6 +13,7 @@
 #include "sync.h"
 #include "txmempool.h"
 #include "util.h"
+#include "utilstrhex.h"
 
 #include <stdint.h>
 

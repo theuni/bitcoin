@@ -138,6 +138,7 @@ BITCOIN_CORE_H = \
   uint256.h \
   undo.h \
   util.h \
+  utilhexstr.h \
   utilmoneystr.h \
   utilstrencodings.h \
   utiltime.h \
@@ -282,6 +283,7 @@ libbitcoin_util_la_SOURCES = \
   sync.cpp \
   util.cpp \
   utilmoneystr.cpp \
+  utilstrencodings.cpp \
   utiltime.cpp \
   $(BITCOIN_CORE_H)
 
@@ -369,7 +371,7 @@ libbitcoinconsensus_int_la_SOURCES = \
   script/interpreter.cpp \
   script/script.cpp \
   uint256.cpp \
-  utilstrencodings.cpp
+  utilstrhex.cpp
 
 libbitcoinconsensus_int_la_LDFLAGS = $(RELDFLAGS)
 libbitcoinconsensus_int_la_LIBADD = $(LIBBITCOIN_CRYPTO) $(CRYPTO_LIBS)

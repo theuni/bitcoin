@@ -15,6 +15,7 @@
 #include "univalue/univalue.h"
 #include "util.h"
 #include "utilstrencodings.h"
+#include "utilstrhex.h"
 #include "utilmoneystr.h"
 
 #include <stdio.h>

@@ -15,7 +15,7 @@
 #include "script/standard.h"
 #include "streams.h"
 #include "util.h"
-#include "utilstrencodings.h"
+#include "utilstrhex.h"
 
 #if defined(HAVE_CONSENSUS_LIB)
 #include "script/bitcoinconsensus.h"

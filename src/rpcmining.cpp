@@ -15,6 +15,7 @@
 #include "rpcserver.h"
 #include "txmempool.h"
 #include "util.h"
+#include "utilstrhex.h"
 #include "validationinterface.h"
 #ifdef ENABLE_WALLET
 #include "db.h"
