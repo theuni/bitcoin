@@ -253,18 +253,14 @@ libbitcoin_common_la_SOURCES = \
   chainparams.cpp \
   coins.cpp \
   compressor.cpp \
-  consensus/consensus.cpp \
-  primitives/block.cpp \
   core_read.cpp \
   core_write.cpp \
   key.cpp \
   keystore.cpp \
   netbase.cpp \
   protocol.cpp \
-  script/script.cpp \
   script/sign.cpp \
   script/standard.cpp \
-  script/script_error.cpp \
   $(BITCOIN_CORE_H)
 
 # util: shared between all executables.
@@ -274,7 +270,6 @@ libbitcoin_util_la_CXXFLAGS = -shared
 libbitcoin_util_la_CPPFLAGS = $(BITCOIN_INCLUDES)
 libbitcoin_util_la_SOURCES = \
   chainparamsbase.cpp \
-  cleanse.cpp \
   clientversion.cpp \
   compat/glibc_sanity.cpp \
   compat/glibcxx_sanity.cpp \
@@ -364,13 +359,17 @@ endif
 bitcoin_cli_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
 
 libbitcoinconsensus_int_la_SOURCES = \
+  cleanse.cpp \
+  consensus/consensus.cpp \
   eccryptoverify.cpp \
   ecwrapper.cpp \
   hash.cpp \
+  primitives/block.cpp \
   primitives/transaction.cpp \
   pubkey.cpp \
   script/interpreter.cpp \
   script/script.cpp \
+  script/script_error.cpp \
   uint256.cpp \
   utilstrhex.cpp
 
