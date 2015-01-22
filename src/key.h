@@ -6,7 +6,6 @@
 #ifndef BITCOIN_KEY_H
 #define BITCOIN_KEY_H
 
-#include "allocators.h"
 #include "serialize.h"
 #include "uint256.h"
 
@@ -31,6 +30,9 @@ struct CExtPubKey;
  * secure_allocator is defined in allocators.h
  * CPrivKey is a serialized private key, with all parameters included (279 bytes)
  */
+template <typename T>
+class secure_allocator;
+
 typedef std::vector<unsigned char, secure_allocator<unsigned char> > CPrivKey;
 
 /** An encapsulated private key. */
@@ -52,23 +54,13 @@ private:
 
 public:
     //! Construct an invalid private key.
-    CKey() : fValid(false), fCompressed(false)
-    {
-        LockObject(vch);
-    }
+    CKey();
 
     //! Copy constructor. This is necessary because of memlocking.
-    CKey(const CKey& secret) : fValid(secret.fValid), fCompressed(secret.fCompressed)
-    {
-        LockObject(vch);
-        memcpy(vch, secret.vch, sizeof(vch));
-    }
+    CKey(const CKey& secret);
 
     //! Destructor (again necessary because of memlocking).
-    ~CKey()
-    {
-        UnlockObject(vch);
-    }
+    ~CKey();
 
     friend bool operator==(const CKey& a, const CKey& b)
     {

@@ -4,6 +4,7 @@
 
 #include "key.h"
 
+#include "allocators.h"
 #include "arith_uint256.h"
 #include "crypto/hmac_sha512.h"
 #include "crypto/rfc6979_hmac_sha256.h"
@@ -13,6 +14,22 @@
 
 #include <secp256k1.h>
 #include "ecwrapper.h"
+
+CKey::CKey() : fValid(false), fCompressed(false)
+{
+    LockObject(vch);
+}
+
+CKey::CKey(const CKey& secret) : fValid(secret.fValid), fCompressed(secret.fCompressed)
+{
+    LockObject(vch);
+    memcpy(vch, secret.vch, sizeof(vch));
+}
+
+CKey::~CKey()
+{
+    UnlockObject(vch);
+}
 
 //! anonymous namespace
 namespace {
