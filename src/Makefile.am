@@ -147,7 +147,8 @@ BITCOIN_CORE_H = \
   walletdb.h \
   wallet.h \
   wallet_ismine.h \
-  compat/sanity.h
+  compat/sanity.h \
+  zaf_allocator.h
 
 JSON_H = \
   json/json_spirit.h \

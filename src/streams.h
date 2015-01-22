@@ -6,8 +6,8 @@
 #ifndef BITCOIN_STREAMS_H
 #define BITCOIN_STREAMS_H
 
-#include "allocators.h"
 #include "serialize.h"
+#include "zaf_allocator.h"
 
 #include <algorithm>
 #include <assert.h>

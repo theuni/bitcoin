@@ -19,6 +19,7 @@
 #include "pubkey.h"
 #include "script/script.h"
 #include "script/standard.h"
+#include "zaf_allocator.h"
 
 #include <string>
 #include <vector>
