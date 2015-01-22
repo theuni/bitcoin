@@ -17,6 +17,7 @@
 #include "merkleblock.h"
 #include "pow.h"
 #include "primitives/transaction.h"
+#include "random.h"
 #include "script/script.h"
 #include "script/sigcache.h"
 #include "script/standard.h"

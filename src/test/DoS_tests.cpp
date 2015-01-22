@@ -12,6 +12,7 @@
 #include "net.h"
 #include "pow.h"
 #include "primitives/transaction.h"
+#include "random.h"
 #include "script/sign.h"
 #include "script/standard.h"
 #include "serialize.h"

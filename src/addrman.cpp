@@ -5,6 +5,7 @@
 #include "addrman.h"
 
 #include "hash.h"
+#include "random.h"
 #include "serialize.h"
 #include "streams.h"
 
@@ -81,6 +82,16 @@ double CAddrInfo::GetChance(int64_t nNow) const
         fChance /= 1.5;
 
     return fChance;
+}
+
+CAddrMan::CAddrMan() : vRandom(0), vvTried(ADDRMAN_TRIED_BUCKET_COUNT, std::vector<int>(0)), vvNew(ADDRMAN_NEW_BUCKET_COUNT, std::set<int>())
+{
+    nKey.resize(32);
+    GetRandBytes(&nKey[0], 32);
+
+    nIdCount = 0;
+    nTried = 0;
+    nNew = 0;
 }
 
 CAddrInfo* CAddrMan::Find(const CNetAddr& addr, int* pnId)

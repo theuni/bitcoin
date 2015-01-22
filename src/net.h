@@ -13,7 +13,6 @@
 #include "mruset.h"
 #include "netbase.h"
 #include "protocol.h"
-#include "random.h"
 #include "streams.h"
 #include "sync.h"
 #include "uint256.h"
@@ -371,19 +370,7 @@ public:
         setAddrKnown.insert(addr);
     }
 
-    void PushAddress(const CAddress& addr)
-    {
-        // Known checking here is only to save space from duplicates.
-        // SendMessages will filter it again for knowns that were added
-        // after addresses were pushed.
-        if (addr.IsValid() && !setAddrKnown.count(addr)) {
-            if (vAddrToSend.size() >= MAX_ADDR_TO_SEND) {
-                vAddrToSend[insecure_rand() % vAddrToSend.size()] = addr;
-            } else {
-                vAddrToSend.push_back(addr);
-            }
-        }
-    }
+    void PushAddress(const CAddress& addr);
 
 
     void AddInventoryKnown(const CInv& inv)

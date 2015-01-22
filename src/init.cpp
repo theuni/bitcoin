@@ -19,6 +19,7 @@
 #include "main.h"
 #include "miner.h"
 #include "net.h"
+#include "random.h"
 #include "rpcserver.h"
 #include "script/standard.h"
 #include "txdb.h"

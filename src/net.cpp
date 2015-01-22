@@ -13,6 +13,7 @@
 #include "chainparams.h"
 #include "clientversion.h"
 #include "primitives/transaction.h"
+#include "random.h"
 #include "ui_interface.h"
 
 #ifdef WIN32
@@ -1934,6 +1935,20 @@ CNode::~CNode()
         delete pfilter;
 
     GetNodeSignals().FinalizeNode(GetId());
+}
+
+void CNode::PushAddress(const CAddress& addr)
+{
+    // Known checking here is only to save space from duplicates.
+    // SendMessages will filter it again for knowns that were added
+    // after addresses were pushed.
+    if (addr.IsValid() && !setAddrKnown.count(addr)) {
+        if (vAddrToSend.size() >= MAX_ADDR_TO_SEND) {
+            vAddrToSend[insecure_rand() % vAddrToSend.size()] = addr;
+        } else {
+            vAddrToSend.push_back(addr);
+        }
+    }
 }
 
 void CNode::AskFor(const CInv& inv)
