@@ -4,7 +4,7 @@
 
 #include "util.h"
 
-#include "allocators.h"
+#include "allocators/secure.h"
 
 #include <boost/test/unit_test.hpp>
 

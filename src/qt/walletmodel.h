@@ -8,7 +8,7 @@
 #include "paymentrequestplus.h"
 #include "walletmodeltransaction.h"
 
-#include "allocators.h" /* for SecureString */
+#include "allocators/secure.h" /* for SecureString */
 
 #include <map>
 #include <vector>

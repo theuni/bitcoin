@@ -8,7 +8,7 @@
 #include "guiconstants.h"
 #include "walletmodel.h"
 
-#include "allocators.h"
+#include "allocators/secure.h"
 
 #include <QKeyEvent>
 #include <QMessageBox>

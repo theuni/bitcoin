@@ -14,6 +14,7 @@
 #ifndef BITCOIN_BASE58_H
 #define BITCOIN_BASE58_H
 
+#include "allocators/zeroafterfree.h"
 #include "chainparams.h"
 #include "key.h"
 #include "pubkey.h"
