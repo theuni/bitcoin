@@ -21,6 +21,7 @@
 #include "script/script.h"
 #include "script/sigcache.h"
 #include "script/standard.h"
+#include "lockmap.h"
 #include "tinyformat.h"
 #include "txdb.h"
 #include "txmempool.h"
@@ -223,7 +224,7 @@ struct CNodeState {
 };
 
 /** Map maintaining per-node state. Requires cs_main. */
-map<NodeId, CNodeState> mapNodeState;
+CLockMap<NodeId, CNodeState> mapNodeState;
 
 // Requires cs_main.
 CNodeState *State(NodeId pnode) {
@@ -256,7 +257,7 @@ void InitializeNode(NodeId nodeid, const CNode *pnode) {
 }
 
 void FinalizeNode(NodeId nodeid) {
-    LOCK(cs_main);
+    maplock_t lock(mapNodeState.get_lock());
     CNodeState *state = State(nodeid);
 
     if (state->fSyncStarted)
