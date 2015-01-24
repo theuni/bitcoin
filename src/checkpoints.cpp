@@ -6,14 +6,11 @@
 
 #include "chain.h"
 #include "chainparams.h"
-#include "main.h"
 #include "uint256.h"
 
 #include <stdint.h>
 
-#include <boost/foreach.hpp>
-
-namespace Checkpoints {
+bool CCheckpoints::fEnabled = true;
 
     /**
      * How many times we expect transactions after the last checkpoint to
@@ -24,22 +21,18 @@ namespace Checkpoints {
      */
     static const double SIGCHECK_VERIFICATION_FACTOR = 5.0;
 
-    bool fEnabled = true;
-
-    bool CheckBlock(int nHeight, const uint256& hash)
+    bool CCheckpoints::CheckBlock(int nHeight, const uint256& hash) const
     {
         if (!fEnabled)
             return true;
 
-        const MapCheckpoints& checkpoints = *Params().Checkpoints().mapCheckpoints;
-
-        MapCheckpoints::const_iterator i = checkpoints.find(nHeight);
-        if (i == checkpoints.end()) return true;
+        MapCheckpoints::const_iterator i = checkpointData.mapCheckpoints.find(nHeight);
+        if (i == checkpointData.mapCheckpoints.end()) return true;
         return hash == i->second;
     }
 
     //! Guess how far we are in the verification process at the given block index
-    double GuessVerificationProgress(CBlockIndex *pindex, bool fSigchecks) {
+    double CCheckpoints::GuessVerificationProgress(CBlockIndex *pindex, bool fSigchecks) const {
         if (pindex==NULL)
             return 0.0;
 
@@ -51,18 +44,16 @@ namespace Checkpoints {
         // Work is defined as: 1.0 per transaction before the last checkpoint, and
         // fSigcheckVerificationFactor per transaction after.
 
-        const CCheckpointData &data = Params().Checkpoints();
-
-        if (pindex->nChainTx <= data.nTransactionsLastCheckpoint) {
+        if (pindex->nChainTx <= checkpointData.nTransactionsLastCheckpoint) {
             double nCheapBefore = pindex->nChainTx;
-            double nCheapAfter = data.nTransactionsLastCheckpoint - pindex->nChainTx;
-            double nExpensiveAfter = (nNow - data.nTimeLastCheckpoint)/86400.0*data.fTransactionsPerDay;
+            double nCheapAfter = checkpointData.nTransactionsLastCheckpoint - pindex->nChainTx;
+            double nExpensiveAfter = (nNow - checkpointData.nTimeLastCheckpoint)/86400.0*checkpointData.fTransactionsPerDay;
             fWorkBefore = nCheapBefore;
             fWorkAfter = nCheapAfter + nExpensiveAfter*fSigcheckVerificationFactor;
         } else {
-            double nCheapBefore = data.nTransactionsLastCheckpoint;
-            double nExpensiveBefore = pindex->nChainTx - data.nTransactionsLastCheckpoint;
-            double nExpensiveAfter = (nNow - pindex->GetBlockTime())/86400.0*data.fTransactionsPerDay;
+            double nCheapBefore = checkpointData.nTransactionsLastCheckpoint;
+            double nExpensiveBefore = pindex->nChainTx - checkpointData.nTransactionsLastCheckpoint;
+            double nExpensiveAfter = (nNow - pindex->GetBlockTime())/86400.0*checkpointData.fTransactionsPerDay;
             fWorkBefore = nCheapBefore + nExpensiveBefore*fSigcheckVerificationFactor;
             fWorkAfter = nExpensiveAfter*fSigcheckVerificationFactor;
         }
@@ -70,31 +61,10 @@ namespace Checkpoints {
         return fWorkBefore / (fWorkBefore + fWorkAfter);
     }
 
-    int GetTotalBlocksEstimate()
+    int CCheckpoints::GetTotalBlocksEstimate() const
     {
         if (!fEnabled)
             return 0;
 
-        const MapCheckpoints& checkpoints = *Params().Checkpoints().mapCheckpoints;
-
-        return checkpoints.rbegin()->first;
+        return checkpointData.mapCheckpoints.rbegin()->first;
     }
-
-    CBlockIndex* GetLastCheckpoint()
-    {
-        if (!fEnabled)
-            return NULL;
-
-        const MapCheckpoints& checkpoints = *Params().Checkpoints().mapCheckpoints;
-
-        BOOST_REVERSE_FOREACH(const MapCheckpoints::value_type& i, checkpoints)
-        {
-            const uint256& hash = i.second;
-            BlockMap::const_iterator t = mapBlockIndex.find(hash);
-            if (t != mapBlockIndex.end())
-                return t->second;
-        }
-        return NULL;
-    }
-
-} // namespace Checkpoints
