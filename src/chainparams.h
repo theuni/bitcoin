@@ -135,6 +135,36 @@ public:
 };
 
 
+class CMainParams : public CChainParams {
+public:
+    CMainParams();
+    const Checkpoints::CCheckpointData& Checkpoints() const;
+};
+
+class CTestNetParams : public CMainParams {
+public:
+    CTestNetParams();
+    const Checkpoints::CCheckpointData& Checkpoints() const;
+};
+
+class CRegTestParams : public CTestNetParams {
+public:
+    CRegTestParams();
+    const Checkpoints::CCheckpointData& Checkpoints() const;
+};
+
+class CUnitTestParams : public CMainParams, public CModifiableParams {
+public:
+    CUnitTestParams();
+    void setSubsidyHalvingInterval(int anSubsidyHalvingInterval);
+    void setEnforceBlockUpgradeMajority(int anEnforceBlockUpgradeMajority);
+    void setRejectBlockOutdatedMajority(int anRejectBlockOutdatedMajority);
+    void setToCheckBlockUpgradeMajority(int anToCheckBlockUpgradeMajority);
+    void setDefaultCheckMemPool(bool aDefaultCheckMemPool);
+    void setAllowMinDifficultyBlocks(bool aAllowMinDifficultyBlocks);
+    void setSkipProofOfWorkCheck(bool aSkipProofOfWorkCheck);
+};
+
 /**
  * Return the currently selected parameters. This won't change after app startup
  * outside of the unit tests.
