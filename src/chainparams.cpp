@@ -97,9 +97,7 @@ static const Checkpoints::CCheckpointData dataRegtest = {
         0
     };
 
-class CMainParams : public CChainParams {
-public:
-    CMainParams() {
+    CMainParams::CMainParams() {
         strNetworkID = "main";
         consensus.nSubsidyHalvingInterval = 210000;
         consensus.nMajorityEnforceBlockUpgrade = 750;
@@ -173,19 +171,16 @@ public:
         fTestnetToBeDeprecatedFieldRPC = false;
     }
 
-    const Checkpoints::CCheckpointData& Checkpoints() const 
+    const Checkpoints::CCheckpointData& CMainParams::Checkpoints() const
     {
         return data;
     }
-};
 static CMainParams mainParams;
 
 /**
  * Testnet (v3)
  */
-class CTestNetParams : public CMainParams {
-public:
-    CTestNetParams() {
+    CTestNetParams::CTestNetParams() {
         strNetworkID = "test";
         consensus.nMajorityEnforceBlockUpgrade = 51;
         consensus.nMajorityRejectBlockOutdated = 75;
@@ -227,19 +222,16 @@ public:
         fMineBlocksOnDemand = false;
         fTestnetToBeDeprecatedFieldRPC = true;
     }
-    const Checkpoints::CCheckpointData& Checkpoints() const 
+    const Checkpoints::CCheckpointData& CTestNetParams::Checkpoints() const
     {
         return dataTestnet;
     }
-};
 static CTestNetParams testNetParams;
 
 /**
  * Regression test
  */
-class CRegTestParams : public CTestNetParams {
-public:
-    CRegTestParams() {
+    CRegTestParams::CRegTestParams() {
         strNetworkID = "regtest";
         consensus.nSubsidyHalvingInterval = 150;
         consensus.nMajorityEnforceBlockUpgrade = 750;
@@ -268,11 +260,10 @@ public:
         fMineBlocksOnDemand = true;
         fTestnetToBeDeprecatedFieldRPC = false;
     }
-    const Checkpoints::CCheckpointData& Checkpoints() const 
+    const Checkpoints::CCheckpointData& CRegTestParams::Checkpoints() const
     {
         return dataRegtest;
     }
-};
 static CRegTestParams regTestParams;
 
 static CChainParams *pCurrentParams = 0;

@@ -98,6 +98,24 @@ protected:
     bool fTestnetToBeDeprecatedFieldRPC;
 };
 
+class CMainParams : public CChainParams {
+public:
+    CMainParams();
+    const Checkpoints::CCheckpointData& Checkpoints() const;
+};
+
+class CTestNetParams : public CMainParams {
+public:
+    CTestNetParams();
+    const Checkpoints::CCheckpointData& Checkpoints() const;
+};
+
+class CRegTestParams : public CTestNetParams {
+public:
+    CRegTestParams();
+    const Checkpoints::CCheckpointData& Checkpoints() const;
+};
+
 /**
  * Return the currently selected parameters. This won't change after app startup
  * outside of the unit tests.
