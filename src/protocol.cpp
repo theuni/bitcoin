@@ -6,7 +6,7 @@
 #include "protocol.h"
 
 #include "chainparams.h"
-#include "util.h"
+#include "tinyformat.h"
 #include "utilstrencodings.h"
 
 #ifndef WIN32
@@ -66,7 +66,6 @@ bool CMessageHeader::IsValid() const
     // Message size
     if (nMessageSize > MAX_SIZE)
     {
-        LogPrintf("CMessageHeader::IsValid() : (%s, %u bytes) nMessageSize > MAX_SIZE\n", GetCommand(), nMessageSize);
         return false;
     }
 
