@@ -11,6 +11,7 @@
 
 #include "compat.h"
 #include "serialize.h"
+#include "version.h"
 
 #include <stdint.h>
 #include <string>
@@ -166,6 +167,55 @@ class CService : public CNetAddr
             if (ser_action.ForRead())
                  port = ntohs(portN);
         }
+};
+
+/** nServices flags */
+enum {
+    NODE_NETWORK = (1 << 0),
+
+    // Bits 24-31 are reserved for temporary experiments. Just pick a bit that
+    // isn't getting used, or one not being used much, and notify the
+    // bitcoin-development mailing list. Remember that service bits are just
+    // unauthenticated advertisements, so your code must be robust against
+    // collisions and other cases where nodes may be advertising a service they
+    // do not actually support. Other service bits should be allocated via the
+    // BIP process.
+};
+
+/** A CService with information about it as peer */
+class CAddress : public CService
+{
+public:
+    CAddress();
+    explicit CAddress(CService ipIn, uint64_t nServicesIn = NODE_NETWORK);
+
+    void Init();
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    {
+        if (ser_action.ForRead())
+            Init();
+        if (nType & SER_DISK)
+            READWRITE(nVersion);
+        if ((nType & SER_DISK) ||
+            (nVersion >= CADDR_TIME_VERSION && !(nType & SER_GETHASH)))
+            READWRITE(nTime);
+        READWRITE(nServices);
+        READWRITE(*(CService*)this);
+    }
+
+    // TODO: make private (improves encapsulation)
+public:
+    uint64_t nServices;
+
+    // disk and network only
+    unsigned int nTime;
+
+    // memory only
+    int64_t nLastTry;
 };
 
 typedef CService proxyType;
