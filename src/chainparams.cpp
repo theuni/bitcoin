@@ -27,7 +27,7 @@ using namespace std;
  *    timestamp before)
  * + Contains no strange transactions
  */
-static Checkpoints::MapCheckpoints mapCheckpoints =
+static CCheckpoints::MapCheckpoints mapCheckpoints =
         boost::assign::map_list_of
         ( 11111, uint256S("0x0000000069e244f73d78e8fd29ba2fd2ed618bd6fa2ee92559f542fdb26e7c1d"))
         ( 33333, uint256S("0x000000002dd5588a74784eaa7ab0507a18ad16a236e7b1ce69f00d7ddfb5d0a6"))
@@ -43,31 +43,31 @@ static Checkpoints::MapCheckpoints mapCheckpoints =
         (279000, uint256S("0x0000000000000001ae8c72a0b0c301f67e3afca10e819efa9041e458e9bd7e40"))
         (295000, uint256S("0x00000000000000004d9b4ef50f0f9d686fd69db2e03af35a100370c64632a983"))
         ;
-static const Checkpoints::CCheckpointData data = {
-        &mapCheckpoints,
+static const CCheckpoints::CCheckpointData dataMainnet = {
+        mapCheckpoints,
         1397080064, // * UNIX timestamp of last checkpoint block
         36544669,   // * total number of transactions between genesis and last checkpoint
                     //   (the tx=... number in the SetBestChain debug.log lines)
         60000.0     // * estimated number of transactions per day after checkpoint
     };
 
-static Checkpoints::MapCheckpoints mapCheckpointsTestnet =
+static CCheckpoints::MapCheckpoints mapCheckpointsTestnet =
         boost::assign::map_list_of
         ( 546, uint256S("000000002a936ca763904c3c35fce2f3556c559c0214345d31b1bcebf76acb70"))
         ;
-static const Checkpoints::CCheckpointData dataTestnet = {
-        &mapCheckpointsTestnet,
+static const CCheckpoints::CCheckpointData dataTestnet = {
+        mapCheckpointsTestnet,
         1337966069,
         1488,
         300
     };
 
-static Checkpoints::MapCheckpoints mapCheckpointsRegtest =
+static CCheckpoints::MapCheckpoints mapCheckpointsRegtest =
         boost::assign::map_list_of
         ( 0, uint256S("0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206"))
         ;
-static const Checkpoints::CCheckpointData dataRegtest = {
-        &mapCheckpointsRegtest,
+static const CCheckpoints::CCheckpointData dataRegtest = {
+        mapCheckpointsRegtest,
         0,
         0,
         0
@@ -137,6 +137,8 @@ static const Checkpoints::CCheckpointData dataRegtest = {
         base58Prefixes[EXT_PUBLIC_KEY] = boost::assign::list_of(0x04)(0x88)(0xB2)(0x1E).convert_to_container<std::vector<unsigned char> >();
         base58Prefixes[EXT_SECRET_KEY] = boost::assign::list_of(0x04)(0x88)(0xAD)(0xE4).convert_to_container<std::vector<unsigned char> >();
 
+        checkpoints = CCheckpoints(dataMainnet);
+
         vFixedSeeds = std::vector<SeedSpec6>(pnSeed6_main, pnSeed6_main + ARRAYLEN(pnSeed6_main));
 
         fRequireRPCPassword = true;
@@ -147,10 +149,6 @@ static const Checkpoints::CCheckpointData dataRegtest = {
         fTestnetToBeDeprecatedFieldRPC = false;
     }
 
-    const Checkpoints::CCheckpointData& CMainParams::Checkpoints() const
-    {
-        return data;
-    }
 static CMainParams mainParams;
 
 /**
@@ -189,6 +187,8 @@ static CMainParams mainParams;
         base58Prefixes[EXT_PUBLIC_KEY] = boost::assign::list_of(0x04)(0x35)(0x87)(0xCF).convert_to_container<std::vector<unsigned char> >();
         base58Prefixes[EXT_SECRET_KEY] = boost::assign::list_of(0x04)(0x35)(0x83)(0x94).convert_to_container<std::vector<unsigned char> >();
 
+        checkpoints = CCheckpoints(dataTestnet);
+
         vFixedSeeds = std::vector<SeedSpec6>(pnSeed6_test, pnSeed6_test + ARRAYLEN(pnSeed6_test));
 
         fRequireRPCPassword = true;
@@ -197,10 +197,6 @@ static CMainParams mainParams;
         fRequireStandard = false;
         fMineBlocksOnDemand = false;
         fTestnetToBeDeprecatedFieldRPC = true;
-    }
-    const Checkpoints::CCheckpointData& CTestNetParams::Checkpoints() const
-    {
-        return dataTestnet;
     }
 static CTestNetParams testNetParams;
 
@@ -229,16 +225,14 @@ static CTestNetParams testNetParams;
         vFixedSeeds.clear(); //! Regtest mode doesn't have any fixed seeds.
         vSeeds.clear();  //! Regtest mode doesn't have any DNS seeds.
 
+        checkpoints = CCheckpoints(dataRegtest);
+
         fRequireRPCPassword = false;
         fMiningRequiresPeers = false;
         fDefaultConsistencyChecks = true;
         fRequireStandard = false;
         fMineBlocksOnDemand = true;
         fTestnetToBeDeprecatedFieldRPC = false;
-    }
-    const Checkpoints::CCheckpointData& CRegTestParams::Checkpoints() const
-    {
-        return dataRegtest;
     }
 static CRegTestParams regTestParams;
 
