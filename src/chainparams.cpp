@@ -10,8 +10,6 @@
 
 #include <assert.h>
 
-#include <boost/assign/list_of.hpp>
-
 using namespace std;
 
 #include "chainparamsseeds.h"
@@ -123,11 +121,19 @@ static const CCheckpoints::CCheckpointData dataRegtest = {
         points.insert(pairtype(279000, uint256S("0x0000000000000001ae8c72a0b0c301f67e3afca10e819efa9041e458e9bd7e40")));
         points.insert(pairtype(295000, uint256S("0x00000000000000004d9b4ef50f0f9d686fd69db2e03af35a100370c64632a983")));
 
-        base58Prefixes[PUBKEY_ADDRESS] = boost::assign::list_of(0);
-        base58Prefixes[SCRIPT_ADDRESS] = boost::assign::list_of(5);
-        base58Prefixes[SECRET_KEY] =     boost::assign::list_of(128);
-        base58Prefixes[EXT_PUBLIC_KEY] = boost::assign::list_of(0x04)(0x88)(0xB2)(0x1E);
-        base58Prefixes[EXT_SECRET_KEY] = boost::assign::list_of(0x04)(0x88)(0xAD)(0xE4);
+        base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,0);
+        base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,5);
+        base58Prefixes[SECRET_KEY] =     std::vector<unsigned char>(1,128);
+
+        base58Prefixes[EXT_PUBLIC_KEY] = std::vector<unsigned char>(1,0x04);
+        base58Prefixes[EXT_PUBLIC_KEY].push_back(0x88);
+        base58Prefixes[EXT_PUBLIC_KEY].push_back(0xB2);
+        base58Prefixes[EXT_PUBLIC_KEY].push_back(0x1E);
+
+        base58Prefixes[EXT_SECRET_KEY] = std::vector<unsigned char>(1,0x04);
+        base58Prefixes[EXT_SECRET_KEY].push_back(0x88);
+        base58Prefixes[EXT_SECRET_KEY].push_back(0xAD);
+        base58Prefixes[EXT_SECRET_KEY].push_back(0xE4);
 
         vFixedSeeds = std::vector<SeedSpec6>(pnSeed6_main, pnSeed6_main+(sizeof(pnSeed6_main) / sizeof(pnSeed6_main[0])));
 
@@ -176,11 +182,20 @@ static const CCheckpoints::CCheckpointData dataRegtest = {
         CCheckpoints::MapCheckpoints& points = checkpoints.checkpointData.mapCheckpoints;
         points.insert( pairtype( 546, uint256S("000000002a936ca763904c3c35fce2f3556c559c0214345d31b1bcebf76acb70")));
 
-        base58Prefixes[PUBKEY_ADDRESS] = boost::assign::list_of(111);
-        base58Prefixes[SCRIPT_ADDRESS] = boost::assign::list_of(196);
-        base58Prefixes[SECRET_KEY]     = boost::assign::list_of(239);
-        base58Prefixes[EXT_PUBLIC_KEY] = boost::assign::list_of(0x04)(0x35)(0x87)(0xCF);
-        base58Prefixes[EXT_SECRET_KEY] = boost::assign::list_of(0x04)(0x35)(0x83)(0x94);
+
+        base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,111);
+        base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,196);
+        base58Prefixes[SECRET_KEY] =     std::vector<unsigned char>(1,239);
+
+        base58Prefixes[EXT_PUBLIC_KEY] = std::vector<unsigned char>(1,0x04);
+        base58Prefixes[EXT_PUBLIC_KEY].push_back(0x35);
+        base58Prefixes[EXT_PUBLIC_KEY].push_back(0x87);
+        base58Prefixes[EXT_PUBLIC_KEY].push_back(0xCF);
+
+        base58Prefixes[EXT_SECRET_KEY] = std::vector<unsigned char>(1,0x04);
+        base58Prefixes[EXT_SECRET_KEY].push_back(0x35);
+        base58Prefixes[EXT_SECRET_KEY].push_back(0x83);
+        base58Prefixes[EXT_SECRET_KEY].push_back(0x94);
 
         vFixedSeeds = std::vector<SeedSpec6>(pnSeed6_test, pnSeed6_test+(sizeof(pnSeed6_test) / sizeof(pnSeed6_test[0])));
 
