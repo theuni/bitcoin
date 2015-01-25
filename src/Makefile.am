@@ -174,8 +174,6 @@ libbitcoin_server_la_SOURCES = \
   addrman.cpp \
   alert.cpp \
   bloom.cpp \
-  chain.cpp \
-  checkpoints.cpp \
   init.cpp \
   leveldbwrapper.cpp \
   main.cpp \
@@ -183,7 +181,6 @@ libbitcoin_server_la_SOURCES = \
   miner.cpp \
   net.cpp \
   noui.cpp \
-  pow.cpp \
   rest.cpp \
   rpcblockchain.cpp \
   rpcmining.cpp \
@@ -247,10 +244,9 @@ libbitcoin_common_la_CPPFLAGS = $(BITCOIN_INCLUDES)
 libbitcoin_common_la_LIBADD = $(LIBBITCOIN_CONSENSUS_INT)
 libbitcoin_common_la_SOURCES = \
   allocators.cpp \
-  arith_uint256.cpp \
   amount.cpp \
   base58.cpp \
-  chainparams.cpp \
+  chainparamsglobals.cpp \
   coins.cpp \
   compressor.cpp \
   core_read.cpp \
@@ -258,7 +254,6 @@ libbitcoin_common_la_SOURCES = \
   key.cpp \
   keystore.cpp \
   netbase.cpp \
-  protocol.cpp \
   script/sign.cpp \
   script/standard.cpp \
   $(BITCOIN_CORE_H)
@@ -269,7 +264,7 @@ libbitcoin_common_la_SOURCES = \
 libbitcoin_util_la_CXXFLAGS = -shared
 libbitcoin_util_la_CPPFLAGS = $(BITCOIN_INCLUDES)
 libbitcoin_util_la_SOURCES = \
-  chainparamsbase.cpp \
+  chainparamsbaseglobals.cpp \
   clientversion.cpp \
   compat/glibc_sanity.cpp \
   compat/glibcxx_sanity.cpp \
@@ -359,13 +354,19 @@ endif
 bitcoin_cli_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
 
 libbitcoinconsensus_int_la_SOURCES = \
+  arith_uint256.cpp \
+  chain.cpp \
+  chainparams.cpp \
+  checkpoints.cpp \
   cleanse.cpp \
   consensus/consensus.cpp \
   eccryptoverify.cpp \
   ecwrapper.cpp \
   hash.cpp \
+  pow.cpp \
   primitives/block.cpp \
   primitives/transaction.cpp \
+  protocol.cpp \
   pubkey.cpp \
   script/interpreter.cpp \
   script/script.cpp \
@@ -384,7 +385,7 @@ if BUILD_BITCOIN_LIBS
 include_HEADERS = script/bitcoinconsensus.h
 libbitcoinconsensus_la_SOURCES = script/bitcoinconsensus.cpp
 
-libbitcoinconsensus_la_LDFLAGS = -no-undefined $(RELDFLAGS)
+libbitcoinconsensus_la_LDFLAGS = -no-undefined $(RELDFLAGS) -Wl,--no-undefined
 libbitcoinconsensus_la_LIBADD = $(LIBBITCOIN_CONSENSUS_INT)
 libbitcoinconsensus_la_CPPFLAGS = -DBUILD_BITCOIN_INTERNAL
 
