@@ -8,34 +8,33 @@
 #include "arith_uint256.h"
 #include "chain.h"
 #include "chainparams.h"
-#include "chainparamsglobals.h"
 #include "primitives/block.h"
 #include "uint256.h"
 #include "util.h"
 
-unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock)
+unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock, const CChainParams& params)
 {
-    unsigned int nProofOfWorkLimit = Params().ProofOfWorkLimit().GetCompact();
+    unsigned int nProofOfWorkLimit = params.ProofOfWorkLimit().GetCompact();
 
     // Genesis block
     if (pindexLast == NULL)
         return nProofOfWorkLimit;
 
     // Only change once per difficulty adjustment interval
-    if ((pindexLast->nHeight+1) % Params().DifficultyAdjustmentInterval() != 0)
+    if ((pindexLast->nHeight+1) % params.DifficultyAdjustmentInterval() != 0)
     {
-        if (Params().AllowMinDifficultyBlocks())
+        if (params.AllowMinDifficultyBlocks())
         {
             // Special difficulty rule for testnet:
             // If the new block's timestamp is more than 2* 10 minutes
             // then allow mining of a min-difficulty block.
-            if (pblock->GetBlockTime() > pindexLast->GetBlockTime() + Params().TargetSpacing()*2)
+            if (pblock->GetBlockTime() > pindexLast->GetBlockTime() + params.TargetSpacing()*2)
                 return nProofOfWorkLimit;
             else
             {
                 // Return the last non-special-min-difficulty-rules-block
                 const CBlockIndex* pindex = pindexLast;
-                while (pindex->pprev && pindex->nHeight % Params().DifficultyAdjustmentInterval() != 0 && pindex->nBits == nProofOfWorkLimit)
+                while (pindex->pprev && pindex->nHeight % params.DifficultyAdjustmentInterval() != 0 && pindex->nBits == nProofOfWorkLimit)
                     pindex = pindex->pprev;
                 return pindex->nBits;
             }
@@ -45,17 +44,17 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
 
     // Go back by what we want to be 14 days worth of blocks
     const CBlockIndex* pindexFirst = pindexLast;
-    for (int i = 0; pindexFirst && i < Params().DifficultyAdjustmentInterval()-1; i++)
+    for (int i = 0; pindexFirst && i < params.DifficultyAdjustmentInterval()-1; i++)
         pindexFirst = pindexFirst->pprev;
     assert(pindexFirst);
 
     // Limit adjustment step
     int64_t nActualTimespan = pindexLast->GetBlockTime() - pindexFirst->GetBlockTime();
     LogPrintf("  nActualTimespan = %d  before bounds\n", nActualTimespan);
-    if (nActualTimespan < Params().TargetTimespan()/4)
-        nActualTimespan = Params().TargetTimespan()/4;
-    if (nActualTimespan > Params().TargetTimespan()*4)
-        nActualTimespan = Params().TargetTimespan()*4;
+    if (nActualTimespan < params.TargetTimespan()/4)
+        nActualTimespan = params.TargetTimespan()/4;
+    if (nActualTimespan > params.TargetTimespan()*4)
+        nActualTimespan = params.TargetTimespan()*4;
 
     // Retarget
     arith_uint256 bnNew;
@@ -63,33 +62,33 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
     bnNew.SetCompact(pindexLast->nBits);
     bnOld = bnNew;
     bnNew *= nActualTimespan;
-    bnNew /= Params().TargetTimespan();
+    bnNew /= params.TargetTimespan();
 
-    if (bnNew > Params().ProofOfWorkLimit())
-        bnNew = Params().ProofOfWorkLimit();
+    if (bnNew > params.ProofOfWorkLimit())
+        bnNew = params.ProofOfWorkLimit();
 
     /// debug print
     LogPrintf("GetNextWorkRequired RETARGET\n");
-    LogPrintf("Params().TargetTimespan() = %d    nActualTimespan = %d\n", Params().TargetTimespan(), nActualTimespan);
+    LogPrintf("params.TargetTimespan() = %d    nActualTimespan = %d\n", params.TargetTimespan(), nActualTimespan);
     LogPrintf("Before: %08x  %s\n", pindexLast->nBits, bnOld.ToString());
     LogPrintf("After:  %08x  %s\n", bnNew.GetCompact(), bnNew.ToString());
 
     return bnNew.GetCompact();
 }
 
-bool CheckProofOfWork(uint256 hash, unsigned int nBits)
+bool CheckProofOfWork(uint256 hash, unsigned int nBits, const CChainParams& params)
 {
     bool fNegative;
     bool fOverflow;
     arith_uint256 bnTarget;
 
-    if (Params().SkipProofOfWorkCheck())
+    if (params.SkipProofOfWorkCheck())
        return true;
 
     bnTarget.SetCompact(nBits, &fNegative, &fOverflow);
 
     // Check range
-    if (fNegative || bnTarget == 0 || fOverflow || bnTarget > Params().ProofOfWorkLimit())
+    if (fNegative || bnTarget == 0 || fOverflow || bnTarget > params.ProofOfWorkLimit())
         return error("CheckProofOfWork(): nBits below minimum work");
 
     // Check proof of work matches claimed amount
