@@ -8,6 +8,7 @@
 #include "chainparams.h"
 #include "tinyformat.h"
 #include "utilstrencodings.h"
+#include "chainparamsglobals.h"
 
 #ifndef WIN32
 # include <arpa/inet.h>

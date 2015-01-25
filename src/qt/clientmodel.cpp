@@ -9,6 +9,7 @@
 
 #include "alert.h"
 #include "chainparams.h"
+#include "chainparamsglobals.h"
 #include "checkpoints.h"
 #include "clientversion.h"
 #include "main.h"

@@ -9,6 +9,7 @@
 #include "primitives/transaction.h"
 #include "chain.h"
 #include "chainparams.h"
+#include "chainparamsglobals.h"
 #include "consensus/validation.h"
 #include "hash.h"
 #include "main.h"

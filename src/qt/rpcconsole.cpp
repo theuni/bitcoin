@@ -11,6 +11,7 @@
 #include "scicon.h"
 
 #include "chainparams.h"
+#include "chainparamsglobals.h"
 #include "rpcserver.h"
 #include "rpcclient.h"
 #include "util.h"

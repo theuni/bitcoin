@@ -5,6 +5,7 @@
 
 #include "chain.h"
 #include "chainparams.h"
+#include "chainparamsglobals.h"
 #include "checkpoints.h"
 #include "consensus/validation.h"
 #include "main.h"

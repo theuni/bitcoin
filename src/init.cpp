@@ -12,6 +12,7 @@
 #include "addrman.h"
 #include "amount.h"
 #include "chainparams.h"
+#include "chainparamsglobals.h"
 #include "checkpoints.h"
 #include "compat/sanity.h"
 #include "consensus/validation.h"

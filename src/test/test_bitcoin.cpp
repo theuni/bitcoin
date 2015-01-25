@@ -5,6 +5,7 @@
 #define BOOST_TEST_MODULE Bitcoin Test Suite
 
 #include "chainparams.h"
+#include "chainparamsglobals.h"
 #include "main.h"
 #include "random.h"
 #include "txdb.h"

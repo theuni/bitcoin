@@ -4,6 +4,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "chainparams.h"
+#include "chainparamsglobals.h"
 #include "clientversion.h"
 #include "init.h"
 #include "noui.h"

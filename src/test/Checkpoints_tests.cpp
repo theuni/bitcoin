@@ -7,6 +7,7 @@
 //
 
 #include "checkpoints.h"
+#include "chainparamsglobals.h"
 
 #include "uint256.h"
 

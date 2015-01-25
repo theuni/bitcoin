@@ -10,6 +10,7 @@
 #include "amount.h"
 #include "arith_uint256.h"
 #include "chainparams.h"
+#include "chainparamsglobals.h"
 #include "checkpoints.h"
 #include "checkqueue.h"
 #include "consensus/validation.h"
