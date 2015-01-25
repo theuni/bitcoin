@@ -5,6 +5,7 @@
 
 #include "amount.h"
 #include "chainparams.h"
+#include "chainparamsglobals.h"
 #include "core_io.h"
 #include "init.h"
 #include "net.h"

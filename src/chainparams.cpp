@@ -5,8 +5,6 @@
 
 #include "chainparams.h"
 
-#include "random.h"
-#include "util.h"
 #include "utilstrencodings.h"
 
 #include <assert.h>
@@ -142,8 +140,6 @@ static const CCheckpoints::CCheckpointData dataRegtest = {
         fTestnetToBeDeprecatedFieldRPC = false;
     }
 
-static CMainParams mainParams;
-
 /**
  * Testnet (v3)
  */
@@ -195,7 +191,6 @@ static CMainParams mainParams;
         fMineBlocksOnDemand = false;
         fTestnetToBeDeprecatedFieldRPC = true;
     }
-static CTestNetParams testNetParams;
 
 /**
  * Regression test
@@ -236,7 +231,6 @@ static CTestNetParams testNetParams;
         fMineBlocksOnDemand = true;
         fTestnetToBeDeprecatedFieldRPC = false;
     }
-static CRegTestParams regTestParams;
 
 /**
  * Unit test
@@ -278,50 +272,3 @@ static CRegTestParams regTestParams;
     void CUnitTestParams::setAllowMinDifficultyBlocks(bool afAllowMinDifficultyBlocks) {  fAllowMinDifficultyBlocks=afAllowMinDifficultyBlocks; }
     void CUnitTestParams::setSkipProofOfWorkCheck(bool afSkipProofOfWorkCheck) { fSkipProofOfWorkCheck = afSkipProofOfWorkCheck; }
 
-static CUnitTestParams unitTestParams;
-
-
-static CChainParams *pCurrentParams = 0;
-
-CModifiableParams *ModifiableParams()
-{
-   assert(pCurrentParams);
-   assert(pCurrentParams==&unitTestParams);
-   return (CModifiableParams*)&unitTestParams;
-}
-
-const CChainParams &Params() {
-    assert(pCurrentParams);
-    return *pCurrentParams;
-}
-
-CChainParams &Params(CBaseChainParams::Network network) {
-    switch (network) {
-        case CBaseChainParams::MAIN:
-            return mainParams;
-        case CBaseChainParams::TESTNET:
-            return testNetParams;
-        case CBaseChainParams::REGTEST:
-            return regTestParams;
-        case CBaseChainParams::UNITTEST:
-            return unitTestParams;
-        default:
-            assert(false && "Unimplemented network");
-            return mainParams;
-    }
-}
-
-void SelectParams(CBaseChainParams::Network network) {
-    SelectBaseParams(network);
-    pCurrentParams = &Params(network);
-}
-
-bool SelectParamsFromCommandLine()
-{
-    CBaseChainParams::Network network = NetworkIdFromCommandLine();
-    if (network == CBaseChainParams::MAX_NETWORK_TYPES)
-        return false;
-
-    SelectParams(network);
-    return true;
-}

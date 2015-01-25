@@ -7,7 +7,8 @@
 //
 
 
-
+#include "chainparams.h"
+#include "chainparamsglobals.h"
 #include "keystore.h"
 #include "main.h"
 #include "net.h"

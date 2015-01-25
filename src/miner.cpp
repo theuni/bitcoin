@@ -7,6 +7,9 @@
 
 #include "amount.h"
 #include "primitives/transaction.h"
+#include "chain.h"
+#include "chainparams.h"
+#include "chainparamsglobals.h"
 #include "hash.h"
 #include "main.h"
 #include "net.h"

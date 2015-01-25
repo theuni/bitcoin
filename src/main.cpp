@@ -9,6 +9,7 @@
 #include "addrman.h"
 #include "alert.h"
 #include "chainparams.h"
+#include "chainparamsglobals.h"
 #include "checkpoints.h"
 #include "checkqueue.h"
 #include "init.h"

@@ -16,6 +16,7 @@
 
 #include "allocators/zeroafterfree.h"
 #include "chainparams.h"
+#include "chainparamsglobals.h"
 #include "key.h"
 #include "pubkey.h"
 #include "script/script.h"

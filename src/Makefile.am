@@ -237,6 +237,7 @@ libbitcoin_common_a_SOURCES = \
   amount.cpp \
   base58.cpp \
   chainparams.cpp \
+  chainparamsglobals.cpp \
   coins.cpp \
   compressor.cpp \
   primitives/block.cpp \
@@ -264,7 +265,7 @@ libbitcoin_common_a_SOURCES = \
 libbitcoin_util_a_CPPFLAGS = $(BITCOIN_INCLUDES)
 libbitcoin_util_a_SOURCES = \
   allocators/pagelocker.cpp \
-  chainparamsbase.cpp \
+  chainparamsbaseglobals.cpp \
   clientversion.cpp \
   compat/glibc_sanity.cpp \
   compat/glibcxx_sanity.cpp \
