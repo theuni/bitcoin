@@ -9,8 +9,6 @@
 
 #include <assert.h>
 
-#include <boost/assign/list_of.hpp>
-
 using namespace std;
 
 #include "chainparamsseeds.h"
@@ -109,9 +107,16 @@ static const CCheckpoints::CCheckpointData dataRegtest = {
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,0);
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,5);
         base58Prefixes[SECRET_KEY] =     std::vector<unsigned char>(1,128);
-        base58Prefixes[EXT_PUBLIC_KEY] = boost::assign::list_of(0x04)(0x88)(0xB2)(0x1E).convert_to_container<std::vector<unsigned char> >();
-        base58Prefixes[EXT_SECRET_KEY] = boost::assign::list_of(0x04)(0x88)(0xAD)(0xE4).convert_to_container<std::vector<unsigned char> >();
 
+        base58Prefixes[EXT_PUBLIC_KEY] = std::vector<unsigned char>(1,0x04);
+        base58Prefixes[EXT_PUBLIC_KEY].push_back(0x88);
+        base58Prefixes[EXT_PUBLIC_KEY].push_back(0xB2);
+        base58Prefixes[EXT_PUBLIC_KEY].push_back(0x1E);
+
+        base58Prefixes[EXT_SECRET_KEY] = std::vector<unsigned char>(1,0x04);
+        base58Prefixes[EXT_SECRET_KEY].push_back(0x88);
+        base58Prefixes[EXT_SECRET_KEY].push_back(0xAD);
+        base58Prefixes[EXT_SECRET_KEY].push_back(0xE4);
         checkpoints = CCheckpoints(dataMainnet);
         CCheckpoints::MapCheckpoints& points = checkpoints.checkpointData.mapCheckpoints;
         points.insert(pairtype( 11111, uint256S("0x0000000069e244f73d78e8fd29ba2fd2ed618bd6fa2ee92559f542fdb26e7c1d")));
@@ -127,6 +132,7 @@ static const CCheckpoints::CCheckpointData dataRegtest = {
         points.insert(pairtype(250000, uint256S("0x000000000000003887df1f29024b06fc2200b55f8af8f35453d7be294df2d214")));
         points.insert(pairtype(279000, uint256S("0x0000000000000001ae8c72a0b0c301f67e3afca10e819efa9041e458e9bd7e40")));
         points.insert(pairtype(295000, uint256S("0x00000000000000004d9b4ef50f0f9d686fd69db2e03af35a100370c64632a983")));
+
 
         vFixedSeeds = std::vector<SeedSpec6>(pnSeed6_main, pnSeed6_main + ARRAYLEN(pnSeed6_main));
 
@@ -174,8 +180,16 @@ static const CCheckpoints::CCheckpointData dataRegtest = {
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,111);
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,196);
         base58Prefixes[SECRET_KEY] =     std::vector<unsigned char>(1,239);
-        base58Prefixes[EXT_PUBLIC_KEY] = boost::assign::list_of(0x04)(0x35)(0x87)(0xCF).convert_to_container<std::vector<unsigned char> >();
-        base58Prefixes[EXT_SECRET_KEY] = boost::assign::list_of(0x04)(0x35)(0x83)(0x94).convert_to_container<std::vector<unsigned char> >();
+
+        base58Prefixes[EXT_PUBLIC_KEY] = std::vector<unsigned char>(1,0x04);
+        base58Prefixes[EXT_PUBLIC_KEY].push_back(0x35);
+        base58Prefixes[EXT_PUBLIC_KEY].push_back(0x87);
+        base58Prefixes[EXT_PUBLIC_KEY].push_back(0xCF);
+
+        base58Prefixes[EXT_SECRET_KEY] = std::vector<unsigned char>(1,0x04);
+        base58Prefixes[EXT_SECRET_KEY].push_back(0x35);
+        base58Prefixes[EXT_SECRET_KEY].push_back(0x83);
+        base58Prefixes[EXT_SECRET_KEY].push_back(0x94);
 
         checkpoints = CCheckpoints(dataTestnet);
         CCheckpoints::MapCheckpoints& points = checkpoints.checkpointData.mapCheckpoints;
