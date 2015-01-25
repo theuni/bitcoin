@@ -5,7 +5,6 @@
 
 #include "chainparams.h"
 
-#include "utilstrencodings.h"
 #include "utilstrhex.h"
 
 #include <assert.h>

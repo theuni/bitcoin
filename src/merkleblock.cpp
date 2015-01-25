@@ -7,7 +7,6 @@
 
 #include "consensus/consensus.h" // for MAX_BLOCK_SIZE
 #include "hash.h"
-#include "utilstrencodings.h"
 
 using namespace std;
 
