@@ -5,6 +5,7 @@
 
 #include "txdb.h"
 
+#include "chainparamsglobals.h"
 #include "hash.h"
 #include "main.h"
 #include "pow.h"
@@ -213,7 +214,7 @@ bool CBlockTreeDB::LoadBlockIndexGuts()
                 pindexNew->nStatus        = diskindex.nStatus;
                 pindexNew->nTx            = diskindex.nTx;
 
-                if (!CheckProofOfWork(pindexNew->GetBlockHash(), pindexNew->nBits))
+                if (!CheckProofOfWork(pindexNew->GetBlockHash(), pindexNew->nBits, Params()))
                     return error("LoadBlockIndex() : CheckProofOfWork failed: %s", pindexNew->ToString());
 
                 pcursor->Next();

@@ -12,11 +12,12 @@ class CBlockHeader;
 class CBlockIndex;
 class uint256;
 class arith_uint256;
+class CChainParams;
 
-unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock);
+unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock, const CChainParams& params);
 
 /** Check whether a block hash satisfies the proof-of-work requirement specified by nBits */
-bool CheckProofOfWork(uint256 hash, unsigned int nBits);
+bool CheckProofOfWork(uint256 hash, unsigned int nBits, const CChainParams& params);
 arith_uint256 GetBlockProof(const CBlockIndex& block);
 
 #endif // BITCOIN_POW_H
