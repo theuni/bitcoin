@@ -125,6 +125,7 @@ extern bool fIsBareMultisigStd;
 extern bool fCheckBlockIndex;
 extern unsigned int nCoinCacheSize;
 extern CFeeRate minRelayTxFee;
+extern bool fCheckpointsEnabled;
 
 /** Best header we've seen so far (used for getheaders queries' starting points). */
 extern CBlockIndex *pindexBestHeader;

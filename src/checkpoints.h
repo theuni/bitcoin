@@ -39,7 +39,6 @@ public:
     double GuessVerificationProgress(CBlockIndex* pindex, bool fSigchecks = true) const;
 
     CCheckpointData checkpointData;
-    static bool fEnabled;
 };
 
 #endif // BITCOIN_CHECKPOINTS_H

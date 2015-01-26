@@ -9,8 +9,6 @@
 
 #include <stdint.h>
 
-bool CCheckpoints::fEnabled = true;
-
     /**
      * How many times we expect transactions after the last checkpoint to
      * be slower. This number is a compromise, as it can't be accurate for
@@ -22,9 +20,6 @@ bool CCheckpoints::fEnabled = true;
 
     bool CCheckpoints::CheckBlock(int nHeight, const uint256& hash) const
     {
-        if (!fEnabled)
-            return true;
-
         MapCheckpoints::const_iterator i = checkpointData.mapCheckpoints.find(nHeight);
         if (i == checkpointData.mapCheckpoints.end()) return true;
         return hash == i->second;
@@ -62,8 +57,5 @@ bool CCheckpoints::fEnabled = true;
 
     int CCheckpoints::GetTotalBlocksEstimate() const
     {
-        if (!fEnabled)
-            return 0;
-
         return checkpointData.mapCheckpoints.rbegin()->first;
     }
