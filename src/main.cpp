@@ -53,6 +53,7 @@ bool fReindex = false;
 bool fTxIndex = false;
 bool fIsBareMultisigStd = true;
 unsigned int nCoinCacheSize = 5000;
+bool fCheckpointsEnabled = true;
 
 
 /** Fees smaller than this (in satoshi) are considered zero fee (for relaying and mining) */
@@ -1244,7 +1245,9 @@ CAmount GetBlockValue(int nHeight, const CAmount& nFees)
 bool IsInitialBlockDownload()
 {
     LOCK(cs_main);
-    if (fImporting || fReindex || chainActive.Height() < Params().Checkpoints().GetTotalBlocksEstimate())
+    if (fImporting || fReindex)
+        return true;
+    if (fCheckpointsEnabled && chainActive.Height() < Params().Checkpoints().GetTotalBlocksEstimate())
         return true;
     static bool lockIBDState = false;
     if (lockIBDState)
@@ -1747,7 +1750,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         return true;
     }
 
-    bool fScriptChecks = pindex->nHeight >= Params().Checkpoints().GetTotalBlocksEstimate();
+    bool fScriptChecks = !fCheckpointsEnabled || (pindex->nHeight >= Params().Checkpoints().GetTotalBlocksEstimate());
 
     // Do not allow blocks that contain transactions which 'overwrite' older transactions,
     // unless those are already completely spent.
@@ -2267,7 +2270,9 @@ bool ActivateBestChain(CValidationState &state, CBlock *pblock) {
         if (!fInitialDownload) {
             uint256 hashNewTip = pindexNewTip->GetBlockHash();
             // Relay inventory, but don't relay old inventory during initial block download.
-            int nBlockEstimate = Params().Checkpoints().GetTotalBlocksEstimate();
+            int nBlockEstimate = 0;
+            if (fCheckpointsEnabled)
+                nBlockEstimate = Params().Checkpoints().GetTotalBlocksEstimate();
             {
                 LOCK(cs_vNodes);
                 BOOST_FOREACH(CNode* pnode, vNodes)
@@ -2585,7 +2590,7 @@ bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bo
 
 CBlockIndex* GetLastCheckpoint()
 {
-    if (!Params().Checkpoints().fEnabled)
+    if (!fCheckpointsEnabled)
         return NULL;
 
     //const CCheckpoints::MapCheckpoints Params().Checkpoints().MapCheckpoints& checkpoints = *Params().Checkpoints().mapCheckpoints;
@@ -2622,7 +2627,7 @@ bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& sta
                              REJECT_INVALID, "time-too-old");
 
     // Check that the block chain matches the known block chain up to a checkpoint
-    if (Params().Checkpoints().CheckBlock(nHeight, hash))
+    if (fCheckpointsEnabled && !Params().Checkpoints().CheckBlock(nHeight, hash))
         return state.DoS(100, error("%s: rejected by checkpoint lock-in at %d", __func__, nHeight),
                          REJECT_CHECKPOINT, "checkpoint mismatch");
 
