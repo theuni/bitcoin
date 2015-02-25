@@ -3,10 +3,12 @@ $(package)_version=1.9.20140701
 $(package)_download_path=http://miniupnp.free.fr/files
 $(package)_file_name=$(package)-$($(package)_version).tar.gz
 $(package)_sha256_hash=26f3985bad7768b8483b793448ae49414cdc4451d0ec83e7c1944367e15f9f07
+$(package)_patches=bsd.patch
 
 define $(package)_set_vars
 $(package)_build_opts=CC="$($(package)_cc)"
 $(package)_build_opts_darwin=OS=Darwin
+$(package)_build_opts_freebsd=OS=FreeBSD
 $(package)_build_opts_mingw32=-f Makefile.mingw
 $(package)_build_env+=CFLAGS="$($(package)_cflags) $($(package)_cppflags)" AR="$($(package)_ar)"
 endef
@@ -15,6 +17,7 @@ define $(package)_preprocess_cmds
   mkdir dll && \
   $(build_SED) -e 's|MINIUPNPC_VERSION_STRING \"version\"|MINIUPNPC_VERSION_STRING \"$($(package)_version)\"|' -e 's|OS/version|$(host)|' miniupnpcstrings.h.in > miniupnpcstrings.h && \
   $(build_SED) -i.old "s|miniupnpcstrings.h: miniupnpcstrings.h.in wingenminiupnpcstrings|miniupnpcstrings.h: miniupnpcstrings.h.in|" Makefile.mingw && \
+  patch -p1 < $($(package)_patch_dir)/bsd.patch
 endef
 
 define $(package)_build_cmds

@@ -23,6 +23,7 @@ $(package)_archiver_darwin=$($(package)_libtool)
 $(package)_config_libraries=chrono,filesystem,program_options,system,thread,test
 $(package)_cxxflags=-fvisibility=hidden
 $(package)_cxxflags_linux=-fPIC
+$(package)_cxxflags_freebsd=-fPIC
 endef
 
 define $(package)_preprocess_cmds
