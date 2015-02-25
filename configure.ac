@@ -312,6 +312,14 @@ case $host in
    *linux*)
      TARGET_OS=linux
      ;;
+   *freebsd*)
+     TARGET_OS=freebsd
+     LEVELDB_TARGET_FLAGS="TARGET_OS=FreeBSD"
+     ;;
+   *openbsd*)
+     TARGET_OS=openbsd
+     LEVELDB_TARGET_FLAGS="TARGET_OS=OpenBSD"
+     ;;
    *)
      ;;
 esac
