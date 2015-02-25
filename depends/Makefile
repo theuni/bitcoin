@@ -96,12 +96,12 @@ $(host_prefix)/.stamp_$(final_build_id): | $(native_packages) $(packages)
 	$(AT)mkdir -p $(@D)
 	$(AT)echo copying packages: $|
 	$(AT)echo to: $(@D)
-	$(AT)cd $(@D); $(foreach package,$|, tar xf $($(package)_cached); )
+	$(AT)cd $(@D); $(foreach package,$|, $(build_TAR) xf $($(package)_cached); )
 	$(AT)touch $@
 
 $(host_prefix)/share/config.site : config.site.in $(host_prefix)/.stamp_$(final_build_id)
 	$(AT)@mkdir -p $(@D)
-	$(AT)sed -e 's|@HOST@|$(host)|' \
+	$(AT)$(build_SED) -e 's|@HOST@|$(host)|' \
             -e 's|@CC@|$(host_CC)|' \
             -e 's|@CXX@|$(host_CXX)|' \
             -e 's|@AR@|$(host_AR)|' \
@@ -114,6 +114,8 @@ $(host_prefix)/share/config.site : config.site.in $(host_prefix)/.stamp_$(final_
             -e 's|@CXXFLAGS@|$(strip $(host_CXXFLAGS) $(host_$(release_type)_CXXFLAGS))|' \
             -e 's|@CPPFLAGS@|$(strip $(host_CPPFLAGS) $(host_$(release_type)_CPPFLAGS))|' \
             -e 's|@LDFLAGS@|$(strip $(host_LDFLAGS) $(host_$(release_type)_LDFLAGS))|' \
+            -e 's|@TAR@|$(build_TAR)|' \
+            -e 's|@SED@|$(build_SED)|' \
             -e 's|@no_qt@|$(NO_QT)|' \
             -e 's|@no_wallet@|$(NO_WALLET)|' \
             -e 's|@no_upnp@|$(NO_UPNP)|' \

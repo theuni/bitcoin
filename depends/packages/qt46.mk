@@ -27,16 +27,16 @@ $(package)_build_env  = QT_RCC_TEST=1
 endef
 
 define $(package)_preprocess_cmds
-   sed -i.old "s|/include /usr/include||" config.tests/unix/freetype/freetype.pri && \
-   sed -i.old "s|src_plugins.depends = src_gui src_sql src_svg|src_plugins.depends = src_gui src_sql|" src/src.pro && \
-   sed -i.old "s|\.lower(|\.toLower(|g" src/network/ssl/qsslsocket_openssl.cpp && \
-   sed -i.old "s|Key_BackSpace|Key_Backspace|" src/gui/itemviews/qabstractitemview.cpp && \
-   sed -i.old "s|/usr/X11R6/lib64|$(host_prefix)/lib|" mkspecs/*/*.conf && \
-   sed -i.old "s|/usr/X11R6/lib|$(host_prefix)/lib|" mkspecs/*/*.conf && \
-   sed -i.old "s|/usr/X11R6/include|$(host_prefix)/include|" mkspecs/*/*.conf && \
-   sed -i.old "s|QMAKE_LFLAGS_SHLIB\t+= -shared|QMAKE_LFLAGS_SHLIB\t+= -shared -Wl,--exclude-libs,ALL|" mkspecs/common/g++.conf && \
-   sed -i.old "/SSLv2_client_method/d" src/network/ssl/qsslsocket_openssl.cpp src/network/ssl/qsslsocket_openssl_symbols.cpp && \
-   sed -i.old "/SSLv2_server_method/d" src/network/ssl/qsslsocket_openssl.cpp src/network/ssl/qsslsocket_openssl_symbols.cpp && \
+   $(build_SED) -i.old "s|/include /usr/include||" config.tests/unix/freetype/freetype.pri && \
+   $(build_SED) -i.old "s|src_plugins.depends = src_gui src_sql src_svg|src_plugins.depends = src_gui src_sql|" src/src.pro && \
+   $(build_SED) -i.old "s|\.lower(|\.toLower(|g" src/network/ssl/qsslsocket_openssl.cpp && \
+   $(build_SED) -i.old "s|Key_BackSpace|Key_Backspace|" src/gui/itemviews/qabstractitemview.cpp && \
+   $(build_SED) -i.old "s|/usr/X11R6/lib64|$(host_prefix)/lib|" mkspecs/*/*.conf && \
+   $(build_SED) -i.old "s|/usr/X11R6/lib|$(host_prefix)/lib|" mkspecs/*/*.conf && \
+   $(build_SED) -i.old "s|/usr/X11R6/include|$(host_prefix)/include|" mkspecs/*/*.conf && \
+   $(build_SED) -i.old "s|QMAKE_LFLAGS_SHLIB\t+= -shared|QMAKE_LFLAGS_SHLIB\t+= -shared -Wl,--exclude-libs,ALL|" mkspecs/common/g++.conf && \
+   $(build_SED) -i.old "/SSLv2_client_method/d" src/network/ssl/qsslsocket_openssl.cpp src/network/ssl/qsslsocket_openssl_symbols.cpp && \
+   $(build_SED) -i.old "/SSLv2_server_method/d" src/network/ssl/qsslsocket_openssl.cpp src/network/ssl/qsslsocket_openssl_symbols.cpp && \
    patch -p1 < $($(package)_patch_dir)/stlfix.patch 
 endef
 

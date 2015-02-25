@@ -12,7 +12,7 @@ $(package)_config_opts_linux=--with-pic
 endef
 
 define $(package)_preprocess_cmds
-  sed -i.old 's/__atomic_compare_exchange/__atomic_compare_exchange_db/' dbinc/atomic.h
+  $(build_SED) -i.old 's/__atomic_compare_exchange/__atomic_compare_exchange_db/' dbinc/atomic.h
 endef
 
 define $(package)_config_cmds

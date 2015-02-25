@@ -10,7 +10,7 @@ $(package)_config_opts=--disable-static
 endef
 
 define $(package)_preprocess_cmds
-  sed "s/pthread-stubs//" -i configure
+  $(build_SED) "s/pthread-stubs//" -i configure
 endef
 
 define $(package)_config_cmds
