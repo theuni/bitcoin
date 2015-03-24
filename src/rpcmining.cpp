@@ -229,7 +229,6 @@ Value getmininginfo(const Array& params, bool fHelp)
             + HelpExampleRpc("getmininginfo", "")
         );
 
-
     LOCK(cs_main);
 
     Object obj;
