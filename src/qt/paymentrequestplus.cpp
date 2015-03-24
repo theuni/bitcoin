@@ -77,15 +77,12 @@ bool PaymentRequestPlus::getMerchant(X509_STORE* certStore, QString& merchant) c
     const EVP_MD* digestAlgorithm = NULL;
     if (paymentRequest.pki_type() == "x509+sha256") {
         digestAlgorithm = EVP_sha256();
-    }
-    else if (paymentRequest.pki_type() == "x509+sha1") {
+    } else if (paymentRequest.pki_type() == "x509+sha1") {
         digestAlgorithm = EVP_sha1();
-    }
-    else if (paymentRequest.pki_type() == "none") {
+    } else if (paymentRequest.pki_type() == "none") {
         qWarning() << "PaymentRequestPlus::getMerchant: Payment request: pki_type == none";
         return false;
-    }
-    else {
+    } else {
         qWarning() << "PaymentRequestPlus::getMerchant: Payment request: unknown pki_type " << QString::fromStdString(paymentRequest.pki_type());
         return false;
     }
@@ -124,7 +121,7 @@ bool PaymentRequestPlus::getMerchant(X509_STORE* certStore, QString& merchant) c
     // The first cert is the signing cert, the rest are untrusted certs that chain
     // to a valid root authority. OpenSSL needs them separately.
     STACK_OF(X509) *chain = sk_X509_new_null();
-    for (int i = certs.size()-1; i > 0; i--) {
+    for (int i = certs.size() - 1; i > 0; i--) {
         sk_X509_push(chain, certs[i]);
     }
     X509 *signing_cert = certs[0];
@@ -139,10 +136,8 @@ bool PaymentRequestPlus::getMerchant(X509_STORE* certStore, QString& merchant) c
 
     char *website = NULL;
     bool fResult = true;
-    try
-    {
-        if (!X509_STORE_CTX_init(store_ctx, certStore, signing_cert, chain))
-        {
+    try {
+        if (!X509_STORE_CTX_init(store_ctx, certStore, signing_cert, chain)) {
             int error = X509_STORE_CTX_get_error(store_ctx);
             throw SSLVerifyError(X509_verify_cert_error_string(error));
         }
@@ -173,7 +168,6 @@ bool PaymentRequestPlus::getMerchant(X509_STORE* certStore, QString& merchant) c
         if (!EVP_VerifyInit_ex(&ctx, digestAlgorithm, NULL) ||
             !EVP_VerifyUpdate(&ctx, data_to_verify.data(), data_to_verify.size()) ||
             !EVP_VerifyFinal(&ctx, (const unsigned char*)paymentRequest.signature().data(), paymentRequest.signature().size(), pubkey)) {
-
             throw SSLVerifyError("Bad signature, invalid PaymentRequest.");
         }
 
@@ -182,8 +176,7 @@ bool PaymentRequestPlus::getMerchant(X509_STORE* certStore, QString& merchant) c
         website = new char[textlen + 1];
         if (X509_NAME_get_text_by_NID(certname, NID_commonName, website, textlen + 1) == textlen && textlen > 0) {
             merchant = website;
-        }
-        else {
+        } else {
             throw SSLVerifyError("Bad certificate, missing common name.");
         }
         // TODO: detect EV certificates and set merchant = business name instead of unfriendly NID_commonName ?
@@ -208,7 +201,7 @@ QList<std::pair<CScript,CAmount> > PaymentRequestPlus::getPayTo() const
     for (int i = 0; i < details.outputs_size(); i++)
     {
         const unsigned char* scriptStr = (const unsigned char*)details.outputs(i).script().data();
-        CScript s(scriptStr, scriptStr+details.outputs(i).script().size());
+        CScript s(scriptStr, scriptStr + details.outputs(i).script().size());
 
         result.append(make_pair(s, details.outputs(i).amount()));
     }
