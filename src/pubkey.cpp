@@ -54,13 +54,13 @@ bool CPubKey::Decompress() {
     return true;
 }
 
-bool CPubKey::Derive(CPubKey& pubkeyChild, unsigned char ccChild[32], unsigned int nChild, const unsigned char cc[32]) const {
+bool CPubKey::Derive(CPubKey& pubkeyChild, CChainCode &ccChild, unsigned int nChild, const CChainCode& cc) const {
     assert(IsValid());
     assert((nChild >> 31) == 0);
     assert(begin() + 33 == end());
     unsigned char out[64];
     BIP32Hash(cc, nChild, *begin(), begin()+1, out);
-    memcpy(ccChild, out+32, 32);
+    ccChild.Set(out+32);
     CECKey key;
     bool ret = key.SetPubKey(begin(), size());
     ret &= key.TweakPublic(out);
@@ -84,7 +84,7 @@ void CExtPubKey::Decode(const unsigned char code[74]) {
     nDepth = code[0];
     memcpy(vchFingerprint, code+1, 4);
     nChild = (code[5] << 24) | (code[6] << 16) | (code[7] << 8) | code[8];
-    memcpy(chaincode.data, code+9, 32);
+    chaincode.Set(code+9);
     pubkey.Set(code+41, code+74);
 }
 
@@ -93,5 +93,5 @@ bool CExtPubKey::Derive(CExtPubKey &out, unsigned int nChild) const {
     CKeyID id = pubkey.GetID();
     memcpy(&out.vchFingerprint[0], &id, 4);
     out.nChild = nChild;
-    return pubkey.Derive(out.pubkey, out.chaincode.data, nChild, chaincode.data);
+    return pubkey.Derive(out.pubkey, out.chaincode, nChild, chaincode);
 }

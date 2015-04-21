@@ -33,11 +33,12 @@ public:
 
 struct CChainCode
 {
-    unsigned char data[32];
+    static const int size = 32;
+    unsigned char data[size];
     
     void SetNull()
     {
-        memset(data, 0, sizeof(data));
+        memset(data, 0, size);
     }
     
     CChainCode()
@@ -47,10 +48,20 @@ struct CChainCode
     
     bool IsNull() const
     {
-        for (int i=0; i<32; i++)
+        for (int i=0; i<size; i++)
             if (data[i])
                 return false;
         return true;
+    }
+
+    void Set(const unsigned char* dataIn, int inSize = size)
+    {
+        memcpy(data, dataIn, inSize);
+    }
+
+    friend bool operator==(const CChainCode &a, const CChainCode &b)
+    {
+        return memcmp(a.data, b.data, size) == 0;
     }
     
     ADD_SERIALIZE_METHODS;
@@ -212,7 +223,7 @@ public:
     bool Decompress();
 
     //! Derive BIP32 child pubkey.
-    bool Derive(CPubKey& pubkeyChild, unsigned char ccChild[32], unsigned int nChild, const unsigned char cc[32]) const;
+    bool Derive(CPubKey& pubkeyChild, CChainCode &ccChild, unsigned int nChild, const CChainCode& cc) const;
 };
 
 struct CExtPubKey {
@@ -225,7 +236,7 @@ struct CExtPubKey {
     friend bool operator==(const CExtPubKey &a, const CExtPubKey &b)
     {
         return a.nDepth == b.nDepth && memcmp(&a.vchFingerprint[0], &b.vchFingerprint[0], 4) == 0 && a.nChild == b.nChild &&
-               memcmp(&a.chaincode.data[0], &b.chaincode.data[0], 32) == 0 && a.pubkey == b.pubkey;
+               a.chaincode == b.chaincode && a.pubkey == b.pubkey;
     }
 
     void Encode(unsigned char code[74]) const;
