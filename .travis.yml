@@ -82,9 +82,12 @@ before_script:
     - cd bitcoin-$HOST
     - ./configure --cache-file=../config.cache $BITCOIN_CONFIG_ALL $BITCOIN_CONFIG || ( cat config.log && false)
 script:
-    - depends/$HOST/native/bin/ccache -s
+    - $TRAVIS_BUILD_DIR/depends/$HOST/native/bin/ccache -s
     - make $MAKEJOBS $GOAL || ( echo "Build failure. Verbose build follows." && make $GOAL V=1 ; false )
-    - depends/$HOST/native/bin/ccache -s
+    - $TRAVIS_BUILD_DIR/depends/$HOST/native/bin/ccache -s
     - export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/depends/$HOST/lib
     - if [ "$RUN_TESTS" = "true" ]; then make check; fi
     - if [ "$RUN_TESTS" = "true" ]; then qa/pull-tester/rpc-tests.sh; fi
+after_success:
+    - $TRAVIS_BUILD_DIR/depends/$HOST/native/bin/ccache -c
+    - $TRAVIS_BUILD_DIR/depends/$HOST/native/bin/ccache -s
