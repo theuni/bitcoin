@@ -43,13 +43,6 @@ matrix:
             - mingw-w64-dev
             - wine
             - bc
-    - compiler: ": 32-bit + dash"
-      env: HOST=i686-pc-linux-gnu RUN_TESTS=true GOAL="install" BITCOIN_CONFIG="--enable-glibc-back-compat --enable-reduce-exports LDFLAGS=-static-libstdc++" USE_SHELL="/bin/dash"
-      addons:
-        apt:
-          packages:
-            - g++-multilib
-            - bc
     - compiler: ": Win64"
       env: HOST=x86_64-w64-mingw32 RUN_TESTS=true GOAL="deploy" BITCOIN_CONFIG="--enable-gui --enable-reduce-exports" MAKEJOBS="-j2"
       addons:
@@ -60,14 +53,6 @@ matrix:
             - binutils-mingw-w64-x86-64
             - wine
             - bc
-    - compiler: ": bitcoind"
-      env: HOST=x86_64-unknown-linux-gnu DEP_OPTS="NO_QT=1 NO_UPNP=1 DEBUG=1" RUN_TESTS=true GOAL="install" BITCOIN_CONFIG="--enable-glibc-back-compat --enable-reduce-exports CPPFLAGS=-DDEBUG_LOCKORDER"
-      addons:
-        apt:
-          packages:
-            - bc
-    - compiler: ": No wallet"
-      env: HOST=x86_64-unknown-linux-gnu DEP_OPTS="NO_WALLET=1" RUN_TESTS=true GOAL="install" BITCOIN_CONFIG="--enable-glibc-back-compat --enable-reduce-exports"
     - compiler: ": Cross-Mac"
       env: HOST=x86_64-apple-darwin11 BITCOIN_CONFIG="--enable-reduce-exports" OSX_SDK=10.9 GOAL="deploy"
       addons:
