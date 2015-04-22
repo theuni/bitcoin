@@ -411,6 +411,35 @@ clean-local:
 	@test -f $(PROTOC)
 	$(AM_V_GEN) $(PROTOC) --cpp_out=$(@D) --proto_path=$(abspath $(<D) $<)
 
+
+ALL_OBJECTS = $(libbitcoin_cli_a_OBJECTS) \
+  $(libbitcoin_util_a_OBJECTS) \
+  $(libbitcoin_common_a_OBJECTS) \
+  $(univalue_libbitcoin_univalue_a_OBJECTS) \
+  $(crypto_libbitcoin_crypto_a_OBJECTS) \
+  $(libbitcoin_wallet_a_OBJECTS) \
+  $(libbitcoin_server_a_OBJECTS) \
+  $(libbitcoinconsensus_la_OBJECTS) \
+  $(bitcoin_tx_OBJECTS) \
+  $(bitcoin_cli_OBJECTS) \
+  $(bitcoind_OBJECTS) \
+  $(test_test_bitcoin_OBJECTS) \
+  $(nodist_test_test_bitcoin_OBJECTS)
+
+OBJECT_HASHES=build-aux/.object-hashes.txt
+
+$(OBJECT_HASHES): $(ALL_OBJECTS) FORCE
+	@sha256sum $(ALL_OBJECTS) > $@
+	@echo Hashes saved. Use "make show-changed" to compare with a future version" "
+
+save-hashes: $(OBJECT_HASHES)
+
+show-changed: $(ALL_OBJECTS)
+	@(test -f $(OBJECT_HASHES) && \
+            sha256sum $(ALL_OBJECTS) | diff -ru1 $(OBJECT_HASHES) - | grep -o "^[+-]\([[:digit:]].*\)" | cut -f 2 -d\t | sort -u \
+	 ) || \
+         echo "No previous hashes found. Use "make save-hashes" first."
+
 if ENABLE_TESTS
 include Makefile.test.include
 endif
