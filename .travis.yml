@@ -23,6 +23,7 @@ cache:
   - depends/built
   - depends/sdk-sources
   - $HOME/.ccache
+  - $HOME/.object-hashes.txt
 matrix:
   fast_finish: true
   include:
@@ -89,8 +90,12 @@ before_script:
     - make distdir PACKAGE=bitcoin VERSION=$HOST
     - cd bitcoin-$HOST
     - ./configure --cache-file=../config.cache $BITCOIN_CONFIG_ALL $BITCOIN_CONFIG || ( cat config.log && false)
+    - if [ -f $HOME/.object-hashes.txt ]; then cp $HOME/.object-hashes.txt build-aux/.object-hashes.txt; fi
 script:
     - make $MAKEJOBS $GOAL || ( echo "Build failure. Verbose build follows." && make $GOAL V=1 ; false )
     - export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/depends/$HOST/lib
     - if [ "$RUN_TESTS" = "true" ]; then make check; fi
     - if [ "$RUN_TESTS" = "true" ]; then qa/pull-tester/rpc-tests.sh; fi
+    - make -C src show-changed
+    - make -C src save-hashes
+    - if [ -f build-aux/.object-hashes.txt ]; then mv build-aux/.object-hashes.txt $HOME/.object-hashes.txt; fi
