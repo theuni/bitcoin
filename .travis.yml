@@ -6,6 +6,7 @@
 
 os: linux
 language: cpp
+sudo: false
 env:
   global:
     - MAKEJOBS=-j3
@@ -16,7 +17,6 @@ env:
     - CCACHE_COMPRESS=1
     - BASE_OUTDIR=$TRAVIS_BUILD_DIR/out
     - SDK_URL=https://bitcoincore.org/depends-sources/sdks
-sudo: false
 cache:
   ccache: true
   directories:
