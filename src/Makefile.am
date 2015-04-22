@@ -426,7 +426,7 @@ ALL_OBJECTS = $(libbitcoin_cli_a_OBJECTS) \
   $(test_test_bitcoin_OBJECTS) \
   $(nodist_test_test_bitcoin_OBJECTS)
 
-OBJECT_HASHES=build-aux/.object-hashes.txt
+OBJECT_HASHES=$(top_builddir)/build-aux/.object-hashes.txt
 
 $(OBJECT_HASHES): $(ALL_OBJECTS) FORCE
 	@sha256sum $(ALL_OBJECTS) > $@
