@@ -30,9 +30,10 @@ matrix:
       addons:
         apt:
           packages:
-            - libstdc++6-4.6-dev-armhf-cross
+            - gcc-4.6-multilib-arm-linux-gnueabihf
+            - g++-4.6-multilib-arm-linux-gnueabihf
     - compiler: ": Win32"
-      env: HOST=i686-w64-mingw32 RUN_TESTS=true GOAL="install" BITCOIN_CONFIG="--enable-gui --enable-reduce-exports" MAKEJOBS="-j2"
+      env: HOST=i686-w64-mingw32 GOAL="install" BITCOIN_CONFIG="--enable-gui --enable-reduce-exports" MAKEJOBS="-j2"
       addons:
         apt:
           packages:
@@ -42,7 +43,7 @@ matrix:
             - wine
             - bc
     - compiler: ": Win64"
-      env: HOST=x86_64-w64-mingw32 RUN_TESTS=true GOAL="install" BITCOIN_CONFIG="--enable-gui --enable-reduce-exports" MAKEJOBS="-j2"
+      env: HOST=x86_64-w64-mingw32 GOAL="install" BITCOIN_CONFIG="--enable-gui --enable-reduce-exports" MAKEJOBS="-j2"
       addons:
         apt:
           packages:
