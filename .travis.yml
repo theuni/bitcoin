@@ -18,11 +18,10 @@ env:
     - BASE_OUTDIR=$TRAVIS_BUILD_DIR/out
     - SDK_URL=https://bitcoincore.org/depends-sources/sdks
 cache:
-  apt: true
+  ccache: true
   directories:
   - depends/built
   - depends/sdk-sources
-  - $HOME/.ccache
 matrix:
   fast_finish: true
   include:
@@ -31,20 +30,19 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-arm-linux-gnueabihf
+            - libstdc++6-4.6-dev-armhf-cross
     - compiler: ": Win32"
-      env: HOST=i686-w64-mingw32 RUN_TESTS=true GOAL="deploy" BITCOIN_CONFIG="--enable-gui --enable-reduce-exports" MAKEJOBS="-j2"
+      env: HOST=i686-w64-mingw32 RUN_TESTS=true GOAL="install" BITCOIN_CONFIG="--enable-gui --enable-reduce-exports" MAKEJOBS="-j2"
       addons:
         apt:
           packages:
             - gcc-mingw-w64-i686
             - g++-mingw-w64-i686
             - binutils-mingw-w64-i686
-            - mingw-w64-dev
             - wine
             - bc
     - compiler: ": Win64"
-      env: HOST=x86_64-w64-mingw32 RUN_TESTS=true GOAL="deploy" BITCOIN_CONFIG="--enable-gui --enable-reduce-exports" MAKEJOBS="-j2"
+      env: HOST=x86_64-w64-mingw32 RUN_TESTS=true GOAL="install" BITCOIN_CONFIG="--enable-gui --enable-reduce-exports" MAKEJOBS="-j2"
       addons:
         apt:
           packages:
@@ -60,6 +58,8 @@ matrix:
           packages:
             - cmake
             - libbz2-dev
+            - zlib1g-dev
+            - libcap-dev
 
 before_script:
     - unset CC; unset CXX
@@ -68,6 +68,9 @@ before_script:
     - if [ -n "$OSX_SDK" -a -f depends/sdk-sources/MacOSX${OSX_SDK}.sdk.tar.gz ]; then tar -C depends/SDKs -xf depends/sdk-sources/MacOSX${OSX_SDK}.sdk.tar.gz; fi
     - make $MAKEJOBS -C depends HOST=$HOST $DEP_OPTS
 script:
+    - cat /proc/sys/fs/binfmt_misc/cli
+    - ls /proc/sys/fs/binfmt_misc
+    - update-binfmts --display
     - if [ -n "$USE_SHELL" ]; then export CONFIG_SHELL="$USE_SHELL"; fi
     - OUTDIR=$BASE_OUTDIR/$TRAVIS_PULL_REQUEST/$TRAVIS_JOB_NUMBER-$HOST
     - BITCOIN_CONFIG_ALL="--disable-dependency-tracking --prefix=$TRAVIS_BUILD_DIR/depends/$HOST --bindir=$OUTDIR/bin --libdir=$OUTDIR/lib"
