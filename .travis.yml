@@ -37,7 +37,10 @@ matrix:
       addons:
         apt:
           packages:
+            - gcc-mingw-w64-i686
             - g++-mingw-w64-i686
+            - binutils-mingw-w64-i686
+            - mingw-w64-dev
             - wine
             - bc
     - compiler: ": 32-bit + dash"
@@ -52,7 +55,9 @@ matrix:
       addons:
         apt:
           packages:
+            - gcc-mingw-w64-x86-64
             - g++-mingw-w64-x86-64
+            - binutils-mingw-w64-x86-64
             - wine
             - bc
     - compiler: ": bitcoind"
@@ -69,7 +74,6 @@ matrix:
         apt:
           packages:
             - cmake
-            - libz-dev
             - libbz2-dev
 
 before_script:
