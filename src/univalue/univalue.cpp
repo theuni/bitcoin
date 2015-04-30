@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <ctype.h>
 #include <sstream>
+#include <iomanip>
 #include "univalue.h"
 
 using namespace std;
@@ -42,6 +43,14 @@ static bool validNumStr(const string& s)
     return (tt == JTOK_NUMBER);
 }
 
+static bool validRealStr(const string& s)
+{
+    string tokenVal;
+    unsigned int consumed;
+    enum jtokentype tt = getJsonToken(tokenVal, consumed, s.c_str());
+    return (tt == JTOK_REAL);
+}
+
 bool UniValue::setNumStr(const string& val_)
 {
     if (!validNumStr(val_))
@@ -49,6 +58,17 @@ bool UniValue::setNumStr(const string& val_)
 
     clear();
     typ = VNUM;
+    val = val_;
+    return true;
+}
+
+bool UniValue::setRealStr(const string& val_)
+{
+    if (!validRealStr(val_))
+        return false;
+
+    clear();
+    typ = VREAL;
     val = val_;
     return true;
 }
@@ -75,12 +95,10 @@ bool UniValue::setInt(int64_t val)
 
 bool UniValue::setFloat(double val)
 {
-    string s;
     ostringstream oss;
+    oss << std::showpoint << std::fixed << std::setprecision(8) << val;
 
-    oss << val;
-
-    return setNumStr(oss.str());
+    return setRealStr(oss.str());
 }
 
 bool UniValue::setStr(const string& val_)
@@ -203,6 +221,7 @@ const char *uvTypeName(UniValue::VType t)
     case UniValue::VARR: return "array";
     case UniValue::VSTR: return "string";
     case UniValue::VNUM: return "number";
+    case UniValue::VREAL: return "real";
     }
 
     // not reached

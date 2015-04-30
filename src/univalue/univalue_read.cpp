@@ -109,6 +109,7 @@ enum jtokentype getJsonToken(string& tokenVal, unsigned int& consumed,
     case '9': {
         // part 1: int
         string numStr;
+        jtokentype res_type = JTOK_NUMBER;
 
         const char *first = raw;
 
@@ -140,6 +141,7 @@ enum jtokentype getJsonToken(string& tokenVal, unsigned int& consumed,
                 numStr += *raw;
                 raw++;
             }
+            res_type = JTOK_REAL;
         }
 
         // part 3: exp
@@ -162,7 +164,7 @@ enum jtokentype getJsonToken(string& tokenVal, unsigned int& consumed,
 
         tokenVal = numStr;
         consumed = (raw - rawStart);
-        return JTOK_NUMBER;
+        return res_type;
         }
 
     case '"': {
@@ -353,6 +355,17 @@ bool UniValue::read(const char *raw)
                 return false;
 
             UniValue tmpVal(VNUM, tokenVal);
+            UniValue *top = stack.back();
+            top->values.push_back(tmpVal);
+
+            break;
+            }
+
+        case JTOK_REAL: {
+            if (!stack.size() || expectName || expectColon)
+                return false;
+
+            UniValue tmpVal(VREAL, tokenVal);
             UniValue *top = stack.back();
             top->values.push_back(tmpVal);
 

@@ -17,7 +17,7 @@
 
 class UniValue {
 public:
-    enum VType { VNULL, VOBJ, VARR, VSTR, VNUM, VBOOL, };
+    enum VType { VNULL, VOBJ, VARR, VSTR, VNUM, VBOOL, VREAL};
 
     UniValue() { typ = VNULL; }
     UniValue(UniValue::VType initialType, const std::string& initialStr = "") {
@@ -50,6 +50,7 @@ public:
     bool setNull();
     bool setBool(bool val);
     bool setNumStr(const std::string& val);
+    bool setRealStr(const std::string& val);
     bool setInt(uint64_t val);
     bool setInt(int64_t val);
     bool setInt(int val) { return setInt((int64_t)val); }
@@ -76,6 +77,7 @@ public:
     bool isBool() const { return (typ == VBOOL); }
     bool isStr() const { return (typ == VSTR); }
     bool isNum() const { return (typ == VNUM); }
+    bool isReal() const { return (typ == VREAL); }
     bool isArray() const { return (typ == VARR); }
     bool isObject() const { return (typ == VOBJ); }
 
@@ -229,6 +231,7 @@ enum jtokentype {
     JTOK_KW_TRUE,
     JTOK_KW_FALSE,
     JTOK_NUMBER,
+    JTOK_REAL,
     JTOK_STRING,
 };
 
