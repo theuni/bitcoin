@@ -60,7 +60,7 @@ public:
     bool setObject();
 
     enum VType getType() const { return typ; }
-    std::string getValStr() const { return val; }
+    std::string getValStr() const;
     bool empty() const { return (values.size() == 0); }
 
     size_t size() const { return values.size(); }

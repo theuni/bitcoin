@@ -123,6 +123,17 @@ bool UniValue::setObject()
     return true;
 }
 
+std::string UniValue::getValStr() const
+{
+    if (typ == VREAL)
+    {
+        size_t len = val.find_last_not_of("0");
+        if( len != string::npos)
+            return val.substr( 0, len+1 );
+    }
+    return val;
+}
+
 bool UniValue::push_back(const UniValue& val)
 {
     if (typ != VARR)
