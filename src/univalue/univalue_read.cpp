@@ -324,69 +324,69 @@ bool UniValue::read(const char *raw)
             break;
             }
 
-        case JTOK_KW_NULL:
+        case JTOK_KW_NULL: {
+            if (expectName || expectColon)
+                return false;
+            break;
+            }
         case JTOK_KW_TRUE:
         case JTOK_KW_FALSE: {
-            if (!stack.size() || expectName || expectColon)
+            if (expectName || expectColon)
                 return false;
 
-            UniValue tmpVal;
-            switch (tok) {
-            case JTOK_KW_NULL:
-                // do nothing more
-                break;
-            case JTOK_KW_TRUE:
-                tmpVal.setBool(true);
-                break;
-            case JTOK_KW_FALSE:
-                tmpVal.setBool(false);
-                break;
-            default: /* impossible */ break;
+            if(stack.size()) {
+                UniValue tmpVal;
+                tmpVal.setBool(tok == JTOK_KW_TRUE);
+                UniValue *top = stack.back();
+                top->values.push_back(tmpVal);
             }
-
-            UniValue *top = stack.back();
-            top->values.push_back(tmpVal);
-
+            else
+                setBool(tok == JTOK_KW_TRUE);
             break;
             }
 
         case JTOK_NUMBER: {
-            if (!stack.size() || expectName || expectColon)
+            if (expectName || expectColon)
                 return false;
-
-            UniValue tmpVal(VNUM, tokenVal);
-            UniValue *top = stack.back();
-            top->values.push_back(tmpVal);
-
+            if (stack.size()) {
+                UniValue tmpVal(VNUM, tokenVal);
+                UniValue *top = stack.back();
+                top->values.push_back(tmpVal);
+            }
+            else
+                setNumStr(tokenVal);
             break;
             }
 
         case JTOK_REAL: {
-            if (!stack.size() || expectName || expectColon)
+            if (expectName || expectColon)
                 return false;
 
-            UniValue tmpVal(VREAL, tokenVal);
-            UniValue *top = stack.back();
-            top->values.push_back(tmpVal);
-
+            if (stack.size()) {
+                UniValue tmpVal(VREAL, tokenVal);
+                UniValue *top = stack.back();
+                top->values.push_back(tmpVal);
+            }
+            else
+                setRealStr(tokenVal);
             break;
             }
 
         case JTOK_STRING: {
             if (!stack.size())
-                return false;
+                setStr(tokenVal);
+            else {
+                UniValue *top = stack.back();
 
-            UniValue *top = stack.back();
-
-            if (expectName) {
-                top->keys.push_back(tokenVal);
-                expectName = false;
-                expectColon = true;
-            } else {
-                UniValue tmpVal(VSTR, tokenVal);
-                top->values.push_back(tmpVal);
+                if (expectName) {
+                    top->keys.push_back(tokenVal);
+                    expectName = false;
+                    expectColon = true;
+                } else {
+                    UniValue tmpVal(VSTR, tokenVal);
+                    top->values.push_back(tmpVal);
+                }
             }
-
             break;
             }
 
