@@ -5,9 +5,21 @@
 
 namespace json_spirit {
 
+class Array : public UniValue
+{
+public:
+    Array() : UniValue(VARR) {}
+    Array(const UniValue& in) : UniValue(in) {}
+};
+
+class Object : public UniValue
+{
+public:
+    Object() : UniValue(VOBJ) {}
+    Object(const UniValue& in) : UniValue(in) {}
+};
+
 typedef UniValue Value;
-typedef UniValue Array;
-typedef UniValue Object;
 typedef UniValue::VType Value_type;
 
 }
