@@ -257,7 +257,9 @@ bool UniValue::read(const char *raw)
         string tokenVal;
         unsigned int consumed;
         tok = getJsonToken(tokenVal, consumed, raw);
-        if (tok == JTOK_NONE || tok == JTOK_ERR)
+        if (tok == JTOK_ERR)
+            return false;
+        if (tok == JTOK_NONE)
             break;
         raw += consumed;
 
