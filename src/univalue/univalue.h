@@ -39,10 +39,7 @@ public:
     UniValue(const std::string& val_) {
         setStr(val_);
     }
-    UniValue(const char *val_) {
-        std::string s(val_);
-        setStr(s);
-    }
+
     ~UniValue() {}
 
     void clear();

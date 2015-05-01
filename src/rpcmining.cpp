@@ -558,7 +558,7 @@ Value submitblock(const Array& params, bool fHelp)
     CValidationState state;
     bool fAccepted = ProcessBlock(state, NULL, &pblock);
     if (!fAccepted)
-        return "rejected"; // TODO: report validation state
+        return std::string("rejected"); // TODO: report validation state
 
     return NullUniValue;
 }

@@ -221,7 +221,7 @@ Value stop(const Array& params, bool fHelp)
             "\nStop Bitcoin server.");
     // Shutdown will take long enough that the response should get back
     StartShutdown();
-    return "Bitcoin server stopping";
+    return std::string("Bitcoin server stopping");
 }
 
 
