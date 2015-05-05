@@ -6,27 +6,34 @@
 #ifndef BITCOIN_ZMQPORTS_H
 #define BITCOIN_ZMQPORTS_H
 
-#if defined(HAVE_CONFIG_H)
-#include "config/bitcoin-config.h"
-#endif
-
+#include "validationinterface.h"
 #include <string>
 
-// Global state
-extern bool fZMQPub;
-
-enum ZMQFormat
+class CZMQPublisher : public CValidationInterface
 {
-  ZMQ_FORMAT_NETWORK,
-  ZMQ_FORMAT_HASH
-};
+public:
+    enum Format
+    {
+        HashFormat,
+        NetworkFormat
+    };
+  
+    CZMQPublisher();
+    virtual ~CZMQPublisher();
 
-#if ENABLE_ZMQ
-void ZMQShutdown();
-void ZMQInitialize(const std::string &endp, ZMQFormat format);
-#else
-static inline void ZMQInitialize(const std::string &endp, ZMQFormat format) {}
-static inline void ZMQShutdown() {}
-#endif // ENABLE_ZMQ
+    void Initialize(const std::string &endpoint, Format format);
+    void Shutdown();
+
+protected: // CValidationInterface
+    void SyncTransaction(const CTransaction &tx, const CBlock *pblock);
+    void UpdatedBlockTip(const CBlock &block);
+
+private:
+    int Publish(const void* data, size_t size, int flags);
+
+    void *pcontext;
+    void *psocket;
+    Format format;
+};
 
 #endif // BITCOIN_ZMQPORTS_H
