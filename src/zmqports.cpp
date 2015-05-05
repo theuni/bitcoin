@@ -28,6 +28,7 @@ bool fZMQPub = false;
 // ZMQ related file scope variables
 static void *zmqContext;
 static void *zmqPubSocket;
+static ZMQFormat zmqFormat;
 
 // Internal utility functions
 static void ZMQPublishBlock(const uint256 &hash);
@@ -39,7 +40,7 @@ static void zmqError(const char *str)
 }
 
 // Called at startup to conditionally set up ZMQ socket(s)
-void ZMQInitialize(const std::string &endp)
+void ZMQInitialize(const std::string &endp, ZMQFormat format)
 {
     zmqContext = zmq_init(1);
     if (!zmqContext) {
@@ -64,6 +65,7 @@ void ZMQInitialize(const std::string &endp)
     uiInterface.NotifyBlockTip.connect(ZMQPublishBlock);
     uiInterface.NotifyRelayTx.connect(ZMQPublishTransaction);
 
+    zmqFormat = format;
     fZMQPub = true;
     LogPrint("zmq", "PUB socket listening at %s\n", endp);
 }
@@ -102,13 +104,23 @@ static void ZMQPublishTransaction(const CTransaction &tx)
     if (!zmqPubSocket)
         return;
 
-    // Serialize transaction
-    CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
-    ss << tx;
-
-    int rc = zmqPublish("TXN", 3, ZMQ_SNDMORE);
-    if (rc==0)
-        zmqPublish(&ss[0], ss.size(), 0);
+    if (zmqFormat==ZMQ_FORMAT_NETWORK)
+    {
+        // Serialize transaction
+        CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+        ss << tx;
+    
+        int rc = zmqPublish("TXN", 3, ZMQ_SNDMORE);
+        if (rc==0)
+            zmqPublish(&ss[0], ss.size(), 0);
+    }
+    else if (zmqFormat==ZMQ_FORMAT_HASH)
+    {
+        std::string hex = tx.GetHash().GetHex();
+        int rc = zmqPublish("TXN", 3, ZMQ_SNDMORE);
+        if (rc==0)
+            zmqPublish(&hex[0], hex.size(), 0);
+    }
 }
 
 // Called after the block chain tip changed
@@ -117,22 +129,31 @@ static void ZMQPublishBlock(const uint256 &hash)
     if (!zmqPubSocket)
         return;
 
-    CBlock blk;
+    if (zmqFormat==ZMQ_FORMAT_NETWORK)
     {
-        LOCK(cs_main);
- 
-        CBlockIndex* pblockindex = mapBlockIndex[hash];
-        if(!ReadBlockFromDisk(blk, pblockindex))
-            return;
+        CBlock blk;
+        {
+            LOCK(cs_main);
+            CBlockIndex* pblockindex = mapBlockIndex[hash];
+            if(!ReadBlockFromDisk(blk, pblockindex))
+                return;
+        }
+
+        // Serialize block
+        CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+        ss << blk;
+
+        int rc = zmqPublish("BLK", 3, ZMQ_SNDMORE);
+        if (rc==0)
+            zmqPublish(&ss[0], ss.size(), 0);
     }
-
-    // Serialize block
-    CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
-    ss << blk;
-
-    int rc = zmqPublish("BLK", 3, ZMQ_SNDMORE);
-    if (rc==0)
-        zmqPublish(&ss[0], ss.size(), 0);
+    else if (zmqFormat==ZMQ_FORMAT_HASH)
+    {
+        std::string hex = hash.GetHex();
+        int rc = zmqPublish("BLK", 3, ZMQ_SNDMORE);
+        if (rc==0)
+            zmqPublish(hex.c_str(), hex.size(), 0);
+    }
 }
 
 // Called during shutdown sequence

@@ -1031,7 +1031,10 @@ bool AppInit2(boost::thread_group& threadGroup)
 
     if (mapArgs.count("-zmqpub"))
     {
-        ZMQInitialize(mapArgs["-zmqpub"]);
+        ZMQFormat format = ZMQ_FORMAT_NETWORK;
+        if (mapArgs["-zmqformat"]=="hash")
+            format = ZMQ_FORMAT_HASH;
+        ZMQInitialize(mapArgs["-zmqpub"], format);
     }
 
     // ********************************************************* Step 7: load block chain

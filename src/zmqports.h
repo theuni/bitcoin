@@ -15,11 +15,17 @@
 // Global state
 extern bool fZMQPub;
 
+enum ZMQFormat
+{
+  ZMQ_FORMAT_NETWORK,
+  ZMQ_FORMAT_HASH
+};
+
 #if ENABLE_ZMQ
 void ZMQShutdown();
-void ZMQInitialize(const std::string &endp);
+void ZMQInitialize(const std::string &endp, ZMQFormat format);
 #else
-static inline void ZMQInitialize(const std::string &endp) {}
+static inline void ZMQInitialize(const std::string &endp, ZMQFormat format) {}
 static inline void ZMQShutdown() {}
 #endif // ENABLE_ZMQ
 
