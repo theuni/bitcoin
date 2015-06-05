@@ -8,6 +8,7 @@
 #include "clientversion.h"
 #include "random.h"
 #include "tinyformat.h"
+#include "univalue/univalue.h"
 #include "util.h"
 #include "utilstrencodings.h"
 #include "utiltime.h"
@@ -25,8 +26,6 @@
 #include <boost/iostreams/concepts.hpp>
 #include <boost/iostreams/stream.hpp>
 #include <boost/shared_ptr.hpp>
-
-#include "univalue/univalue.h"
 
 using namespace std;
 

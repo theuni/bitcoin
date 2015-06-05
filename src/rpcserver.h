@@ -9,6 +9,7 @@
 #include "amount.h"
 #include "rpcprotocol.h"
 #include "uint256.h"
+#include "univalue/univalue.h"
 
 #include <list>
 #include <map>
@@ -16,8 +17,6 @@
 #include <string>
 
 #include <boost/function.hpp>
-
-#include "univalue/univalue.h"
 
 class CRPCCommand;
 
