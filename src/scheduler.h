@@ -80,4 +80,4 @@ private:
     bool shouldStop() { return stopRequested || (stopWhenEmpty && taskQueue.empty()); }
 };
 
-#endif
+#endif // BITCOIN_SCHEDULER_H
