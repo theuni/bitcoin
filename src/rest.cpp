@@ -4,20 +4,19 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "chain.h"
+#include "main.h"
 #include "primitives/block.h"
 #include "primitives/transaction.h"
-#include "main.h"
 #include "rpcserver.h"
 #include "streams.h"
 #include "sync.h"
 #include "txmempool.h"
+#include "univalue/univalue.h"
 #include "utilstrencodings.h"
 #include "version.h"
 
 #include <boost/algorithm/string.hpp>
 #include <boost/dynamic_bitset.hpp>
-
-#include "univalue/univalue.h"
 
 using namespace std;
 
