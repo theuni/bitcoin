@@ -142,7 +142,7 @@ namespace {
      */
     CCriticalSection cs_nBlockSequenceId;
     /** Blocks loaded from disk are assigned id 0, so start the counter at 1. */
-    uint32_t nBlockSequenceId = 1;
+    uint32_t nBlockSequenceId GUARDED_BY(cs_nBlockSequenceId) = 1;
 
     /**
      * Sources of received blocks, saved to be able to send them reject
@@ -3360,7 +3360,6 @@ void UnloadBlockIndex()
     mapBlocksUnlinked.clear();
     vinfoBlockFile.clear();
     nLastBlockFile = 0;
-    nBlockSequenceId = 1;
     mapBlockSource.clear();
     mapBlocksInFlight.clear();
     nQueuedValidatedHeaders = 0;
@@ -3368,7 +3367,10 @@ void UnloadBlockIndex()
     setDirtyBlockIndex.clear();
     setDirtyFileInfo.clear();
     mapNodeState.clear();
-
+    {
+        LOCK(cs_nBlockSequenceId);
+        nBlockSequenceId = 1;
+    }
     BOOST_FOREACH(BlockMap::value_type& entry, mapBlockIndex) {
         delete entry.second;
     }
