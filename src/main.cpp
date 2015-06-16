@@ -168,10 +168,10 @@ namespace {
     int nPreferredDownload GUARDED_BY(cs_main) = 0;
 
     /** Dirty block index entries. */
-    set<CBlockIndex*> setDirtyBlockIndex;
+    set<CBlockIndex*> setDirtyBlockIndex GUARDED_BY(cs_main);
 
     /** Dirty block file entries. */
-    set<int> setDirtyFileInfo;
+    set<int> setDirtyFileInfo GUARDED_BY(cs_main);
 } // anon namespace
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1711,7 +1711,7 @@ void static FlushBlockFile(bool fFinalize = false)
     }
 }
 
-bool FindUndoPos(CValidationState &state, int nFile, CDiskBlockPos &pos, unsigned int nAddSize);
+bool FindUndoPos(CValidationState &state, int nFile, CDiskBlockPos &pos, unsigned int nAddSize) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
 static CCheckQueue<CScriptCheck> scriptcheckqueue(128);
 
@@ -2534,7 +2534,7 @@ CBlockIndex* AddToBlockIndex(const CBlockHeader& block) EXCLUSIVE_LOCKS_REQUIRED
 }
 
 /** Mark a block as having its data received and checked (up to BLOCK_VALID_TRANSACTIONS). */
-bool ReceivedBlockTransactions(const CBlock &block, CValidationState& state, CBlockIndex *pindexNew, const CDiskBlockPos& pos)
+bool ReceivedBlockTransactions(const CBlock &block, CValidationState& state, CBlockIndex *pindexNew, const CDiskBlockPos& pos) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
 {
     pindexNew->nTx = block.vtx.size();
     pindexNew->nChainTx = 0;
@@ -2579,7 +2579,7 @@ bool ReceivedBlockTransactions(const CBlock &block, CValidationState& state, CBl
     return true;
 }
 
-bool FindBlockPos(CValidationState &state, CDiskBlockPos &pos, unsigned int nAddSize, unsigned int nHeight, uint64_t nTime, bool fKnown = false)
+bool FindBlockPos(CValidationState &state, CDiskBlockPos &pos, unsigned int nAddSize, unsigned int nHeight, uint64_t nTime, bool fKnown = false) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
 {
     LOCK(cs_LastBlockFile);
 
@@ -2991,7 +2991,7 @@ uint64_t CalculateCurrentUsage()
 }
 
 /* Prune a block file (modify associated database entries)*/
-void PruneOneBlockFile(const int fileNumber)
+void PruneOneBlockFile(const int fileNumber) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
 {
     for (BlockMap::iterator it = mapBlockIndex.begin(); it != mapBlockIndex.end(); ++it) {
         CBlockIndex* pindex = it->second;
