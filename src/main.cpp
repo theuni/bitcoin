@@ -128,8 +128,8 @@ namespace {
     multimap<CBlockIndex*, CBlockIndex*> mapBlocksUnlinked;
 
     CCriticalSection cs_LastBlockFile;
-    std::vector<CBlockFileInfo> vinfoBlockFile;
-    int nLastBlockFile = 0;
+    std::vector<CBlockFileInfo> vinfoBlockFile GUARDED_BY(cs_LastBlockFile);
+    int nLastBlockFile GUARDED_BY(cs_LastBlockFile) = 0;
     /** Global flag to indicate we should check to see if there are
      *  block/undo files that should be deleted.  Set on startup
      *  or if we allocate more file space when we're in prune mode
@@ -2981,7 +2981,7 @@ bool TestBlockValidity(CValidationState &state, const CBlock& block, CBlockIndex
  */
 
 /* Calculate the amount of disk space the block & undo files currently use */
-uint64_t CalculateCurrentUsage()
+uint64_t CalculateCurrentUsage() EXCLUSIVE_LOCKS_REQUIRED(cs_LastBlockFile)
 {
     uint64_t retval = 0;
     BOOST_FOREACH(const CBlockFileInfo &file, vinfoBlockFile) {
@@ -2991,7 +2991,7 @@ uint64_t CalculateCurrentUsage()
 }
 
 /* Prune a block file (modify associated database entries)*/
-void PruneOneBlockFile(const int fileNumber) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
+void PruneOneBlockFile(const int fileNumber) EXCLUSIVE_LOCKS_REQUIRED(cs_main, cs_LastBlockFile)
 {
     for (BlockMap::iterator it = mapBlockIndex.begin(); it != mapBlockIndex.end(); ++it) {
         CBlockIndex* pindex = it->second;
@@ -3194,19 +3194,22 @@ bool static LoadBlockIndexDB() EXCLUSIVE_LOCKS_REQUIRED(cs_main)
     }
 
     // Load block file info
-    pblocktree->ReadLastBlockFile(nLastBlockFile);
-    vinfoBlockFile.resize(nLastBlockFile + 1);
-    LogPrintf("%s: last block file = %i\n", __func__, nLastBlockFile);
-    for (int nFile = 0; nFile <= nLastBlockFile; nFile++) {
-        pblocktree->ReadBlockFileInfo(nFile, vinfoBlockFile[nFile]);
-    }
-    LogPrintf("%s: last block file info: %s\n", __func__, vinfoBlockFile[nLastBlockFile].ToString());
-    for (int nFile = nLastBlockFile + 1; true; nFile++) {
-        CBlockFileInfo info;
-        if (pblocktree->ReadBlockFileInfo(nFile, info)) {
-            vinfoBlockFile.push_back(info);
-        } else {
-            break;
+    {
+        LOCK(cs_LastBlockFile);
+        pblocktree->ReadLastBlockFile(nLastBlockFile);
+        vinfoBlockFile.resize(nLastBlockFile + 1);
+        LogPrintf("%s: last block file = %i\n", __func__, nLastBlockFile);
+        for (int nFile = 0; nFile <= nLastBlockFile; nFile++) {
+            pblocktree->ReadBlockFileInfo(nFile, vinfoBlockFile[nFile]);
+        }
+        LogPrintf("%s: last block file info: %s\n", __func__, vinfoBlockFile[nLastBlockFile].ToString());
+        for (int nFile = nLastBlockFile + 1; true; nFile++) {
+            CBlockFileInfo info;
+            if (pblocktree->ReadBlockFileInfo(nFile, info)) {
+                vinfoBlockFile.push_back(info);
+            } else {
+                break;
+            }
         }
     }
 
@@ -3358,8 +3361,6 @@ void UnloadBlockIndex()
     mapOrphanTransactionsByPrev.clear();
     nSyncStarted = 0;
     mapBlocksUnlinked.clear();
-    vinfoBlockFile.clear();
-    nLastBlockFile = 0;
     mapBlockSource.clear();
     mapBlocksInFlight.clear();
     nQueuedValidatedHeaders = 0;
@@ -3367,6 +3368,11 @@ void UnloadBlockIndex()
     setDirtyBlockIndex.clear();
     setDirtyFileInfo.clear();
     mapNodeState.clear();
+    {
+        LOCK(cs_LastBlockFile);
+        vinfoBlockFile.clear();
+        nLastBlockFile = 0;
+    }
     {
         LOCK(cs_nBlockSequenceId);
         nBlockSequenceId = 1;
