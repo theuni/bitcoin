@@ -118,7 +118,7 @@ extern CFeeRate minRelayTxFee;
 extern bool fAlerts;
 
 /** Best header we've seen so far (used for getheaders queries' starting points). */
-extern CBlockIndex *pindexBestHeader;
+extern CBlockIndex *pindexBestHeader PT_GUARDED_BY(cs_main);
 
 /** Minimum disk space required - used in CheckDiskSpace() */
 static const uint64_t nMinDiskSpace = 52428800;
@@ -405,8 +405,8 @@ bool ContextualCheckBlock(const CBlock& block, CValidationState& state, CBlockIn
 bool TestBlockValidity(CValidationState &state, const CBlock& block, CBlockIndex *pindexPrev, bool fCheckPOW = true, bool fCheckMerkleRoot = true);
 
 /** Store block on disk. If dbp is non-NULL, the file is known to already reside on disk */
-bool AcceptBlock(CBlock& block, CValidationState& state, CBlockIndex **pindex, bool fRequested, CDiskBlockPos* dbp);
-bool AcceptBlockHeader(const CBlockHeader& block, CValidationState& state, CBlockIndex **ppindex= NULL);
+bool AcceptBlock(CBlock& block, CValidationState& state, CBlockIndex **pindex, bool fRequested, CDiskBlockPos* dbp) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
+bool AcceptBlockHeader(const CBlockHeader& block, CValidationState& state, CBlockIndex **ppindex= NULL) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
 
 
