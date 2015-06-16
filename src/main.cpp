@@ -119,13 +119,13 @@ namespace {
      * as good as our current tip or better. Entries may be failed, though, and pruning nodes may be
      * missing the data for the block.
      */
-    set<CBlockIndex*, CBlockIndexWorkComparator> setBlockIndexCandidates;
+    set<CBlockIndex*, CBlockIndexWorkComparator> setBlockIndexCandidates GUARDED_BY(cs_main);
     /** Number of nodes with fSyncStarted. */
     int nSyncStarted = 0;
     /** All pairs A->B, where A (or one if its ancestors) misses transactions, but B has transactions.
       * Pruned nodes may have entries where B is missing data.
       */
-    multimap<CBlockIndex*, CBlockIndex*> mapBlocksUnlinked;
+    multimap<CBlockIndex*, CBlockIndex*> mapBlocksUnlinked GUARDED_BY(cs_main);
 
     CCriticalSection cs_LastBlockFile;
     std::vector<CBlockFileInfo> vinfoBlockFile GUARDED_BY(cs_LastBlockFile);
@@ -2295,7 +2295,7 @@ static CBlockIndex* FindMostWorkChain() EXCLUSIVE_LOCKS_REQUIRED(cs_main) {
 }
 
 /** Delete all entries in setBlockIndexCandidates that are worse than the current tip. */
-static void PruneBlockIndexCandidates() {
+static void PruneBlockIndexCandidates() EXCLUSIVE_LOCKS_REQUIRED(cs_main) {
     // Note that we can't delete the current block itself, as we may need to return to it later in case a
     // reorganization to a better block fails.
     std::set<CBlockIndex*, CBlockIndexWorkComparator>::iterator it = setBlockIndexCandidates.begin();
