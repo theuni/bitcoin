@@ -8,6 +8,7 @@
 
 #include "coins.h"
 #include "leveldbwrapper.h"
+#include "sync.h"
 
 #include <map>
 #include <string>
@@ -18,6 +19,8 @@ class CBlockFileInfo;
 class CBlockIndex;
 struct CDiskTxPos;
 class uint256;
+
+extern CCriticalSection cs_main;
 
 //! -dbcache default (MiB)
 static const int64_t nDefaultDbCache = 100;
@@ -38,7 +41,7 @@ public:
     bool HaveCoins(const uint256 &txid) const;
     uint256 GetBestBlock() const;
     bool BatchWrite(CCoinsMap &mapCoins, const uint256 &hashBlock);
-    bool GetStats(CCoinsStats &stats) const;
+    bool GetStats(CCoinsStats &stats) const EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 };
 
 /** Access to the block database (blocks/index/) */
@@ -59,7 +62,7 @@ public:
     bool WriteTxIndex(const std::vector<std::pair<uint256, CDiskTxPos> > &list);
     bool WriteFlag(const std::string &name, bool fValue);
     bool ReadFlag(const std::string &name, bool &fValue);
-    bool LoadBlockIndexGuts();
+    bool LoadBlockIndexGuts() EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 };
 
 #endif // BITCOIN_TXDB_H

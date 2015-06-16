@@ -53,7 +53,7 @@ void EnsureWalletIsUnlocked()
         throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Error: Please enter the wallet passphrase with walletpassphrase first.");
 }
 
-void WalletTxToJSON(const CWalletTx& wtx, UniValue& entry)
+void WalletTxToJSON(const CWalletTx& wtx, UniValue& entry) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
 {
     int confirms = wtx.GetDepthInMainChain();
     entry.push_back(Pair("confirmations", confirms));
@@ -657,7 +657,7 @@ UniValue getreceivedbyaccount(const UniValue& params, bool fHelp)
 }
 
 
-CAmount GetAccountBalance(CWalletDB& walletdb, const string& strAccount, int nMinDepth, const isminefilter& filter)
+CAmount GetAccountBalance(CWalletDB& walletdb, const string& strAccount, int nMinDepth, const isminefilter& filter) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
 {
     CAmount nBalance = 0;
 
@@ -682,7 +682,7 @@ CAmount GetAccountBalance(CWalletDB& walletdb, const string& strAccount, int nMi
     return nBalance;
 }
 
-CAmount GetAccountBalance(const string& strAccount, int nMinDepth, const isminefilter& filter)
+CAmount GetAccountBalance(const string& strAccount, int nMinDepth, const isminefilter& filter) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
 {
     CWalletDB walletdb(pwalletMain->strWalletFile);
     return GetAccountBalance(walletdb, strAccount, nMinDepth, filter);
@@ -1094,7 +1094,7 @@ struct tallyitem
     }
 };
 
-UniValue ListReceived(const UniValue& params, bool fByAccounts)
+UniValue ListReceived(const UniValue& params, bool fByAccounts) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
 {
     // Minimum confirmations
     int nMinDepth = 1;
@@ -1292,7 +1292,7 @@ static void MaybePushAddress(UniValue & entry, const CTxDestination &dest)
         entry.push_back(Pair("address", addr.ToString()));
 }
 
-void ListTransactions(const CWalletTx& wtx, const string& strAccount, int nMinDepth, bool fLong, UniValue& ret, const isminefilter& filter)
+void ListTransactions(const CWalletTx& wtx, const string& strAccount, int nMinDepth, bool fLong, UniValue& ret, const isminefilter& filter) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
 {
     CAmount nFee;
     string strSentAccount;

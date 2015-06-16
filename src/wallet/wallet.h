@@ -28,6 +28,8 @@
 #include <utility>
 #include <vector>
 
+extern CCriticalSection cs_main;
+
 /**
  * Settings
  */
@@ -148,7 +150,7 @@ struct COutputEntry
 class CMerkleTx : public CTransaction
 {
 private:
-    int GetDepthInMainChainINTERNAL(const CBlockIndex* &pindexRet) const;
+    int GetDepthInMainChainINTERNAL(const CBlockIndex* &pindexRet) const EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
 public:
     uint256 hashBlock;
@@ -187,7 +189,7 @@ public:
         READWRITE(nIndex);
     }
 
-    int SetMerkleBranch(const CBlock& block);
+    int SetMerkleBranch(const CBlock& block) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
 
     /**
@@ -196,10 +198,10 @@ public:
      *  0  : in memory pool, waiting to be included in a block
      * >=1 : this many blocks deep in the main chain
      */
-    int GetDepthInMainChain(const CBlockIndex* &pindexRet) const;
-    int GetDepthInMainChain() const { const CBlockIndex *pindexRet; return GetDepthInMainChain(pindexRet); }
-    bool IsInMainChain() const { const CBlockIndex *pindexRet; return GetDepthInMainChainINTERNAL(pindexRet) > 0; }
-    int GetBlocksToMaturity() const;
+    int GetDepthInMainChain(const CBlockIndex* &pindexRet) const EXCLUSIVE_LOCKS_REQUIRED(cs_main);
+    int GetDepthInMainChain() const EXCLUSIVE_LOCKS_REQUIRED(cs_main) { const CBlockIndex *pindexRet; return GetDepthInMainChain(pindexRet); }
+    bool IsInMainChain() const EXCLUSIVE_LOCKS_REQUIRED(cs_main) { const CBlockIndex *pindexRet; return GetDepthInMainChainINTERNAL(pindexRet) > 0; }
+    int GetBlocksToMaturity() const EXCLUSIVE_LOCKS_REQUIRED(cs_main);
     bool AcceptToMemoryPool(bool fLimitFree=true, bool fRejectAbsurdFee=true);
 };
 
@@ -358,11 +360,11 @@ public:
 
     //! filter decides which addresses will count towards the debit
     CAmount GetDebit(const isminefilter& filter) const;
-    CAmount GetCredit(const isminefilter& filter) const;
-    CAmount GetImmatureCredit(bool fUseCache=true) const;
-    CAmount GetAvailableCredit(bool fUseCache=true) const;
-    CAmount GetImmatureWatchOnlyCredit(const bool& fUseCache=true) const;
-    CAmount GetAvailableWatchOnlyCredit(const bool& fUseCache=true) const;
+    CAmount GetCredit(const isminefilter& filter) const EXCLUSIVE_LOCKS_REQUIRED(cs_main);
+    CAmount GetImmatureCredit(bool fUseCache=true) const EXCLUSIVE_LOCKS_REQUIRED(cs_main);
+    CAmount GetAvailableCredit(bool fUseCache=true) const EXCLUSIVE_LOCKS_REQUIRED(cs_main);
+    CAmount GetImmatureWatchOnlyCredit(const bool& fUseCache=true) const EXCLUSIVE_LOCKS_REQUIRED(cs_main);
+    CAmount GetAvailableWatchOnlyCredit(const bool& fUseCache=true) const EXCLUSIVE_LOCKS_REQUIRED(cs_main);
     CAmount GetChange() const;
 
     void GetAmounts(std::list<COutputEntry>& listReceived,
@@ -376,14 +378,14 @@ public:
         return (GetDebit(filter) > 0);
     }
 
-    bool IsTrusted() const;
+    bool IsTrusted() const EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
     bool WriteToDisk(CWalletDB *pwalletdb);
 
     int64_t GetTxTime() const;
     int GetRequestCount() const;
 
-    bool RelayWalletTransaction();
+    bool RelayWalletTransaction() EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
     std::set<uint256> GetConflicts() const;
 };
@@ -545,7 +547,7 @@ public:
     void AvailableCoins(std::vector<COutput>& vCoins, bool fOnlyConfirmed=true, const CCoinControl *coinControl = NULL, bool fIncludeZeroValue=false) const;
     bool SelectCoinsMinConf(const CAmount& nTargetValue, int nConfMine, int nConfTheirs, std::vector<COutput> vCoins, std::set<std::pair<const CWalletTx*,unsigned int> >& setCoinsRet, CAmount& nValueRet) const;
 
-    bool IsSpent(const uint256& hash, unsigned int n) const;
+    bool IsSpent(const uint256& hash, unsigned int n) const EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
     bool IsLockedCoin(uint256 hash, unsigned int n) const;
     void LockCoin(COutPoint& output);
@@ -593,7 +595,7 @@ public:
     bool ChangeWalletPassphrase(const SecureString& strOldWalletPassphrase, const SecureString& strNewWalletPassphrase);
     bool EncryptWallet(const SecureString& strWalletPassphrase);
 
-    void GetKeyBirthTimes(std::map<CKeyID, int64_t> &mapKeyBirth) const;
+    void GetKeyBirthTimes(std::map<CKeyID, int64_t> &mapKeyBirth) const EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
     /** 
      * Increment the next transaction order id
@@ -612,13 +614,13 @@ public:
     TxItems OrderedTxItems(std::list<CAccountingEntry>& acentries, std::string strAccount = "");
 
     void MarkDirty();
-    bool AddToWallet(const CWalletTx& wtxIn, bool fFromLoadWallet, CWalletDB* pwalletdb);
+    bool AddToWallet(const CWalletTx& wtxIn, bool fFromLoadWallet, CWalletDB* pwalletdb) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
     void SyncTransaction(const CTransaction& tx, const CBlock* pblock);
-    bool AddToWalletIfInvolvingMe(const CTransaction& tx, const CBlock* pblock, bool fUpdate);
+    bool AddToWalletIfInvolvingMe(const CTransaction& tx, const CBlock* pblock, bool fUpdate) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
     int ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate = false);
     void ReacceptWalletTransactions();
-    void ResendWalletTransactions(int64_t nBestBlockTime);
-    std::vector<uint256> ResendWalletTransactionsBefore(int64_t nTime);
+    void ResendWalletTransactions(int64_t nBestBlockTime) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
+    std::vector<uint256> ResendWalletTransactionsBefore(int64_t nTime) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
     CAmount GetBalance() const;
     CAmount GetUnconfirmedBalance() const;
     CAmount GetImmatureBalance() const;
@@ -642,7 +644,7 @@ public:
     void GetAllReserveKeys(std::set<CKeyID>& setAddress) const;
 
     std::set< std::set<CTxDestination> > GetAddressGroupings();
-    std::map<CTxDestination, CAmount> GetAddressBalances();
+    std::map<CTxDestination, CAmount> GetAddressBalances() EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
     std::set<CTxDestination> GetAccountAddresses(const std::string& strAccount) const;
 
@@ -660,7 +662,7 @@ public:
     CAmount GetChange(const CTransaction& tx) const;
     void SetBestChain(const CBlockLocator& loc);
 
-    DBErrors LoadWallet(bool& fFirstRunRet);
+    DBErrors LoadWallet(bool& fFirstRunRet) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
     DBErrors ZapWalletTx(std::vector<CWalletTx>& vWtx);
 
     bool SetAddressBook(const CTxDestination& address, const std::string& strName, const std::string& purpose);
@@ -703,7 +705,7 @@ public:
     void Flush(bool shutdown=false);
 
     //! Verify the wallet database and perform salvage if required
-    static bool Verify(const std::string& walletFile, std::string& warningString, std::string& errorString);
+    static bool Verify(const std::string& walletFile, std::string& warningString, std::string& errorString) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
     
     /** 
      * Address book entry changed.

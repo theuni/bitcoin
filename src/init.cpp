@@ -948,10 +948,11 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
 
         std::string warningString;
         std::string errorString;
-
-        if (!CWallet::Verify(strWalletFile, warningString, errorString))
-            return false;
-
+        {
+            LOCK(cs_main);
+            if (!CWallet::Verify(strWalletFile, warningString, errorString))
+                return false;
+        }
         if (!warningString.empty())
             InitWarning(warningString);
         if (!errorString.empty())
@@ -1138,12 +1139,13 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
                     strLoadError = _("Error loading block database");
                     break;
                 }
-
-                // If the loaded chain has a wrong genesis, bail out immediately
-                // (we're likely using a testnet datadir, or the other way around).
-                if (!mapBlockIndex.empty() && mapBlockIndex.count(chainparams.GetConsensus().hashGenesisBlock) == 0)
-                    return InitError(_("Incorrect or no genesis block found. Wrong datadir for network?"));
-
+                {
+                    LOCK(cs_main);
+                    // If the loaded chain has a wrong genesis, bail out immediately
+                    // (we're likely using a testnet datadir, or the other way around).
+                    if (!mapBlockIndex.empty() && mapBlockIndex.count(chainparams.GetConsensus().hashGenesisBlock) == 0)
+                        return InitError(_("Incorrect or no genesis block found. Wrong datadir for network?"));
+                }
                 // Initialize the block index (no-op if non-empty database was already loaded)
                 if (!InitBlockIndex()) {
                     strLoadError = _("Error initializing block database");
@@ -1256,29 +1258,31 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
         nStart = GetTimeMillis();
         bool fFirstRun = true;
         pwalletMain = new CWallet(strWalletFile);
-        DBErrors nLoadWalletRet = pwalletMain->LoadWallet(fFirstRun);
-        if (nLoadWalletRet != DB_LOAD_OK)
         {
-            if (nLoadWalletRet == DB_CORRUPT)
-                strErrors << _("Error loading wallet.dat: Wallet corrupted") << "\n";
-            else if (nLoadWalletRet == DB_NONCRITICAL_ERROR)
+            LOCK(cs_main);
+            DBErrors nLoadWalletRet = pwalletMain->LoadWallet(fFirstRun);
+            if (nLoadWalletRet != DB_LOAD_OK)
             {
-                string msg(_("Warning: error reading wallet.dat! All keys read correctly, but transaction data"
-                             " or address book entries might be missing or incorrect."));
-                InitWarning(msg);
+                if (nLoadWalletRet == DB_CORRUPT)
+                    strErrors << _("Error loading wallet.dat: Wallet corrupted") << "\n";
+                else if (nLoadWalletRet == DB_NONCRITICAL_ERROR)
+                {
+                    string msg(_("Warning: error reading wallet.dat! All keys read correctly, but transaction data"
+                                 " or address book entries might be missing or incorrect."));
+                    InitWarning(msg);
+                }
+                else if (nLoadWalletRet == DB_TOO_NEW)
+                    strErrors << _("Error loading wallet.dat: Wallet requires newer version of Bitcoin Core") << "\n";
+                else if (nLoadWalletRet == DB_NEED_REWRITE)
+                {
+                    strErrors << _("Wallet needed to be rewritten: restart Bitcoin Core to complete") << "\n";
+                    LogPrintf("%s", strErrors.str());
+                    return InitError(strErrors.str());
+                }
+                else
+                    strErrors << _("Error loading wallet.dat") << "\n";
             }
-            else if (nLoadWalletRet == DB_TOO_NEW)
-                strErrors << _("Error loading wallet.dat: Wallet requires newer version of Bitcoin Core") << "\n";
-            else if (nLoadWalletRet == DB_NEED_REWRITE)
-            {
-                strErrors << _("Wallet needed to be rewritten: restart Bitcoin Core to complete") << "\n";
-                LogPrintf("%s", strErrors.str());
-                return InitError(strErrors.str());
-            }
-            else
-                strErrors << _("Error loading wallet.dat") << "\n";
         }
-
         if (GetBoolArg("-upgradewallet", fFirstRun))
         {
             int nMaxVersion = GetArg("-upgradewallet", 0);
@@ -1322,6 +1326,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
         {
             CWalletDB walletdb(strWalletFile);
             CBlockLocator locator;
+            LOCK(cs_main);
             if (walletdb.ReadBestBlock(locator))
                 pindexRescan = FindForkInGlobalIndex(chainActive, locator);
             else
@@ -1415,7 +1420,10 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     RandAddSeedPerfmon();
 
     //// debug print
-    LogPrintf("mapBlockIndex.size() = %u\n",   mapBlockIndex.size());
+    {
+        LOCK(cs_main);
+        LogPrintf("mapBlockIndex.size() = %u\n",   mapBlockIndex.size());
+    }
     LogPrintf("nBestHeight = %d\n",                   chainActive.Height());
 #ifdef ENABLE_WALLET
     LogPrintf("setKeyPool.size() = %u\n",      pwalletMain ? pwalletMain->setKeyPool.size() : 0);

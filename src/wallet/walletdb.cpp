@@ -345,7 +345,7 @@ public:
 
 bool
 ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
-             CWalletScanState &wss, string& strType, string& strErr)
+             CWalletScanState &wss, string& strType, string& strErr) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
 {
     try {
         // Unserialize

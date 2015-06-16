@@ -28,6 +28,8 @@ class CWalletTx;
 class uint160;
 class uint256;
 
+extern CCriticalSection cs_main;
+
 /** Error statuses for the wallet database */
 enum DBErrors
 {
@@ -124,11 +126,11 @@ public:
     void ListAccountCreditDebit(const std::string& strAccount, std::list<CAccountingEntry>& acentries);
 
     DBErrors ReorderTransactions(CWallet* pwallet);
-    DBErrors LoadWallet(CWallet* pwallet);
+    DBErrors LoadWallet(CWallet* pwallet) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
     DBErrors FindWalletTx(CWallet* pwallet, std::vector<uint256>& vTxHash, std::vector<CWalletTx>& vWtx);
     DBErrors ZapWalletTx(CWallet* pwallet, std::vector<CWalletTx>& vWtx);
-    static bool Recover(CDBEnv& dbenv, const std::string& filename, bool fOnlyKeys);
-    static bool Recover(CDBEnv& dbenv, const std::string& filename);
+    static bool Recover(CDBEnv& dbenv, const std::string& filename, bool fOnlyKeys) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
+    static bool Recover(CDBEnv& dbenv, const std::string& filename) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
 private:
     CWalletDB(const CWalletDB&);
