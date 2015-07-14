@@ -1,6 +1,12 @@
 DIST_SUBDIRS = secp256k1
 AM_LDFLAGS = $(PTHREAD_CFLAGS) $(LIBTOOL_LDFLAGS)
 
+if DETERMINISTIC
+  export QT_RCC_TEST=1
+if TARGET_DARWIN
+  export ZERO_AR_DATE=1
+endif
+endif
 
 if EMBEDDED_LEVELDB
 LEVELDB_CPPFLAGS += -I$(srcdir)/leveldb/include

@@ -98,3 +98,7 @@ fi
 if test -n "@LDFLAGS@"; then
   LDFLAGS="@LDFLAGS@ $LDFLAGS"
 fi
+
+if test -n "DETERMINISTIC"; then
+  CPPFLAGS="-Wno-builtin-macro-redefined -D__FILE__=__BASE_FILE__ $CPPFLAGS"
+fi
