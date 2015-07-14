@@ -6,7 +6,7 @@ $(package)_sha256_hash=8f9faeaebad088e772f4ef5e38252d472be4d878c6b3a2718c10a4fce
 
 define $(package)_set_vars
 $(package)_config_env=AR="$($(package)_ar)" RANLIB="$($(package)_ranlib)" CC="$($(package)_cc)"
-$(package)_config_opts=--prefix=$(host_prefix) --openssldir=$(host_prefix)/etc/openssl no-zlib no-shared no-dso
+$(package)_config_opts=--prefix=$(host_prefix) --openssldir=/etc/openssl no-engine no-zlib no-shared no-dso
 $(package)_config_opts+=no-krb5 no-camellia no-capieng no-cast no-cms no-dtls1 no-gost no-gmp no-heartbeats no-idea no-jpake no-md2
 $(package)_config_opts+=no-mdc2 no-rc5 no-rdrand no-rfc3779 no-rsax no-sctp no-seed no-sha0 no-static_engine no-whirlpool no-rc2 no-rc4 no-ssl2 no-ssl3
 $(package)_config_opts+=$($(package)_cflags) $($(package)_cppflags)
@@ -24,6 +24,7 @@ endef
 
 define $(package)_preprocess_cmds
   sed -i.old "/define DATE/d" util/mkbuildinf.pl && \
+  sed -i.old "/define CFLAGS/d" util/mkbuildinf.pl && \
   sed -i.old "s|engines apps test|engines|" Makefile.org
 endef
 
