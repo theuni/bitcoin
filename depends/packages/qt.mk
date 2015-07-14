@@ -41,7 +41,6 @@ $(package)_config_opts_linux  = -qt-xkbcommon -qt-xcb  -no-eglfs -no-linuxfb -sy
 $(package)_config_opts_arm_linux  = -platform linux-g++ -xplatform $(host)
 $(package)_config_opts_i686_linux  = -xplatform linux-g++-32
 $(package)_config_opts_mingw32  = -no-opengl -xplatform win32-g++ -device-option CROSS_COMPILE="$(host)-"
-$(package)_build_env  = QT_RCC_TEST=1
 endef
 
 define $(package)_preprocess_cmds
@@ -66,11 +65,13 @@ define $(package)_preprocess_cmds
 endef
 
 define $(package)_config_cmds
+  export QT_RCC_TEST=1 && \
   export PKG_CONFIG_SYSROOT_DIR=/ && \
   export PKG_CONFIG_LIBDIR=$(host_prefix)/lib/pkgconfig && \
   export PKG_CONFIG_PATH=$(host_prefix)/share/pkgconfig  && \
   export CPATH=$(host_prefix)/include && \
   ./configure $($(package)_config_opts) && \
+  sed -i.old "s|$(host_prefix)|/usr|" src/corelib/global/qconfig.cpp && \
   $(MAKE) sub-src-clean && \
   cd ../qttranslations && ../qtbase/bin/qmake qttranslations.pro -o Makefile && \
   cd translations && ../../qtbase/bin/qmake translations.pro -o Makefile && cd ../.. &&\
@@ -78,6 +79,7 @@ define $(package)_config_cmds
 endef
 
 define $(package)_build_cmds
+  export QT_RCC_TEST=1 && \
   export CPATH=$(host_prefix)/include && \
   $(MAKE) -C src $(addprefix sub-,$($(package)_qt_libs)) && \
   $(MAKE) -C ../qttools/src/linguist/lrelease && \
