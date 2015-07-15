@@ -135,7 +135,7 @@ public:
 
     uint256 GetHash() const;
 
-    CAmount GetDustThreshold(const CFeeRate &minRelayTxFee) const
+    CAmount GetDustThreshold(const CFeeRate& minRelayTxFee) const
     {
         // "Dust" is defined in terms of CTransaction::minRelayTxFee,
         // which has units satoshis-per-kilobyte.
@@ -149,7 +149,7 @@ public:
         return 3*minRelayTxFee.GetFee(nSize);
     }
 
-    bool IsDust(const CFeeRate &minRelayTxFee) const
+    bool IsDust(const CFeeRate& minRelayTxFee) const
     {
         return (nValue < GetDustThreshold(minRelayTxFee));
     }
@@ -197,7 +197,7 @@ public:
     CTransaction();
 
     /** Convert a CMutableTransaction into a CTransaction. */
-    CTransaction(const CMutableTransaction &tx);
+    CTransaction(const CMutableTransaction& tx);
 
     CTransaction& operator=(const CTransaction& tx);
 
