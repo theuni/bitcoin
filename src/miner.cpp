@@ -6,7 +6,9 @@
 #include "miner.h"
 
 #include "amount.h"
+#include "chain.h"
 #include "chainparams.h"
+#include "coins.h"
 #include "consensus/consensus.h"
 #include "consensus/validation.h"
 #include "hash.h"
@@ -14,7 +16,9 @@
 #include "net.h"
 #include "pow.h"
 #include "primitives/transaction.h"
+#include "script/standard.h"
 #include "timedata.h"
+#include "txmempool.h"
 #include "util.h"
 #include "utilmoneystr.h"
 #ifdef ENABLE_WALLET

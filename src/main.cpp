@@ -12,6 +12,7 @@
 #include "checkpoints.h"
 #include "checkqueue.h"
 #include "consensus/validation.h"
+#include "hash.h"
 #include "init.h"
 #include "merkleblock.h"
 #include "net.h"
@@ -22,6 +23,7 @@
 #include "undo.h"
 #include "util.h"
 #include "utilmoneystr.h"
+#include "utilstrencodings.h"
 #include "validationinterface.h"
 
 #include <sstream>

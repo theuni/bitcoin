@@ -19,6 +19,7 @@
 #include "primitives/block.h"
 #include "primitives/transaction.h"
 #include "script/script.h"
+#include "script/script_error.h"
 #include "script/sigcache.h"
 #include "script/standard.h"
 #include "sync.h"
