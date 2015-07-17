@@ -1,9 +1,9 @@
 PACKAGE=qt
-$(package)_version=5.4.2
-$(package)_download_path=http://download.qt.io/official_releases/qt/5.4/$($(package)_version)/submodules
+$(package)_version=5.5.0
+$(package)_download_path=http://download.qt.io/official_releases/qt/5.5/$($(package)_version)/submodules
 $(package)_suffix=opensource-src-$($(package)_version).tar.gz
 $(package)_file_name=qt5-$($(package)_suffix)
-$(package)_sha256_hash=165840bcb69f670070cc71247179b696a839917b0758f332b88b6aab45fac400
+$(package)_sha256_hash=03704c8f274e412100d4cc515f1d89faed0d89f843b8a4adfad56f71dacc4159
 $(package)_dependencies=openssl
 $(package)_linux_dependencies=freetype fontconfig dbus libxcb libX11 xproto libXext
 $(package)_build_subdir=qtbase
@@ -11,13 +11,13 @@ $(package)_qt_libs=corelib network widgets gui plugins testlib
 $(package)_patches=mac-qmake.conf fix-xcb-include-order.patch mingw-uuidof.patch
 
 $(package)_qtbase_file_name=qtbase-$($(package)_suffix)
-$(package)_qtbase_sha256_hash=93a6ce12f2020da7b8b81b5fb42d7804fcdf3194fbd2cae156e3d01e3669c18a
+$(package)_qtbase_sha256_hash=7e82b1318f88e56a2a9376e069aa608d4fd96b48cb0e1b880ae658b0a1af0561
 
 $(package)_qttranslations_file_name=qttranslations-$($(package)_suffix)
-$(package)_qttranslations_sha256_hash=e1929c49bc1877406d0905f3bfaef720a458d8d63df0ce5e44883c17bbe36ba6
+$(package)_qttranslations_sha256_hash=c4bd6db6e426965c6f8824c54e81f68bbd61e2bae1bcadc328c6e81c45902a0d
 
 $(package)_qttools_file_name=qttools-$($(package)_suffix)
-$(package)_qttools_sha256_hash=8e8c8a9f46afd6b78f464bd25e4ef09f290208e99a2a90c0c173602be9adfd2d
+$(package)_qttools_sha256_hash=d9e06bd19ecc86afba5e95d45a906d1bc1ad579aa70001e36143c1aaf695bdd6
 
 $(package)_extra_sources  = $($(package)_qtbase_file_name)
 $(package)_extra_sources += $($(package)_qttranslations_file_name)
@@ -68,7 +68,8 @@ $(package)_config_opts += -no-openvg
 $(package)_config_opts += -no-xrender
 $(package)_config_opts += -no-alsa
 $(package)_config_opts += -no-mtdev
-$(package)_config_opts += -no-kms
+$(package)_config_opts += -no-gstreamer
+$(package)_config_opts += -no-mitshm
 
 ifneq ($(build_os),darwin)
 $(package)_config_opts_darwin  = -xplatform macx-clang-linux
@@ -122,6 +123,9 @@ endef
 define $(package)_preprocess_cmds
   sed -i.old "s|updateqm.commands = \$$$$\$$$$LRELEASE|updateqm.commands = $($(package)_extract_dir)/qttools/bin/lrelease|" qttranslations/translations/translations.pro && \
   sed -i.old "s/src_plugins.depends = src_sql src_xml src_network/src_plugins.depends = src_xml src_network/" qtbase/src/src.pro && \
+  sed -i.old "s/PIDLIST_ABSOLUTE/ITEMIDLIST */" qtbase/src/plugins/platforms/windows/qwindowscontext.h &&\
+  sed -i.old "s/PIDLIST_ABSOLUTE/ITEMIDLIST */" qtbase/src/plugins/platforms/windows/qwindowsdialoghelpers.cpp &&\
+  sed -i.old "s/PCIDLIST_ABSOLUTE/const ITEMIDLIST */" qtbase/src/plugins/platforms/windows/qwindowscontext.h &&\
   sed -i.old "s|X11/extensions/XIproto.h|X11/X.h|" qtbase/src/plugins/platforms/xcb/qxcbxsettings.cpp && \
   sed -i.old 's/if \[ "$$$$XPLATFORM_MAC" = "yes" \]; then xspecvals=$$$$(macSDKify/if \[ "$$$$BUILD_ON_MAC" = "yes" \]; then xspecvals=$$$$(macSDKify/' qtbase/configure && \
   mkdir -p qtbase/mkspecs/macx-clang-linux &&\

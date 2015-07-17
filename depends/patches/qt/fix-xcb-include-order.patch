@@ -1,5 +1,5 @@
---- old/qtbase/src/plugins/platforms/xcb/xcb-plugin.pro 2015-03-17 02:06:42.705930685 +0000
-+++ new/qtbase/src/plugins/platforms/xcb/xcb-plugin.pro 2015-03-17 02:08:41.281926351 +0000
+--- old/qtbase/src/plugins/platforms/xcb/xcb_qpa_lib.pro 2015-03-17 02:06:42.705930685 +0000
++++ new/qtbase/src/plugins/platforms/xcb/xcb_qpa_lib.pro 2015-03-17 02:08:41.281926351 +0000
 @@ -94,8 +94,6 @@
 
  DEFINES += $$QMAKE_DEFINES_XCB
