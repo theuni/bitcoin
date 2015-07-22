@@ -49,7 +49,7 @@ static const unsigned int STANDARD_NOT_MANDATORY_VERIFY_FLAGS = STANDARD_SCRIPT_
 class CPolicy
 {
 public:
-    bool ApproveScript(const CScript&, txnouttype&) const;
+    bool ApproveScript(const CScript&) const;
     /**
      * Check for standard transaction types
      * @return True if all outputs (scriptPubKeys) use only standard transaction forms

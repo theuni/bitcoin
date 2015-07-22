@@ -34,7 +34,8 @@
      *   DUP CHECKSIG DROP ... repeated 100 times... OP_1
      */
 
-bool CPolicy::ApproveScript(const CScript& scriptPubKey, txnouttype& whichType) const
+namespace {
+bool ApproveScriptInt(const CScript& scriptPubKey, txnouttype& whichType)
 {
     std::vector<std::vector<unsigned char> > vSolutions;
     if (!Solver(scriptPubKey, whichType, vSolutions))
@@ -52,6 +53,13 @@ bool CPolicy::ApproveScript(const CScript& scriptPubKey, txnouttype& whichType) 
     }
 
     return whichType != TX_NONSTANDARD;
+}
+} // anon namespace
+
+bool CPolicy::ApproveScript(const CScript& scriptPubKey) const
+{
+    txnouttype whichType;
+    return ApproveScriptInt(scriptPubKey, whichType);
 }
 
 bool CPolicy::ApproveTx(const CTransaction& tx, std::string& reason) const
@@ -96,7 +104,7 @@ bool CPolicy::ApproveTx(const CTransaction& tx, std::string& reason) const
     unsigned int nDataOut = 0;
     txnouttype whichType;
     BOOST_FOREACH(const CTxOut& txout, tx.vout) {
-        if (!ApproveScript(txout.scriptPubKey, whichType)) {
+        if (!ApproveScriptInt(txout.scriptPubKey, whichType)) {
             reason = "scriptpubkey";
             return false;
         }
