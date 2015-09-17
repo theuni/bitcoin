@@ -27,19 +27,19 @@ class ZMQTest (BitcoinTestFramework):
     port = 28332
 
     def setup_nodes(self):
-        self.zmqContext = zmq.Context()
-        self.zmqSubSocket = self.zmqContext.socket(zmq.SUB)
-        self.zmqSubSocket.setsockopt(zmq.SUBSCRIBE, "hashblock")
-        self.zmqSubSocket.setsockopt(zmq.SUBSCRIBE, "hashtx")
-        self.zmqSubSocket.connect("tcp://127.0.0.1:%i" % self.port)
-        # Note: proxies are not used to connect to local nodes
-        # this is because the proxy to use is based on CService.GetNetwork(), which return NET_UNROUTABLE for localhost
-        return start_nodes(4, self.options.tmpdir, extra_args=[
+        nodes = start_nodes(4, self.options.tmpdir, extra_args=[
             ['-zmqpubhashtx=tcp://127.0.0.1:'+str(self.port), '-zmqpubhashblock=tcp://127.0.0.1:'+str(self.port)],
             [],
             [],
             []
             ])
+        self.zmqContext = zmq.Context()
+        self.zmqSubSocket = self.zmqContext.socket(zmq.SUB)
+        self.zmqSubSocket.setsockopt(zmq.SUBSCRIBE, "hashblock")
+        self.zmqSubSocket.setsockopt(zmq.SUBSCRIBE, "hashtx")
+        self.zmqSubSocket.connect("tcp://127.0.0.1:%i" % self.port)
+
+        return nodes
 
     def run_test(self):
         self.sync_all()
@@ -47,17 +47,23 @@ class ZMQTest (BitcoinTestFramework):
         genhashes = self.nodes[0].generate(1);
         self.sync_all()
 
+        fname = self.options.tmpdir + "/node2/regtest/debug.log"
+        with open(fname, 'r') as fin:
+            print fin.read()
+    
         print "listen..."
         msg = self.zmqSubSocket.recv_multipart()
         topic = str(msg[0])
         body = msg[1]
 
+        print "listen2..."
         msg = self.zmqSubSocket.recv_multipart()
         topic = str(msg[0])
         body = msg[1]
         blkhash = binascii.hexlify(body)
 
         assert_equal(genhashes[0], blkhash) #blockhash from generate must be equal to the hash received over zmq
+        print "genhash okay..."
 
         n = 10
         genhashes = self.nodes[1].generate(n);
