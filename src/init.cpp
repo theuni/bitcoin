@@ -84,30 +84,25 @@ CClientUIInterface uiInterface; // Declared but not defined in ui_interface.h
 //
 // Shutdown
 //
-
-//
 // Thread management and startup/shutdown:
 //
 // The network-processing threads are all part of a thread group
-// created by AppInit() or the Qt main() function.
+// created by AppInit() or the QT main function.
 //
 // A clean exit happens when StartShutdown() or the SIGTERM
-// signal handler sets fRequestShutdown, which triggers
-// the DetectShutdownThread(), which interrupts the main thread group.
-// DetectShutdownThread() then exits, which causes AppInit() to
-// continue (it .joins the shutdown thread).
-// Shutdown() is then
-// called to clean up database connections, and stop other
+// signal handler sets fRequstShutdown.  A loop in the main thread
+// (see where AppInit calls WaitForShutdown) will notice soon
+// thereafter and interrupt the main thread group.  It then
+// calls Shutdown() to  clean up database connections, and stop other
 // threads that should only be stopped after the main network-processing
 // threads have exited.
 //
-// Note that if running -daemon the parent process returns from AppInit2
-// before adding any threads to the threadGroup, so .join_all() returns
-// immediately and the parent exits from main().
+// Note that if running as -daemon, the parent process spawns a child
+// thread in AppInit() and exits from main().  The child thread will
+// continue on to AppInit2().
 //
-// Shutdown for Qt is very similar, only it uses a QTimer to detect
-// fRequestShutdown getting set, and then does the normal Qt
-// shutdown thing.
+// Shutdown for QT is similar, but uses a QTimer to detect fRequestShutdown
+// getting set, and then does the normal QT shutdown thing.
 //
 
 volatile bool fRequestShutdown = false;
