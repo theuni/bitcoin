@@ -31,7 +31,8 @@ JSON_TEST_FILES = \
 
 RAW_TEST_FILES = test/data/alertTests.raw
 
-GENERATED_TEST_FILES = $(JSON_TEST_FILES:.json=.json.h) $(RAW_TEST_FILES:.raw=.raw.h)
+GENERATED_TEST_SRCS = $(JSON_TEST_FILES:.json=.jsondata.cpp)
+GENERATED_TEST_HDRS = $(JSON_TEST_FILES:.json=.jsonhdr.h) $(RAW_TEST_FILES:.raw=.raw.h)
 
 BITCOIN_TESTS =\
   test/arith_uint256_tests.cpp \
@@ -104,11 +105,12 @@ if ENABLE_ZMQ
 test_test_bitcoin_LDADD += $(ZMQ_LIBS)
 endif
 
-nodist_test_test_bitcoin_SOURCES = $(GENERATED_TEST_FILES)
+nodist_test_test_bitcoin_SOURCES = $(GENERATED_TEST_HDRS) $(GENERATED_TEST_SRCS)
 
-$(BITCOIN_TESTS): $(GENERATED_TEST_FILES)
+$(BITCOIN_TESTS): $(GENERATED_TEST_HDRS) $(GENERATED_TEST_SRCS)
+$(GENERATED_TEST_FILES): $(GENERATED_TEST_HDRS)
 
-CLEAN_BITCOIN_TEST = test/*.gcda test/*.gcno $(GENERATED_TEST_FILES)
+CLEAN_BITCOIN_TEST = test/*.gcda test/*.gcno $(GENERATED_TEST_HDRS) $(GENERATED_TEST_SRCS)
 
 CLEANFILES += $(CLEAN_BITCOIN_TEST)
 
@@ -125,18 +127,29 @@ check-local:
 	$(AM_V_at)srcdir=$(srcdir) PYTHONPATH=$(builddir)/test $(srcdir)/test/bitcoin-util-test.py
 	$(AM_V_at)$(MAKE) $(AM_MAKEFLAGS) -C secp256k1 check
 
-%.json.h: %.json
+%.jsonhdr.h: %.json
 	@$(MKDIR_P) $(@D)
-	@echo "namespace json_tests{" > $@
-	@echo "static unsigned const char $(*F)[] = {" >> $@
+	@echo "#include <string>" > $@
+	@echo "namespace json_tests{" >> $@
+	@echo "extern const std::string str_$(*F);" >> $@
+	@echo "}" >> $@
+	@echo "Generated $@"
+
+%.jsondata.cpp: %.json
+	@$(MKDIR_P) $(@D)
+	@echo "#include \"$(*F).jsonhdr.h\"" > $@
+	@echo "namespace json_tests{" >> $@
+	@echo "static const char $(*F)[] = {" >> $@
 	@$(HEXDUMP) -v -e '8/1 "0x%02x, "' -e '"\n"' $< | $(SED) -e 's/0x  ,//g' >> $@
-	@echo "};};" >> $@
+	@echo "};" >> $@
+	@echo "const std::string str_$(*F)($(*F), $(*F) + sizeof($(*F)));" >> $@
+	@echo "}" >> $@
 	@echo "Generated $@"
 
 %.raw.h: %.raw
 	@$(MKDIR_P) $(@D)
 	@echo "namespace alert_tests{" > $@
-	@echo "static unsigned const char $(*F)[] = {" >> $@
+	@echo "static const unsigned char $(*F)[] = {" >> $@
 	@$(HEXDUMP) -v -e '8/1 "0x%02x, "' -e '"\n"' $< | $(SED) -e 's/0x  ,//g' >> $@
 	@echo "};};" >> $@
 	@echo "Generated $@"

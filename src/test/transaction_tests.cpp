@@ -2,8 +2,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "data/tx_invalid.json.h"
-#include "data/tx_valid.json.h"
+#include "data/tx_invalid.jsonhdr.h"
+#include "data/tx_valid.jsonhdr.h"
 #include "test/test_bitcoin.h"
 
 #include "clientversion.h"
@@ -92,7 +92,7 @@ BOOST_AUTO_TEST_CASE(tx_valid)
     // ... where all scripts are stringified scripts.
     //
     // verifyFlags is a comma separated list of script verification flags to apply, or "NONE"
-    UniValue tests = read_json(std::string(json_tests::tx_valid, json_tests::tx_valid + sizeof(json_tests::tx_valid)));
+    UniValue tests = read_json(json_tests::str_tx_valid);
 
     ScriptError err;
     for (unsigned int idx = 0; idx < tests.size(); idx++) {
@@ -167,7 +167,7 @@ BOOST_AUTO_TEST_CASE(tx_invalid)
     // ... where all scripts are stringified scripts.
     //
     // verifyFlags is a comma separated list of script verification flags to apply, or "NONE"
-    UniValue tests = read_json(std::string(json_tests::tx_invalid, json_tests::tx_invalid + sizeof(json_tests::tx_invalid)));
+    UniValue tests = read_json(json_tests::str_tx_invalid);
 
     ScriptError err;
     for (unsigned int idx = 0; idx < tests.size(); idx++) {

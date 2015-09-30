@@ -2,8 +2,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "data/script_invalid.json.h"
-#include "data/script_valid.json.h"
+#include "data/script_invalid.jsonhdr.h"
+#include "data/script_valid.jsonhdr.h"
 
 #include "core_io.h"
 #include "key.h"
@@ -580,8 +580,8 @@ BOOST_AUTO_TEST_CASE(script_build)
     std::set<std::string> tests_bad;
 
     {
-        UniValue json_good = read_json(std::string(json_tests::script_valid, json_tests::script_valid + sizeof(json_tests::script_valid)));
-        UniValue json_bad = read_json(std::string(json_tests::script_invalid, json_tests::script_invalid + sizeof(json_tests::script_invalid)));
+        UniValue json_good = read_json(json_tests::str_script_valid);
+        UniValue json_bad = read_json(json_tests::str_script_invalid);
 
         for (unsigned int idx = 0; idx < json_good.size(); idx++) {
             const UniValue& tv = json_good[idx];
@@ -634,7 +634,7 @@ BOOST_AUTO_TEST_CASE(script_valid)
     // Inner arrays are [ "scriptSig", "scriptPubKey", "flags" ]
     // ... where scriptSig and scriptPubKey are stringified
     // scripts.
-    UniValue tests = read_json(std::string(json_tests::script_valid, json_tests::script_valid + sizeof(json_tests::script_valid)));
+    UniValue tests = read_json(json_tests::str_script_valid);
 
     for (unsigned int idx = 0; idx < tests.size(); idx++) {
         UniValue test = tests[idx];
@@ -659,7 +659,7 @@ BOOST_AUTO_TEST_CASE(script_valid)
 BOOST_AUTO_TEST_CASE(script_invalid)
 {
     // Scripts that should evaluate as invalid
-    UniValue tests = read_json(std::string(json_tests::script_invalid, json_tests::script_invalid + sizeof(json_tests::script_invalid)));
+    UniValue tests = read_json(json_tests::str_script_invalid);
 
     for (unsigned int idx = 0; idx < tests.size(); idx++) {
         UniValue test = tests[idx];
