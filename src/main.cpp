@@ -3736,7 +3736,7 @@ bool static AlreadyHave(const CInv& inv) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
     return true;
 }
 
-void static ProcessGetData(CNode* pfrom)
+void ProcessGetData(CNode* pfrom)
 {
     std::deque<CInv>::iterator it = pfrom->vRecvGetData.begin();
 
@@ -4720,12 +4720,9 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
     return true;
 }
 
-// requires LOCK(cs_vRecvMsg)
-bool ProcessMessages(CNode* pfrom)
+bool PreprocessMessage(const CNetMessage& msg, NodeId id, bool& fDisconnect)
 {
-    //if (fDebug)
-    //    LogPrintf("%s(%u messages)\n", __func__, pfrom->vRecvMsg.size());
-
+    fDisconnect = false;
     //
     // Message format
     //  (4) message start
@@ -4734,70 +4731,55 @@ bool ProcessMessages(CNode* pfrom)
     //  (4) checksum
     //  (x) data
     //
-    bool fOk = true;
+    // Scan for message start
+    if (memcmp(msg.hdr.pchMessageStart, Params().MessageStart(), MESSAGE_START_SIZE) != 0) {
+        LogPrintf("PROCESSMESSAGE: INVALID MESSAGESTART %s peer=%d\n", SanitizeString(msg.hdr.GetCommand()), id);
+        fDisconnect = true;
+        return false;
+    }
 
-    if (!pfrom->vRecvGetData.empty())
-        ProcessGetData(pfrom);
+    // Read header
+    const CMessageHeader& hdr = msg.hdr;
+    if (!hdr.IsValid(Params().MessageStart()))
+    {
+        LogPrintf("PROCESSMESSAGE: ERRORS IN HEADER %s peer=%d\n", SanitizeString(hdr.GetCommand()), id);
+        return false;
+    }
+    string strCommand = hdr.GetCommand();
 
-    // this maintains the order of responses
-    if (!pfrom->vRecvGetData.empty()) return fOk;
-
-    std::deque<CNetMessage>::iterator it = pfrom->vRecvMsg.begin();
-    while (!pfrom->fDisconnect && it != pfrom->vRecvMsg.end()) {
-        // Don't bother if send buffer is too full to respond anyway
-        if (pfrom->nSendSize >= SendBufferSize())
-            break;
-
-        // get next message
-        CNetMessage& msg = *it;
-
-        //if (fDebug)
-        //    LogPrintf("%s(message %u msgsz, %u bytes, complete:%s)\n", __func__,
-        //            msg.hdr.nMessageSize, msg.vRecv.size(),
-        //            msg.complete() ? "Y" : "N");
-
-        // end, if an incomplete message is found
-        if (!msg.complete())
-            break;
-
-        // at this point, any failure means we can delete the current message
-        it++;
-
-        // Scan for message start
-        if (memcmp(msg.hdr.pchMessageStart, Params().MessageStart(), MESSAGE_START_SIZE) != 0) {
-            LogPrintf("PROCESSMESSAGE: INVALID MESSAGESTART %s peer=%d\n", SanitizeString(msg.hdr.GetCommand()), pfrom->id);
-            fOk = false;
-            break;
-        }
-
-        // Read header
-        CMessageHeader& hdr = msg.hdr;
-        if (!hdr.IsValid(Params().MessageStart()))
-        {
-            LogPrintf("PROCESSMESSAGE: ERRORS IN HEADER %s peer=%d\n", SanitizeString(hdr.GetCommand()), pfrom->id);
-            continue;
-        }
-        string strCommand = hdr.GetCommand();
-
-        // Message size
-        unsigned int nMessageSize = hdr.nMessageSize;
+    // Message size
+    unsigned int nMessageSize = hdr.nMessageSize;
 
         // Checksum
-        CDataStream& vRecv = msg.vRecv;
-        uint256 hash = Hash(vRecv.begin(), vRecv.begin() + nMessageSize);
-        unsigned int nChecksum = ReadLE32((unsigned char*)&hash);
-        if (nChecksum != hdr.nChecksum)
-        {
-            LogPrintf("%s(%s, %u bytes): CHECKSUM ERROR nChecksum=%08x hdr.nChecksum=%08x\n", __func__,
-               SanitizeString(strCommand), nMessageSize, nChecksum, hdr.nChecksum);
-            continue;
-        }
+    const CDataStream& vRecv = msg.vRecv;
+    uint256 hash = Hash(vRecv.begin(), vRecv.begin() + nMessageSize);
+    unsigned int nChecksum = ReadLE32((unsigned char*)&hash);
+    if (nChecksum != hdr.nChecksum)
+    {
+        LogPrintf("%s(%s, %u bytes): CHECKSUM ERROR nChecksum=%08x hdr.nChecksum=%08x\n", __func__,
+           SanitizeString(strCommand), nMessageSize, nChecksum, hdr.nChecksum);
+        return false;
+    }
+    return true;
+}
 
+bool ProcessMessages(CNode* pfrom)
+{
+    return true;
+}
+
+void ProcessMessage(CNode* pfrom, CNetMessage& msg)
+{
+        unsigned int nMessageSize = msg.hdr.nMessageSize;
+        string strCommand = msg.hdr.GetCommand();
+        CDataStream& vRecv = msg.vRecv;
         // Process message
         bool fRet = false;
         try
         {
             fRet = ProcessMessage(pfrom, strCommand, vRecv, msg.nTime);
+            if(!fRet)
+                LogPrintf("%s(%s, %u bytes): fRet is false", __func__, SanitizeString(strCommand), nMessageSize);
             boost::this_thread::interruption_point();
         }
         catch (const std::ios_base::failure& e)
@@ -4829,15 +4811,6 @@ bool ProcessMessages(CNode* pfrom)
 
         if (!fRet)
             LogPrintf("%s(%s, %u bytes) FAILED peer=%d\n", __func__, SanitizeString(strCommand), nMessageSize, pfrom->id);
-
-        break;
-    }
-
-    // In case the connection got shut down, its receive buffer was wiped
-    if (!pfrom->fDisconnect)
-        pfrom->vRecvMsg.erase(pfrom->vRecvMsg.begin(), it);
-
-    return fOk;
 }
 
 

@@ -18,6 +18,7 @@
 #include "scheduler.h"
 #include "ui_interface.h"
 #include "utilstrencodings.h"
+#include "main.h"
 
 #ifdef WIN32
 #include <string.h>
@@ -1702,29 +1703,57 @@ void ThreadMessageHandler()
             pnodeTrickle = vNodesCopy[GetRand(vNodesCopy.size())];
 
         bool fSleep = true;
-
         BOOST_FOREACH(CNode* pnode, vNodesCopy)
         {
             if (pnode->fDisconnect)
                 continue;
 
+            CNetMessage msg(Params().MessageStart(), SER_NETWORK, INIT_PROTO_VERSION);
+            bool fMessageToProcess = false;
             // Receive messages
             {
                 TRY_LOCK(pnode->cs_vRecvMsg, lockRecv);
                 if (lockRecv)
                 {
-                    if (!g_signals.ProcessMessages(pnode))
-                        pnode->CloseSocketDisconnect();
-
-                    if (pnode->nSendSize < SendBufferSize())
+                    if (!pnode->vRecvGetData.empty())
+                        ProcessGetData(pnode);
+                    if(!pnode->fDisconnect && !pnode->vRecvGetData.empty() && !pnode->vRecvMsg.empty() && pnode->vRecvMsg.front().complete())
                     {
-                        if (!pnode->vRecvGetData.empty() || (!pnode->vRecvMsg.empty() && pnode->vRecvMsg[0].complete()))
+                        LogPrintf("%lu messages available, but skipping\n", pnode->vRecvMsg.size());
+                    }
+
+                    // this maintains the order of responses
+                    while(!pnode->fDisconnect && pnode->vRecvGetData.empty() && !pnode->vRecvMsg.empty() && pnode->vRecvMsg.front().complete())
+                    {
+                        bool fDisconnect = false;
+                        if (!PreprocessMessage(pnode->vRecvMsg.front(), pnode->id, fDisconnect))
                         {
-                            fSleep = false;
+                            if(fDisconnect)
+                            {
+                                pnode->CloseSocketDisconnect();
+                                break;
+                            }
+                            pnode->vRecvMsg.pop_front();
+                            continue;
+                        }
+                        else
+                        {
+                            msg = pnode->vRecvMsg.front();
+                            pnode->vRecvMsg.pop_front();
+                            fMessageToProcess = true;
+                            if (pnode->nSendSize < SendBufferSize())
+                            {
+                                if (!pnode->vRecvGetData.empty() || (!pnode->vRecvMsg.empty() && pnode->vRecvMsg[0].complete()))
+                                    fSleep = false;
+                            }
+                            break;
                         }
                     }
                 }
             }
+            if(fMessageToProcess)
+                ProcessMessage(pnode, msg);
+
             boost::this_thread::interruption_point();
 
             // Send messages

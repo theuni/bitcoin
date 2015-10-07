@@ -167,8 +167,13 @@ bool InitBlockIndex();
 bool LoadBlockIndex();
 /** Unload database information */
 void UnloadBlockIndex();
+/** Preprocess protocol messages received from a given node */
+bool PreprocessMessage(const CNetMessage& msg, NodeId id, bool& fDisconnect);
 /** Process protocol messages received from a given node */
+void ProcessMessage(CNode* pfrom, CNetMessage& msg);
 bool ProcessMessages(CNode* pfrom);
+
+void ProcessGetData(CNode* pfrom);
 /**
  * Send queued protocol messages to be sent to a give node.
  *
