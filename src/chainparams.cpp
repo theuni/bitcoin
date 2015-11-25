@@ -99,12 +99,14 @@ public:
         assert(consensus.hashGenesisBlock == uint256S("0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"));
         assert(genesis.hashMerkleRoot == uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"));
 
-        vSeeds.push_back(CDNSSeedData("bitcoin.sipa.be", "seed.bitcoin.sipa.be")); // Pieter Wuille
-        vSeeds.push_back(CDNSSeedData("bluematt.me", "dnsseed.bluematt.me")); // Matt Corallo
-        vSeeds.push_back(CDNSSeedData("dashjr.org", "dnsseed.bitcoin.dashjr.org")); // Luke Dashjr
-        vSeeds.push_back(CDNSSeedData("bitcoinstats.com", "seed.bitcoinstats.com")); // Christian Decker
-        vSeeds.push_back(CDNSSeedData("xf2.org", "bitseed.xf2.org")); // Jeff Garzik
-        vSeeds.push_back(CDNSSeedData("bitcoin.jonasschnelli.ch", "seed.bitcoin.jonasschnelli.ch")); // Jonas Schnelli
+
+        // The special range 127.127.0.0/16 represents dns seeds.
+        vSeeds.push_back(CDNSSeedData("127.127.0.1", "seed.bitcoin.sipa.be")); // Pieter Wuille
+        vSeeds.push_back(CDNSSeedData("127.127.1.1", "dnsseed.bluematt.me")); // Matt Corallo
+        vSeeds.push_back(CDNSSeedData("127.127.2.1", "dnsseed.bitcoin.dashjr.org")); // Luke Dashjr
+        vSeeds.push_back(CDNSSeedData("127.127.3.1", "seed.bitcoinstats.com")); // Christian Decker
+        vSeeds.push_back(CDNSSeedData("127.127.4.1", "bitseed.xf2.org")); // Jeff Garzik
+        vSeeds.push_back(CDNSSeedData("127.127.5.1", "seed.bitcoin.jonasschnelli.ch")); // Jonas Schnelli
 
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,0);
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,5);
@@ -178,10 +180,10 @@ public:
 
         vFixedSeeds.clear();
         vSeeds.clear();
-        vSeeds.push_back(CDNSSeedData("alexykot.me", "testnet-seed.alexykot.me"));
-        vSeeds.push_back(CDNSSeedData("bitcoin.petertodd.org", "testnet-seed.bitcoin.petertodd.org"));
-        vSeeds.push_back(CDNSSeedData("bluematt.me", "testnet-seed.bluematt.me"));
-        vSeeds.push_back(CDNSSeedData("bitcoin.schildbach.de", "testnet-seed.bitcoin.schildbach.de"));
+        vSeeds.push_back(CDNSSeedData("127.127.128.1", "testnet-seed.alexykot.me"));
+        vSeeds.push_back(CDNSSeedData("127.127.129.1", "testnet-seed.bitcoin.petertodd.org"));
+        vSeeds.push_back(CDNSSeedData("127.127.130.1", "testnet-seed.bluematt.me"));
+        vSeeds.push_back(CDNSSeedData("127.127.131.1", "testnet-seed.bitcoin.schildbach.de"));
 
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,111);
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,196);

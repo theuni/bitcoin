@@ -792,10 +792,16 @@ bool CNetAddr::IsTor() const
     return (memcmp(ip, pchOnionCat, sizeof(pchOnionCat)) == 0);
 }
 
+bool CNetAddr::IsDNSSeed() const
+{
+   return IsIPv4() && GetByte(3) == 127 && GetByte(2) == 127;
+}
+
 bool CNetAddr::IsLocal() const
 {
-    // IPv4 loopback
-   if (IsIPv4() && (GetByte(3) == 127 || GetByte(3) == 0))
+   // IPv4 loopback
+   // 127.127.0.0/16 is reserved for dns seeds
+   if (IsIPv4() && (GetByte(3) == 0 || (GetByte(3) == 127 && GetByte(2) != 127)))
        return true;
 
    // IPv6 loopback (::1/128)
@@ -850,7 +856,7 @@ bool CNetAddr::IsValid() const
 
 bool CNetAddr::IsRoutable() const
 {
-    return IsValid() && !(IsRFC1918() || IsRFC2544() || IsRFC3927() || IsRFC4862() || IsRFC6598() || IsRFC5737() || (IsRFC4193() && !IsTor()) || IsRFC4843() || IsLocal());
+    return IsValid() && !(IsRFC1918() || IsRFC2544() || IsRFC3927() || IsRFC4862() || IsRFC6598() || IsRFC5737() || (IsRFC4193() && !IsTor()) || IsRFC4843() || IsLocal() || IsDNSSeed());
 }
 
 enum Network CNetAddr::GetNetwork() const
@@ -939,8 +945,14 @@ std::vector<unsigned char> CNetAddr::GetGroup() const
         nBits = 0;
     }
 
+    if (IsDNSSeed())
+    {
+        nClass = NET_UNROUTABLE;
+        nStartByte = 12;
+        nBits = 24;
+    }
     // all unroutable addresses belong to the same group
-    if (!IsRoutable())
+    else if (!IsRoutable())
     {
         nClass = NET_UNROUTABLE;
         nBits = 0;

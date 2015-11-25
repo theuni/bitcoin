@@ -17,6 +17,7 @@ BOOST_FIXTURE_TEST_SUITE(netbase_tests, BasicTestingSetup)
 BOOST_AUTO_TEST_CASE(netbase_networks)
 {
     BOOST_CHECK(CNetAddr("127.0.0.1").GetNetwork()                              == NET_UNROUTABLE);
+    BOOST_CHECK(CNetAddr("127.127.127.1").GetNetwork()                          == NET_UNROUTABLE);
     BOOST_CHECK(CNetAddr("::1").GetNetwork()                                    == NET_UNROUTABLE);
     BOOST_CHECK(CNetAddr("8.8.8.8").GetNetwork()                                == NET_IPV4);
     BOOST_CHECK(CNetAddr("2001::8888").GetNetwork()                             == NET_IPV6);
@@ -26,6 +27,7 @@ BOOST_AUTO_TEST_CASE(netbase_networks)
 BOOST_AUTO_TEST_CASE(netbase_properties)
 {
     BOOST_CHECK(CNetAddr("127.0.0.1").IsIPv4());
+    BOOST_CHECK(CNetAddr("127.127.127.1").IsIPv4());
     BOOST_CHECK(CNetAddr("::FFFF:192.168.1.1").IsIPv4());
     BOOST_CHECK(CNetAddr("::1").IsIPv6());
     BOOST_CHECK(CNetAddr("10.0.0.1").IsRFC1918());
@@ -147,7 +149,9 @@ BOOST_AUTO_TEST_CASE(subnet_test)
 
     //CNetAddr constructor test
     BOOST_CHECK(CSubNet(CNetAddr("127.0.0.1")).IsValid());
+    BOOST_CHECK(CSubNet(CNetAddr("127.127.127.1")).IsValid());
     BOOST_CHECK(CSubNet(CNetAddr("127.0.0.1")).Match(CNetAddr("127.0.0.1")));
+    BOOST_CHECK(CSubNet(CNetAddr("127.127.127.1")).Match(CNetAddr("127.127.127.1")));
     BOOST_CHECK(!CSubNet(CNetAddr("127.0.0.1")).Match(CNetAddr("127.0.0.2")));
     BOOST_CHECK(CSubNet(CNetAddr("127.0.0.1")).ToString() == "127.0.0.1/32");
 
@@ -238,6 +242,8 @@ BOOST_AUTO_TEST_CASE(subnet_test)
 BOOST_AUTO_TEST_CASE(netbase_getgroup)
 {
     BOOST_CHECK(CNetAddr("127.0.0.1").GetGroup() == boost::assign::list_of(0)); // Local -> !Routable()
+    BOOST_CHECK(CNetAddr("127.127.1.1").GetGroup() == boost::assign::list_of((unsigned char)NET_UNROUTABLE)(127)(127)(1)); // DNSSeed -> !Routable()
+    BOOST_CHECK(CNetAddr("127.127.127.1").GetGroup() == boost::assign::list_of((unsigned char)NET_UNROUTABLE)(127)(127)(127)); // DNSSeed -> !Routable()
     BOOST_CHECK(CNetAddr("257.0.0.1").GetGroup() == boost::assign::list_of(0)); // !Valid -> !Routable()
     BOOST_CHECK(CNetAddr("10.0.0.1").GetGroup() == boost::assign::list_of(0)); // RFC1918 -> !Routable()
     BOOST_CHECK(CNetAddr("169.254.1.1").GetGroup() == boost::assign::list_of(0)); // RFC3927 -> !Routable()
