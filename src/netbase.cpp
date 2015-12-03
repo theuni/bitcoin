@@ -861,16 +861,16 @@ bool CNetAddr::IsRoutable() const
 
 enum Network CNetAddr::GetNetwork() const
 {
-    if (!IsRoutable())
-        return NET_UNROUTABLE;
-
     if (IsIPv4())
         return NET_IPV4;
 
     if (IsTor())
         return NET_TOR;
 
-    return NET_IPV6;
+    if (IsIPv6())
+        return NET_IPV6;
+
+    return NET_UNROUTABLE;
 }
 
 std::string CNetAddr::ToStringIP() const
