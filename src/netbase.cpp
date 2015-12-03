@@ -15,6 +15,7 @@
 #include "random.h"
 #include "util.h"
 #include "utilstrencodings.h"
+#include "libbtcnet/connection.h"
 
 #ifdef HAVE_GETADDRINFO_A
 #include <netdb.h>
@@ -1114,6 +1115,25 @@ CService::CService(const struct sockaddr_in& addr) : CNetAddr(addr.sin_addr), po
 CService::CService(const struct sockaddr_in6 &addr) : CNetAddr(addr.sin6_addr), port(ntohs(addr.sin6_port))
 {
    assert(addr.sin6_family == AF_INET6);
+}
+
+CService::CService(const CConnection& conn)
+{
+    Init();
+    if (conn.IsDNS())
+    {
+        CService ip;
+        if (Lookup(conn.GetHost().c_str(), ip, conn.GetPort(), false))
+        *this = ip;
+    }
+    else
+    {
+        sockaddr_storage stor;
+        int stor_size = sizeof(stor);
+        memset(&stor, 0, stor_size);
+        conn.GetSockAddr((sockaddr*)&stor, &stor_size);
+        SetSockAddr((sockaddr*)&stor);
+    }
 }
 
 bool CService::SetSockAddr(const struct sockaddr *paddr)

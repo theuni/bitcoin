@@ -17,6 +17,8 @@
 #include "sync.h"
 #include "uint256.h"
 
+#include "libbtcnet/handler.h"
+
 #include <deque>
 #include <stdint.h>
 
@@ -301,7 +303,7 @@ public:
 };
 
 typedef std::map<CSubNet, CBanEntry> banmap_t;
-
+struct CReceivedMessage;
 /** Information about a peer */
 class CNode
 {
@@ -317,7 +319,7 @@ public:
     CCriticalSection cs_vSend;
 
     std::deque<CInv> vRecvGetData;
-    std::deque<CNetMessage> vRecvMsg;
+    std::deque<CReceivedMessage> vRecvMsg;
     CCriticalSection cs_vRecvMsg;
     uint64_t nRecvBytes;
     int nRecvVersion;
@@ -396,7 +398,7 @@ public:
     // Whether a ping is requested.
     bool fPingQueued;
 
-    CNode(SOCKET hSocketIn, const CAddress &addrIn, const std::string &addrNameIn = "", bool fInboundIn = false);
+    CNode(NodeId idIn, const CAddress &addrIn, const std::string &addrNameIn = "", bool fInboundIn = false);
     ~CNode();
 
 private:
@@ -431,8 +433,8 @@ public:
     unsigned int GetTotalRecvSize()
     {
         unsigned int total = 0;
-        BOOST_FOREACH(const CNetMessage &msg, vRecvMsg)
-            total += msg.vRecv.size() + 24;
+        BOOST_FOREACH(const CReceivedMessage& msg, vRecvMsg)
+            total += msg.vRecvMsg.size();
         return total;
     }
 
@@ -443,8 +445,6 @@ public:
     void SetRecvVersion(int nVersionIn)
     {
         nRecvVersion = nVersionIn;
-        BOOST_FOREACH(CNetMessage &msg, vRecvMsg)
-            msg.SetVersion(nVersionIn);
     }
 
     CNode* AddRef()
@@ -765,5 +765,5 @@ public:
 };
 
 void DumpBanlist();
-
+void InterruptConnMan();
 #endif // BITCOIN_NET_H

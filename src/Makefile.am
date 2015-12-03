@@ -20,7 +20,7 @@ $(LIBLEVELDB) $(LIBMEMENV):
 endif
 
 BITCOIN_CONFIG_INCLUDES=-I$(builddir)/config
-BITCOIN_INCLUDES=-I$(builddir) -I$(builddir)/obj $(BOOST_CPPFLAGS) $(LEVELDB_CPPFLAGS) $(CRYPTO_CFLAGS) $(SSL_CFLAGS)
+BITCOIN_INCLUDES=-I$(builddir) -I$(builddir)/obj -Ilibbtcnet/include $(BOOST_CPPFLAGS) $(LEVELDB_CPPFLAGS) $(CRYPTO_CFLAGS) $(SSL_CFLAGS)
 
 BITCOIN_INCLUDES += -I$(srcdir)/secp256k1/include
 BITCOIN_INCLUDES += -I$(srcdir)/univalue/include
@@ -34,6 +34,7 @@ LIBBITCOIN_CRYPTO=crypto/libbitcoin_crypto.a
 LIBBITCOINQT=qt/libbitcoinqt.a
 LIBSECP256K1=secp256k1/libsecp256k1.la
 LIBUNIVALUE=univalue/libunivalue.la
+LIBBTCNET=libbtcnet/libbtcnet.a
 
 $(LIBSECP256K1): $(wildcard secp256k1/src/*) $(wildcard secp256k1/include/*)
 	$(AM_V_at)$(MAKE) $(AM_MAKEFLAGS) -C $(@D) $(@F)
@@ -48,6 +49,7 @@ EXTRA_LIBRARIES = \
   libbitcoin_util.a \
   libbitcoin_common.a \
   libbitcoin_server.a \
+  libbtcnet/libbtcnet.a \
   libbitcoin_cli.a
 if ENABLE_WALLET
 BITCOIN_INCLUDES += $(BDB_CPPFLAGS)
@@ -99,6 +101,7 @@ BITCOIN_CORE_H = \
   compat/endian.h \
   compat/sanity.h \
   compressor.h \
+  connman.h \
   consensus/consensus.h \
   consensus/params.h \
   consensus/validation.h \
@@ -119,6 +122,7 @@ BITCOIN_CORE_H = \
   mruset.h \
   net.h \
   netbase.h \
+  nodeman.h \
   noui.h \
   policy/fees.h \
   policy/policy.h \
@@ -212,6 +216,7 @@ libbitcoin_server_a_SOURCES = \
   txdb.cpp \
   txmempool.cpp \
   validationinterface.cpp \
+  connman.cpp \
   $(BITCOIN_CORE_H)
 
 if ENABLE_ZMQ
@@ -309,6 +314,24 @@ libbitcoin_util_a_SOURCES = \
   utiltime.cpp \
   $(BITCOIN_CORE_H)
 
+libbtcnet_libbtcnet_a_CPPFLAGS = $(BITCOIN_INCLUDES) $(BOOST_CPPFLAGS) $(EVENT_CFLAGS) $(EVENT_PTHREADS_CFLAGS)
+libbtcnet_libbtcnet_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+libbtcnet_libbtcnet_a_SOURCES = \
+  libbtcnet/src/connection.cpp \
+  libbtcnet/src/handler.cpp \
+  libbtcnet/src/message.cpp \
+  libbtcnet/src/proxy.cpp \
+  libbtcnet/src/callbacks.cpp \
+  libbtcnet/include/libbtcnet/connection.h \
+  libbtcnet/include/libbtcnet/handler.h \
+  libbtcnet/include/libbtcnet/networkconfig.h \
+  libbtcnet/src/callbacks.h \
+  libbtcnet/src/connection_data.h \
+  libbtcnet/src/message.h \
+  libbtcnet/src/proxy.h \
+  libbtcnet/src/threading.h
+
+
 if GLIBC_BACK_COMPAT
 libbitcoin_util_a_SOURCES += compat/glibc_compat.cpp
 endif
@@ -339,6 +362,7 @@ bitcoind_LDADD = \
   $(LIBUNIVALUE) \
   $(LIBBITCOIN_UTIL) \
   $(LIBBITCOIN_CRYPTO) \
+  $(LIBBTCNET) \
   $(LIBLEVELDB) \
   $(LIBMEMENV) \
   $(LIBSECP256K1)

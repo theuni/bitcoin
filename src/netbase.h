@@ -37,6 +37,8 @@ enum Network
     NET_MAX,
 };
 
+class CConnection;
+
 /** IP address (IPv6, or IPv4 using mapped IPv6 range (::FFFF:0:0/96)) */
 class CNetAddr
 {
@@ -156,6 +158,7 @@ class CService : public CNetAddr
         explicit CService(const char *pszIpPort, bool fAllowLookup = false);
         explicit CService(const std::string& strIpPort, int portDefault, bool fAllowLookup = false);
         explicit CService(const std::string& strIpPort, bool fAllowLookup = false);
+        explicit CService(const CConnection& conn);
         void Init();
         void SetPort(unsigned short portIn);
         unsigned short GetPort() const;
