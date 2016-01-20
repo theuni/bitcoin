@@ -274,7 +274,15 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
 
         CWalletTx *newTx = transaction.getTransaction();
         CReserveKey *keyChange = transaction.getPossibleKeyChange();
-        bool fCreated = wallet->CreateTransaction(vecSend, *newTx, *keyChange, nFeeRequired, nChangePosRet, strFailReason, coinControl);
+
+        CPubKey changePubKey;
+        assert(keyChange->GetReservedKey(changePubKey));
+        CScript scriptChange = GetScriptForDestination(changePubKey.GetID());
+
+        bool fCreated = wallet->CreateTransaction(vecSend, *newTx, scriptChange, nFeeRequired, nChangePosRet, strFailReason, coinControl);
+        if(!fCreated || nChangePosRet == -1)
+            keyChange->ReturnKey();
+
         transaction.setTransactionFee(nFeeRequired);
         if (fSubtractFeeFromAmount && fCreated)
             transaction.reassignAmounts(nChangePosRet);
@@ -328,7 +336,8 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction &tran
         }
 
         CReserveKey *keyChange = transaction.getPossibleKeyChange();
-        if(!wallet->CommitTransaction(*newTx, *keyChange))
+        keyChange->KeepKey();
+        if(!wallet->CommitTransaction(*newTx))
             return TransactionCommitFailed;
 
         CTransaction* t = (CTransaction*)newTx;
