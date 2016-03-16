@@ -4,7 +4,7 @@ compiler: gcc
 sudo: required
 services: docker
 before_install:
-- sudo apt-get update -yq && sudo apt-get install -yq --no-install-recommends docker-engine
+- sudo apt-get update -yq && sudo apt-get install -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -yq --no-install-recommends docker-engine
 - docker pull theuni/bitcoin-build-x86_64-pc-linux-gnu
 - docker build -t bitcoin-build -f Dockerfile.x86_64-pc-linux-gnu .
 script:
