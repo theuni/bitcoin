@@ -4,6 +4,8 @@ ENV MAKE_OPTIONS -j2
 ENV HOST x86_64-pc-linux-gnu
 ENV DEPENDS_OPTIONS NO_QT=1
 ENV BITCOIN_DIR /home/ubuntu/build/bitcoin
+ENV BASE_CACHE /home/ubuntu/cache
+ENV SOURCES_PATH /home/ubuntu/cache/common
 
 USER root
 ADD / $BITCOIN_DIR
