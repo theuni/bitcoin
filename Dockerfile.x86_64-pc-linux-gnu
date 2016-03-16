@@ -1,6 +1,9 @@
 FROM theuni/bitcoin-build-x86_64-pc-linux-gnu:latest
 
 ENV MAKE_OPTIONS -j2
+ENV HOST x86_64-pc-linux-gnu
+ENV DEPENDS_OPTIONS NO_QT=1
+ENV BITCOIN_DIR /home/ubuntu/build/bitcoin
 
 USER root
 ADD / $BITCOIN_DIR
@@ -11,5 +14,5 @@ USER ubuntu
 
 RUN make $MAKE_OPTIONS -C depends $DEPENDS_OPTIONS && \
     ./autogen.sh && \
-    ./configure --prefix=/home/ubuntu/build/bitcoin/depends/$HOST $CONFIGURE_OPTIONS && \
+    ./configure --prefix=$BITCOIN_DIR/depends/$HOST $CONFIGURE_OPTIONS && \
     make $MAKE_OPTIONS
