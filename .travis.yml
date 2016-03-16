@@ -5,6 +5,6 @@ sudo: required
 services: docker
 before_install:
 - docker pull theuni/bitcoin-build-x86_64-pc-linux-gnu
-- docker build -t bitcoin-build -f Dockerfile.x86_64-pc-linux-gnu .
+- docker build -e MAKE_OPTIONS=-j2 -t bitcoin-build -f Dockerfile.x86_64-pc-linux-gnu .
 script:
 - docker run bitcoin-build make check
