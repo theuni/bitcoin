@@ -1,6 +1,6 @@
 FROM theuni/bitcoin-build-x86_64-pc-linux-gnu:latest
 
-ENV MAKE_OPTIONS
+ENV MAKE_OPTIONS -j2
 
 USER root
 ADD / $BITCOIN_DIR
