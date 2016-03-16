@@ -9,10 +9,14 @@ ENV SOURCES_PATH /home/ubuntu/cache/common
 
 USER root
 ADD / $BITCOIN_DIR
+RUN chown -R ubuntu:ubuntu $BITCOIN_DIR
+
 WORKDIR $BITCOIN_DIR
-RUN chown -R ubuntu:ubuntu /home/ubuntu/build/bitcoin
 
 USER ubuntu
+
+RUN echo depends path: $BASE_CACHE/$HOST
+RUN ls $BASE_CACHE/$HOST
 
 RUN make $MAKE_OPTIONS -C depends $DEPENDS_OPTIONS && \
     ./autogen.sh && \
