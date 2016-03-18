@@ -2926,15 +2926,37 @@ bool CConnman::OnIncomingConnection(ConnID id, const CConnection& listenconn, co
     resolved_conn.GetSockAddr((sockaddr*)&stor, &addr_size);
     serv.SetSockAddr((sockaddr*)&stor);
 
-    bool whitelist = resolved_conn.GetOptions().fWhitelisted || CNode::IsWhitelistedRange(serv);
-    if (!whitelist && CNode::IsBanned(serv))
+    int nMaxInbound = nMaxConnections - MAX_OUTBOUND_CONNECTIONS;
+
+    bool whitelisted = resolved_conn.GetOptions().fWhitelisted || CNode::IsWhitelistedRange(serv);
+    if (!whitelisted && CNode::IsBanned(serv))
         return false;
+
+    int nInbound = 0;
+    {
+        LOCK(cs_vNodes);
+        BOOST_FOREACH(CNode* pnode, vNodes)
+            if (pnode->fInbound)
+                nInbound++;
+    }
+
+    if (nInbound >= nMaxInbound)
+    {
+        if (!AttemptToEvictConnection(whitelisted)) {
+            // No connection to evict, disconnect the new connection
+            LogPrint("net", "failed to find an eviction candidate - connection dropped (full)\n");
+            return false;
+        }
+    }
+
+
     m_num_connections++;
 
     CNode* pnode = new CNode(0, id, CAddress(serv), "", true);
     pnode->nTimeConnected = GetTime();
     pnode->fNetworkNode = true;
     pnode->AddRef();
+    pnode->fWhitelisted = whitelisted;
     {
         LOCK(cs_vNodes);
         vNodes.push_back(pnode);
