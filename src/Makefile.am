@@ -29,7 +29,7 @@ $(LIBLEVELDB) $(LIBMEMENV):
 endif
 
 BITCOIN_CONFIG_INCLUDES=-I$(builddir)/config
-BITCOIN_INCLUDES=-I$(builddir) -I$(builddir)/obj $(BOOST_CPPFLAGS) $(LEVELDB_CPPFLAGS) $(CRYPTO_CFLAGS) $(SSL_CFLAGS)
+BITCOIN_INCLUDES=-I$(builddir) -I$(builddir)/obj -Ilibbtcnet/include $(BOOST_CPPFLAGS) $(LEVELDB_CPPFLAGS) $(CRYPTO_CFLAGS) $(SSL_CFLAGS)
 
 BITCOIN_INCLUDES += -I$(srcdir)/secp256k1/include
 BITCOIN_INCLUDES += $(UNIVALUE_CFLAGS)
@@ -42,6 +42,7 @@ LIBBITCOIN_CLI=libbitcoin_cli.a
 LIBBITCOIN_UTIL=libbitcoin_util.a
 LIBBITCOIN_CRYPTO=crypto/libbitcoin_crypto.a
 LIBBITCOINQT=qt/libbitcoinqt.a
+LIBBTCNET=libbtcnet/libbtcnet.a
 LIBSECP256K1=secp256k1/libsecp256k1.la
 
 $(LIBSECP256K1): $(wildcard secp256k1/src/*) $(wildcard secp256k1/include/*)
@@ -51,6 +52,7 @@ $(LIBSECP256K1): $(wildcard secp256k1/src/*) $(wildcard secp256k1/include/*)
 # But to build the less dependent modules first, we manually select their order here:
 EXTRA_LIBRARIES = \
   crypto/libbitcoin_crypto.a \
+  libbtcnet/libbtcnet.a \
   libbitcoin_util.a \
   libbitcoin_common.a \
   libbitcoin_consensus.a \
@@ -342,6 +344,26 @@ libbitcoin_cli_a_SOURCES = \
 nodist_libbitcoin_util_a_SOURCES = $(srcdir)/obj/build.h
 #
 
+libbtcnet_libbtcnet_a_CPPFLAGS = -Ilibbtcnet/include $(EVENT_CFLAGS) $(EVENT_PTHREADS_CFLAGS)
+libbtcnet_libbtcnet_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) -O0 -g
+libbtcnet_libbtcnet_a_SOURCES = \
+  libbtcnet/src/connection.cpp \
+  libbtcnet/src/handler.cpp \
+  libbtcnet/src/interface.cpp \
+  libbtcnet/src/resolve.cpp \
+  libbtcnet/src/directconn.cpp \
+  libbtcnet/src/dnsconn.cpp \
+  libbtcnet/src/bareconn.cpp \
+  libbtcnet/src/connectionbase.cpp \
+  libbtcnet/src/message.cpp \
+  libbtcnet/src/proxyconn.cpp \
+  libbtcnet/src/bareproxy.cpp \
+  libbtcnet/src/eventtypes.cpp \
+  libbtcnet/src/listener.cpp \
+  libbtcnet/src/resolveonly.cpp \
+  libbtcnet/src/incomingconn.cpp \
+  libbtcnet/src/event.cpp
+
 # bitcoind binary #
 bitcoind_SOURCES = bitcoind.cpp
 bitcoind_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
@@ -359,6 +381,7 @@ bitcoind_LDADD = \
   $(LIBBITCOIN_UTIL) \
   $(LIBBITCOIN_CONSENSUS) \
   $(LIBBITCOIN_CRYPTO) \
+  $(LIBBTCNET) \
   $(LIBLEVELDB) \
   $(LIBMEMENV) \
   $(LIBSECP256K1)
