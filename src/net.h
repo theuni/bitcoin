@@ -7,6 +7,7 @@
 #define BITCOIN_NET_H
 
 #include "bloom.h"
+#include "chainparams.h"
 #include "compat.h"
 #include "limitedmap.h"
 #include "netbase.h"
@@ -15,6 +16,8 @@
 #include "streams.h"
 #include "sync.h"
 #include "uint256.h"
+#include "libbtcnet/handler.h"
+#include "libbtcnet/connection.h"
 
 #include <deque>
 #include <stdint.h>
@@ -320,6 +323,7 @@ public:
     uint64_t nServices;
     SOCKET hSocket;
     CDataStream ssSend;
+    bool fSendFull;
     size_t nSendSize; // total size of all vSendMsg entries
     size_t nSendOffset; // offset inside the first vSendMsg already sent
     uint64_t nSendBytes;
@@ -416,7 +420,7 @@ public:
     // Whether a ping is requested.
     bool fPingQueued;
 
-    CNode(SOCKET hSocketIn, const CAddress &addrIn, const std::string &addrNameIn = "", bool fInboundIn = false);
+    CNode(SOCKET hSocketIn, ConnID idIn, const CAddress &addrIn, const std::string &addrNameIn = "", bool fInboundIn = false);
     ~CNode();
 
 private:
@@ -795,5 +799,45 @@ void DumpBanlist();
 
 /** Return a timestamp in the future (in microseconds) for exponentially distributed events. */
 int64_t PoissonNextSend(int64_t nNow, int average_interval_seconds);
+
+struct CDNSSeedData;
+class CConnman final : public CConnectionHandler
+{
+public:
+    CConnman(const CChainParams& params, uint64_t nLocalServices, int nVersion, size_t max_queue_size);
+    ~CConnman() final;
+    void Run();
+protected:
+    std::list<CConnection> OnNeedOutgoingConnections(int need_count) final;
+    void OnDnsResponse(const CConnection& conn, std::list<CConnection> results) final;
+    bool OnIncomingConnection(ConnID id, const CConnection& listenconn, const CConnection& resolved_conn) final;
+    bool OnOutgoingConnection(ConnID id, const CConnection& conn, const CConnection& resolved_conn) final;
+    void OnConnectionFailure(const CConnection& conn, const CConnection& resolved, bool retry) final;
+    void OnDisconnected(ConnID id, bool persistent) final;
+    void OnBindFailure(const CConnection& listener) final;
+    void OnDnsFailure(const CConnection& conn, bool retry) final;
+    void OnWriteBufferFull(ConnID id, size_t bufsize) final;
+    void OnWriteBufferReady(ConnID id, size_t bufsize) final;
+    bool OnReceiveMessages(ConnID id, std::list<std::vector<unsigned char> > msgs, size_t totalsize) final;
+    void OnMalformedMessage(ConnID id) final;
+    void OnReadyForFirstSend(ConnID id) final;
+    void OnProxyFailure(const CConnection& conn, bool retry) final;
+    void OnBytesRead(ConnID id, size_t bytes, size_t total_bytes) final;
+    void OnBytesWritten(ConnID id, size_t bytes, size_t total_bytes) final;
+    void OnShutdown() final;
+    void OnStartup() final;
+private:
+    size_t m_max_queue_size;
+    std::set<std::vector<unsigned char> > m_connected_groups;
+    std::deque<CConnection> m_added;
+    int64_t m_start_time;
+    int m_num_connections;
+    int m_num_connecting;
+    int m_outgoing_limit;
+    CNetworkConfig m_config;
+    bool m_dns_seed_done;
+    bool m_static_seed_done;
+    const CChainParams m_params;
+};
 
 #endif // BITCOIN_NET_H

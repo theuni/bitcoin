@@ -74,6 +74,7 @@ const static std::string NET_MESSAGE_COMMAND_OTHER = "*other*";
 //
 // Global state variables
 //
+std::unique_ptr<CConnman> g_connman;
 bool fDiscover = true;
 bool fListen = true;
 uint64_t nLocalServices = NODE_NETWORK;
@@ -406,7 +407,7 @@ CNode* ConnectNode(CAddress addrConnect, const char *pszDest)
         addrman.Attempt(addrConnect);
 
         // Add node
-        CNode* pnode = new CNode(hSocket, addrConnect, pszDest ? pszDest : "", false);
+        CNode* pnode = new CNode(hSocket, 0, addrConnect, pszDest ? pszDest : "", false);
         pnode->AddRef();
 
         {
@@ -429,16 +430,13 @@ CNode* ConnectNode(CAddress addrConnect, const char *pszDest)
 void CNode::CloseSocketDisconnect()
 {
     fDisconnect = true;
-    if (hSocket != INVALID_SOCKET)
-    {
-        LogPrint("net", "disconnecting peer=%d\n", id);
-        CloseSocket(hSocket);
-    }
+    LogPrint("net", "disconnecting peer=%d\n", id);
 
     // in case this fails, we'll empty the recv buffer when the CNode is deleted
     TRY_LOCK(cs_vRecvMsg, lockRecv);
     if (lockRecv)
         vRecvMsg.clear();
+    g_connman->CloseConnection(id, true);
 }
 
 void CNode::PushVersion()
@@ -1013,7 +1011,7 @@ static void AcceptConnection(const ListenSocket& hListenSocket) {
         }
     }
 
-    CNode* pnode = new CNode(hSocket, addr, "", true);
+    CNode* pnode = new CNode(hSocket, 0, addr, "", true);
     pnode->AddRef();
     pnode->fWhitelisted = whitelisted;
 
@@ -1027,6 +1025,9 @@ static void AcceptConnection(const ListenSocket& hListenSocket) {
 
 void ThreadSocketHandler()
 {
+    g_connman = std::unique_ptr<CConnman>(new CConnman(Params(), nLocalServices, PROTOCOL_VERSION, 1000*GetArg("-maxsendbuffer", DEFAULT_MAXSENDBUFFER)));
+    g_connman->Run();
+#if 0
     unsigned int nPrevNodeCount = 0;
     while (true)
     {
@@ -1290,6 +1291,7 @@ void ThreadSocketHandler()
                 pnode->Release();
         }
     }
+#endif
 }
 
 
@@ -1729,7 +1731,10 @@ void ThreadMessageHandler()
         BOOST_FOREACH(CNode* pnode, vNodesCopy)
         {
             if (pnode->fDisconnect)
+            {
+                g_connman->CloseConnection(pnode->id, false);
                 continue;
+            }
 
             // Receive messages
             {
@@ -1739,7 +1744,7 @@ void ThreadMessageHandler()
                     if (!g_signals.ProcessMessages(pnode))
                         pnode->CloseSocketDisconnect();
 
-                    if (pnode->nSendSize < SendBufferSize())
+                    if (!pnode->fSendFull)
                     {
                         if (!pnode->vRecvGetData.empty() || (!pnode->vRecvMsg.empty() && pnode->vRecvMsg[0].complete()))
                         {
@@ -1966,7 +1971,7 @@ void StartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
     }
 
     if (pnodeLocalHost == NULL)
-        pnodeLocalHost = new CNode(INVALID_SOCKET, CAddress(CService("127.0.0.1", 0), nLocalServices));
+        pnodeLocalHost = new CNode(INVALID_SOCKET, 0, CAddress(CService("127.0.0.1", 0), nLocalServices));
 
     Discover(threadGroup);
 
@@ -1974,10 +1979,10 @@ void StartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
     // Start threads
     //
 
-    if (!GetBoolArg("-dnsseed", true))
-        LogPrintf("DNS seeding disabled\n");
-    else
-        threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "dnsseed", &ThreadDNSAddressSeed));
+    //if (!GetBoolArg("-dnsseed", true))
+    //    LogPrintf("DNS seeding disabled\n");
+    //else
+    //    threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "dnsseed", &ThreadDNSAddressSeed));
 
     // Map ports with UPnP
     MapPort(GetBoolArg("-upnp", DEFAULT_UPNP));
@@ -1986,10 +1991,10 @@ void StartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
     threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "net", &ThreadSocketHandler));
 
     // Initiate outbound connections from -addnode
-    threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "addcon", &ThreadOpenAddedConnections));
+    //threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "addcon", &ThreadOpenAddedConnections));
 
     // Initiate outbound connections
-    threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "opencon", &ThreadOpenConnections));
+    //threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "opencon", &ThreadOpenConnections));
 
     // Process messages
     threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "msghand", &ThreadMessageHandler));
@@ -2348,11 +2353,12 @@ bool CAddrDB::Read(CAddrMan& addr)
 unsigned int ReceiveFloodSize() { return 1000*GetArg("-maxreceivebuffer", DEFAULT_MAXRECEIVEBUFFER); }
 unsigned int SendBufferSize() { return 1000*GetArg("-maxsendbuffer", DEFAULT_MAXSENDBUFFER); }
 
-CNode::CNode(SOCKET hSocketIn, const CAddress& addrIn, const std::string& addrNameIn, bool fInboundIn) :
+CNode::CNode(SOCKET hSocketIn, ConnID idIn, const CAddress& addrIn, const std::string& addrNameIn, bool fInboundIn) :
     ssSend(SER_NETWORK, INIT_PROTO_VERSION),
     addrKnown(5000, 0.001),
     filterInventoryKnown(50000, 0.000001)
 {
+    id = idIn;
     nServices = 0;
     hSocket = hSocketIn;
     nRecvVersion = INIT_PROTO_VERSION;
@@ -2375,6 +2381,7 @@ CNode::CNode(SOCKET hSocketIn, const CAddress& addrIn, const std::string& addrNa
     fDisconnect = false;
     nRefCount = 0;
     nSendSize = 0;
+    fSendFull = false;
     nSendOffset = 0;
     hashContinue = uint256();
     nStartingHeight = -1;
@@ -2395,8 +2402,6 @@ CNode::CNode(SOCKET hSocketIn, const CAddress& addrIn, const std::string& addrNa
     mapRecvBytesPerMsgCmd[NET_MESSAGE_COMMAND_OTHER] = 0;
 
     {
-        LOCK(cs_nLastNodeId);
-        id = nLastNodeId++;
     }
 
     if (fLogIPs)
@@ -2405,8 +2410,8 @@ CNode::CNode(SOCKET hSocketIn, const CAddress& addrIn, const std::string& addrNa
         LogPrint("net", "Added connection peer=%d\n", id);
 
     // Be shy and don't send version until we hear
-    if (hSocket != INVALID_SOCKET && !fInbound)
-        PushVersion();
+    //if (hSocket != INVALID_SOCKET && !fInbound)
+    //    PushVersion();
 
     GetNodeSignals().InitializeNode(GetId(), this);
 }
@@ -2507,13 +2512,15 @@ void CNode::EndMessage(const char* pszCommand) UNLOCK_FUNCTION(cs_vSend)
 
     LogPrint("net", "(%d bytes) peer=%d\n", nSize, id);
 
-    std::deque<CSerializeData>::iterator it = vSendMsg.insert(vSendMsg.end(), CSerializeData());
-    ssSend.GetAndClear(*it);
-    nSendSize += (*it).size();
+    g_connman->Send(id, (const unsigned char*)&ssSend[0], ssSend.size());
+    ssSend.clear();
+    //std::deque<CSerializeData>::iterator it = vSendMsg.insert(vSendMsg.end(), CSerializeData());
+    //ssSend.GetAndClear(*it);
+    //nSendSize += (*it).size();
 
     // If write queue empty, attempt "optimistic write"
-    if (it == vSendMsg.begin())
-        SocketSendData(this);
+    //if (it == vSendMsg.begin())
+    //    SocketSendData(this);
 
     LEAVE_CRITICAL_SECTION(cs_vSend);
 }
@@ -2641,3 +2648,555 @@ void DumpBanlist()
 int64_t PoissonNextSend(int64_t nNow, int average_interval_seconds) {
     return nNow + (int64_t)(log1p(GetRand(1ULL << 48) * -0.0000000000000035527136788 /* -1/2^48 */) * average_interval_seconds * -1000000.0 + 0.5);
 }
+
+static CProxy CreateProxy(const proxyType& proxy)
+{
+    CProxyAuth auth;
+    if (proxy.randomize_credentials)
+    {
+        const std::string& username = strprintf("%i", insecure_rand());
+        const std::string& password = strprintf("%i", insecure_rand());
+        auth = CProxyAuth(username, password);
+    }
+    sockaddr_storage sproxy;
+    socklen_t sproxy_size = sizeof(sproxy);
+    memset(&sproxy, 0, sproxy_size);
+    proxy.proxy.GetSockAddr((sockaddr*)&sproxy, &sproxy_size);
+    return CProxy((sockaddr*)&sproxy, sproxy_size, CProxy::SOCKS5, auth);
+}
+
+static CConnection CreateConnection(const CService& serv, const CConnectionOptions& opts, const CNetworkConfig& config)
+{
+    CProxy socks5;
+    proxyType proxy;
+    if (GetProxy(serv.GetNetwork(), proxy))
+    {
+        socks5 = CreateProxy(proxy);
+    }
+
+    if(serv.IsTor())
+    {
+        return CConnection(opts, config, socks5, serv.ToStringIP(), serv.GetPort());
+    }
+    else
+    {
+        sockaddr_storage saddr;
+        socklen_t saddr_size = sizeof(saddr);
+        memset(&saddr, 0, saddr_size);
+        serv.GetSockAddr((sockaddr*)&saddr, &saddr_size);
+        return CConnection(opts, config, socks5, (sockaddr*)&saddr, saddr_size);
+    }
+}
+
+static CConnection CreateConnection(const std::string& strAddr, int port, const CConnectionOptions& opts, const CNetworkConfig& config)
+{
+    CService serv(strAddr, port, false);
+    if(serv.IsValid() && !serv.IsTor())
+    {
+        return CreateConnection(serv, opts, config);
+    }
+    else if(serv.IsValid() && serv.IsTor())
+    {
+        proxyType proxy;
+        CProxy socks5;
+        if (GetNameProxy(proxy))
+            socks5 = CreateProxy(proxy);
+        return CConnection(opts, config, socks5, serv.ToStringIP(), serv.GetPort());
+    }
+    else
+    {
+        proxyType proxy;
+        CProxy socks5;
+        if (GetNameProxy(proxy))
+            socks5 = CreateProxy(proxy);
+        return CConnection(opts, config, socks5, strAddr, port);
+    }
+}
+CConnman::CConnman(const CChainParams& params, uint64_t nLocalServices, int nVersion, size_t max_queue_size)
+: CConnectionHandler(true), m_max_queue_size(max_queue_size), m_outgoing_limit(MAX_OUTBOUND_CONNECTIONS)
+, m_dns_seed_done(false), m_static_seed_done(false), m_params(params)
+{
+    m_dns_seed_done = !GetBoolArg("-dnsseed", true);
+
+    const CMessageHeader::MessageStartChars& chars  = m_params.MessageStart();
+
+    m_config.header_msg_string_offset=4;
+    m_config.header_msg_size_offset=16;
+    m_config.header_msg_size_size=4;
+    m_config.header_msg_string_size=12;
+    m_config.header_size=24;
+    m_config.message_max_size=1000000 + m_config.header_size;
+    m_config.message_start = std::vector<unsigned char>(chars, chars + sizeof(chars));
+    m_config.protocol_version = nVersion;
+    m_config.protocol_handshake_version = 209;
+    m_config.service_flags = nLocalServices;
+
+    CConnectionOptions opts;
+    opts.fWhitelisted = false;
+    opts.fPersistent = false;
+    opts.doResolve = fNameLookup ? CConnectionOptions::RESOLVE_CONNECT : CConnectionOptions::NO_RESOLVE;
+    opts.nRetries = -1;
+    opts.nMaxSendBuffer = m_max_queue_size;
+    if (mapArgs.count("-connect") && mapMultiArgs["-connect"].size() > 0)
+    {
+        BOOST_FOREACH(const std::string& strAddr, mapMultiArgs["-connect"])
+        {
+            if(!strAddr.empty())
+                m_added.push_back(CreateConnection(strAddr, m_params.GetDefaultPort(), opts, m_config));
+        }
+        m_outgoing_limit = (int)m_added.size();
+    }
+
+    if (mapArgs.count("-addnode"))
+    {
+        if(mapMultiArgs["-addnode"].size() > 0)
+        {
+            BOOST_FOREACH(const std::string& strAddr, mapMultiArgs["-addnode"])
+            {
+                m_added.push_back(CreateConnection(strAddr, m_params.GetDefaultPort(), opts, m_config));
+            }
+        }
+    }
+
+    if (mapArgs.count("-seednode"))
+    {
+         CConnectionOptions oneshot_opts = opts;
+         oneshot_opts.fOneShot = true;
+         BOOST_FOREACH(const std::string& strDest, mapMultiArgs["-seednode"])
+         {
+             m_added.push_back(CreateConnection(strDest, m_params.GetDefaultPort(), oneshot_opts, m_config));
+         }
+    }
+
+    m_num_connecting = 0;
+    m_num_connections = 0;
+}
+
+CConnman::~CConnman()
+{
+}
+
+std::list<CConnection> CConnman::OnNeedOutgoingConnections(int need_count)
+{
+    std::list<CConnection> conns;
+    if((GetBoolArg("-forcednsseed", false) && !m_dns_seed_done) || (m_num_connections < 2 && m_added.empty() && !m_num_connecting && !addrman.size()))
+    {
+        CConnectionOptions dns_opts;
+        dns_opts.fWhitelisted = false;
+        dns_opts.fPersistent = false;
+        dns_opts.nRetries = 0;
+        if(HaveNameProxy())
+        {
+            dns_opts.doResolve = CConnectionOptions::RESOLVE_CONNECT;
+            dns_opts.fOneShot = true;
+        }
+        else
+        {
+            dns_opts.doResolve = CConnectionOptions::RESOLVE_ONLY;
+        }
+        std::vector<CDNSSeedData> seeds(m_params.DNSSeeds());
+        for(std::vector<CDNSSeedData>::iterator i = seeds.begin(); i != seeds.end(); ++i)
+            m_added.push_back(CreateConnection(i->host, m_params.GetDefaultPort(), dns_opts, m_config));
+
+        m_dns_seed_done = true;
+    }
+
+    while(!m_added.empty() && conns.size() <= (size_t)need_count)
+    {
+        if(!m_added.front().IsDNS() || m_added.front().GetOptions().doResolve == CConnectionOptions::RESOLVE_CONNECT)
+            m_num_connecting++;
+        conns.push_back(m_added.front());
+        m_added.pop_front();
+    }
+
+    if(!conns.empty() || m_num_connecting)
+        return conns;
+
+    if (!m_static_seed_done && addrman.size() == 0 && (GetTime() - m_start_time > 60)) {
+        LogPrintf("Adding fixed seed nodes as DNS doesn't seem to be available.\n");
+        addrman.Add(convertSeed6(m_params.FixedSeeds()), CNetAddr("127.0.0.1"));
+        m_static_seed_done = true;
+    }
+
+    int64_t nANow = GetAdjustedTime();
+
+    CConnectionOptions opts;
+    opts.fWhitelisted = false;
+    opts.fPersistent = false;
+    opts.doResolve = CConnectionOptions::NO_RESOLVE;
+    opts.nRetries = 0;
+    opts.nMaxSendBuffer = m_max_queue_size;
+
+    for(int nTries = 0; nTries != 100; nTries++)
+    {
+        CAddrInfo addr = addrman.Select();
+
+        // if we selected an invalid address, restart
+        if (!addr.IsValid() || m_connected_groups.count(addr.GetGroup()) || IsLocal(addr))
+            break;
+
+        if (IsLimited(addr) || CNode::IsBanned(addr))
+            continue;
+
+        // only consider very recently tried nodes after 30 failed attempts
+        if (nANow - addr.nLastTry < 600 && nTries < 30)
+            continue;
+
+        // do not allow non-default ports, unless after 50 invalid addresses selected already
+        if (nTries < 50 && addr.GetPort() != m_params.GetDefaultPort())
+            continue;
+
+        conns.push_back(CreateConnection(addr, opts, m_config));
+        m_num_connecting++;
+        break;
+    }
+    return conns;
+}
+void CConnman::Run()
+{
+    Start(m_outgoing_limit);
+    while(PumpEvents(true))
+    {
+        boost::this_thread::interruption_point();
+    }
+}
+void CConnman::OnDnsResponse(const CConnection& conn, std::list<CConnection> results)
+{
+    std::vector<CAddress> addresses;
+    for(auto&& resolved : results)
+    {
+        sockaddr_storage stor;
+        int addr_size = sizeof(stor);
+        memset(&stor, 0, addr_size);
+        resolved.GetSockAddr((sockaddr*)&stor, &addr_size);
+        CService serv;
+        serv.SetSockAddr((sockaddr*)&stor);
+
+        CAddress addr = CAddress(serv);
+        int nOneDay = 24*3600;
+        addr.nTime = GetTime() - 3*nOneDay - GetRand(4*nOneDay); // use a random age between 3 and 7 days old
+        if(addr.IsValid())
+            addresses.push_back(addr);
+    }
+    CNetAddr source(addresses.front()); // TODO: For now, just using the first result as the source
+    if(!addresses.empty())
+        addrman.Add(addresses, source);
+}
+bool CConnman::OnIncomingConnection(ConnID id, const CConnection& listenconn, const CConnection& resolved_conn)
+{
+    CService serv;
+    sockaddr_storage stor;
+    int addr_size = sizeof(stor);
+    memset(&stor, 0, addr_size);
+    resolved_conn.GetSockAddr((sockaddr*)&stor, &addr_size);
+    serv.SetSockAddr((sockaddr*)&stor);
+
+    bool whitelist = resolved_conn.GetOptions().fWhitelisted || CNode::IsWhitelistedRange(serv);
+    if (!whitelist && CNode::IsBanned(serv))
+        return false;
+    m_num_connections++;
+
+    CNode* pnode = new CNode(0, id, CAddress(serv), "", true);
+    pnode->nTimeConnected = GetTime();
+    pnode->fNetworkNode = true;
+    pnode->AddRef();
+    {
+        LOCK(cs_vNodes);
+        vNodes.push_back(pnode);
+    }
+    return true;
+}
+
+bool CConnman::OnOutgoingConnection(ConnID id, const CConnection& conn, const CConnection& resolved_conn)
+{
+    m_num_connecting--;
+    CService serv(resolved_conn.GetHost(), resolved_conn.GetPort());
+    bool whitelist = resolved_conn.GetOptions().fWhitelisted || CNode::IsWhitelistedRange(serv);
+    if (!whitelist && CNode::IsBanned(serv))
+        return false;
+
+    m_num_connections++;
+    m_connected_groups.insert(serv.GetGroup());
+    addrman.Attempt(serv);
+    std::string name = conn.IsDNS() ? conn.GetHost() : "";
+    CNode* pnode = new CNode(0, id, CAddress(serv), name, false);
+    pnode->nTimeConnected = GetTime();
+    pnode->fNetworkNode = true;
+    if (resolved_conn.GetOptions().fOneShot)
+        pnode->fOneShot = true;
+    pnode->AddRef();
+    {
+        LOCK(cs_vNodes);
+        vNodes.push_back(pnode);
+    }
+    return true;
+}
+void CConnman::OnConnectionFailure(const CConnection& conn, const CConnection& resolved, bool retry)
+{
+    LogPrintf("Connection failed to: %s\n", resolved.ToString().c_str());
+    m_num_connecting--;
+    CService serv(resolved.GetHost(), resolved.GetPort());
+    addrman.Attempt(serv);
+}
+void CConnman::OnDisconnected(ConnID id, bool persistent)
+{
+    LogPrintf("Peer %lu disconnected\n", id);
+    m_num_connections--;
+    CNode* node = nullptr;
+    {
+        LOCK(cs_vNodes);
+        BOOST_FOREACH(CNode* pnode, vNodes)
+        {
+            if(pnode->id == id)
+            {
+                node = pnode;
+                vNodes.erase(remove(vNodes.begin(), vNodes.end(), pnode), vNodes.end());
+                break;
+            }
+        }
+    }
+    if(node)
+    {
+        if (node->fNetworkNode || node->fInbound)
+            node->Release();
+        node->fDisconnect = true;
+        vNodesDisconnected.push_back(node);
+        m_connected_groups.erase(node->addr.GetGroup());
+        LOCK(node->cs_vRecvMsg);
+        node->vRecvMsg.clear();
+    }
+}
+void CConnman::OnBindFailure(const CConnection& listener)
+{
+    LogPrintf("Error: failed to bind to address: %s", listener.ToString());
+}
+void CConnman::OnDnsFailure(const CConnection& conn, bool retry)
+{
+    LogPrintf("Error: failed to resolve address: %s", conn.ToString());
+}
+
+void CConnman::OnWriteBufferFull(ConnID id, size_t bufsize)
+{
+    CNode* node = nullptr;
+    {
+        LOCK(cs_vNodes);
+        BOOST_FOREACH(CNode* pnode, vNodes)
+        {
+            if(pnode->id == id)
+            {
+                node = pnode;
+                node->AddRef();
+                break;
+            }
+        }
+    }
+    if(node)
+    {
+        node->fSendFull = true;
+        node->Release();
+    }
+}
+void CConnman::OnWriteBufferReady(ConnID id, size_t bufsize)
+{
+    CNode* node = nullptr;
+    {
+        LOCK(cs_vNodes);
+        BOOST_FOREACH(CNode* pnode, vNodes)
+        {
+            if(pnode->id == id)
+            {
+                node = pnode;
+                node->AddRef();
+                break;
+            }
+        }
+    }
+    if(node)
+    {
+        node->fSendFull = false;
+        node->Release();
+    }
+}
+bool CConnman::OnReceiveMessages(ConnID id, std::list<std::vector<unsigned char> > msgs, size_t totalsize)
+{
+    CNode* node = nullptr;
+    {
+        LOCK(cs_vNodes);
+        BOOST_FOREACH(CNode* pnode, vNodes)
+        {
+            if(pnode->id == id)
+            {
+                node = pnode;
+                node->AddRef();
+                break;
+            }
+        }
+    }
+    if(node)
+    {
+        {
+            LOCK(node->cs_vRecvMsg);
+            for(auto &&i : msgs)
+                node->ReceiveMsgBytes((const char*)i.data(), i.size());
+        }
+        node->Release();
+        return true;
+    }
+    else
+        return false;
+}
+
+void CConnman::OnMalformedMessage(ConnID id)
+{
+}
+
+void CConnman::OnReadyForFirstSend(ConnID id)
+{
+    CNode* node = nullptr;
+    {
+        LOCK(cs_vNodes);
+        BOOST_FOREACH(CNode* pnode, vNodes)
+        {
+            if(pnode->id == id)
+            {
+                node = pnode;
+                node->AddRef();
+                break;
+            }
+        }
+    }
+    if(node)
+    {
+        node->PushVersion();
+        node->Release();
+    }
+}
+void CConnman::OnProxyFailure(const CConnection& conn, bool retry)
+{
+}
+
+void CConnman::OnBytesRead(ConnID id, size_t bytes, size_t total_bytes)
+{
+    CNode* node = nullptr;
+    {
+        LOCK(cs_vNodes);
+        BOOST_FOREACH(CNode* pnode, vNodes)
+        {
+            if(pnode->id == id)
+            {
+                node = pnode;
+                node->AddRef();
+                break;
+            }
+        }
+    }
+    if(node)
+    {
+        node->nLastRecv = GetTime();
+        node->nRecvBytes += bytes;
+        node->RecordBytesRecv(bytes);
+        node->Release();
+    }
+}
+void CConnman::OnBytesWritten(ConnID id, size_t bytes, size_t total_bytes)
+{
+    CNode* node = nullptr;
+    {
+        LOCK(cs_vNodes); 
+        BOOST_FOREACH(CNode* pnode, vNodes)
+        {
+            if(pnode->id == id)
+            {
+                node = pnode;
+                node->AddRef();
+                break;
+            }
+        }
+    }
+    if(node)
+    {
+        node->nLastSend = GetTime();
+        node->nSendBytes += bytes;
+        node->RecordBytesSent(bytes);
+        node->Release();
+    }
+}
+void CConnman::OnShutdown()
+{
+}
+
+void CConnman::OnStartup()
+{
+
+    CRateLimit limit;
+    limit.nMaxBurstRead = 100000;
+    limit.nMaxReadRate = 100000;
+    limit.nMaxBurstWrite = 100000;
+    limit.nMaxWriteRate = 100000;
+
+    //SetOutgoingRateLimit(limit);
+
+    CConnectionOptions bindopts;
+    bindopts.fWhitelisted = false;
+    bindopts.fPersistent = false;
+    bindopts.doResolve = CConnectionOptions::NO_RESOLVE;
+    bindopts.nRetries = 0;
+    bindopts.nMaxSendBuffer = m_max_queue_size;
+
+    int listenport = GetArg("-port", m_params.GetDefaultPort());
+    fListen = GetBoolArg("-listen", DEFAULT_LISTEN);
+    if (fListen) {
+        if (mapArgs.count("-bind") || mapArgs.count("-whitebind")) {
+            BOOST_FOREACH(const std::string& strBind, mapMultiArgs["-bind"]) {
+                CService serv(strBind, listenport, false);
+                sockaddr_storage stor;
+                socklen_t stor_size = sizeof(stor);
+                memset(&stor, 0, stor_size);
+                serv.GetSockAddr((sockaddr*)&stor, &stor_size);
+                CConnection listener(bindopts, m_config, (sockaddr*)&stor, stor_size);
+                Bind(std::move(listener));
+            }
+            BOOST_FOREACH(const std::string& strBind, mapMultiArgs["-whitebind"]) {
+
+                CConnectionOptions whitebindopts = bindopts;
+                bindopts.fWhitelisted = true;
+
+                CService serv(strBind, listenport, false);
+                sockaddr_storage stor;
+                socklen_t stor_size = sizeof(stor);
+                memset(&stor, 0, stor_size);
+                serv.GetSockAddr((sockaddr*)&stor, &stor_size);
+                CConnection listener(whitebindopts, m_config, (sockaddr*)&stor, stor_size);
+                if (listener.GetPort() == 0)
+                    continue;
+                Bind(std::move(listener));
+            }
+        }
+        else {
+                 bool bound;
+                 sockaddr_in sock_any;
+                 memset(&sock_any, 0, sizeof(sock_any));
+                 sock_any.sin_family = AF_INET;
+                 sock_any.sin_addr.s_addr = INADDR_ANY;
+                 sock_any.sin_port = htons(listenport);
+                 bound = Bind({bindopts, m_config, (sockaddr*)&sock_any, sizeof(sock_any)});
+                 if(bound)
+                 {
+                     LogPrintf("Bound to address: 127.0.0.1\n");
+                 }
+
+                 sockaddr_in6 sock_any6;
+                 memset(&sock_any6, 0, sizeof(sock_any6));
+                 sock_any6.sin6_family = AF_INET6;
+                 sock_any6.sin6_addr = in6addr_any;
+                 sock_any6.sin6_port = htons(listenport);
+                 bound = Bind({bindopts, m_config, (sockaddr*)&sock_any6, sizeof(sock_any6)});
+                 if(bound)
+                 {
+                     LogPrintf("Bound to v6 address: ::\n");
+                 }
+        }
+    }
+    m_start_time = GetTime();
+}
+
