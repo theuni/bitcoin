@@ -846,6 +846,7 @@ private:
     std::mutex m_mutex_shutdown;
     std::condition_variable m_cond_shutdown;
     bool m_shutdown;
+    bool m_started;
 };
 
 #endif // BITCOIN_NET_H
