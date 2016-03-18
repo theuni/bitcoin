@@ -2818,7 +2818,7 @@ std::list<CConnection> CConnman::OnNeedOutgoingConnections(int need_count)
         m_added.pop_front();
     }
 
-    if(!conns.empty() || m_num_connecting)
+    if(!conns.empty())
         return conns;
 
     if (!m_static_seed_done && addrman.size() == 0 && (GetTime() - m_start_time > 60)) {
@@ -2841,7 +2841,7 @@ std::list<CConnection> CConnman::OnNeedOutgoingConnections(int need_count)
         CAddrInfo addr = addrman.Select();
 
         // if we selected an invalid address, restart
-        if (!addr.IsValid() || m_connected_groups.count(addr.GetGroup()) || IsLocal(addr))
+        if (!addr.IsValid() || m_connection_groups.count(addr.GetGroup()) || IsLocal(addr))
             break;
 
         if (IsLimited(addr) || CNode::IsBanned(addr))
@@ -2855,6 +2855,8 @@ std::list<CConnection> CConnman::OnNeedOutgoingConnections(int need_count)
         if (nTries < 50 && addr.GetPort() != m_params.GetDefaultPort())
             continue;
 
+        LogPrintf("Trying connection to: %s\n", addr.ToString());
+        m_connection_groups.insert(addr.GetGroup());
         conns.push_back(CreateConnection(addr, opts, m_config));
         m_num_connecting++;
         break;
@@ -2949,7 +2951,6 @@ bool CConnman::OnOutgoingConnection(ConnID id, const CConnection& conn, const CC
         return false;
 
     m_num_connections++;
-    m_connected_groups.insert(serv.GetGroup());
     addrman.Attempt(serv);
     std::string name = conn.IsDNS() ? conn.GetHost() : "";
     CNode* pnode = new CNode(0, id, CAddress(serv), name, false);
@@ -2969,6 +2970,7 @@ void CConnman::OnConnectionFailure(const CConnection& conn, const CConnection& r
     LogPrintf("Connection failed to: %s\n", resolved.ToString().c_str());
     m_num_connecting--;
     CService serv(resolved.GetHost(), resolved.GetPort());
+    m_connection_groups.erase(serv.GetGroup());
     addrman.Attempt(serv);
 }
 void CConnman::OnDisconnected(ConnID id, bool persistent)
@@ -2994,7 +2996,7 @@ void CConnman::OnDisconnected(ConnID id, bool persistent)
             node->Release();
         node->fDisconnect = true;
         vNodesDisconnected.push_back(node);
-        m_connected_groups.erase(node->addr.GetGroup());
+        m_connection_groups.erase(node->addr.GetGroup());
         LOCK(node->cs_vRecvMsg);
         node->vRecvMsg.clear();
     }
