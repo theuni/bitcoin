@@ -30,6 +30,7 @@
 #include <boost/foreach.hpp>
 #include <boost/signals2/signal.hpp>
 
+#include <condition_variable>
 class CAddrMan;
 class CScheduler;
 class CNode;
@@ -800,6 +801,8 @@ void DumpBanlist();
 /** Return a timestamp in the future (in microseconds) for exponentially distributed events. */
 int64_t PoissonNextSend(int64_t nNow, int average_interval_seconds);
 
+void InterruptNode();
+
 struct CDNSSeedData;
 class CConnman final : public CConnectionHandler
 {
@@ -807,6 +810,8 @@ public:
     CConnman(const CChainParams& params, uint64_t nLocalServices, int nVersion, size_t max_queue_size);
     ~CConnman() final;
     void Run();
+    void Interrupt();
+    void Stop();
 protected:
     std::list<CConnection> OnNeedOutgoingConnections(int need_count) final;
     void OnDnsResponse(const CConnection& conn, std::list<CConnection> results) final;
@@ -838,6 +843,9 @@ private:
     bool m_dns_seed_done;
     bool m_static_seed_done;
     const CChainParams m_params;
+    std::mutex m_mutex_shutdown;
+    std::condition_variable m_cond_shutdown;
+    bool m_shutdown;
 };
 
 #endif // BITCOIN_NET_H

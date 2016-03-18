@@ -2006,6 +2006,7 @@ void StartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
 bool StopNode()
 {
     LogPrintf("StopNode()\n");
+    g_connman->Stop();
     MapPort(false);
     if (semOutbound)
         for (int i=0; i<MAX_OUTBOUND_CONNECTIONS; i++)
@@ -2712,9 +2713,15 @@ static CConnection CreateConnection(const std::string& strAddr, int port, const 
         return CConnection(opts, config, socks5, strAddr, port);
     }
 }
+
+void InterruptNode()
+{
+    g_connman->Interrupt();
+}
+
 CConnman::CConnman(const CChainParams& params, uint64_t nLocalServices, int nVersion, size_t max_queue_size)
 : CConnectionHandler(true), m_max_queue_size(max_queue_size), m_outgoing_limit(MAX_OUTBOUND_CONNECTIONS)
-, m_dns_seed_done(false), m_static_seed_done(false), m_params(params)
+, m_dns_seed_done(false), m_static_seed_done(false), m_params(params), m_shutdown(false)
 {
     m_dns_seed_done = !GetBoolArg("-dnsseed", true);
 
@@ -2852,12 +2859,23 @@ std::list<CConnection> CConnman::OnNeedOutgoingConnections(int need_count)
     }
     return conns;
 }
+
+void CConnman::Interrupt()
+{
+    Shutdown();
+}
+
+void CConnman::Stop()
+{
+    std::unique_lock<std::mutex> lock(m_mutex_shutdown);
+    m_cond_shutdown.wait(lock, [this]{return m_shutdown;});
+}
+
 void CConnman::Run()
 {
     Start(m_outgoing_limit);
     while(PumpEvents(true))
     {
-        boost::this_thread::interruption_point();
     }
 }
 void CConnman::OnDnsResponse(const CConnection& conn, std::list<CConnection> results)
@@ -3123,6 +3141,11 @@ void CConnman::OnBytesWritten(ConnID id, size_t bytes, size_t total_bytes)
 }
 void CConnman::OnShutdown()
 {
+    {
+        std::lock_guard<std::mutex> lock(m_mutex_shutdown);
+        m_shutdown = true;
+    }
+    m_cond_shutdown.notify_one();
 }
 
 void CConnman::OnStartup()

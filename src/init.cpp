@@ -164,6 +164,7 @@ static boost::scoped_ptr<ECCVerifyHandle> globalVerifyHandle;
 
 void Interrupt(boost::thread_group& threadGroup)
 {
+    InterruptNode();
     InterruptHTTPServer();
     InterruptHTTPRPC();
     InterruptRPC();
