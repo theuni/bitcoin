@@ -2777,6 +2777,27 @@ CConnman::CConnman(const CChainParams& params, uint64_t nLocalServices, int nVer
          }
     }
 
+    if (mapArgs.count("-externalip")) {
+        CConnectionOptions external_opts = opts;
+        external_opts.doResolve = CConnectionOptions::RESOLVE_ONLY;
+        BOOST_FOREACH(const std::string& strAddr, mapMultiArgs["-externalip"]) {
+            CConnection conn(CreateConnection(strAddr, m_params.GetDefaultPort(), external_opts, m_config));
+            if (conn.IsSet())
+            {
+                if(!conn.IsDNS())
+                {
+                    AddLocal(CService(strAddr, GetListenPort(), false), LOCAL_MANUAL);
+                }
+                else if(fNameLookup)
+                {
+                    LogPrintf("Resolving external ip: %s\n", conn.GetHost());
+                    m_resolve_for_external_ip.push_back(conn);
+                    m_added.push_back(conn);
+                }
+            }
+        }
+    }
+
     m_num_connecting = 0;
     m_num_connections = 0;
 }
@@ -2897,6 +2918,17 @@ void CConnman::Run()
 }
 void CConnman::OnDnsResponse(const CConnection& conn, std::list<CConnection> results)
 {
+    for(auto it = m_resolve_for_external_ip.begin(); it != m_resolve_for_external_ip.end(); ++it)
+    {
+        if(conn.GetHost() == it->GetHost())
+        {
+            for(auto&& resolved : results)
+                AddLocal(CService(resolved.GetHost(), resolved.GetPort(), false), LOCAL_MANUAL);
+            m_resolve_for_external_ip.erase(it);
+            return;
+        }
+    }
+
     std::vector<CAddress> addresses;
     for(auto&& resolved : results)
     {

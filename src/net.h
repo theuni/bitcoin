@@ -835,6 +835,7 @@ private:
     size_t m_max_queue_size;
     std::set<std::vector<unsigned char> > m_connection_groups;
     std::deque<CConnection> m_added;
+    std::vector<CConnection> m_resolve_for_external_ip;
     int64_t m_start_time;
     int m_num_connections;
     int m_num_connecting;

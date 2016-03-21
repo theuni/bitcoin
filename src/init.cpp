@@ -279,7 +279,7 @@ bool static InitWarning(const std::string &str)
     uiInterface.ThreadSafeMessageBox(str, "", CClientUIInterface::MSG_WARNING);
     return true;
 }
-
+#if 0
 bool static Bind(const CService &addr, unsigned int flags) {
     if (!(flags & BF_EXPLICIT) && IsLimited(addr))
         return false;
@@ -291,7 +291,7 @@ bool static Bind(const CService &addr, unsigned int flags) {
     }
     return true;
 }
-
+#endif
 void OnRPCStopped()
 {
     cvBlockChange.notify_all();
@@ -1221,7 +1221,6 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
         if (!fBound)
             return InitError(_("Failed to listen on any port. Use -listen=0 if you want this."));
     }
-*/
     if (mapArgs.count("-externalip")) {
         BOOST_FOREACH(const std::string& strAddr, mapMultiArgs["-externalip"]) {
             CService addrLocal(strAddr, GetListenPort(), fNameLookup);
@@ -1233,7 +1232,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
 
     BOOST_FOREACH(const std::string& strDest, mapMultiArgs["-seednode"])
         AddOneShot(strDest);
-
+*/
 #if ENABLE_ZMQ
     pzmqNotificationInterface = CZMQNotificationInterface::CreateWithArguments(mapArgs);
 
