@@ -27,7 +27,7 @@ private:
 };
 
 ConnectionBase::ConnectionBase(CConnectionHandlerInt& handler, CConnection&& conn, ConnID id)
-    : m_handler(handler), m_event_base(handler.GetEventBase()), m_connection(std::move(conn)), m_id(id), m_reconnect_func(m_event_base, 0, std::bind(&ConnectionBase::Connect, this)), m_disconnect_func(m_event_base, 0, std::bind(&ConnectionBase::DisconnectInt, this, 0)), m_disconnect_wait_func(m_event_base, 0, std::bind(&ConnectionBase::DisconnectWhenFinishedInt, this)), m_check_write_buffer_func(m_event_base, 0, std::bind(&ConnectionBase::CheckWriteBufferInt, this))
+    : m_handler(handler), m_event_base(handler.GetEventBase()), m_connection(std::move(conn)), m_id(id), m_reconnect_func(m_event_base, 0, std::bind(&ConnectionBase::Connect, this)), m_disconnect_func(m_event_base, 0, std::bind(&ConnectionBase::DisconnectInt, this, 0)), m_disconnect_wait_func(m_event_base, 0, std::bind(&ConnectionBase::DisconnectWhenFinishedInt, this)), m_check_write_buffer_func(m_event_base, 0, std::bind(&ConnectionBase::CheckWriteBufferInt, this)), m_ping_timeout_func(m_event_base, 0, std::bind(&ConnectionBase::PingTimeoutInt, this))
 {
 }
 
@@ -41,6 +41,15 @@ void ConnectionBase::Disconnect()
 void ConnectionBase::DisconnectWhenFinished()
 {
     m_disconnect_wait_func.active();
+}
+
+void ConnectionBase::ResetPingTimeout(int seconds)
+{
+    if (seconds != 0) {
+        timeval timeout = {seconds, 0};
+        m_ping_timeout_func.add(timeout);
+    } else
+        m_ping_timeout_func.del();
 }
 
 void ConnectionBase::PauseRecv()
@@ -103,6 +112,7 @@ void ConnectionBase::DisconnectInt(int /*reason*/)
     m_reconnect_func.del();
     m_disconnect_wait_func.del();
     m_check_write_buffer_func.del();
+    m_ping_timeout_func.del();
     {
         BufferEventLocker lock(m_bev);
         bufferevent_disable(m_bev, EV_READ | EV_WRITE);
@@ -159,12 +169,18 @@ void ConnectionBase::InitConnection()
     bufferevent_setwatermark(m_bev, EV_READ, 0, 0);
     bufferevent_setwatermark(m_bev, EV_WRITE, opts.nMaxSendBuffer, 0);
 
+    // Don't set the regular callbacks yet. Before any data is sent/received,
+    // The initial timeout is in effect. first_read_cb/first_write_cb
+    // (whichever is hit first) will set the non-initial-timeout callbacks.
+    bufferevent_setcb(m_bev, first_read_cb, first_write_cb, event_cb, this);
+
+    // Add an additional set of callbacks responsible for reporting _all_
+    // socket reads/writes, as opposed to the bufferevent read callback, which
+    // has a watermark set.
     evbuffer* input = bufferevent_get_input(m_bev);
     evbuffer* output = bufferevent_get_output(m_bev);
-
     evbuffer_add_cb(input, read_data, this);
     evbuffer_add_cb(output, wrote_data, this);
-    bufferevent_setcb(m_bev, first_read_cb, first_write_cb, event_cb, this);
 }
 
 void ConnectionBase::OnOutgoingConnected(event_type<bufferevent>&& bev, CConnection resolved)
@@ -215,6 +231,11 @@ void ConnectionBase::CheckWriteBufferInt()
     }
     if (full)
         m_handler.OnWriteBufferFull(m_id, buflen);
+}
+
+void ConnectionBase::PingTimeoutInt()
+{
+    m_handler.OnPingTimeout(m_id);
 }
 
 void ConnectionBase::first_read_cb(bufferevent* bev, void* ctx)

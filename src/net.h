@@ -817,18 +817,19 @@ protected:
     void OnDnsResponse(const CConnection& conn, std::list<CConnection> results) final;
     bool OnIncomingConnection(ConnID id, const CConnection& listenconn, const CConnection& resolved_conn) final;
     bool OnOutgoingConnection(ConnID id, const CConnection& conn, const CConnection& resolved_conn) final;
-    void OnConnectionFailure(const CConnection& conn, const CConnection& resolved, bool retry) final;
-    void OnDisconnected(ConnID id, bool persistent) final;
+    bool OnConnectionFailure(const CConnection& conn, const CConnection& resolved, bool retry) final;
+    bool OnDisconnected(ConnID id, bool persistent) final;
     void OnBindFailure(const CConnection& listener) final;
-    void OnDnsFailure(const CConnection& conn, bool retry) final;
+    bool OnDnsFailure(const CConnection& conn, bool retry) final;
     void OnWriteBufferFull(ConnID id, size_t bufsize) final;
     void OnWriteBufferReady(ConnID id, size_t bufsize) final;
     bool OnReceiveMessages(ConnID id, std::list<std::vector<unsigned char> > msgs, size_t totalsize) final;
     void OnMalformedMessage(ConnID id) final;
     void OnReadyForFirstSend(ConnID id) final;
-    void OnProxyFailure(const CConnection& conn, bool retry) final;
+    bool OnProxyFailure(const CConnection& conn, bool retry) final;
     void OnBytesRead(ConnID id, size_t bytes, size_t total_bytes) final;
     void OnBytesWritten(ConnID id, size_t bytes, size_t total_bytes) final;
+    void OnPingTimeout(ConnID id) final;
     void OnShutdown() final;
     void OnStartup() final;
 private:

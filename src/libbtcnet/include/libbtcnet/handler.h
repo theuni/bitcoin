@@ -18,7 +18,7 @@ struct CNodeMessages {
     size_t size;
 };
 
-typedef uint64_t ConnID;
+typedef int64_t ConnID;
 
 class CConnectionHandlerInt;
 struct CNetworkConfig;
@@ -59,6 +59,14 @@ public:
     /// This may only be called after the handler has been started. See OnStartup.
     /// \param id The connection's unique id
     void UnpauseRecv(ConnID id);
+
+    /// \brief Reset the ping timeout
+    ///
+    /// This may only be called after the handler has been started. See OnStartup.
+    /// Once bound, new connection notifications will come via OnIncomingConnection
+    /// \param id The connection's unique id
+    /// \param seconds new timeout value, or 0 to disable
+    void ResetPingTimeout(ConnID id, int seconds);
 
     /// \brief Begin the shutdown process
     ///
@@ -170,7 +178,7 @@ protected:
     /// Called when a resolve-only request has failed.
     /// \param conn The original request
     /// \param retry Whether or not the request will be retried
-    virtual void OnDnsFailure(const CConnection& conn, bool retry) = 0;
+    virtual bool OnDnsFailure(const CConnection& conn, bool retry) = 0;
 
     /// \brief Notification of outgoing connection failure
     ///
@@ -179,14 +187,14 @@ protected:
     /// \param resolved The attempted resolved address if applicable, otherwise
     ///        the original address again.
     /// \param retry Whether or not the connection will be retried
-    virtual void OnConnectionFailure(const CConnection& conn, const CConnection& resolved, bool retry) = 0;
+    virtual bool OnConnectionFailure(const CConnection& conn, const CConnection& resolved, bool retry) = 0;
 
     /// \brief Notification of outgoing proxy failure
     ///
     /// Called when an outgoing proxy connection has failed.
     /// \param conn The original address
     /// \param retry Whether or not the connection will be retried
-    virtual void OnProxyFailure(const CConnection& conn, bool retry) = 0;
+    virtual bool OnProxyFailure(const CConnection& conn, bool retry) = 0;
 
     /// \brief Notification of a successful outgoing connection
     ///
@@ -214,7 +222,7 @@ protected:
     /// Called when an existing connection is disconnected
     /// \param id The connection's unique id
     /// \param persistent Whether or not a reconnection attempt will be made
-    virtual void OnDisconnected(ConnID id, bool persistent) = 0;
+    virtual bool OnDisconnected(ConnID id, bool persistent) = 0;
 
     /// \brief Notification of a outgoing readyness
     ///
@@ -270,6 +278,12 @@ protected:
     /// \param bytes Number of bytes written since the last notification
     /// \param total_bytes Total bytes written
     virtual void OnBytesWritten(ConnID id, size_t bytes, size_t total_bytes) = 0;
+
+    /// \brief Notification of ping timeout
+    ///
+    /// Called when the ping timer reaches zero before it is reset
+    /// \param id The connection's unique id
+    virtual void OnPingTimeout(ConnID id) = 0;
 
     /// \brief Notification of shutdown of the manager
     ///

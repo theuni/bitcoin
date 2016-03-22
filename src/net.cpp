@@ -3019,15 +3019,16 @@ bool CConnman::OnOutgoingConnection(ConnID id, const CConnection& conn, const CC
     }
     return true;
 }
-void CConnman::OnConnectionFailure(const CConnection& conn, const CConnection& resolved, bool retry)
+bool CConnman::OnConnectionFailure(const CConnection& conn, const CConnection& resolved, bool retry)
 {
     LogPrintf("Connection failed to: %s\n", resolved.ToString().c_str());
     m_num_connecting--;
     CService serv(resolved.GetHost(), resolved.GetPort());
     m_connection_groups.erase(serv.GetGroup());
     addrman.Attempt(serv);
+    return true;
 }
-void CConnman::OnDisconnected(ConnID id, bool persistent)
+bool CConnman::OnDisconnected(ConnID id, bool persistent)
 {
     LogPrintf("Peer %lu disconnected\n", id);
     m_num_connections--;
@@ -3054,14 +3055,16 @@ void CConnman::OnDisconnected(ConnID id, bool persistent)
         LOCK(node->cs_vRecvMsg);
         node->vRecvMsg.clear();
     }
+    return true;
 }
 void CConnman::OnBindFailure(const CConnection& listener)
 {
     LogPrintf("Error: failed to bind to address: %s", listener.ToString());
 }
-void CConnman::OnDnsFailure(const CConnection& conn, bool retry)
+bool CConnman::OnDnsFailure(const CConnection& conn, bool retry)
 {
-    LogPrintf("Error: failed to resolve address: %s", conn.ToString());
+    LogPrintf("Error: failed to resolve address: %s\n", conn.ToString());
+    return true;
 }
 
 void CConnman::OnWriteBufferFull(ConnID id, size_t bufsize)
@@ -3160,8 +3163,9 @@ void CConnman::OnReadyForFirstSend(ConnID id)
         node->Release();
     }
 }
-void CConnman::OnProxyFailure(const CConnection& conn, bool retry)
+bool CConnman::OnProxyFailure(const CConnection& conn, bool retry)
 {
+    return true;
 }
 
 void CConnman::OnBytesRead(ConnID id, size_t bytes, size_t total_bytes)
@@ -3210,6 +3214,11 @@ void CConnman::OnBytesWritten(ConnID id, size_t bytes, size_t total_bytes)
         node->Release();
     }
 }
+
+void CConnman::OnPingTimeout(ConnID id)
+{
+}
+
 void CConnman::OnShutdown()
 {
     {
