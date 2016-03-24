@@ -11,6 +11,7 @@
 #include "coincontrol.h"
 #include "consensus/consensus.h"
 #include "consensus/validation.h"
+#include "connman.h"
 #include "key.h"
 #include "keystore.h"
 #include "main.h"

@@ -5,6 +5,7 @@
 
 #include "base58.h"
 #include "clientversion.h"
+#include "connman.h"
 #include "init.h"
 #include "main.h"
 #include "net.h"

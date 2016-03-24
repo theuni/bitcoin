@@ -8,6 +8,7 @@
 #include "chainparams.h"
 #include "consensus/consensus.h"
 #include "consensus/validation.h"
+#include "connman.h"
 #include "core_io.h"
 #include "init.h"
 #include "main.h"
