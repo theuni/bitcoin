@@ -331,7 +331,7 @@ uint64_t CNode::nMaxOutboundCycleStartTime = 0;
 
 std::shared_ptr<CNode> CConnman::FindNode(const CNetAddr& ip)
 {
-    LOCK(cs_vNodes);
+    std::lock_guard<std::mutex> lock(m_nodes_mutex);
     for(auto&& it : vNodes) {
         auto pnode(it.second);
         if ((CNetAddr)pnode->addr == ip)
@@ -342,7 +342,7 @@ std::shared_ptr<CNode> CConnman::FindNode(const CNetAddr& ip)
 
 std::shared_ptr<CNode> CConnman::FindNode(const CSubNet& subNet)
 {
-    LOCK(cs_vNodes);
+    std::lock_guard<std::mutex> lock(m_nodes_mutex);
     for(auto&& it : vNodes) {
         auto pnode(it.second);
         if (subNet.Match((CNetAddr)pnode->addr))
@@ -353,7 +353,7 @@ std::shared_ptr<CNode> CConnman::FindNode(const CSubNet& subNet)
 
 std::shared_ptr<CNode> CConnman::FindNode(const std::string& addrName)
 {
-    LOCK(cs_vNodes);
+    std::lock_guard<std::mutex> lock(m_nodes_mutex);
     for(auto&& it : vNodes) {
         auto pnode(it.second);
         if (pnode->addrName == addrName)
@@ -364,7 +364,7 @@ std::shared_ptr<CNode> CConnman::FindNode(const std::string& addrName)
 
 std::shared_ptr<CNode> CConnman::FindNode(const CService& addr)
 {
-    LOCK(cs_vNodes);
+    std::lock_guard<std::mutex> lock(m_nodes_mutex);
     for(auto&& it : vNodes) {
         auto pnode(it.second);
         if ((CService)pnode->addr == addr)
@@ -413,7 +413,7 @@ CNode* ConnectNode(CAddress addrConnect, const char *pszDest)
         pnode->AddRef();
 
         {
-            LOCK(cs_vNodes);
+            std::lock_guard<std::mutex> lock(m_nodes_mutex);
             vNodes.push_back(pnode);
         }
 
@@ -801,12 +801,12 @@ void SocketSendData(CNode *pnode)
 class CNodeRef {
 public:
     CNodeRef(CNode *pnode) : _pnode(pnode) {
-        LOCK(cs_vNodes);
+        std::lock_guard<std::mutex> lock(m_nodes_mutex);
         _pnode->AddRef();
     }
 
     ~CNodeRef() {
-        LOCK(cs_vNodes);
+        std::lock_guard<std::mutex> lock(m_nodes_mutex);
         _pnode->Release();
     }
 
@@ -816,7 +816,7 @@ public:
     CNodeRef& operator =(const CNodeRef& other)
     {
         if (this != &other) {
-            LOCK(cs_vNodes);
+            std::lock_guard<std::mutex> lock(m_nodes_mutex);
 
             _pnode->Release();
             _pnode = other._pnode;
@@ -828,7 +828,7 @@ public:
     CNodeRef(const CNodeRef& other):
         _pnode(other._pnode)
     {
-        LOCK(cs_vNodes);
+        std::lock_guard<std::mutex> lock(m_nodes_mutex);
         _pnode->AddRef();
     }
 private:
@@ -880,7 +880,7 @@ public:
 bool CConnman::AttemptToEvictConnection(bool fPreferNewConnection) {
     std::vector<std::shared_ptr<CNode>> vEvictionCandidates;
     {
-        LOCK(cs_vNodes);
+        std::lock_guard<std::mutex> lock(m_nodes_mutex);
 
         for(auto&& it : vNodes) {
             auto node(it.second);
@@ -967,7 +967,7 @@ static void AcceptConnection(const ListenSocket& hListenSocket) {
 
     bool whitelisted = hListenSocket.whitelisted || CNode::IsWhitelistedRange(addr);
     {
-        LOCK(cs_vNodes);
+        std::lock_guard<std::mutex> lock(m_nodes_mutex);
         for(auto&& pnode : vNodes)
             if (pnode->fInbound)
                 nInbound++;
@@ -1021,7 +1021,7 @@ static void AcceptConnection(const ListenSocket& hListenSocket) {
     LogPrint("net", "connection from %s accepted\n", addr.ToString());
 
     {
-        LOCK(cs_vNodes);
+        std::lock_guard<std::mutex> lock(m_nodes_mutex);
         vNodes.push_back(pnode);
     }
 }
@@ -1037,7 +1037,7 @@ void ThreadSocketHandler()
         // Disconnect nodes
         //
         {
-            LOCK(cs_vNodes);
+            std::lock_guard<std::mutex> lock(m_nodes_mutex);
             // Disconnect unused nodes
             vector<CNode*> vNodesCopy = vNodes;
             for(auto&& pnode : vNodesCopy)
@@ -1119,7 +1119,7 @@ void ThreadSocketHandler()
         }
 
         {
-            LOCK(cs_vNodes);
+            std::lock_guard<std::mutex> lock(m_nodes_mutex);
             for(auto&& pnode : vNodes)
             {
                 if (pnode->hSocket == INVALID_SOCKET)
@@ -1194,7 +1194,7 @@ void ThreadSocketHandler()
         //
         vector<CNode*> vNodesCopy;
         {
-            LOCK(cs_vNodes);
+            std::lock_guard<std::mutex> lock(m_nodes_mutex);
             vNodesCopy = vNodes;
             for(auto&& pnode : vNodesCopy)
                 pnode->AddRef();
@@ -1288,7 +1288,7 @@ void ThreadSocketHandler()
             }
         }
         {
-            LOCK(cs_vNodes);
+            std::lock_guard<std::mutex> lock(m_nodes_mutex);
             for(auto&& pnode : vNodesCopy)
                 pnode->Release();
         }
@@ -1429,7 +1429,7 @@ void ThreadDNSAddressSeed()
         (!GetBoolArg("-forcednsseed", DEFAULT_FORCEDNSSEED))) {
         MilliSleep(11 * 1000);
 
-        LOCK(cs_vNodes);
+        std::lock_guard<std::mutex> lock(m_nodes_mutex);
         if (vNodes.size() >= 2) {
             LogPrintf("P2P peers available. Skipped DNS seeding.\n");
             return;
@@ -1563,7 +1563,7 @@ void ThreadOpenConnections()
         int nOutbound = 0;
         set<vector<unsigned char> > setConnected;
         {
-            LOCK(cs_vNodes);
+            std::lock_guard<std::mutex> lock(m_nodes_mutex);
             for(auto&& pnode : vNodes) {
                 if (!pnode->fInbound) {
                     setConnected.insert(pnode->addr.GetGroup());
@@ -1613,16 +1613,16 @@ void ThreadOpenConnections()
 void ThreadOpenAddedConnections()
 {
     {
-        LOCK(cs_vAddedNodes);
-        vAddedNodes = mapMultiArgs["-addnode"];
+        std::lock_guard<std::mutex> lock(m_added_nodes_mutex);
+        m_added_nodes = mapMultiArgs["-addnode"];
     }
 
     if (HaveNameProxy()) {
         while(true) {
             list<string> lAddresses(0);
             {
-                LOCK(cs_vAddedNodes);
-                BOOST_FOREACH(const std::string& strAddNode, vAddedNodes)
+                std::lock_guard<std::mutex> lock(m_added_nodes_mutex);
+                BOOST_FOREACH(const std::string& strAddNode, m_added_nodes)
                     lAddresses.push_back(strAddNode);
             }
             BOOST_FOREACH(const std::string& strAddNode, lAddresses) {
@@ -1639,8 +1639,8 @@ void ThreadOpenAddedConnections()
     {
         list<string> lAddresses(0);
         {
-            LOCK(cs_vAddedNodes);
-            BOOST_FOREACH(const std::string& strAddNode, vAddedNodes)
+            std::lock_guard<std::mutex> lock(m_added_nodes_mutex);
+            BOOST_FOREACH(const std::string& strAddNode, m_added_nodes)
                 lAddresses.push_back(strAddNode);
         }
 
@@ -1660,7 +1660,7 @@ void ThreadOpenAddedConnections()
         // Attempt to connect to each IP for each addnode entry until at least one is successful per addnode entry
         // (keeping in mind that addnode entries can have many IPs if fNameLookup)
         {
-            LOCK(cs_vNodes);
+            std::lock_guard<std::mutex> lock(m_nodes_mutex);
             for(auto&& pnode : vNodes)
                 for (list<vector<CService> >::iterator it = lservAddressesToAdd.begin(); it != lservAddressesToAdd.end(); it++)
                     BOOST_FOREACH(const CService& addrNode, *(it))
@@ -1713,68 +1713,61 @@ bool OpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *grantOu
 
 void CConnman::ThreadMessageHandler()
 {
-    boost::mutex condition_mutex;
-    boost::unique_lock<boost::mutex> lock(condition_mutex);
-
     SetThreadPriority(THREAD_PRIORITY_BELOW_NORMAL);
+    bool fSleep = false;
     while (true)
     {
-        bool fSleep = true;
-    {
-        std::vector<std::weak_ptr<CNode>> vNodesCopy;
         {
-            LOCK(cs_vNodes);
-            for(auto &&i : vNodes)
-                vNodesCopy.emplace_back(i.second);
-        }
-
-        for(auto&& weaknode : vNodesCopy)
-        {
-            auto pnode = weaknode.lock();
-            if(!pnode)
-                continue;
-            if (pnode->fDisconnect)
+            std::vector<std::weak_ptr<CNode>> vNodesCopy;
+            if(fSleep)
             {
-                g_connman->CloseConnection(pnode->id, false);
-                continue;
+                std::unique_lock<std::mutex> lock(m_message_wake_mutex);
+                m_message_wake_cond.wait_for(lock, std::chrono::milliseconds(100), [this]{return m_message_wake; });
+                m_message_wake = false;
             }
-
-            // Receive messages
             {
-                TRY_LOCK(pnode->cs_vRecvMsg, lockRecv);
-                if (lockRecv)
+                std::lock_guard<std::mutex> lock(m_nodes_mutex);
+                for(auto &&i : vNodes)
+                    vNodesCopy.emplace_back(i.second);
+            }
+            fSleep = true;
+            for(auto&& weaknode : vNodesCopy)
+            {
+                auto pnode = weaknode.lock();
+                if(!pnode)
+                    continue;
+                if (pnode->fDisconnect)
                 {
-                    if (!g_signals.ProcessMessages(pnode.get()))
-                        pnode->CloseSocketDisconnect();
+                    g_connman->CloseConnection(pnode->id, false);
+                    continue;
+                }
 
-                    if (!pnode->fSendFull)
+                // Receive messages
+                {
+                    TRY_LOCK(pnode->cs_vRecvMsg, lockRecv);
+                    if (lockRecv)
                     {
-                        if (!pnode->vRecvGetData.empty() || (!pnode->vRecvMsg.empty() && pnode->vRecvMsg[0].complete()))
+                        if (!g_signals.ProcessMessages(pnode.get()))
+                            pnode->CloseSocketDisconnect();
+
+                        if (!pnode->fSendFull)
                         {
+                            if (!pnode->vRecvGetData.empty() || (!pnode->vRecvMsg.empty() && pnode->vRecvMsg[0].complete()))
                             fSleep = false;
                         }
                     }
                 }
-            }
-            boost::this_thread::interruption_point();
+                boost::this_thread::interruption_point();
 
-            // Send messages
-            {
-                TRY_LOCK(pnode->cs_vSend, lockSend);
-                if (lockSend)
+                // Send messages
                 {
-                    //for(auto &&i : pnode->vSendMsg)
-                    //    g_connman->Send(pnode->id, (const unsigned char*)i.data(), i.size());
-                    //pnode->vSendMsg.clear();
-                    g_signals.SendMessages(pnode.get());
+                    TRY_LOCK(pnode->cs_vSend, lockSend);
+                    if (lockSend)
+                        g_signals.SendMessages(pnode.get());
                 }
             }
             boost::this_thread::interruption_point();
         }
-    }
-
-        if (fSleep)
-            messageHandlerCondition.timed_wait(lock, boost::posix_time::microsec_clock::universal_time() + boost::posix_time::milliseconds(100));
     }
 }
 
@@ -2701,8 +2694,8 @@ CConnman::CConnman(const CChainParams& params, uint64_t nLocalServices, int nVer
         if(mapMultiArgs["-addnode"].size() > 0)
         {
             {
-                LOCK(cs_vAddedNodes);
-                vAddedNodes = mapMultiArgs["-addnode"];
+                std::lock_guard<std::mutex> lock(m_added_nodes_mutex);
+                m_added_nodes = mapMultiArgs["-addnode"];
             }
             BOOST_FOREACH(const std::string& strAddr, mapMultiArgs["-addnode"])
             {
@@ -2757,14 +2750,14 @@ bool CConnman::AddNode(std::string node, bool fOneShot)
 {
     LogPrintf("addnode: %s\n", node);
     {
-        LOCK(cs_vAddedNodes);
-        for(auto it(vAddedNodes.begin()); it != vAddedNodes.end(); ++it)
+        std::lock_guard<std::mutex> lock(m_added_nodes_mutex);
+        for(auto it(m_added_nodes.begin()); it != m_added_nodes.end(); ++it)
         {
             if(*it == node)
                 return false;
         }
         if(!fOneShot)
-            vAddedNodes.push_back(node);
+            m_added_nodes.push_back(node);
     }
 
     CConnectionOptions opts;
@@ -2781,12 +2774,12 @@ bool CConnman::AddNode(std::string node, bool fOneShot)
 bool CConnman::RemoveAddedNode(std::string node)
 {
     {
-        LOCK(cs_vAddedNodes);
-        for(auto it(vAddedNodes.begin()); it != vAddedNodes.end(); ++it)
+        std::lock_guard<std::mutex> lock(m_added_nodes_mutex);
+        for(auto it(m_added_nodes.begin()); it != m_added_nodes.end(); ++it)
         {
             if(*it == node)
             {
-                vAddedNodes.erase(it);
+                m_added_nodes.erase(it);
                 m_removed_added_nodes.push_back(std::move(node));
                 return true;
             }
@@ -2799,7 +2792,7 @@ bool CConnman::DisconnectNode(std::string node)
 {
     ConnID id = -1;
     {
-        LOCK(cs_vNodes);
+        std::lock_guard<std::mutex> lock(m_nodes_mutex);
         for(auto&& it : vNodes)
         {
             auto pnode(it.second);
@@ -2980,7 +2973,7 @@ void CConnman::RelayAddress(const CAddress& addr, int nRelayNodes)
         hashRand = Hash(BEGIN(hashRand), END(hashRand));
         multimap<uint256, std::weak_ptr<CNode> > mapMix;
         {
-            LOCK(cs_vNodes);
+            std::lock_guard<std::mutex> lock(m_nodes_mutex);
             for(auto&& it : vNodes)
             {
                 auto pnode(it.second);
@@ -3018,7 +3011,7 @@ void CConnman::ForEachNode(std::function<void(CNode*)>&& func)
 {
     std::vector<std::weak_ptr<CNode>> nodes;
     {
-        LOCK(cs_vNodes);
+        std::lock_guard<std::mutex> lock(m_nodes_mutex);
         nodes.reserve(vNodes.size());
         for(auto &&i : vNodes)
             nodes.emplace_back(i.second);
@@ -3035,7 +3028,7 @@ void CConnman::ForEachNodeIf(std::function<void(CNode*)>&& func, std::function<b
 {
     std::vector<std::weak_ptr<CNode>> nodes;
     {
-        LOCK(cs_vNodes);
+        std::lock_guard<std::mutex> lock(m_nodes_mutex);
         nodes.reserve(vNodes.size());
         for(auto &&i : vNodes)
             nodes.emplace_back(i.second);
@@ -3105,7 +3098,7 @@ void CConnman::QueuePing()
 
 size_t CConnman::GetNodeCount()
 {
-    LOCK(cs_vNodes);
+    std::lock_guard<std::mutex> lock(m_nodes_mutex);
     return vNodes.size();
 }
 
@@ -3195,7 +3188,7 @@ bool CConnman::OnIncomingConnection(ConnID id, const CConnection& listenconn, co
 
     int nInbound = 0;
     {
-        LOCK(cs_vNodes);
+        std::lock_guard<std::mutex> lock(m_nodes_mutex);
         for(auto&& it : vNodes) {
             auto pnode(it.second);
             if (pnode->fInbound)
@@ -3226,7 +3219,7 @@ bool CConnman::OnIncomingConnection(ConnID id, const CConnection& listenconn, co
     pnode->fNetworkNode = true;
     pnode->fWhitelisted = whitelisted;
     {
-        LOCK(cs_vNodes);
+        std::lock_guard<std::mutex> lock(m_nodes_mutex);
         vNodes.emplace_hint(vNodes.end(), id, std::move(pnode));
     }
     return true;
@@ -3256,7 +3249,7 @@ bool CConnman::OnOutgoingConnection(ConnID id, const CConnection& conn, const CC
     if (resolved_conn.GetOptions().fOneShot)
         pnode->fOneShot = true;
     {
-        LOCK(cs_vNodes);
+        std::lock_guard<std::mutex> lock(m_nodes_mutex);
         vNodes.emplace_hint(vNodes.end(), id, std::move(pnode));
     }
     return true;
@@ -3266,7 +3259,7 @@ bool CConnman::OnConnectionFailure(const CConnection& conn, const CConnection& r
     LogPrintf("Connection failed to: %s:%i\n", conn.ToString().c_str(), conn.GetPort());
     bool ret = true;
     {
-        LOCK(cs_vAddedNodes);
+        std::lock_guard<std::mutex> lock(m_added_nodes_mutex);
         for(auto it(m_removed_added_nodes.begin()); it != m_removed_added_nodes.end(); ++it)
         {
             if(*it == conn.GetHost() || *it == resolved.GetHost())
@@ -3292,7 +3285,7 @@ bool CConnman::OnDisconnected(ConnID id, bool persistent)
     std::string addrName;
     std::shared_ptr<CNode> node;
     {
-        LOCK(cs_vNodes);
+        std::lock_guard<std::mutex> lock(m_nodes_mutex);
         auto it(vNodes.find(id));
         if(it != vNodes.end())
         {
@@ -3315,7 +3308,7 @@ bool CConnman::OnDisconnected(ConnID id, bool persistent)
     }
     bool ret = true;
     {
-        LOCK(cs_vAddedNodes);
+        std::lock_guard<std::mutex> lock(m_added_nodes_mutex);
         for(auto it(m_removed_added_nodes.begin()); it != m_removed_added_nodes.end(); ++it)
         {
             if(*it == addrName)
@@ -3337,7 +3330,7 @@ bool CConnman::OnDnsFailure(const CConnection& conn, bool retry)
     LogPrintf("Error: failed to resolve address: %s\n", conn.ToString());
     bool ret = true;
     {
-        LOCK(cs_vAddedNodes);
+        std::lock_guard<std::mutex> lock(m_added_nodes_mutex);
         for(auto it(m_removed_added_nodes.begin()); it != m_removed_added_nodes.end(); ++it)
         {
             if(*it == conn.GetHost())
@@ -3373,7 +3366,11 @@ bool CConnman::OnReceiveMessages(ConnID id, std::list<std::vector<unsigned char>
             for(auto &&i : msgs)
                 node->ReceiveMsgBytes((const char*)i.data(), i.size());
         }
-        messageHandlerCondition.notify_one();
+        {
+            std::lock_guard<std::mutex> lock(m_message_wake_mutex);
+            m_message_wake = true;
+        }
+        m_message_wake_cond.notify_one();
         return true;
     }
     else
@@ -3395,7 +3392,7 @@ bool CConnman::OnProxyFailure(const CConnection& conn, bool retry)
     LogPrintf("Error: failed to connect to proxy: %s for connection: %s\n", conn.GetProxy().ToString(), conn.ToString());
     bool ret = true;
     {
-        LOCK(cs_vAddedNodes);
+        std::lock_guard<std::mutex> lock(m_added_nodes_mutex);
         for(auto it(m_removed_added_nodes.begin()); it != m_removed_added_nodes.end(); ++it)
         {
             if(*it == conn.GetHost())
@@ -3418,7 +3415,7 @@ bool CConnman::OnProxyFailure(const CConnection& conn, bool retry)
 std::shared_ptr<CNode> CConnman::FindNode(ConnID id)
 {
     std::shared_ptr<CNode> node;
-    LOCK(cs_vNodes);
+    std::lock_guard<std::mutex> lock(m_nodes_mutex);
     auto it = vNodes.find(id);
     if(it != vNodes.end())
         node = it->second;

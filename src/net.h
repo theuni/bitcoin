@@ -878,11 +878,13 @@ private:
     std::vector<std::string> m_removed_added_nodes;
 
     std::map<ConnID, std::shared_ptr<CNode>> vNodes;
-    CCriticalSection cs_vNodes;
+    std::mutex m_nodes_mutex;
     std::map<ConnID, std::weak_ptr<CNode>> vNodesDisconnected;
-    boost::condition_variable messageHandlerCondition;
-    std::vector<std::string> vAddedNodes;
-    CCriticalSection cs_vAddedNodes;
+    std::condition_variable m_message_wake_cond;
+    std::mutex m_message_wake_mutex;
+    bool m_message_wake;
+    std::vector<std::string> m_added_nodes;
+    std::mutex m_added_nodes_mutex;
 };
 extern std::unique_ptr<CConnman> g_connman;
 #endif // BITCOIN_NET_H
