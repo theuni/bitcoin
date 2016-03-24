@@ -7,6 +7,7 @@
 
 #include "libbtcnet/connection.h"
 
+#include <array>
 #include <assert.h>
 #include <string.h>
 #include <event2/bufferevent.h>
@@ -70,12 +71,12 @@ bool CBareProxy::writeproto(bufferevent* bev, const CConnection& conn)
 
     unsigned short port;
 
+    vSocks5.push_back(0x03); // ATYP DOMAINNAME
     if (conn.IsDNS()) {
         const std::string& host = conn.GetHost();
         port = conn.GetPort();
         if (conn.GetHost().size() > 255)
             return false;
-        vSocks5.push_back(0x03); // ATYP DOMAINNAME
         vSocks5.push_back(host.size());
         vSocks5.insert(vSocks5.end(), host.begin(), host.end());
         vSocks5.push_back((port >> 8) & 0xFF);
@@ -89,18 +90,20 @@ bool CBareProxy::writeproto(bufferevent* bev, const CConnection& conn)
             assert((size_t)socksize >= sizeof(sockaddr_in6));
             in6_addr addr = reinterpret_cast<sockaddr_in6*>(&sock)->sin6_addr;
             port = reinterpret_cast<sockaddr_in6*>(&sock)->sin6_port;
-            vSocks5.push_back(0x04); // ATYP IPV6
-            vSocks5.insert(vSocks5.end(), addr.s6_addr, addr.s6_addr + sizeof(addr.s6_addr));
+            std::array<char, INET6_ADDRSTRLEN> caddr = {};
+            evutil_inet_ntop(AF_INET6, &addr, caddr.data(), caddr.size());
+            vSocks5.insert(vSocks5.end(), caddr.begin(), caddr.end());
             vSocks5.insert(vSocks5.end(), reinterpret_cast<unsigned char*>(&port), reinterpret_cast<unsigned char*>(&port) + sizeof(port));
-            assert(vSocks5.size() == 22);
+            //assert(vSocks5.size() == 22);
         } else if (sock.ss_family == AF_INET) {
             assert((size_t)socksize >= sizeof(sockaddr_in));
             in_addr addr = reinterpret_cast<sockaddr_in*>(&sock)->sin_addr;
+            std::array<char, INET_ADDRSTRLEN> caddr = {};
+            evutil_inet_ntop(AF_INET, &addr, caddr.data(), caddr.size());
             port = reinterpret_cast<sockaddr_in*>(&sock)->sin_port;
-            vSocks5.push_back(0x01); // ATYP IPV4
-            vSocks5.insert(vSocks5.end(), reinterpret_cast<unsigned char*>(&addr), reinterpret_cast<unsigned char*>(&addr) + sizeof(addr));
+            vSocks5.insert(vSocks5.end(), caddr.begin(), caddr.end());
             vSocks5.insert(vSocks5.end(), reinterpret_cast<unsigned char*>(&port), reinterpret_cast<unsigned char*>(&port) + sizeof(port));
-            assert(vSocks5.size() == 10);
+            //assert(vSocks5.size() == 10);
         } else
             return false;
     }

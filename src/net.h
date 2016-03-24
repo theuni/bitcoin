@@ -80,21 +80,22 @@ static const unsigned int DEFAULT_MISBEHAVING_BANTIME = 60 * 60 * 24;  // Defaul
 unsigned int ReceiveFloodSize();
 unsigned int SendBufferSize();
 
-void AddOneShot(const std::string& strDest);
+//void AddOneShot(const std::string& strDest);
 void AddressCurrentlyConnected(const CService& addr);
-CNode* FindNode(const CNetAddr& ip);
-CNode* FindNode(const CSubNet& subNet);
-CNode* FindNode(const std::string& addrName);
-CNode* FindNode(const CService& ip);
-CNode* ConnectNode(CAddress addrConnect, const char *pszDest = NULL);
-bool OpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *grantOutbound = NULL, const char *strDest = NULL, bool fOneShot = false);
-void MapPort(bool fUseUPnP);
-unsigned short GetListenPort();
-bool BindListenPort(const CService &bindAddr, std::string& strError, bool fWhitelisted = false);
+//CNode* FindNode(const CNetAddr& ip);
+//CNode* FindNode(const CSubNet& subNet);
+//CNode* FindNode(const std::string& addrName);
+//CNode* FindNode(const CService& ip);
 void StartNode(boost::thread_group& threadGroup, CScheduler& scheduler);
 bool StopNode();
+unsigned short GetListenPort();
+//bool OpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *grantOutbound = NULL, const char *strDest = NULL, bool fOneShot = false);
+/*
+CNode* ConnectNode(CAddress addrConnect, const char *pszDest = NULL);
+void MapPort(bool fUseUPnP);
+bool BindListenPort(const CService &bindAddr, std::string& strError, bool fWhitelisted = false);
 void SocketSendData(CNode *pnode);
-
+*/
 typedef int NodeId;
 
 struct CombinerAll
@@ -162,18 +163,10 @@ extern CAddrMan addrman;
 /** Maximum number of connections to simultaneously allow (aka connection slots) */
 extern int nMaxConnections;
 
-extern std::vector<CNode*> vNodes;
-extern CCriticalSection cs_vNodes;
 extern std::map<CInv, CDataStream> mapRelay;
 extern std::deque<std::pair<int64_t, CInv> > vRelayExpiration;
 extern CCriticalSection cs_mapRelay;
 extern limitedmap<CInv, int64_t> mapAlreadyAskedFor;
-
-extern std::vector<std::string> vAddedNodes;
-extern CCriticalSection cs_vAddedNodes;
-
-extern NodeId nLastNodeId;
-extern CCriticalSection cs_nLastNodeId;
 
 /** Subversion as sent to the P2P network in `version` messages */
 extern std::string strSubVersion;
@@ -771,8 +764,8 @@ public:
 
 
 class CTransaction;
-void RelayTransaction(const CTransaction& tx);
-void RelayTransaction(const CTransaction& tx, const CDataStream& ss);
+//void RelayTransaction(const CTransaction& tx);
+//void RelayTransaction(const CTransaction& tx, const CDataStream& ss);
 
 /** Access to the (IP) address database (peers.dat) */
 class CAddrDB
@@ -804,6 +797,7 @@ int64_t PoissonNextSend(int64_t nNow, int average_interval_seconds);
 void InterruptNode();
 
 struct CDNSSeedData;
+class CAlert;
 class CConnman final : public CConnectionHandler
 {
 public:
@@ -812,6 +806,21 @@ public:
     void Run();
     void Interrupt();
     void Stop();
+    bool AddNode(std::string node, bool fOneShot);
+    bool RemoveAddedNode(std::string node);
+    bool DisconnectNode(std::string node);
+    void RelayAddress(const CAddress& addr, int nRelayNodes);
+    void RelayInventory(int height, int nBlockEstimate, const std::vector<uint256>& vHashes);
+    void RelayAlert(const CAlert& alert);
+    void RelayTransaction(const CTransaction& tx);
+    void QueuePing();
+    size_t GetNodeCount();
+    void GetNodeStats(std::vector<CNodeStats>& vstats);
+    void ResetNodeTimes(uint64_t t);
+    void GetAddedNodes(std::list<CConnection>& added);
+    void ThreadMessageHandler();
+    void DisconnectAddress(const CNetAddr& addr);
+    void DisconnectSubnet(const CSubNet& subnet);
 protected:
     std::list<CConnection> OnNeedOutgoingConnections(int need_count) final;
     void OnDnsResponse(const CConnection& conn, std::list<CConnection> results) final;
@@ -833,9 +842,26 @@ protected:
     void OnShutdown() final;
     void OnStartup() final;
 private:
+    void AddDNSSeeds();
+    void RelayTransaction(const CTransaction& tx, const CDataStream& ss);
+    bool AttemptToEvictConnection(bool fPreferNewConnection);
+    std::shared_ptr<CNode> FindNode(const CNetAddr& ip);
+    std::shared_ptr<CNode> FindNode(const CSubNet& subNet);
+    std::shared_ptr<CNode> FindNode(const std::string& addrName);
+    std::shared_ptr<CNode> FindNode(const CService& addr);
+    std::shared_ptr<CNode> FindNode(ConnID id);
+
+    void ForEachNode(std::function<void(CNode*)>&& func);
+    void ForEachNodeIf(std::function<void(CNode*)>&& func, std::function<bool(CNode*)>&& pred);
+    void NodeFinished(ConnID id);
+
+    static CProxy CreateProxy(const proxyType& proxy);
+    static CConnection CreateConnection(const CService& serv, const CConnectionOptions& opts, const CNetworkConfig& config);
+    static CConnection CreateConnection(const std::string& strAddr, int port, const CConnectionOptions& opts, const CNetworkConfig& config);
+
     size_t m_max_queue_size;
     std::set<std::vector<unsigned char> > m_connection_groups;
-    std::deque<CConnection> m_added;
+    std::list<CConnection> m_added;
     std::vector<CConnection> m_resolve_for_external_ip;
     int64_t m_start_time;
     int m_num_connections;
@@ -849,6 +875,14 @@ private:
     std::condition_variable m_cond_shutdown;
     bool m_shutdown;
     bool m_started;
-};
+    std::vector<std::string> m_removed_added_nodes;
 
+    std::map<ConnID, std::shared_ptr<CNode>> vNodes;
+    CCriticalSection cs_vNodes;
+    std::map<ConnID, std::weak_ptr<CNode>> vNodesDisconnected;
+    boost::condition_variable messageHandlerCondition;
+    std::vector<std::string> vAddedNodes;
+    CCriticalSection cs_vAddedNodes;
+};
+extern std::unique_ptr<CConnman> g_connman;
 #endif // BITCOIN_NET_H
