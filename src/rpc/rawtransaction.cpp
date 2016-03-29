@@ -6,6 +6,7 @@
 #include "base58.h"
 #include "chain.h"
 #include "coins.h"
+#include "connman.h"
 #include "consensus/validation.h"
 #include "core_io.h"
 #include "init.h"
@@ -837,7 +838,7 @@ UniValue sendrawtransaction(const UniValue& params, bool fHelp)
     } else if (fHaveChain) {
         throw JSONRPCError(RPC_TRANSACTION_ALREADY_IN_CHAIN, "transaction already in block chain");
     }
-    RelayTransaction(tx, txFeeRate);
+    g_connman->RelayTransaction(tx, txFeeRate);
 
     return hashTx.GetHex();
 }

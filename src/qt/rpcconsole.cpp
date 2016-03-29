@@ -577,8 +577,8 @@ void RPCConsole::setNumConnections(int count)
         return;
 
     QString connections = QString::number(count) + " (";
-    connections += tr("In:") + " " + QString::number(clientModel->getNumConnections(CONNECTIONS_IN)) + " / ";
-    connections += tr("Out:") + " " + QString::number(clientModel->getNumConnections(CONNECTIONS_OUT)) + ")";
+    connections += tr("In:") + " " + QString::number(clientModel->getNumConnections(CConnman::CONNECTIONS_IN)) + " / ";
+    connections += tr("Out:") + " " + QString::number(clientModel->getNumConnections(CConnman::CONNECTIONS_OUT)) + ")";
 
     ui->numberOfConnections->setText(connections);
 }
