@@ -47,18 +47,9 @@ ClientModel::~ClientModel()
     unsubscribeFromCoreSignals();
 }
 
-int ClientModel::getNumConnections(unsigned int flags) const
+int ClientModel::getNumConnections(CConnman::NumConnections flags) const
 {
-    LOCK(cs_vNodes);
-    if (flags == CONNECTIONS_ALL) // Shortcut if we want total
-        return vNodes.size();
-
-    int nNum = 0;
-    BOOST_FOREACH(const CNode* pnode, vNodes)
-        if (flags & (pnode->fInbound ? CONNECTIONS_IN : CONNECTIONS_OUT))
-            nNum++;
-
-    return nNum;
+    return g_connman->GetNodeCount(flags);
 }
 
 int ClientModel::getNumBlocks() const

@@ -11,6 +11,7 @@
 #include "coincontrol.h"
 #include "consensus/consensus.h"
 #include "consensus/validation.h"
+#include "connman.h"
 #include "key.h"
 #include "keystore.h"
 #include "main.h"
@@ -1270,7 +1271,7 @@ bool CWalletTx::RelayWalletTransaction()
             LogPrintf("Relaying wtx %s\n", GetHash().ToString());
             CFeeRate feeRate;
             mempool.lookupFeeRate(GetHash(), feeRate);
-            RelayTransaction((CTransaction)*this, feeRate);
+            g_connman->RelayTransaction((CTransaction)*this, feeRate);
             return true;
         }
     }

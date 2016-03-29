@@ -8,6 +8,8 @@
 #include <QObject>
 #include <QDateTime>
 
+#include "connman.h"
+
 class AddressTableModel;
 class BanTableModel;
 class OptionsModel;
@@ -49,7 +51,7 @@ public:
     BanTableModel *getBanTableModel();
 
     //! Return number of connections, default is in- and outbound (total)
-    int getNumConnections(unsigned int flags = CONNECTIONS_ALL) const;
+    int getNumConnections(CConnman::NumConnections = CConnman::CONNECTIONS_ALL) const;
     int getNumBlocks() const;
 
     //! Return number of transactions in the mempool

@@ -19,6 +19,7 @@
 
 #include <deque>
 #include <stdint.h>
+#include <atomic>
 
 #ifndef WIN32
 #include <arpa/inet.h>
@@ -74,23 +75,12 @@ static const size_t DEFAULT_MAXSENDBUFFER    = 1 * 1000;
 // NOTE: When adjusting this, update rpcnet:setban's help ("24h")
 static const unsigned int DEFAULT_MISBEHAVING_BANTIME = 60 * 60 * 24;  // Default 24-hour ban
 
-unsigned int ReceiveFloodSize();
-unsigned int SendBufferSize();
-
-void AddOneShot(const std::string& strDest);
 void AddressCurrentlyConnected(const CService& addr);
-CNode* FindNode(const CNetAddr& ip);
-CNode* FindNode(const CSubNet& subNet);
-CNode* FindNode(const std::string& addrName);
-CNode* FindNode(const CService& ip);
-CNode* ConnectNode(CAddress addrConnect, const char *pszDest = NULL);
-bool OpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *grantOutbound = NULL, const char *strDest = NULL, bool fOneShot = false);
 void MapPort(bool fUseUPnP);
 unsigned short GetListenPort();
-bool BindListenPort(const CService &bindAddr, std::string& strError, bool fWhitelisted = false);
 void StartNode(boost::thread_group& threadGroup, CScheduler& scheduler);
 bool StopNode();
-void SocketSendData(CNode *pnode);
+void InterruptNode();
 
 typedef int NodeId;
 
@@ -159,8 +149,6 @@ extern CAddrMan addrman;
 /** Maximum number of connections to simultaneously allow (aka connection slots) */
 extern int nMaxConnections;
 
-extern std::vector<CNode*> vNodes;
-extern CCriticalSection cs_vNodes;
 extern std::map<CInv, CDataStream> mapRelay;
 extern std::deque<std::pair<int64_t, CInv> > vRelayExpiration;
 extern CCriticalSection cs_mapRelay;
@@ -319,12 +307,12 @@ class CNode
 public:
     // socket
     uint64_t nServices;
-    SOCKET hSocket;
     CDataStream ssSend;
     size_t nSendSize; // total size of all vSendMsg entries
     size_t nSendOffset; // offset inside the first vSendMsg already sent
     uint64_t nSendBytes;
     std::deque<CSerializeData> vSendMsg;
+    std::atomic<bool> fSendFull;
     CCriticalSection cs_vSend;
 
     std::deque<CInv> vRecvGetData;
@@ -422,7 +410,7 @@ public:
     CAmount lastSentFeeFilter;
     int64_t nextSendTimeFeeFilter;
 
-    CNode(SOCKET hSocketIn, const CAddress &addrIn, const std::string &addrNameIn = "", bool fInboundIn = false);
+    CNode(NodeId idIn, const CAddress &addrIn, const std::string &addrNameIn = "", bool fInboundIn = false);
     ~CNode();
 
 private:
@@ -702,8 +690,6 @@ public:
         }
     }
 
-    void CloseSocketDisconnect();
-
     // Denial-of-service detection/prevention
     // The idea is to detect peers that are behaving
     // badly and disconnect/ban them, but do it in a
@@ -769,11 +755,6 @@ public:
     static uint64_t GetMaxOutboundTimeLeftInCycle();
 };
 
-
-
-class CTransaction;
-void RelayTransaction(const CTransaction& tx, CFeeRate feerate);
-void RelayTransaction(const CTransaction& tx, CFeeRate feerate, const CDataStream& ss);
 
 /** Access to the (IP) address database (peers.dat) */
 class CAddrDB

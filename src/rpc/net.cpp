@@ -6,6 +6,7 @@
 
 #include "chainparams.h"
 #include "clientversion.h"
+#include "connman.h"
 #include "main.h"
 #include "net.h"
 #include "netbase.h"
@@ -36,9 +37,8 @@ UniValue getconnectioncount(const UniValue& params, bool fHelp)
             + HelpExampleRpc("getconnectioncount", "")
         );
 
-    LOCK2(cs_main, cs_vNodes);
-
-    return (int)vNodes.size();
+    LOCK(cs_main);
+    return (int)g_connman->GetNodeCount(CConnman::CONNECTIONS_ALL);
 }
 
 UniValue ping(const UniValue& params, bool fHelp)
@@ -55,26 +55,9 @@ UniValue ping(const UniValue& params, bool fHelp)
         );
 
     // Request that each node send a ping during next message processing pass
-    LOCK2(cs_main, cs_vNodes);
-
-    BOOST_FOREACH(CNode* pNode, vNodes) {
-        pNode->fPingQueued = true;
-    }
-
+    LOCK(cs_main);
+    g_connman->QueuePing();
     return NullUniValue;
-}
-
-static void CopyNodeStats(std::vector<CNodeStats>& vstats)
-{
-    vstats.clear();
-
-    LOCK(cs_vNodes);
-    vstats.reserve(vNodes.size());
-    BOOST_FOREACH(CNode* pnode, vNodes) {
-        CNodeStats stats;
-        pnode->copyStats(stats);
-        vstats.push_back(stats);
-    }
 }
 
 UniValue getpeerinfo(const UniValue& params, bool fHelp)
@@ -130,7 +113,7 @@ UniValue getpeerinfo(const UniValue& params, bool fHelp)
     LOCK(cs_main);
 
     vector<CNodeStats> vstats;
-    CopyNodeStats(vstats);
+    g_connman->GetNodeStats(vstats);
 
     UniValue ret(UniValue::VARR);
 
@@ -216,28 +199,21 @@ UniValue addnode(const UniValue& params, bool fHelp)
 
     if (strCommand == "onetry")
     {
-        CAddress addr;
-        OpenNetworkConnection(addr, NULL, strNode.c_str());
+        g_connman->AddNode(strNode, true);
         return NullUniValue;
     }
 
-    LOCK(cs_vAddedNodes);
-    vector<string>::iterator it = vAddedNodes.begin();
-    for(; it != vAddedNodes.end(); it++)
-        if (strNode == *it)
-            break;
-
     if (strCommand == "add")
     {
-        if (it != vAddedNodes.end())
+        bool ret = g_connman->AddNode(strNode, false);
+        if (!ret)
             throw JSONRPCError(RPC_CLIENT_NODE_ALREADY_ADDED, "Error: Node already added");
-        vAddedNodes.push_back(strNode);
     }
     else if(strCommand == "remove")
     {
-        if (it == vAddedNodes.end())
+        bool ret = g_connman->RemoveAddedNode(strNode);
+        if (!ret)
             throw JSONRPCError(RPC_CLIENT_NODE_NOT_ADDED, "Error: Node has not been added.");
-        vAddedNodes.erase(it);
     }
 
     return NullUniValue;
@@ -256,18 +232,17 @@ UniValue disconnectnode(const UniValue& params, bool fHelp)
             + HelpExampleRpc("disconnectnode", "\"192.168.0.6:8333\"")
         );
 
-    CNode* pNode = FindNode(params[0].get_str());
-    if (pNode == NULL)
+    bool ret = g_connman->DisconnectNode(params[0].get_str());
+    if (!ret)
         throw JSONRPCError(RPC_CLIENT_NODE_NOT_CONNECTED, "Node not found in connected nodes");
-
-    pNode->fDisconnect = true;
 
     return NullUniValue;
 }
 
+// TODO: Disabled for now
 UniValue getaddednodeinfo(const UniValue& params, bool fHelp)
 {
-    if (fHelp || params.size() < 1 || params.size() > 2)
+    if (true || fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
             "getaddednodeinfo dns ( \"node\" )\n"
             "\nReturns information about the given added node, or all added nodes\n"
@@ -297,7 +272,8 @@ UniValue getaddednodeinfo(const UniValue& params, bool fHelp)
             + HelpExampleCli("getaddednodeinfo", "true \"192.168.0.201\"")
             + HelpExampleRpc("getaddednodeinfo", "true, \"192.168.0.201\"")
         );
-
+    UniValue ret(UniValue::VARR);
+#if 0
     bool fDns = params[0].get_bool();
 
     list<string> laddedNodes(0);
@@ -322,7 +298,6 @@ UniValue getaddednodeinfo(const UniValue& params, bool fHelp)
             throw JSONRPCError(RPC_CLIENT_NODE_NOT_ADDED, "Error: Node has not been added.");
     }
 
-    UniValue ret(UniValue::VARR);
     if (!fDns)
     {
         BOOST_FOREACH (const std::string& strAddNode, laddedNodes) {
@@ -377,7 +352,7 @@ UniValue getaddednodeinfo(const UniValue& params, bool fHelp)
         obj.push_back(Pair("addresses", addresses));
         ret.push_back(obj);
     }
-
+#endif
     return ret;
 }
 
@@ -492,7 +467,7 @@ UniValue getnetworkinfo(const UniValue& params, bool fHelp)
     obj.push_back(Pair("protocolversion",PROTOCOL_VERSION));
     obj.push_back(Pair("localservices",       strprintf("%016x", nLocalServices)));
     obj.push_back(Pair("timeoffset",    GetTimeOffset()));
-    obj.push_back(Pair("connections",   (int)vNodes.size()));
+    obj.push_back(Pair("connections",   (int)g_connman->GetNodeCount(CConnman::CONNECTIONS_ALL)));
     obj.push_back(Pair("networks",      GetNetworksInfo()));
     obj.push_back(Pair("relayfee",      ValueFromAmount(::minRelayTxFee.GetFeePerK())));
     UniValue localAddresses(UniValue::VARR);
@@ -564,8 +539,13 @@ UniValue setban(const UniValue& params, bool fHelp)
         isSubnet ? CNode::Ban(subNet, BanReasonManuallyAdded, banTime, absolute) : CNode::Ban(netAddr, BanReasonManuallyAdded, banTime, absolute);
 
         //disconnect possible nodes
-        while(CNode *bannedNode = (isSubnet ? FindNode(subNet) : FindNode(netAddr)))
-            bannedNode->fDisconnect = true;
+        if(g_connman)
+        {
+            if(isSubnet)
+                g_connman->DisconnectSubnet(subNet);
+            else
+                g_connman->DisconnectAddress(netAddr);
+        }
     }
     else if(strCommand == "remove")
     {
