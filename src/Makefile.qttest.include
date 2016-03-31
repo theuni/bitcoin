@@ -1,4 +1,4 @@
-bin_PROGRAMS += qt/test/test_bitcoin-qt
+noinst_PROGRAMS += qt/test/test_bitcoin-qt
 TESTS += qt/test/test_bitcoin-qt
 
 TEST_QT_MOC_CPP = qt/test/moc_uritests.cpp

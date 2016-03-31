@@ -1,4 +1,4 @@
-bin_PROGRAMS += bench/bench_bitcoin
+noinst_PROGRAMS += bench/bench_bitcoin
 BENCH_SRCDIR = bench
 BENCH_BINARY = bench/bench_bitcoin$(EXEEXT)
 
