@@ -1454,7 +1454,11 @@ void ThreadDNSAddressSeed()
                     found++;
                 }
             }
-            addrman.Add(vAdd, CNetAddr(seed.name, true));
+
+            // TODO: It doesn't make sense to define an arbitrary IP as the source of others.
+            // Instead, a dummy range should be created to identify seed resolves.
+            if (!vIPs.empty())
+                addrman.Add(vAdd, vIPs[0]);
         }
     }
 
