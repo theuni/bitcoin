@@ -837,7 +837,9 @@ UniValue sendrawtransaction(const UniValue& params, bool fHelp)
     } else if (fHaveChain) {
         throw JSONRPCError(RPC_TRANSACTION_ALREADY_IN_CHAIN, "transaction already in block chain");
     }
-    RelayTransaction(tx, txFeeRate);
+    if(!g_connman)
+        throw JSONRPCError(RPC_CLIENT_NOT_CONNECTED, "Bitcoin is not connected!");
+    g_connman->RelayTransaction(tx, txFeeRate);
 
     return hashTx.GetHex();
 }

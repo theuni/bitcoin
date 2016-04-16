@@ -2946,16 +2946,8 @@ bool ActivateBestChain(CValidationState &state, const CChainParams& chainparams,
                 int nBlockEstimate = 0;
                 if (fCheckpointsEnabled)
                     nBlockEstimate = Checkpoints::GetTotalBlocksEstimate(chainparams.Checkpoints());
-                {
-                    LOCK(cs_vNodes);
-                    BOOST_FOREACH(CNode* pnode, vNodes) {
-                        if (chainActive.Height() > (pnode->nStartingHeight != -1 ? pnode->nStartingHeight - 2000 : nBlockEstimate)) {
-                            BOOST_REVERSE_FOREACH(const uint256& hash, vHashes) {
-                                pnode->PushBlockHash(hash);
-                            }
-                        }
-                    }
-                }
+                if(g_connman)
+                    g_connman->RelayInventory(chainActive.Height(), nBlockEstimate, vHashes);
                 // Notify external listeners about the new tip.
                 if (!vHashes.empty()) {
                     GetMainSignals().UpdatedBlockTip(pindexNewTip);
@@ -4457,10 +4449,9 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
                 // Send stream from relay memory
                 bool pushed = false;
                 {
-                    LOCK(cs_mapRelay);
-                    map<uint256, CTransaction>::iterator mi = mapRelay.find(inv.hash);
-                    if (mi != mapRelay.end()) {
-                        pfrom->PushMessage(inv.GetCommand(), (*mi).second);
+                    CTransaction tx;
+                    if(g_connman && g_connman->GetRelayTx(inv.hash, tx)) {
+                        pfrom->PushMessage(inv.GetCommand(), tx);
                         pushed = true;
                     }
                 }
@@ -4697,32 +4688,10 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
             bool fReachable = IsReachable(addr);
             if (addr.nTime > nSince && !pfrom->fGetAddr && vAddr.size() <= 10 && addr.IsRoutable())
             {
+                int nRelayNodes = fReachable ? 2 : 1; // limited relaying of addresses outside our network(s)
                 // Relay to a limited number of other nodes
-                {
-                    LOCK(cs_vNodes);
-                    // Use deterministic randomness to send to the same nodes for 24 hours
-                    // at a time so the addrKnowns of the chosen nodes prevent repeats
-                    static uint256 hashSalt;
-                    if (hashSalt.IsNull())
-                        hashSalt = GetRandHash();
-                    uint64_t hashAddr = addr.GetHash();
-                    uint256 hashRand = ArithToUint256(UintToArith256(hashSalt) ^ (hashAddr<<32) ^ ((GetTime()+hashAddr)/(24*60*60)));
-                    hashRand = Hash(BEGIN(hashRand), END(hashRand));
-                    multimap<uint256, CNode*> mapMix;
-                    BOOST_FOREACH(CNode* pnode, vNodes)
-                    {
-                        if (pnode->nVersion < CADDR_TIME_VERSION)
-                            continue;
-                        unsigned int nPointer;
-                        memcpy(&nPointer, &pnode, sizeof(nPointer));
-                        uint256 hashKey = ArithToUint256(UintToArith256(hashRand) ^ nPointer);
-                        hashKey = Hash(BEGIN(hashKey), END(hashKey));
-                        mapMix.insert(make_pair(hashKey, pnode));
-                    }
-                    int nRelayNodes = fReachable ? 2 : 1; // limited relaying of addresses outside our network(s)
-                    for (multimap<uint256, CNode*>::iterator mi = mapMix.begin(); mi != mapMix.end() && nRelayNodes-- > 0; ++mi)
-                        ((*mi).second)->PushAddress(addr);
-                }
+                if(g_connman)
+                    g_connman->RelayAddress(addr, nRelayNodes);
             }
             // Do not store addresses outside our network
             if (fReachable)
@@ -4961,7 +4930,8 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         CFeeRate txFeeRate = CFeeRate(0);
         if (!AlreadyHave(inv) && AcceptToMemoryPool(mempool, state, tx, true, &fMissingInputs, &txFeeRate)) {
             mempool.check(pcoinsTip);
-            RelayTransaction(tx, txFeeRate);
+            if(g_connman)
+                g_connman->RelayTransaction(tx, txFeeRate);
             vWorkQueue.push_back(inv.hash);
 
             LogPrint("mempool", "AcceptToMemoryPool: peer=%d: accepted %s (poolsz %u txn, %u kB)\n",
@@ -4995,7 +4965,8 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
                     CFeeRate orphanFeeRate = CFeeRate(0);
                     if (AcceptToMemoryPool(mempool, stateDummy, orphanTx, true, &fMissingInputs2, &orphanFeeRate)) {
                         LogPrint("mempool", "   accepted orphan tx %s\n", orphanHash.ToString());
-                        RelayTransaction(orphanTx, orphanFeeRate);
+                        if(g_connman)
+                            g_connman->RelayTransaction(orphanTx, orphanFeeRate);
                         vWorkQueue.push_back(orphanHash);
                         vEraseQueue.push_back(orphanHash);
                     }
@@ -5047,8 +5018,10 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
                 // case.
                 int nDoS = 0;
                 if (!state.IsInvalid(nDoS) || nDoS == 0) {
-                    LogPrintf("Force relaying tx %s from whitelisted peer=%d\n", tx.GetHash().ToString(), pfrom->id);
-                    RelayTransaction(tx, txFeeRate);
+                    if(g_connman) {
+                        LogPrintf("Force relaying tx %s from whitelisted peer=%d\n", tx.GetHash().ToString(), pfrom->id);
+                        g_connman->RelayTransaction(tx, txFeeRate);
+                    }
                 } else {
                     LogPrintf("Not relaying invalid transaction %s from whitelisted peer=%d (%s)\n", tx.GetHash().ToString(), pfrom->id, FormatStateMessage(state));
                 }

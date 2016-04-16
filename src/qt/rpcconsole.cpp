@@ -871,10 +871,8 @@ void RPCConsole::disconnectSelectedNode()
     // Get currently selected peer address
     QString strNode = GUIUtil::getEntryData(ui->peerWidget, 0, PeerTableModel::Address);
     // Find the node, disconnect it and clear the selected node
-    if (CNode *bannedNode = FindNode(strNode.toStdString())) {
-        bannedNode->fDisconnect = true;
+    if (g_connman && g_connman->DisconnectNode(strNode.toStdString()))
         clearSelectedNode();
-    }
 }
 
 void RPCConsole::banSelectedNode(int bantime)

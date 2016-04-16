@@ -79,12 +79,8 @@ static const unsigned int DEFAULT_MISBEHAVING_BANTIME = 60 * 60 * 24;  // Defaul
 unsigned int ReceiveFloodSize();
 unsigned int SendBufferSize();
 
-CNode* FindNode(const CNetAddr& ip);
-CNode* FindNode(const CSubNet& subNet);
-CNode* FindNode(const std::string& addrName);
-CNode* FindNode(const CService& ip);
-
 class CNodeStats;
+class CTransaction;
 struct ListenSocket;
 class CConnman
 {
@@ -149,6 +145,12 @@ public:
     bool DisconnectNode(const std::string& node);
     bool DisconnectSubnet(const CSubNet& subnet);
 
+    void RelayAddress(const CAddress& addr, int nRelayNodes);
+    void RelayInventory(int height, int nBlockEstimate, const std::vector<uint256>& vHashes);
+    void RelayTransaction(const CTransaction& tx, CFeeRate feerate);
+    bool GetRelayTx(const uint256& hash, CTransaction& tx);
+    void SetNodeTime(uint64_t time);
+
 private:
     void ThreadOpenAddedConnections();
     void ProcessOneShot();
@@ -158,7 +160,14 @@ private:
     void ThreadSocketHandler();
     void ThreadDNSAddressSeed();
 
+    CNode* FindNode(const CNetAddr& ip);
+    CNode* FindNode(const CSubNet& subNet);
+    CNode* FindNode(const std::string& addrName);
+    CNode* FindNode(const CService& addr);
+
+    bool AttemptToEvictConnection(bool fPreferNewConnection);
     CNode* ConnectNode(CAddress addrConnect, const char *pszDest);
+
     //!check is the banlist has unwritten changes
     bool BannedSetIsDirty();
     //!set the "dirty" flag for the banlist
@@ -179,6 +188,11 @@ private:
     CCriticalSection cs_vOneShots;
     std::vector<std::string> vAddedNodes;
     CCriticalSection cs_vAddedNodes;
+    std::vector<CNode*> vNodes;
+    CCriticalSection cs_vNodes;
+    std::map<uint256, CTransaction> mapRelay;
+    std::deque<std::pair<int64_t, uint256> > vRelayExpiration;
+    CCriticalSection cs_mapRelay;
 };
 extern boost::shared_ptr<CConnman> g_connman;
 
@@ -253,11 +267,6 @@ extern uint64_t nLocalHostNonce;
 /** Maximum number of connections to simultaneously allow (aka connection slots) */
 extern int nMaxConnections;
 
-extern std::vector<CNode*> vNodes;
-extern CCriticalSection cs_vNodes;
-extern std::map<uint256, CTransaction> mapRelay;
-extern std::deque<std::pair<int64_t, uint256> > vRelayExpiration;
-extern CCriticalSection cs_mapRelay;
 extern limitedmap<uint256, int64_t> mapAlreadyAskedFor;
 
 extern NodeId nLastNodeId;
@@ -766,8 +775,6 @@ public:
 
 
 
-class CTransaction;
-void RelayTransaction(const CTransaction& tx, CFeeRate feerate);
 
 
 /** Return a timestamp in the future (in microseconds) for exponentially distributed events. */

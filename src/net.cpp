@@ -10,6 +10,7 @@
 #include "net.h"
 
 #include "addrman.h"
+#include "arith_uint256.h"
 #include "chainparams.h"
 #include "clientversion.h"
 #include "consensus/consensus.h"
@@ -84,11 +85,6 @@ uint64_t nLocalHostNonce = 0;
 int nMaxConnections = DEFAULT_MAX_PEER_CONNECTIONS;
 std::string strSubVersion;
 
-std::vector<CNode*> vNodes;
-CCriticalSection cs_vNodes;
-std::map<uint256, CTransaction> mapRelay;
-std::deque<std::pair<int64_t, uint256> > vRelayExpiration;
-CCriticalSection cs_mapRelay;
 limitedmap<uint256, int64_t> mapAlreadyAskedFor(MAX_INV_SZ);
 
 NodeId nLastNodeId = 0;
@@ -322,7 +318,7 @@ uint64_t CNode::nMaxOutboundTotalBytesSentInCycle = 0;
 uint64_t CNode::nMaxOutboundTimeframe = 60*60*24; //1 day
 uint64_t CNode::nMaxOutboundCycleStartTime = 0;
 
-CNode* FindNode(const CNetAddr& ip)
+CNode* CConnman::FindNode(const CNetAddr& ip)
 {
     LOCK(cs_vNodes);
     BOOST_FOREACH(CNode* pnode, vNodes)
@@ -331,7 +327,7 @@ CNode* FindNode(const CNetAddr& ip)
     return NULL;
 }
 
-CNode* FindNode(const CSubNet& subNet)
+CNode* CConnman::FindNode(const CSubNet& subNet)
 {
     LOCK(cs_vNodes);
     BOOST_FOREACH(CNode* pnode, vNodes)
@@ -340,7 +336,7 @@ CNode* FindNode(const CSubNet& subNet)
     return NULL;
 }
 
-CNode* FindNode(const std::string& addrName)
+CNode* CConnman::FindNode(const std::string& addrName)
 {
     LOCK(cs_vNodes);
     BOOST_FOREACH(CNode* pnode, vNodes)
@@ -349,7 +345,7 @@ CNode* FindNode(const std::string& addrName)
     return NULL;
 }
 
-CNode* FindNode(const CService& addr)
+CNode* CConnman::FindNode(const CService& addr)
 {
     LOCK(cs_vNodes);
     BOOST_FOREACH(CNode* pnode, vNodes)
@@ -868,7 +864,7 @@ public:
     }
 };
 
-static bool AttemptToEvictConnection(bool fPreferNewConnection) {
+bool CConnman::AttemptToEvictConnection(bool fPreferNewConnection) {
     std::vector<NodeEvictionCandidate> vEvictionCandidates;
     {
         LOCK(cs_vNodes);
@@ -2191,7 +2187,7 @@ bool CConnman::DisconnectNode(const std::string& strNode)
     return false;
 }
 
-void RelayTransaction(const CTransaction& tx, CFeeRate feerate)
+void CConnman::RelayTransaction(const CTransaction& tx, CFeeRate feerate)
 {
     CInv inv(MSG_TX, tx.GetHash());
     {
@@ -2223,6 +2219,65 @@ void RelayTransaction(const CTransaction& tx, CFeeRate feerate)
                 pnode->PushInventory(inv);
         } else
             pnode->PushInventory(inv);
+    }
+}
+
+bool CConnman::GetRelayTx(const uint256& hash, CTransaction& tx)
+{
+    LOCK(cs_mapRelay);
+    std::map<uint256, CTransaction>::const_iterator mi = mapRelay.find(hash);
+    if (mi != mapRelay.end()) {
+        tx = mi->second;
+        return true;
+    }
+    return false;
+}
+
+void CConnman::RelayInventory(int height, int nBlockEstimate, const std::vector<uint256>& vHashes)
+{
+    LOCK(cs_vNodes);
+    for(std::vector<CNode*>::iterator it = vNodes.begin(); it != vNodes.end(); ++it) {
+        CNode* pnode = *it;
+        if (height > (pnode->nStartingHeight != -1 ? pnode->nStartingHeight - 2000 : nBlockEstimate)) {
+            for(std::vector<uint256>::const_reverse_iterator hashit = vHashes.rbegin(); hashit != vHashes.rend(); ++hashit)
+                pnode->PushBlockHash(*hashit);
+        }
+    }
+}
+
+void CConnman::RelayAddress(const CAddress& addr, int nRelayNodes)
+{
+    // Relay to a limited number of other nodes
+    LOCK(cs_vNodes);
+    // Use deterministic randomness to send to the same nodes for 24 hours
+    // at a time so the addrKnowns of the chosen nodes prevent repeats
+    static uint256 hashSalt;
+    if (hashSalt.IsNull())
+        hashSalt = GetRandHash();
+    uint64_t hashAddr = addr.GetHash();
+    uint256 hashRand = ArithToUint256(UintToArith256(hashSalt) ^ (hashAddr<<32) ^ ((GetTime()+hashAddr)/(24*60*60)));
+    hashRand = Hash(BEGIN(hashRand), END(hashRand));
+    std::multimap<uint256, CNode*> mapMix;
+    for(std::vector<CNode*>::iterator it = vNodes.begin(); it != vNodes.end(); ++it)
+    {
+        CNode* pnode = *it;
+        if (pnode->nVersion < CADDR_TIME_VERSION)
+            continue;
+        unsigned int nPointer;
+        memcpy(&nPointer, &pnode, sizeof(nPointer));
+        uint256 hashKey = ArithToUint256(UintToArith256(hashRand) ^ nPointer);
+        hashKey = Hash(BEGIN(hashKey), END(hashKey));
+        mapMix.insert(std::make_pair(hashKey, pnode));
+    }
+    for (std::multimap<uint256, CNode*>::iterator mi = mapMix.begin(); mi != mapMix.end() && nRelayNodes-- > 0; ++mi)
+        ((*mi).second)->PushAddress(addr);
+}
+
+void CConnman::SetNodeTime(uint64_t time)
+{
+    LOCK(cs_vNodes);
+    BOOST_FOREACH(CNode* pnode, vNodes) {
+        pnode->nLastSend = pnode->nLastRecv = time;
     }
 }
 

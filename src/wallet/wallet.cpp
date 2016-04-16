@@ -1294,8 +1294,10 @@ bool CWalletTx::RelayWalletTransaction()
             LogPrintf("Relaying wtx %s\n", GetHash().ToString());
             CFeeRate feeRate;
             mempool.lookupFeeRate(GetHash(), feeRate);
-            RelayTransaction((CTransaction)*this, feeRate);
-            return true;
+            if(g_connman) {
+                g_connman->RelayTransaction((CTransaction)*this, feeRate);
+                return true;
+            }
         }
     }
     return false;
