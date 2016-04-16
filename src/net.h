@@ -94,6 +94,8 @@ public:
     ~CConnman();
     bool Start(boost::thread_group& threadGroup, std::string& strNodeError);
     void Stop();
+    bool BindListenPort(const CService &bindAddr, std::string& strError, bool fWhitelisted = false);
+
 private:
     void ThreadOpenAddedConnections();
     void ProcessOneShot();
@@ -102,12 +104,13 @@ private:
     void AcceptConnection(const ListenSocket& hListenSocket);
     void ThreadSocketHandler();
     void ThreadDNSAddressSeed();
+
+    std::vector<ListenSocket> vhListenSocket;
 };
 extern boost::shared_ptr<CConnman> g_connman;
 
 void MapPort(bool fUseUPnP);
 unsigned short GetListenPort();
-bool BindListenPort(const CService &bindAddr, std::string& strError, bool fWhitelisted = false);
 bool StartNode(boost::shared_ptr<CConnman> connman, boost::thread_group& threadGroup, CScheduler& scheduler, std::string& strNodeError);
 bool StopNode(boost::shared_ptr<CConnman> connman);
 
