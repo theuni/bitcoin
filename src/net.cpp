@@ -2128,6 +2128,69 @@ void CConnman::GetAddedNodes(std::list<std::string>& laddedNodes)
     laddedNodes.assign(vAddedNodes.begin(), vAddedNodes.end());
 }
 
+size_t CConnman::GetNodeCount(NumConnections flags)
+{
+    LOCK(cs_vNodes);
+    if (flags == CConnman::CONNECTIONS_ALL) // Shortcut if we want total
+        return vNodes.size();
+
+    int nNum = 0;
+    for(std::vector<CNode*>::const_iterator it = vNodes.begin(); it != vNodes.end(); ++it)
+        if (flags & ((*it)->fInbound ? CONNECTIONS_IN : CONNECTIONS_OUT))
+            nNum++;
+
+    return nNum;
+}
+
+void CConnman::GetNodeStats(std::vector<CNodeStats>& vstats)
+{
+    vstats.clear();
+    LOCK(cs_vNodes);
+    vstats.reserve(vNodes.size());
+    for(std::vector<CNode*>::iterator it = vNodes.begin(); it != vNodes.end(); ++it) {
+        CNode* pnode = *it;
+        CNodeStats stats;
+        pnode->copyStats(stats);
+        vstats.push_back(stats);
+    }
+}
+
+void CConnman::QueuePing()
+{
+    LOCK(cs_vNodes);
+    for(std::vector<CNode*>::iterator it = vNodes.begin(); it != vNodes.end(); ++it) {
+        CNode* pnode = *it;
+        pnode->fPingQueued = true;
+    }
+}
+
+bool CConnman::DisconnectAddress(const CNetAddr& netAddr)
+{
+    if (CNode* pnode = FindNode(netAddr)) {
+        pnode->fDisconnect = true;
+        return true;
+    }
+    return false;
+}
+
+bool CConnman::DisconnectSubnet(const CSubNet& subNet)
+{
+    if (CNode* pnode = FindNode(subNet)) {
+        pnode->fDisconnect = true;
+        return true;
+    }
+    return false;
+}
+
+bool CConnman::DisconnectNode(const std::string& strNode)
+{
+    if (CNode* pnode = FindNode(strNode)) {
+        pnode->fDisconnect = true;
+        return true;
+    }
+    return false;
+}
+
 void RelayTransaction(const CTransaction& tx, CFeeRate feerate)
 {
     CInv inv(MSG_TX, tx.GetHash());

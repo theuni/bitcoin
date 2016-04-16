@@ -36,9 +36,10 @@ UniValue getconnectioncount(const UniValue& params, bool fHelp)
             + HelpExampleRpc("getconnectioncount", "")
         );
 
-    LOCK2(cs_main, cs_vNodes);
-
-    return (int)vNodes.size();
+    LOCK(cs_main);
+    if(!g_connman)
+        throw JSONRPCError(RPC_CLIENT_NOT_CONNECTED, "Bitcoin is not connected!");
+    return (int)g_connman->GetNodeCount(CConnman::CONNECTIONS_ALL);
 }
 
 UniValue ping(const UniValue& params, bool fHelp)
@@ -55,26 +56,11 @@ UniValue ping(const UniValue& params, bool fHelp)
         );
 
     // Request that each node send a ping during next message processing pass
-    LOCK2(cs_main, cs_vNodes);
-
-    BOOST_FOREACH(CNode* pNode, vNodes) {
-        pNode->fPingQueued = true;
-    }
-
+    LOCK(cs_main);
+    if(!g_connman)
+        throw JSONRPCError(RPC_CLIENT_NOT_CONNECTED, "Bitcoin is not connected!");
+    g_connman->QueuePing();
     return NullUniValue;
-}
-
-static void CopyNodeStats(std::vector<CNodeStats>& vstats)
-{
-    vstats.clear();
-
-    LOCK(cs_vNodes);
-    vstats.reserve(vNodes.size());
-    BOOST_FOREACH(CNode* pnode, vNodes) {
-        CNodeStats stats;
-        pnode->copyStats(stats);
-        vstats.push_back(stats);
-    }
 }
 
 UniValue getpeerinfo(const UniValue& params, bool fHelp)
@@ -128,9 +114,11 @@ UniValue getpeerinfo(const UniValue& params, bool fHelp)
         );
 
     LOCK(cs_main);
+    if(!g_connman)
+        throw JSONRPCError(RPC_CLIENT_NOT_CONNECTED, "Bitcoin is not connected!");
 
     vector<CNodeStats> vstats;
-    CopyNodeStats(vstats);
+    g_connman->GetNodeStats(vstats);
 
     UniValue ret(UniValue::VARR);
 
@@ -252,12 +240,12 @@ UniValue disconnectnode(const UniValue& params, bool fHelp)
             + HelpExampleCli("disconnectnode", "\"192.168.0.6:8333\"")
             + HelpExampleRpc("disconnectnode", "\"192.168.0.6:8333\"")
         );
+    if(!g_connman)
+        throw JSONRPCError(RPC_CLIENT_NOT_CONNECTED, "Bitcoin is not connected!");
 
-    CNode* pNode = FindNode(params[0].get_str());
-    if (pNode == NULL)
+    bool ret = g_connman->DisconnectNode(params[0].get_str());
+    if (!ret)
         throw JSONRPCError(RPC_CLIENT_NODE_NOT_CONNECTED, "Node not found in connected nodes");
-
-    pNode->fDisconnect = true;
 
     return NullUniValue;
 }
@@ -343,7 +331,8 @@ UniValue getaddednodeinfo(const UniValue& params, bool fHelp)
         }
     }
 
-    LOCK(cs_vNodes);
+    std::vector<CNodeStats> vstats;
+    g_connman->GetNodeStats(vstats);
     for (list<pair<string, vector<CService> > >::iterator it = laddedAddreses.begin(); it != laddedAddreses.end(); it++)
     {
         UniValue obj(UniValue::VOBJ);
@@ -355,12 +344,12 @@ UniValue getaddednodeinfo(const UniValue& params, bool fHelp)
             bool fFound = false;
             UniValue node(UniValue::VOBJ);
             node.push_back(Pair("address", addrNode.ToString()));
-            BOOST_FOREACH(CNode* pnode, vNodes) {
-                if (pnode->addr == addrNode)
+            BOOST_FOREACH(CNodeStats stats , vstats) {
+                if (stats.addrName == addrNode.ToString())
                 {
                     fFound = true;
                     fConnected = true;
-                    node.push_back(Pair("connected", pnode->fInbound ? "inbound" : "outbound"));
+                    node.push_back(Pair("connected", stats.fInbound ? "inbound" : "outbound"));
                     break;
                 }
             }
@@ -480,14 +469,14 @@ UniValue getnetworkinfo(const UniValue& params, bool fHelp)
         );
 
     LOCK(cs_main);
-
+    int nodeCount = g_connman ? g_connman->GetNodeCount(CConnman::CONNECTIONS_ALL) : 0;
     UniValue obj(UniValue::VOBJ);
     obj.push_back(Pair("version",       CLIENT_VERSION));
     obj.push_back(Pair("subversion",    strSubVersion));
     obj.push_back(Pair("protocolversion",PROTOCOL_VERSION));
     obj.push_back(Pair("localservices",       strprintf("%016x", nLocalServices)));
     obj.push_back(Pair("timeoffset",    GetTimeOffset()));
-    obj.push_back(Pair("connections",   (int)vNodes.size()));
+    obj.push_back(Pair("connections",   nodeCount));
     obj.push_back(Pair("networks",      GetNetworksInfo()));
     obj.push_back(Pair("relayfee",      ValueFromAmount(::minRelayTxFee.GetFeePerK())));
     UniValue localAddresses(UniValue::VARR);
