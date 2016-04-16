@@ -788,22 +788,22 @@ int CNetMessage::readData(const char *pch, unsigned int nBytes)
 
 
 // requires LOCK(cs_vSend)
-void SocketSendData(CNode *pnode)
+void CNode::SocketSendData()
 {
-    std::deque<CSerializeData>::iterator it = pnode->vSendMsg.begin();
+    std::deque<CSerializeData>::iterator it = vSendMsg.begin();
 
-    while (it != pnode->vSendMsg.end()) {
+    while (it != vSendMsg.end()) {
         const CSerializeData &data = *it;
-        assert(data.size() > pnode->nSendOffset);
-        int nBytes = send(pnode->hSocket, &data[pnode->nSendOffset], data.size() - pnode->nSendOffset, MSG_NOSIGNAL | MSG_DONTWAIT);
+        assert(data.size() > nSendOffset);
+        int nBytes = send(hSocket, &data[nSendOffset], data.size() - nSendOffset, MSG_NOSIGNAL | MSG_DONTWAIT);
         if (nBytes > 0) {
-            pnode->nLastSend = GetTime();
-            pnode->nSendBytes += nBytes;
-            pnode->nSendOffset += nBytes;
-            pnode->RecordBytesSent(nBytes);
-            if (pnode->nSendOffset == data.size()) {
-                pnode->nSendOffset = 0;
-                pnode->nSendSize -= data.size();
+            nLastSend = GetTime();
+            nSendBytes += nBytes;
+            nSendOffset += nBytes;
+            RecordBytesSent(nBytes);
+            if (nSendOffset == data.size()) {
+                nSendOffset = 0;
+                nSendSize -= data.size();
                 it++;
             } else {
                 // could not send full message; stop sending more
@@ -816,7 +816,7 @@ void SocketSendData(CNode *pnode)
                 if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS)
                 {
                     LogPrintf("socket send error %s\n", NetworkErrorString(nErr));
-                    pnode->CloseSocketDisconnect();
+                    CloseSocketDisconnect();
                 }
             }
             // couldn't send anything at all
@@ -824,11 +824,11 @@ void SocketSendData(CNode *pnode)
         }
     }
 
-    if (it == pnode->vSendMsg.end()) {
-        assert(pnode->nSendOffset == 0);
-        assert(pnode->nSendSize == 0);
+    if (it == vSendMsg.end()) {
+        assert(nSendOffset == 0);
+        assert(nSendSize == 0);
     }
-    pnode->vSendMsg.erase(pnode->vSendMsg.begin(), it);
+    vSendMsg.erase(vSendMsg.begin(), it);
 }
 
 static std::list<CNode*> vNodesDisconnected;
@@ -1266,7 +1266,7 @@ void ThreadSocketHandler()
             {
                 TRY_LOCK(pnode->cs_vSend, lockSend);
                 if (lockSend)
-                    SocketSendData(pnode);
+                    pnode->SocketSendData();
             }
 
             //
@@ -2519,7 +2519,7 @@ void CNode::EndMessage(const char* pszCommand) UNLOCK_FUNCTION(cs_vSend)
 
     // If write queue empty, attempt "optimistic write"
     if (it == vSendMsg.begin())
-        SocketSendData(this);
+        SocketSendData();
 
     LEAVE_CRITICAL_SECTION(cs_vSend);
 }
