@@ -81,9 +81,7 @@ std::map<CNetAddr, LocalServiceInfo> mapLocalHost;
 static bool vfLimited[NET_MAX] = {};
 static CNode* pnodeLocalHost = NULL;
 uint64_t nLocalHostNonce = 0;
-CAddrMan addrman;
 int nMaxConnections = DEFAULT_MAX_PEER_CONNECTIONS;
-bool fAddressesInitialized = false;
 std::string strSubVersion;
 
 std::vector<CNode*> vNodes;
@@ -314,7 +312,7 @@ bool IsReachable(const CNetAddr& addr)
     return IsReachable(net);
 }
 
-void AddressCurrentlyConnected(const CService& addr)
+void CConnman::AddressCurrentlyConnected(const CService& addr)
 {
     addrman.Connected(addr);
 }
@@ -421,20 +419,18 @@ CNode* CConnman::ConnectNode(CAddress addrConnect, const char *pszDest)
     return NULL;
 }
 
-static void DumpBanlist()
+void CConnman::DumpBanlist()
 {
-    CNode::SweepBanned(); // clean unused entries (if bantime has expired)
-
-    if (!CNode::BannedSetIsDirty())
+    if (!BannedSetIsDirty())
         return;
 
     int64_t nStart = GetTimeMillis();
 
     CBanDB bandb;
     banmap_t banmap;
-    CNode::GetBanned(banmap);
+    GetBanned(banmap);
     if (bandb.Write(banmap))
-        CNode::SetBannedSetDirty(false);
+        SetBannedSetDirty(false);
 
     LogPrint("net", "Flushed %d banned node ips/subnets to banlist.dat  %dms\n",
         banmap.size(), GetTimeMillis() - nStart);
@@ -475,11 +471,7 @@ void CNode::PushVersion()
 
 
 
-banmap_t CNode::setBanned;
-CCriticalSection CNode::cs_setBanned;
-bool CNode::setBannedIsDirty;
-
-void CNode::ClearBanned()
+void CConnman::ClearBanned()
 {
     {
         LOCK(cs_setBanned);
@@ -490,7 +482,7 @@ void CNode::ClearBanned()
     uiInterface.BannedListChanged();
 }
 
-bool CNode::IsBanned(CNetAddr ip)
+bool CConnman::IsBanned(CNetAddr ip)
 {
     bool fResult = false;
     {
@@ -507,7 +499,7 @@ bool CNode::IsBanned(CNetAddr ip)
     return fResult;
 }
 
-bool CNode::IsBanned(CSubNet subnet)
+bool CConnman::IsBanned(CSubNet subnet)
 {
     bool fResult = false;
     {
@@ -523,12 +515,12 @@ bool CNode::IsBanned(CSubNet subnet)
     return fResult;
 }
 
-void CNode::Ban(const CNetAddr& addr, const BanReason &banReason, int64_t bantimeoffset, bool sinceUnixEpoch) {
+void CConnman::Ban(const CNetAddr& addr, const BanReason &banReason, int64_t bantimeoffset, bool sinceUnixEpoch) {
     CSubNet subNet(addr);
     Ban(subNet, banReason, bantimeoffset, sinceUnixEpoch);
 }
 
-void CNode::Ban(const CSubNet& subNet, const BanReason &banReason, int64_t bantimeoffset, bool sinceUnixEpoch) {
+void CConnman::Ban(const CSubNet& subNet, const BanReason &banReason, int64_t bantimeoffset, bool sinceUnixEpoch) {
     CBanEntry banEntry(GetTime());
     banEntry.banReason = banReason;
     if (bantimeoffset <= 0)
@@ -559,12 +551,12 @@ void CNode::Ban(const CSubNet& subNet, const BanReason &banReason, int64_t banti
         DumpBanlist(); //store banlist to disk immediately if user requested ban
 }
 
-bool CNode::Unban(const CNetAddr &addr) {
+bool CConnman::Unban(const CNetAddr &addr) {
     CSubNet subNet(addr);
     return Unban(subNet);
 }
 
-bool CNode::Unban(const CSubNet &subNet) {
+bool CConnman::Unban(const CSubNet &subNet) {
     {
         LOCK(cs_setBanned);
         if (!setBanned.erase(subNet))
@@ -576,20 +568,20 @@ bool CNode::Unban(const CSubNet &subNet) {
     return true;
 }
 
-void CNode::GetBanned(banmap_t &banMap)
+void CConnman::GetBanned(banmap_t &banMap)
 {
     LOCK(cs_setBanned);
     banMap = setBanned; //create a thread safe copy
 }
 
-void CNode::SetBanned(const banmap_t &banMap)
+void CConnman::SetBanned(const banmap_t &banMap)
 {
     LOCK(cs_setBanned);
     setBanned = banMap;
     setBannedIsDirty = true;
 }
 
-void CNode::SweepBanned()
+void CConnman::SweepBanned()
 {
     int64_t now = GetTime();
 
@@ -610,13 +602,13 @@ void CNode::SweepBanned()
     }
 }
 
-bool CNode::BannedSetIsDirty()
+bool CConnman::BannedSetIsDirty()
 {
     LOCK(cs_setBanned);
     return setBannedIsDirty;
 }
 
-void CNode::SetBannedSetDirty(bool dirty)
+void CConnman::SetBannedSetDirty(bool dirty)
 {
     LOCK(cs_setBanned); //reuse setBanned lock for the isDirty flag
     setBannedIsDirty = dirty;
@@ -1008,7 +1000,7 @@ void CConnman::AcceptConnection(const ListenSocket& hListenSocket) {
     setsockopt(hSocket, IPPROTO_TCP, TCP_NODELAY, (void*)&set, sizeof(int));
 #endif
 
-    if (CNode::IsBanned(addr) && !whitelisted)
+    if (IsBanned(addr) && !whitelisted)
     {
         LogPrintf("connection from %s dropped (banned)\n", addr.ToString());
         CloseSocket(hSocket);
@@ -1488,7 +1480,7 @@ void CConnman::ThreadDNSAddressSeed()
 
 
 
-void DumpAddresses()
+void CConnman::DumpAddresses()
 {
     int64_t nStart = GetTimeMillis();
 
@@ -1499,7 +1491,7 @@ void DumpAddresses()
            addrman.size(), GetTimeMillis() - nStart);
 }
 
-void DumpData()
+void CConnman::DumpData()
 {
     DumpAddresses();
     DumpBanlist();
@@ -1695,7 +1687,7 @@ bool CConnman::OpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGran
     boost::this_thread::interruption_point();
     if (!pszDest) {
         if (IsLocal(addrConnect) ||
-            FindNode((CNetAddr)addrConnect) || CNode::IsBanned(addrConnect) ||
+            FindNode((CNetAddr)addrConnect) || IsBanned(addrConnect) ||
             FindNode(addrConnect.ToStringIPPort()))
             return false;
     } else if (FindNode(std::string(pszDest)))
@@ -1935,10 +1927,22 @@ void static Discover(boost::thread_group& threadGroup)
 
 CConnman::CConnman()
 {
+    setBannedIsDirty = false;
+    fAddressesInitialized = false;
 }
 
 bool StartNode(boost::shared_ptr<CConnman> connman, boost::thread_group& threadGroup, CScheduler& scheduler, std::string& strNodeError)
 {
+    Discover(threadGroup);
+
+    bool ret = connman->Start(threadGroup, scheduler, strNodeError);
+
+    return ret;
+}
+
+bool CConnman::Start(boost::thread_group& threadGroup, CScheduler& scheduler, std::string& strNodeError)
+{
+
     uiInterface.InitMessage(_("Loading addresses..."));
     // Load addresses from peers.dat
     int64_t nStart = GetTimeMillis();
@@ -1958,31 +1962,20 @@ bool StartNode(boost::shared_ptr<CConnman> connman, boost::thread_group& threadG
     CBanDB bandb;
     banmap_t banmap;
     if (bandb.Read(banmap)) {
-        CNode::SetBanned(banmap); // thread save setter
-        CNode::SetBannedSetDirty(false); // no need to write down, just read data
-        CNode::SweepBanned(); // sweep out unused entries
+        SetBanned(banmap); // thread save setter
+        SetBannedSetDirty(false); // no need to write down, just read data
+        SweepBanned(); // sweep out unused entries
 
         LogPrint("net", "Loaded %d banned node ips/subnets from banlist.dat  %dms\n",
             banmap.size(), GetTimeMillis() - nStart);
     } else {
         LogPrintf("Invalid or missing banlist.dat; recreating\n");
-        CNode::SetBannedSetDirty(true); // force write
+        SetBannedSetDirty(true); // force write
         DumpBanlist();
     }
 
     fAddressesInitialized = true;
 
-    Discover(threadGroup);
-
-    bool ret = connman->Start(threadGroup, strNodeError);
-
-    // Dump network addresses
-    scheduler.scheduleEvery(DumpData, DUMP_ADDRESSES_INTERVAL);
-    return ret;
-}
-
-bool CConnman::Start(boost::thread_group& threadGroup, std::string& strNodeError)
-{
     if (semOutbound == NULL) {
         // initialize semaphore
         int nMaxOutbound = std::min(MAX_OUTBOUND_CONNECTIONS, nMaxConnections);
@@ -2016,6 +2009,9 @@ bool CConnman::Start(boost::thread_group& threadGroup, std::string& strNodeError
     // Process messages
     threadGroup.create_thread(boost::bind(&TraceThread<boost::function<void()> >, "message", boost::function<void()>(boost::bind(&CConnman::ThreadMessageHandler, this))));
 
+    // Dump network addresses
+    scheduler.scheduleEvery(boost::bind(&CConnman::DumpData, this), DUMP_ADDRESSES_INTERVAL);
+
     return true;
 }
 
@@ -2023,12 +2019,6 @@ bool StopNode(boost::shared_ptr<CConnman> connman)
 {
     LogPrintf("StopNode()\n");
     MapPort(false);
-
-    if (fAddressesInitialized)
-    {
-        DumpData();
-        fAddressesInitialized = false;
-    }
 
     assert(g_connman);
     connman->Stop();
@@ -2056,6 +2046,12 @@ void CConnman::Stop()
         for (int i=0; i<MAX_OUTBOUND_CONNECTIONS; i++)
             semOutbound->post();
 
+    if (fAddressesInitialized)
+    {
+        DumpData();
+        fAddressesInitialized = false;
+    }
+
     // Close sockets
     BOOST_FOREACH(CNode* pnode, vNodes)
         if (pnode->hSocket != INVALID_SOCKET)
@@ -2081,6 +2077,31 @@ void CConnman::Stop()
 
 CConnman::~CConnman()
 {
+}
+
+size_t CConnman::GetAddressCount() const
+{
+    return addrman.size();
+}
+
+void CConnman::MarkAddressGood(const CAddress& addr)
+{
+    addrman.Good(addr);
+}
+
+void CConnman::AddNewAddress(const CAddress& addr, const CAddress& addrFrom, int64_t nTimePenalty)
+{
+    addrman.Add(addr, addrFrom, nTimePenalty);
+}
+
+void CConnman::AddNewAddresses(const std::vector<CAddress>& vAddr, const CAddress& addrFrom, int64_t nTimePenalty)
+{
+    addrman.Add(vAddr, addrFrom, nTimePenalty);
+}
+
+std::vector<CAddress> CConnman::GetAddresses()
+{
+    return addrman.GetAddr();
 }
 
 void RelayTransaction(const CTransaction& tx, CFeeRate feerate)
