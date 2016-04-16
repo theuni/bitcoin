@@ -83,8 +83,6 @@ uint64_t nLocalHostNonce = 0;
 int nMaxConnections = DEFAULT_MAX_PEER_CONNECTIONS;
 std::string strSubVersion;
 
-std::vector<CNode*> vNodes;
-CCriticalSection cs_vNodes;
 limitedmap<uint256, int64_t> mapAlreadyAskedFor(MAX_INV_SZ);
 
 NodeId nLastNodeId = 0;
@@ -311,7 +309,7 @@ uint64_t CNode::nMaxOutboundTotalBytesSentInCycle = 0;
 uint64_t CNode::nMaxOutboundTimeframe = 60*60*24; //1 day
 uint64_t CNode::nMaxOutboundCycleStartTime = 0;
 
-CNode* FindNode(const CNetAddr& ip)
+CNode* CConnman::FindNode(const CNetAddr& ip)
 {
     LOCK(cs_vNodes);
     BOOST_FOREACH(CNode* pnode, vNodes)
@@ -320,7 +318,7 @@ CNode* FindNode(const CNetAddr& ip)
     return NULL;
 }
 
-CNode* FindNode(const CSubNet& subNet)
+CNode* CConnman::FindNode(const CSubNet& subNet)
 {
     LOCK(cs_vNodes);
     BOOST_FOREACH(CNode* pnode, vNodes)
@@ -329,7 +327,7 @@ CNode* FindNode(const CSubNet& subNet)
     return NULL;
 }
 
-CNode* FindNode(const std::string& addrName)
+CNode* CConnman::FindNode(const std::string& addrName)
 {
     LOCK(cs_vNodes);
     BOOST_FOREACH(CNode* pnode, vNodes)
@@ -338,21 +336,11 @@ CNode* FindNode(const std::string& addrName)
     return NULL;
 }
 
-CNode* FindNode(const CService& addr)
+CNode* CConnman::FindNode(const CService& addr)
 {
     LOCK(cs_vNodes);
     BOOST_FOREACH(CNode* pnode, vNodes)
         if ((CService)pnode->addr == addr)
-            return (pnode);
-    return NULL;
-}
-
-//TODO: This is used in only one place in main, and should be removed
-CNode* FindNode(const NodeId nodeid)
-{
-    LOCK(cs_vNodes);
-    BOOST_FOREACH(CNode* pnode, vNodes)
-        if (pnode->GetId() == nodeid)
             return (pnode);
     return NULL;
 }
@@ -895,7 +883,8 @@ static bool CompareNodeTXTime(const NodeEvictionCandidate &a, const NodeEviction
  *   to forge.  In order to partition a node the attacker must be
  *   simultaneously better at all of them than honest peers.
  */
-static bool AttemptToEvictConnection() {
+bool CConnman::AttemptToEvictConnection()
+{
     std::vector<NodeEvictionCandidate> vEvictionCandidates;
     {
         LOCK(cs_vNodes);
@@ -2278,7 +2267,6 @@ bool CConnman::DisconnectNode(const std::string& strNode)
     }
     return false;
 }
-
 bool CConnman::DisconnectNode(NodeId id)
 {
     LOCK(cs_vNodes);
@@ -2291,7 +2279,7 @@ bool CConnman::DisconnectNode(NodeId id)
     return false;
 }
 
-void RelayTransaction(const CTransaction& tx)
+void CConnman::RelayTransaction(const CTransaction& tx)
 {
     CInv inv(MSG_TX, tx.GetHash());
     LOCK(cs_vNodes);
@@ -2626,6 +2614,63 @@ void CNode::EndMessage(const char* pszCommand) UNLOCK_FUNCTION(cs_vSend)
         SocketSendData(this);
 
     LEAVE_CRITICAL_SECTION(cs_vSend);
+}
+
+bool CConnman::ForNode(NodeId id, std::function<bool(CNode* pnode)> func)
+{
+    CNode* found = nullptr;
+    LOCK(cs_vNodes);
+    for (auto&& pnode : vNodes) {
+        if(pnode->id == id) {
+            found = pnode;
+            break;
+        }
+    }
+    return found != nullptr && func(found);
+}
+
+bool CConnman::ForEachNode(std::function<bool(CNode* pnode)> func)
+{
+    LOCK(cs_vNodes);
+    for (auto&& node : vNodes)
+        if(!func(node))
+            return false;
+    return true;
+}
+
+bool CConnman::ForEachNode(std::function<bool(const CNode* pnode)> func) const
+{
+    LOCK(cs_vNodes);
+    for (const auto& node : vNodes)
+        if(!func(node))
+            return false;
+    return true;
+}
+
+bool CConnman::ForEachNodeThen(std::function<bool(CNode* pnode)> pre, std::function<void()> post)
+{
+    bool ret = true;
+    LOCK(cs_vNodes);
+    for (auto&& node : vNodes)
+        if(!pre(node)) {
+            ret = false;
+            break;
+        }
+    post();
+    return ret;
+}
+
+bool CConnman::ForEachNodeThen(std::function<bool(const CNode* pnode)> pre, std::function<void()> post) const
+{
+    bool ret = true;
+    LOCK(cs_vNodes);
+    for (const auto& node : vNodes)
+        if(!pre(node)) {
+            ret = false;
+            break;
+        }
+    post();
+    return ret;
 }
 
 int64_t PoissonNextSend(int64_t nNow, int average_interval_seconds) {
