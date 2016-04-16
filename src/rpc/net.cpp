@@ -216,31 +216,25 @@ UniValue addnode(const UniValue& params, bool fHelp)
 
     string strNode = params[0].get_str();
 
+    if(!g_connman)
+        throw JSONRPCError(RPC_CLIENT_NOT_CONNECTED, "Bitcoin is not connected!");
+
     if (strCommand == "onetry")
     {
         CAddress addr;
-        if(g_connman)
-            g_connman->OpenNetworkConnection(addr, NULL, strNode.c_str());
+        g_connman->OpenNetworkConnection(addr, NULL, strNode.c_str());
         return NullUniValue;
     }
 
-    LOCK(cs_vAddedNodes);
-    vector<string>::iterator it = vAddedNodes.begin();
-    for(; it != vAddedNodes.end(); it++)
-        if (strNode == *it)
-            break;
-
     if (strCommand == "add")
     {
-        if (it != vAddedNodes.end())
+        if(!g_connman->AddNode(strNode))
             throw JSONRPCError(RPC_CLIENT_NODE_ALREADY_ADDED, "Error: Node already added");
-        vAddedNodes.push_back(strNode);
     }
     else if(strCommand == "remove")
     {
-        if (it == vAddedNodes.end())
+        if(!g_connman->RemoveAddedNode(strNode))
             throw JSONRPCError(RPC_CLIENT_NODE_NOT_ADDED, "Error: Node has not been added.");
-        vAddedNodes.erase(it);
     }
 
     return NullUniValue;
@@ -301,23 +295,21 @@ UniValue getaddednodeinfo(const UniValue& params, bool fHelp)
             + HelpExampleRpc("getaddednodeinfo", "true, \"192.168.0.201\"")
         );
 
+    if(!g_connman)
+        throw JSONRPCError(RPC_CLIENT_NOT_CONNECTED, "Bitcoin is not connected!");
+
     bool fDns = params[0].get_bool();
 
     list<string> laddedNodes(0);
-    if (params.size() == 1)
-    {
-        LOCK(cs_vAddedNodes);
-        BOOST_FOREACH(const std::string& strAddNode, vAddedNodes)
-            laddedNodes.push_back(strAddNode);
-    }
-    else
+    g_connman->GetAddedNodes(laddedNodes);
+
+    if (params.size() > 1)
     {
         string strNode = params[1].get_str();
-        LOCK(cs_vAddedNodes);
-        BOOST_FOREACH(const std::string& strAddNode, vAddedNodes) {
+        BOOST_FOREACH(const std::string& strAddNode, laddedNodes) {
             if (strAddNode == strNode)
             {
-                laddedNodes.push_back(strAddNode);
+                laddedNodes.assign(1, strAddNode);
                 break;
             }
         }

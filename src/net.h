@@ -128,6 +128,11 @@ public:
     void SetBanned(const banmap_t &banmap);
 
     void AddOneShot(const std::string& strDest);
+
+    bool AddNode(const std::string& node);
+    bool RemoveAddedNode(const std::string& node);
+    void GetAddedNodes(std::list<std::string>& laddedNodes);
+
 private:
     void ThreadOpenAddedConnections();
     void ProcessOneShot();
@@ -156,6 +161,8 @@ private:
     CAddrMan addrman;
     std::deque<std::string> vOneShots;
     CCriticalSection cs_vOneShots;
+    std::vector<std::string> vAddedNodes;
+    CCriticalSection cs_vAddedNodes;
 };
 extern boost::shared_ptr<CConnman> g_connman;
 
@@ -236,9 +243,6 @@ extern std::map<uint256, CTransaction> mapRelay;
 extern std::deque<std::pair<int64_t, uint256> > vRelayExpiration;
 extern CCriticalSection cs_mapRelay;
 extern limitedmap<uint256, int64_t> mapAlreadyAskedFor;
-
-extern std::vector<std::string> vAddedNodes;
-extern CCriticalSection cs_vAddedNodes;
 
 extern NodeId nLastNodeId;
 extern CCriticalSection cs_nLastNodeId;
