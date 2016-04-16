@@ -26,11 +26,13 @@
 
 #include "test/testutil.h"
 
+#include <boost/make_shared.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/thread.hpp>
 
 CClientUIInterface uiInterface; // Declared but not defined in ui_interface.h
+boost::shared_ptr<CConnman> g_connman;
 
 extern bool fPrintToConsole;
 extern void noui_connect();
@@ -39,6 +41,7 @@ BasicTestingSetup::BasicTestingSetup(const std::string& chainName)
 {
         ECC_Start();
         SetupEnvironment();
+        g_connman = boost::make_shared<CConnman>();
         SetupNetworking();
         fPrintToDebugLog = false; // don't want to write to debug.log file
         fCheckBlockIndex = true;
@@ -49,6 +52,7 @@ BasicTestingSetup::BasicTestingSetup(const std::string& chainName)
 BasicTestingSetup::~BasicTestingSetup()
 {
         ECC_Stop();
+        g_connman.reset();
 }
 
 TestingSetup::TestingSetup(const std::string& chainName) : BasicTestingSetup(chainName)

@@ -85,11 +85,31 @@ CNode* FindNode(const CSubNet& subNet);
 CNode* FindNode(const std::string& addrName);
 CNode* FindNode(const CService& ip);
 bool OpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *grantOutbound = NULL, const char *strDest = NULL, bool fOneShot = false);
+
+struct ListenSocket;
+class CConnman
+{
+public:
+    CConnman();
+    ~CConnman();
+    bool Start(boost::thread_group& threadGroup, std::string& strNodeError);
+    void Stop();
+private:
+    void ThreadOpenAddedConnections();
+    void ProcessOneShot();
+    void ThreadOpenConnections();
+    void ThreadMessageHandler();
+    void AcceptConnection(const ListenSocket& hListenSocket);
+    void ThreadSocketHandler();
+    void ThreadDNSAddressSeed();
+};
+extern boost::shared_ptr<CConnman> g_connman;
+
 void MapPort(bool fUseUPnP);
 unsigned short GetListenPort();
 bool BindListenPort(const CService &bindAddr, std::string& strError, bool fWhitelisted = false);
-void StartNode(boost::thread_group& threadGroup, CScheduler& scheduler);
-bool StopNode();
+bool StartNode(boost::shared_ptr<CConnman> connman, boost::thread_group& threadGroup, CScheduler& scheduler, std::string& strNodeError);
+bool StopNode(boost::shared_ptr<CConnman> connman);
 
 typedef int NodeId;
 
