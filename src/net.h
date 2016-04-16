@@ -84,7 +84,6 @@ CNode* FindNode(const CNetAddr& ip);
 CNode* FindNode(const CSubNet& subNet);
 CNode* FindNode(const std::string& addrName);
 CNode* FindNode(const CService& ip);
-bool OpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *grantOutbound = NULL, const char *strDest = NULL, bool fOneShot = false);
 
 struct ListenSocket;
 class CConnman
@@ -95,6 +94,7 @@ public:
     bool Start(boost::thread_group& threadGroup, std::string& strNodeError);
     void Stop();
     bool BindListenPort(const CService &bindAddr, std::string& strError, bool fWhitelisted = false);
+    bool OpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *grantOutbound = NULL, const char *strDest = NULL, bool fOneShot = false);
 
 private:
     void ThreadOpenAddedConnections();
@@ -104,6 +104,8 @@ private:
     void AcceptConnection(const ListenSocket& hListenSocket);
     void ThreadSocketHandler();
     void ThreadDNSAddressSeed();
+
+    CNode* ConnectNode(CAddress addrConnect, const char *pszDest);
 
     std::vector<ListenSocket> vhListenSocket;
 };
