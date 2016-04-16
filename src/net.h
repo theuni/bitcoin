@@ -85,6 +85,14 @@ unsigned int SendBufferSize();
 
 typedef int NodeId;
 
+struct AddedNodeInfo
+{
+    std::string strAddedNode;
+    CService resolvedAddress;
+    bool fConnected;
+    bool fInbound;
+};
+
 CNode* FindNode(const CNetAddr& ip);
 CNode* FindNode(const CSubNet& subNet);
 CNode* FindNode(const std::string& addrName);
@@ -135,6 +143,11 @@ public:
     void SetBanned(const banmap_t &banmap);
 
     void AddOneShot(const std::string& strDest);
+
+    bool AddNode(const std::string& node);
+    bool RemoveAddedNode(const std::string& node);
+    std::vector<AddedNodeInfo> GetAddedNodeInfo();
+
 private:
     struct ListenSocket {
         SOCKET socket;
@@ -171,6 +184,8 @@ private:
     CAddrMan addrman;
     std::deque<std::string> vOneShots;
     CCriticalSection cs_vOneShots;
+    std::vector<std::string> vAddedNodes;
+    CCriticalSection cs_vAddedNodes;
 };
 extern std::unique_ptr<CConnman> g_connman;
 void MapPort(bool fUseUPnP);
@@ -249,9 +264,6 @@ extern int nMaxConnections;
 extern std::vector<CNode*> vNodes;
 extern CCriticalSection cs_vNodes;
 extern limitedmap<uint256, int64_t> mapAlreadyAskedFor;
-
-extern std::vector<std::string> vAddedNodes;
-extern CCriticalSection cs_vAddedNodes;
 
 extern NodeId nLastNodeId;
 extern CCriticalSection cs_nLastNodeId;
@@ -803,15 +815,5 @@ void RelayTransaction(const CTransaction& tx);
 
 /** Return a timestamp in the future (in microseconds) for exponentially distributed events. */
 int64_t PoissonNextSend(int64_t nNow, int average_interval_seconds);
-
-struct AddedNodeInfo
-{
-    std::string strAddedNode;
-    CService resolvedAddress;
-    bool fConnected;
-    bool fInbound;
-};
-
-std::vector<AddedNodeInfo> GetAddedNodeInfo();
 
 #endif // BITCOIN_NET_H
