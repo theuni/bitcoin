@@ -892,8 +892,6 @@ void RPCConsole::banSelectedNode(int bantime)
         SplitHostPort(nStr, port, addr);
 
         CNode::Ban(CNetAddr(addr), BanReasonManuallyAdded, bantime);
-        bannedNode->fDisconnect = true;
-        DumpBanlist();
 
         clearSelectedNode();
         clientModel->getBanTableModel()->refresh();
@@ -912,7 +910,6 @@ void RPCConsole::unbanSelectedNode()
     if (possibleSubnet.IsValid())
     {
         CNode::Unban(possibleSubnet);
-        DumpBanlist();
         clientModel->getBanTableModel()->refresh();
     }
 }
