@@ -274,7 +274,6 @@ CAddress GetLocalAddress(const CNetAddr *paddrPeer = NULL);
 extern bool fDiscover;
 extern bool fListen;
 extern uint64_t nLocalServices;
-extern uint64_t nLocalHostNonce;
 
 /** Maximum number of connections to simultaneously allow (aka connection slots) */
 extern int nMaxConnections;
@@ -479,10 +478,15 @@ private:
     CNode(const CNode&);
     void operator=(const CNode&);
 
+    uint64_t nLocalHostNonce;
 public:
 
     NodeId GetId() const {
       return id;
+    }
+
+    uint64_t GetLocalNonce() const {
+      return nLocalHostNonce;
     }
 
     int GetRefCount()
