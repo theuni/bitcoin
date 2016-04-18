@@ -87,9 +87,6 @@ std::string strSubVersion;
 
 limitedmap<uint256, int64_t> mapAlreadyAskedFor(MAX_INV_SZ);
 
-NodeId nLastNodeId = 0;
-CCriticalSection cs_nLastNodeId;
-
 static CSemaphore *semOutbound = NULL;
 boost::condition_variable messageHandlerCondition;
 
@@ -389,7 +386,7 @@ CNode* CConnman::ConnectNode(CAddress addrConnect, const char *pszDest)
         addrman.Attempt(addrConnect);
 
         // Add node
-        CNode* pnode = new CNode(hSocket, addrConnect, pszDest ? pszDest : "", false);
+        CNode* pnode = new CNode(GetNewNodeId(), hSocket, addrConnect, pszDest ? pszDest : "", false);
         pnode->AddRef();
 
         {
@@ -1004,7 +1001,7 @@ void CConnman::AcceptConnection(const ListenSocket& hListenSocket) {
         }
     }
 
-    CNode* pnode = new CNode(hSocket, addr, "", true);
+    CNode* pnode = new CNode(GetNewNodeId(), hSocket, addr, "", true);
     pnode->AddRef();
     pnode->fWhitelisted = whitelisted;
 
@@ -1916,6 +1913,7 @@ CConnman::CConnman()
 {
     setBannedIsDirty = false;
     fAddressesInitialized = false;
+    nLastNodeId = 0;
 }
 
 bool StartNode(boost::shared_ptr<CConnman> connman, boost::thread_group& threadGroup, CScheduler& scheduler, std::string& strNodeError)
@@ -1927,9 +1925,14 @@ bool StartNode(boost::shared_ptr<CConnman> connman, boost::thread_group& threadG
     return ret;
 }
 
+NodeId CConnman::GetNewNodeId()
+{
+    LOCK(cs_nLastNodeId);
+    return nLastNodeId++;
+}
+
 bool CConnman::Start(boost::thread_group& threadGroup, CScheduler& scheduler, std::string& strNodeError)
 {
-
     uiInterface.InitMessage(_("Loading addresses..."));
     // Load addresses from peers.dat
     int64_t nStart = GetTimeMillis();
@@ -1970,7 +1973,7 @@ bool CConnman::Start(boost::thread_group& threadGroup, CScheduler& scheduler, st
     }
 
     if (pnodeLocalHost == NULL)
-        pnodeLocalHost = new CNode(INVALID_SOCKET, CAddress(CService("127.0.0.1", 0), nLocalServices));
+        pnodeLocalHost = new CNode(GetNewNodeId(), INVALID_SOCKET, CAddress(CService("127.0.0.1", 0), nLocalServices));
 
     //
     // Start threads
@@ -2428,7 +2431,7 @@ void CNode::Fuzz(int nChance)
 unsigned int ReceiveFloodSize() { return 1000*GetArg("-maxreceivebuffer", DEFAULT_MAXRECEIVEBUFFER); }
 unsigned int SendBufferSize() { return 1000*GetArg("-maxsendbuffer", DEFAULT_MAXSENDBUFFER); }
 
-CNode::CNode(SOCKET hSocketIn, const CAddress& addrIn, const std::string& addrNameIn, bool fInboundIn) :
+CNode::CNode(NodeId idIn, SOCKET hSocketIn, const CAddress& addrIn, const std::string& addrNameIn, bool fInboundIn) :
     ssSend(SER_NETWORK, INIT_PROTO_VERSION),
     addrKnown(5000, 0.001),
     filterInventoryKnown(50000, 0.000001)
@@ -2474,15 +2477,11 @@ CNode::CNode(SOCKET hSocketIn, const CAddress& addrIn, const std::string& addrNa
     minFeeFilter = 0;
     lastSentFeeFilter = 0;
     nextSendTimeFeeFilter = 0;
+    id = idIn;
 
     BOOST_FOREACH(const std::string &msg, getAllNetMessageTypes())
         mapRecvBytesPerMsgCmd[msg] = 0;
     mapRecvBytesPerMsgCmd[NET_MESSAGE_COMMAND_OTHER] = 0;
-
-    {
-        LOCK(cs_nLastNodeId);
-        id = nLastNodeId++;
-    }
 
     if (fLogIPs)
         LogPrint("net", "Added connection to %s peer=%d\n", addrName, id);

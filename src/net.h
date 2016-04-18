@@ -79,6 +79,8 @@ static const unsigned int DEFAULT_MISBEHAVING_BANTIME = 60 * 60 * 24;  // Defaul
 unsigned int ReceiveFloodSize();
 unsigned int SendBufferSize();
 
+typedef int NodeId;
+
 class CNodeStats;
 class CTransaction;
 struct ListenSocket;
@@ -171,6 +173,8 @@ private:
     bool AttemptToEvictConnection(bool fPreferNewConnection);
     CNode* ConnectNode(CAddress addrConnect, const char *pszDest);
 
+    NodeId GetNewNodeId();
+
     //!check is the banlist has unwritten changes
     bool BannedSetIsDirty();
     //!set the "dirty" flag for the banlist
@@ -201,6 +205,8 @@ private:
     std::map<uint256, CTransaction> mapRelay;
     std::deque<std::pair<int64_t, uint256> > vRelayExpiration;
     CCriticalSection cs_mapRelay;
+    NodeId nLastNodeId;
+    CCriticalSection cs_nLastNodeId;
 };
 extern boost::shared_ptr<CConnman> g_connman;
 
@@ -208,8 +214,6 @@ void MapPort(bool fUseUPnP);
 unsigned short GetListenPort();
 bool StartNode(boost::shared_ptr<CConnman> connman, boost::thread_group& threadGroup, CScheduler& scheduler, std::string& strNodeError);
 bool StopNode(boost::shared_ptr<CConnman> connman);
-
-typedef int NodeId;
 
 struct CombinerAll
 {
@@ -276,9 +280,6 @@ extern uint64_t nLocalHostNonce;
 extern int nMaxConnections;
 
 extern limitedmap<uint256, int64_t> mapAlreadyAskedFor;
-
-extern NodeId nLastNodeId;
-extern CCriticalSection cs_nLastNodeId;
 
 /** Subversion as sent to the P2P network in `version` messages */
 extern std::string strSubVersion;
@@ -459,7 +460,7 @@ public:
     CAmount lastSentFeeFilter;
     int64_t nextSendTimeFeeFilter;
 
-    CNode(SOCKET hSocketIn, const CAddress &addrIn, const std::string &addrNameIn = "", bool fInboundIn = false);
+    CNode(NodeId id, SOCKET hSocketIn, const CAddress &addrIn, const std::string &addrNameIn = "", bool fInboundIn = false);
     ~CNode();
 
 private:
