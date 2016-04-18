@@ -527,7 +527,7 @@ void CConnman::Ban(const CSubNet& subNet, const BanReason &banReason, int64_t ba
         LOCK(cs_vNodes);
         BOOST_FOREACH(CNode* pnode, vNodes) {
             if (subNet.Match((CNetAddr)pnode->addr))
-                pnode->fDisconnect = true;
+                pnode->Disconnect();
         }
     }
     if(banReason == BanReasonManuallyAdded)
@@ -864,7 +864,7 @@ bool CConnman::AttemptToEvictConnection(bool fPreferNewConnection) {
                 continue;
             if (!node->fInbound)
                 continue;
-            if (node->fDisconnect)
+            if (!node->IsConnected())
                 continue;
             NodeEvictionCandidate candidate = {node->id, node->nTimeConnected, node->nMinPingUsecTime, node->addr};
             vEvictionCandidates.push_back(candidate);
@@ -929,7 +929,7 @@ bool CConnman::AttemptToEvictConnection(bool fPreferNewConnection) {
     LOCK(cs_vNodes);
     for(std::vector<CNode*>::const_iterator it(vNodes.begin()); it != vNodes.end(); ++it) {
         if ((*it)->GetId() == evicted) {
-            (*it)->fDisconnect = true;
+            (*it)->Disconnect();
             return true;
         }
     }
@@ -1023,7 +1023,7 @@ void CConnman::ThreadSocketHandler()
             std::vector<CNode*> vNodesCopy = vNodes;
             BOOST_FOREACH(CNode* pnode, vNodesCopy)
             {
-                if (pnode->fDisconnect ||
+                if (!pnode->IsConnected() ||
                     (pnode->GetRefCount() <= 0 && pnode->vRecvMsg.empty() && pnode->nSendSize == 0 && pnode->ssSend.empty()))
                 {
                     // remove from vNodes
@@ -1209,7 +1209,7 @@ void CConnman::ThreadSocketHandler()
                         else if (nBytes == 0)
                         {
                             // socket closed gracefully
-                            if (!pnode->fDisconnect)
+                            if (pnode->IsConnected())
                                 LogPrint("net", "socket closed\n");
                             pnode->CloseSocketDisconnect();
                         }
@@ -1219,7 +1219,7 @@ void CConnman::ThreadSocketHandler()
                             int nErr = WSAGetLastError();
                             if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS)
                             {
-                                if (!pnode->fDisconnect)
+                                if (pnode->IsConnected())
                                     LogPrintf("socket recv error %s\n", NetworkErrorString(nErr));
                                 pnode->CloseSocketDisconnect();
                             }
@@ -1249,22 +1249,22 @@ void CConnman::ThreadSocketHandler()
                 if (pnode->nLastRecv == 0 || pnode->nLastSend == 0)
                 {
                     LogPrint("net", "socket no message in first 60 seconds, %d %d from %d\n", pnode->nLastRecv != 0, pnode->nLastSend != 0, pnode->id);
-                    pnode->fDisconnect = true;
+                    pnode->Disconnect();
                 }
                 else if (nTime - pnode->nLastSend > TIMEOUT_INTERVAL)
                 {
                     LogPrintf("socket sending timeout: %is\n", nTime - pnode->nLastSend);
-                    pnode->fDisconnect = true;
+                    pnode->Disconnect();
                 }
                 else if (nTime - pnode->nLastRecv > (pnode->nVersion > BIP0031_VERSION ? TIMEOUT_INTERVAL : 90*60))
                 {
                     LogPrintf("socket receive timeout: %is\n", nTime - pnode->nLastRecv);
-                    pnode->fDisconnect = true;
+                    pnode->Disconnect();
                 }
                 else if (pnode->nPingNonceSent && pnode->nPingUsecStart + TIMEOUT_INTERVAL * 1000000 < GetTimeMicros())
                 {
                     LogPrintf("ping timeout: %fs\n", 0.000001 * (GetTimeMicros() - pnode->nPingUsecStart));
-                    pnode->fDisconnect = true;
+                    pnode->Disconnect();
                 }
             }
         }
@@ -1709,7 +1709,7 @@ void CConnman::ThreadMessageHandler()
 
         BOOST_FOREACH(CNode* pnode, vNodesCopy)
         {
-            if (pnode->fDisconnect)
+            if (!pnode->IsConnected())
                 continue;
 
             // Receive messages
@@ -2159,7 +2159,7 @@ void CConnman::QueuePing()
 bool CConnman::DisconnectAddress(const CNetAddr& netAddr)
 {
     if (CNode* pnode = FindNode(netAddr)) {
-        pnode->fDisconnect = true;
+        pnode->Disconnect();
         return true;
     }
     return false;
@@ -2168,7 +2168,7 @@ bool CConnman::DisconnectAddress(const CNetAddr& netAddr)
 bool CConnman::DisconnectSubnet(const CSubNet& subNet)
 {
     if (CNode* pnode = FindNode(subNet)) {
-        pnode->fDisconnect = true;
+        pnode->Disconnect();
         return true;
     }
     return false;
@@ -2177,7 +2177,7 @@ bool CConnman::DisconnectSubnet(const CSubNet& subNet)
 bool CConnman::DisconnectNode(const std::string& strNode)
 {
     if (CNode* pnode = FindNode(strNode)) {
-        pnode->fDisconnect = true;
+        pnode->Disconnect();
         return true;
     }
     return false;

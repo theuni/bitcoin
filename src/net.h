@@ -399,7 +399,6 @@ public:
     bool fInbound;
     bool fNetworkNode;
     bool fSuccessfullyConnected;
-    bool fDisconnect;
     // We use fRelayTxes for two purposes -
     // a) it allows us to not relay tx invs before receiving the peer's version message
     // b) the peer may tell us in its version message that we should not relay tx invs
@@ -463,6 +462,8 @@ public:
     ~CNode();
 
 private:
+    bool fDisconnect;
+
     // Network usage totals
     static CCriticalSection cs_totalBytesRecv;
     static CCriticalSection cs_totalBytesSent;
@@ -526,7 +527,15 @@ public:
         nRefCount--;
     }
 
+    bool IsConnected()
+    {
+        return !fDisconnect;
+    }
 
+    void Disconnect()
+    {
+        fDisconnect = true;
+    }
 
     void AddAddressKnown(const CAddress& addr)
     {
