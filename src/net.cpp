@@ -294,15 +294,6 @@ bool IsReachable(const CNetAddr& addr)
     return IsReachable(net);
 }
 
-uint64_t CNode::nTotalBytesRecv = 0;
-uint64_t CNode::nTotalBytesSent = 0;
-CCriticalSection CNode::cs_totalBytesRecv;
-CCriticalSection CNode::cs_totalBytesSent;
-
-uint64_t CNode::nMaxOutboundLimit = 0;
-uint64_t CNode::nMaxOutboundTotalBytesSentInCycle = 0;
-uint64_t CNode::nMaxOutboundTimeframe = 60*60*24; //1 day
-uint64_t CNode::nMaxOutboundCycleStartTime = 0;
 
 CNode* CConnman::FindNode(const CNetAddr& ip)
 {
@@ -800,7 +791,6 @@ size_t SocketSendData(CNode *pnode)
             pnode->nLastSend = GetTime();
             pnode->nSendBytes += nBytes;
             pnode->nSendOffset += nBytes;
-            pnode->RecordBytesSent(nBytes);
             nSentSize += nBytes;
             if (pnode->nSendOffset == data.size()) {
                 pnode->nSendOffset = 0;
@@ -1171,9 +1161,15 @@ void CConnman::ThreadSocketHandler()
                 // * We process a message in the buffer (message handler thread).
                 {
                     TRY_LOCK(pnode->cs_vSend, lockSend);
-                    if (lockSend && !pnode->vSendMsg.empty()) {
-                        FD_SET(pnode->hSocket, &fdsetSend);
-                        continue;
+                    if (lockSend) {
+                        if (pnode->nOptimisticBytesWritten) {
+                            RecordBytesSent(pnode->nOptimisticBytesWritten);
+                            pnode->nOptimisticBytesWritten = 0;
+                        }
+                        if (!pnode->vSendMsg.empty()) {
+                            FD_SET(pnode->hSocket, &fdsetSend);
+                            continue;
+                        }
                     }
                 }
                 {
@@ -1252,7 +1248,7 @@ void CConnman::ThreadSocketHandler()
                                 messageHandlerCondition.notify_one();
                             pnode->nLastRecv = GetTime();
                             pnode->nRecvBytes += nBytes;
-                            pnode->RecordBytesRecv(nBytes);
+                            RecordBytesRecv(nBytes);
                         }
                         else if (nBytes == 0)
                         {
@@ -1284,8 +1280,11 @@ void CConnman::ThreadSocketHandler()
             if (FD_ISSET(pnode->hSocket, &fdsetSend))
             {
                 TRY_LOCK(pnode->cs_vSend, lockSend);
-                if (lockSend)
-                    SocketSendData(pnode);
+                if (lockSend) {
+                    size_t nBytes = SocketSendData(pnode);
+                    if (nBytes)
+                        RecordBytesSent(nBytes);
+                }
             }
 
             //
@@ -2018,6 +2017,13 @@ NodeId CConnman::GetNewNodeId()
 
 bool CConnman::Start(boost::thread_group& threadGroup, CScheduler& scheduler, std::string& strNodeError)
 {
+    nTotalBytesRecv = 0;
+    nTotalBytesSent = 0;
+    nMaxOutboundLimit = 0;
+    nMaxOutboundTotalBytesSentInCycle = 0;
+    nMaxOutboundTimeframe = 60*60*24; //1 day
+    nMaxOutboundCycleStartTime = 0;
+
     uiInterface.InitMessage(_("Loading addresses..."));
     // Load addresses from peers.dat
     int64_t nStart = GetTimeMillis();
@@ -2302,13 +2308,13 @@ void CConnman::RelayTransaction(const CTransaction& tx)
     }
 }
 
-void CNode::RecordBytesRecv(uint64_t bytes)
+void CConnman::RecordBytesRecv(uint64_t bytes)
 {
     LOCK(cs_totalBytesRecv);
     nTotalBytesRecv += bytes;
 }
 
-void CNode::RecordBytesSent(uint64_t bytes)
+void CConnman::RecordBytesSent(uint64_t bytes)
 {
     LOCK(cs_totalBytesSent);
     nTotalBytesSent += bytes;
@@ -2325,7 +2331,7 @@ void CNode::RecordBytesSent(uint64_t bytes)
     nMaxOutboundTotalBytesSentInCycle += bytes;
 }
 
-void CNode::SetMaxOutboundTarget(uint64_t limit)
+void CConnman::SetMaxOutboundTarget(uint64_t limit)
 {
     LOCK(cs_totalBytesSent);
     uint64_t recommendedMinimum = (nMaxOutboundTimeframe / 600) * MAX_BLOCK_SERIALIZED_SIZE;
@@ -2335,19 +2341,19 @@ void CNode::SetMaxOutboundTarget(uint64_t limit)
         LogPrintf("Max outbound target is very small (%s bytes) and will be overshot. Recommended minimum is %s bytes.\n", nMaxOutboundLimit, recommendedMinimum);
 }
 
-uint64_t CNode::GetMaxOutboundTarget()
+uint64_t CConnman::GetMaxOutboundTarget()
 {
     LOCK(cs_totalBytesSent);
     return nMaxOutboundLimit;
 }
 
-uint64_t CNode::GetMaxOutboundTimeframe()
+uint64_t CConnman::GetMaxOutboundTimeframe()
 {
     LOCK(cs_totalBytesSent);
     return nMaxOutboundTimeframe;
 }
 
-uint64_t CNode::GetMaxOutboundTimeLeftInCycle()
+uint64_t CConnman::GetMaxOutboundTimeLeftInCycle()
 {
     LOCK(cs_totalBytesSent);
     if (nMaxOutboundLimit == 0)
@@ -2361,7 +2367,7 @@ uint64_t CNode::GetMaxOutboundTimeLeftInCycle()
     return (cycleEndTime < now) ? 0 : cycleEndTime - GetTime();
 }
 
-void CNode::SetMaxOutboundTimeframe(uint64_t timeframe)
+void CConnman::SetMaxOutboundTimeframe(uint64_t timeframe)
 {
     LOCK(cs_totalBytesSent);
     if (nMaxOutboundTimeframe != timeframe)
@@ -2373,7 +2379,7 @@ void CNode::SetMaxOutboundTimeframe(uint64_t timeframe)
     nMaxOutboundTimeframe = timeframe;
 }
 
-bool CNode::OutboundTargetReached(bool historicalBlockServingLimit)
+bool CConnman::OutboundTargetReached(bool historicalBlockServingLimit)
 {
     LOCK(cs_totalBytesSent);
     if (nMaxOutboundLimit == 0)
@@ -2393,7 +2399,7 @@ bool CNode::OutboundTargetReached(bool historicalBlockServingLimit)
     return false;
 }
 
-uint64_t CNode::GetOutboundTargetBytesLeft()
+uint64_t CConnman::GetOutboundTargetBytesLeft()
 {
     LOCK(cs_totalBytesSent);
     if (nMaxOutboundLimit == 0)
@@ -2402,13 +2408,13 @@ uint64_t CNode::GetOutboundTargetBytesLeft()
     return (nMaxOutboundTotalBytesSentInCycle >= nMaxOutboundLimit) ? 0 : nMaxOutboundLimit - nMaxOutboundTotalBytesSentInCycle;
 }
 
-uint64_t CNode::GetTotalBytesRecv()
+uint64_t CConnman::GetTotalBytesRecv()
 {
     LOCK(cs_totalBytesRecv);
     return nTotalBytesRecv;
 }
 
-uint64_t CNode::GetTotalBytesSent()
+uint64_t CConnman::GetTotalBytesSent()
 {
     LOCK(cs_totalBytesSent);
     return nTotalBytesSent;
@@ -2505,6 +2511,7 @@ CNode::CNode(NodeId idIn, SOCKET hSocketIn, const CAddress& addrIn, const std::s
     lastSentFeeFilter = 0;
     nextSendTimeFeeFilter = 0;
     id = idIn;
+    nOptimisticBytesWritten = 0;
 
     GetRandBytes((unsigned char*)&nLocalHostNonce, sizeof(nLocalHostNonce));
 
@@ -2622,7 +2629,7 @@ void CNode::EndMessage(const char* pszCommand) UNLOCK_FUNCTION(cs_vSend)
 
     // If write queue empty, attempt "optimistic write"
     if (it == vSendMsg.begin())
-        SocketSendData(this);
+        nOptimisticBytesWritten += SocketSendData(this);
 
     LEAVE_CRITICAL_SECTION(cs_vSend);
 }
