@@ -960,6 +960,8 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     // Option to startup with mocktime set (used for regression testing):
     SetMockTime(GetArg("-mocktime", 0)); // SetMockTime(0) is a no-op
 
+    uint64_t nLocalServices = NODE_NETWORK;
+
     if (GetBoolArg("-peerbloomfilters", DEFAULT_PEERBLOOMFILTERS))
         nLocalServices |= NODE_BLOOM;
 
@@ -1430,7 +1432,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
         StartTorControl(threadGroup, scheduler);
 
     std::string strNodeError;
-    if(!StartNode(g_connman, threadGroup, scheduler, strNodeError))
+    if(!StartNode(g_connman, threadGroup, scheduler, nLocalServices, strNodeError))
         return InitError(strNodeError);
 
     // Monitor the chain, and alert if we get blocks much quicker or slower than expected

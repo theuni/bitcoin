@@ -94,7 +94,7 @@ public:
 
     CConnman();
     ~CConnman();
-    bool Start(boost::thread_group& threadGroup, CScheduler& scheduler, std::string& strNodeError);
+    bool Start(boost::thread_group& threadGroup, CScheduler& scheduler, uint64_t nLocalServices, std::string& strNodeError);
     void Stop();
     bool BindListenPort(const CService &bindAddr, std::string& strError, bool fWhitelisted = false);
     bool OpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *grantOutbound = NULL, const char *strDest = NULL, bool fOneShot = false);
@@ -153,6 +153,8 @@ public:
     unsigned int GetSendBufferSize() const;
 
     void AddWhitelistedRange(const CSubNet &subnet);
+
+    uint64_t GetLocalServices() const;
 
     //!set the max outbound target in bytes
     void SetMaxOutboundTarget(uint64_t limit);
@@ -253,12 +255,13 @@ private:
     NodeId nLastNodeId;
     CCriticalSection cs_nLastNodeId;
     boost::condition_variable messageHandlerCondition;
+    uint64_t nLocalServices;
 };
 extern boost::shared_ptr<CConnman> g_connman;
 
 void MapPort(bool fUseUPnP);
 unsigned short GetListenPort();
-bool StartNode(boost::shared_ptr<CConnman> connman, boost::thread_group& threadGroup, CScheduler& scheduler, std::string& strNodeError);
+bool StartNode(boost::shared_ptr<CConnman> connman, boost::thread_group& threadGroup, CScheduler& scheduler, uint64_t nLocalServices, std::string& strNodeError);
 bool StopNode(boost::shared_ptr<CConnman> connman);
 
 struct CombinerAll
@@ -302,7 +305,7 @@ enum
 };
 
 bool IsPeerAddrLocalGood(CNode *pnode);
-void AdvertiseLocal(CNode *pnode);
+void AdvertiseLocal(CNode *pnode, uint64_t nLocalServices);
 void SetLimited(enum Network net, bool fLimited = true);
 bool IsLimited(enum Network net);
 bool IsLimited(const CNetAddr& addr);
@@ -314,12 +317,11 @@ bool IsLocal(const CService& addr);
 bool GetLocal(CService &addr, const CNetAddr *paddrPeer = NULL);
 bool IsReachable(enum Network net);
 bool IsReachable(const CNetAddr &addr);
-CAddress GetLocalAddress(const CNetAddr *paddrPeer = NULL);
+CAddress GetLocalAddress(const CNetAddr *paddrPeer, uint64_t nLocalServices);
 
 
 extern bool fDiscover;
 extern bool fListen;
-extern uint64_t nLocalServices;
 
 /** Maximum number of connections to simultaneously allow (aka connection slots) */
 extern int nMaxConnections;
@@ -504,7 +506,7 @@ public:
     CAmount lastSentFeeFilter;
     int64_t nextSendTimeFeeFilter;
 
-    CNode(NodeId id, SOCKET hSocketIn, const CAddress &addrIn, const std::string &addrNameIn = "", bool fInboundIn = false);
+    CNode(NodeId id, uint64_t nLocalServicesIn, SOCKET hSocketIn, const CAddress &addrIn, const std::string &addrNameIn = "", bool fInboundIn = false);
     ~CNode();
 
 private:
@@ -514,6 +516,7 @@ private:
     void operator=(const CNode&);
 
     uint64_t nLocalHostNonce;
+    uint64_t nLocalServices;
 public:
 
     NodeId GetId() const {

@@ -471,12 +471,19 @@ UniValue getnetworkinfo(const UniValue& params, bool fHelp)
         );
 
     LOCK(cs_main);
-    int nodeCount = g_connman ? g_connman->GetNodeCount(CConnman::CONNECTIONS_ALL) : 0;
+    int nodeCount = 0;
+    std::string strLocalServices;
+
+    if(g_connman) {
+        nodeCount = g_connman->GetNodeCount(CConnman::CONNECTIONS_ALL);
+        strLocalServices = strprintf("%016x", g_connman->GetLocalServices());
+    }
+
     UniValue obj(UniValue::VOBJ);
     obj.push_back(Pair("version",       CLIENT_VERSION));
     obj.push_back(Pair("subversion",    strSubVersion));
     obj.push_back(Pair("protocolversion",PROTOCOL_VERSION));
-    obj.push_back(Pair("localservices",       strprintf("%016x", nLocalServices)));
+    obj.push_back(Pair("localservices", strLocalServices));
     obj.push_back(Pair("timeoffset",    GetTimeOffset()));
     obj.push_back(Pair("connections",   nodeCount));
     obj.push_back(Pair("networks",      GetNetworksInfo()));
