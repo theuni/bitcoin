@@ -207,6 +207,7 @@ private:
     CCriticalSection cs_mapRelay;
     NodeId nLastNodeId;
     CCriticalSection cs_nLastNodeId;
+    boost::condition_variable messageHandlerCondition;
 };
 extern boost::shared_ptr<CConnman> g_connman;
 
@@ -506,7 +507,7 @@ public:
     }
 
     // requires LOCK(cs_vRecvMsg)
-    bool ReceiveMsgBytes(const char *pch, unsigned int nBytes);
+    bool ReceiveMsgBytes(const char *pch, unsigned int nBytes, bool& complete);
 
     // requires LOCK(cs_vRecvMsg)
     void SetRecvVersion(int nVersionIn)
