@@ -759,9 +759,10 @@ int CNetMessage::readData(const char *pch, unsigned int nBytes)
 
 
 // requires LOCK(cs_vSend)
-void CNode::SocketSendData()
+size_t CNode::SocketSendData()
 {
     std::deque<CSerializeData>::iterator it = vSendMsg.begin();
+    size_t nSentSize = 0;
 
     while (it != vSendMsg.end()) {
         const CSerializeData &data = *it;
@@ -772,6 +773,7 @@ void CNode::SocketSendData()
             nSendBytes += nBytes;
             nSendOffset += nBytes;
             RecordBytesSent(nBytes);
+            nSentSize += nBytes;
             if (nSendOffset == data.size()) {
                 nSendOffset = 0;
                 nSendSize -= data.size();
@@ -800,6 +802,7 @@ void CNode::SocketSendData()
         assert(nSendSize == 0);
     }
     vSendMsg.erase(vSendMsg.begin(), it);
+    return nSentSize;
 }
 
 static std::list<CNode*> vNodesDisconnected;
@@ -2595,10 +2598,6 @@ void CNode::EndMessage(const char* pszCommand) UNLOCK_FUNCTION(cs_vSend)
     std::deque<CSerializeData>::iterator it = vSendMsg.insert(vSendMsg.end(), CSerializeData());
     ssSend.GetAndClear(*it);
     nSendSize += (*it).size();
-
-    // If write queue empty, attempt "optimistic write"
-    if (it == vSendMsg.begin())
-        SocketSendData();
 
     LEAVE_CRITICAL_SECTION(cs_vSend);
 }

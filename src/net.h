@@ -754,7 +754,7 @@ public:
         }
     }
 
-    void SocketSendData();
+    size_t SocketSendData();
     void CloseSocketDisconnect();
 
     void copyStats(CNodeStats &stats);
