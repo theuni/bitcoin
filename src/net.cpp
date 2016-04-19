@@ -83,8 +83,6 @@ std::string strSubVersion;
 
 limitedmap<uint256, int64_t> mapAlreadyAskedFor(MAX_INV_SZ);
 
-static CSemaphore *semOutbound = NULL;
-
 // Signals for message handling
 static CNodeSignals g_signals;
 CNodeSignals& GetNodeSignals() { return g_signals; }
@@ -1906,6 +1904,7 @@ CConnman::CConnman()
     setBannedIsDirty = false;
     fAddressesInitialized = false;
     nLastNodeId = 0;
+    semOutbound = NULL;
 }
 
 bool StartNode(boost::shared_ptr<CConnman> connman, boost::thread_group& threadGroup, CScheduler& scheduler, uint64_t nLocalServices, std::string& strNodeError)

@@ -256,6 +256,7 @@ private:
     CCriticalSection cs_nLastNodeId;
     boost::condition_variable messageHandlerCondition;
     uint64_t nLocalServices;
+    CSemaphore *semOutbound;
 };
 extern boost::shared_ptr<CConnman> g_connman;
 
