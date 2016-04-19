@@ -76,9 +76,6 @@ static const size_t DEFAULT_MAXSENDBUFFER    = 1 * 1000;
 // NOTE: When adjusting this, update rpcnet:setban's help ("24h")
 static const unsigned int DEFAULT_MISBEHAVING_BANTIME = 60 * 60 * 24;  // Default 24-hour ban
 
-unsigned int ReceiveFloodSize();
-unsigned int SendBufferSize();
-
 typedef int NodeId;
 
 class CNodeStats;
@@ -153,6 +150,8 @@ public:
     bool GetRelayTx(const uint256& hash, CTransaction& tx);
     void SetNodeTime(uint64_t time);
 
+    unsigned int GetSendBufferSize() const;
+
     void AddWhitelistedRange(const CSubNet &subnet);
 
     //!set the max outbound target in bytes
@@ -210,6 +209,8 @@ private:
     void DumpData();
     void DumpBanlist();
 
+    unsigned int GetReceiveFloodSize() const;
+
     // Network stats
     void RecordBytesRecv(uint64_t bytes);
     void RecordBytesSent(uint64_t bytes);
@@ -230,6 +231,9 @@ private:
     // whitelisted (as well as those connecting to whitelisted binds).
     std::vector<CSubNet> vWhitelistedRange;
     CCriticalSection cs_vWhitelistedRange;
+
+    unsigned int nSendBufferMaxSize;
+    unsigned int nReceiveFloodSize;
 
     std::vector<ListenSocket> vhListenSocket;
     banmap_t setBanned;
