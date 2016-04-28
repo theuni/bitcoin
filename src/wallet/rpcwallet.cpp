@@ -140,7 +140,7 @@ UniValue getnewaddress(const UniValue& params, bool fHelp)
     CPubKey newKey;
     if (!pwalletMain->GetKeyFromPool(newKey))
         throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
-    CKeyID keyID = newKey.GetID();
+    CWitKeyID160 keyID = CWitKeyID160(newKey.GetID(), 0);
 
     pwalletMain->SetAddressBook(keyID, strAccount, "receive");
 
