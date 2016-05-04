@@ -45,16 +45,16 @@ static const size_t MAX_HEADERS_SIZE = 8192;
 class HTTPWorkItem : public HTTPClosure
 {
 public:
-    HTTPWorkItem(HTTPRequest* req, const std::string &path, const HTTPRequestHandler& func):
-        req(req), path(path), func(func)
+    HTTPWorkItem(HTTPRequest&& req, const std::string &path, const HTTPRequestHandler& func):
+        req(std::move(req)), path(path), func(func)
     {
     }
     void operator()()
     {
-        func(req.get(), path);
+        func(&req, path);
     }
 
-    boost::scoped_ptr<HTTPRequest> req;
+    HTTPRequest req;
 
 private:
     std::string path;
@@ -107,12 +107,13 @@ public:
     {
     }
     /** Enqueue a work item */
-    bool Enqueue(std::unique_ptr<WorkItem> item)
+    bool Try_Enqueue(HTTPRequest& req, const std::string &path, const HTTPRequestHandler& func)
     {
         boost::unique_lock<boost::mutex> lock(cs);
         if (queue.size() >= maxDepth) {
             return false;
         }
+        std::unique_ptr<HTTPWorkItem> item(new HTTPWorkItem(std::move(req), path, func));
         queue.push_back(std::move(item));
         cond.notify_one();
         return true;
@@ -246,25 +247,25 @@ static std::string RequestMethodString(HTTPRequest::RequestMethod m)
 /** HTTP request callback */
 static void http_request_cb(struct evhttp_request* req, void* arg)
 {
-    std::unique_ptr<HTTPRequest> hreq(new HTTPRequest(req));
+    HTTPRequest hreq(req);
 
     LogPrint("http", "Received a %s request for %s from %s\n",
-             RequestMethodString(hreq->GetRequestMethod()), hreq->GetURI(), hreq->GetPeer().ToString());
+             RequestMethodString(hreq.GetRequestMethod()), hreq.GetURI(), hreq.GetPeer().ToString());
 
     // Early address-based allow check
-    if (!ClientAllowed(hreq->GetPeer())) {
-        hreq->WriteReply(HTTP_FORBIDDEN);
+    if (!ClientAllowed(hreq.GetPeer())) {
+        hreq.WriteReply(HTTP_FORBIDDEN);
         return;
     }
 
     // Early reject unknown HTTP methods
-    if (hreq->GetRequestMethod() == HTTPRequest::UNKNOWN) {
-        hreq->WriteReply(HTTP_BADMETHOD);
+    if (hreq.GetRequestMethod() == HTTPRequest::UNKNOWN) {
+        hreq.WriteReply(HTTP_BADMETHOD);
         return;
     }
 
     // Find registered handler for prefix
-    std::string strURI = hreq->GetURI();
+    std::string strURI = hreq.GetURI();
     std::string path;
     std::vector<HTTPPathHandler>::const_iterator i = pathHandlers.begin();
     std::vector<HTTPPathHandler>::const_iterator iend = pathHandlers.end();
@@ -282,12 +283,11 @@ static void http_request_cb(struct evhttp_request* req, void* arg)
 
     // Dispatch to worker thread
     if (i != iend) {
-        std::unique_ptr<HTTPWorkItem> item(new HTTPWorkItem(hreq.release(), path, i->handler));
         assert(workQueue);
-        if (!workQueue->Enqueue(std::move(item)))
-            item->req->WriteReply(HTTP_INTERNAL, "Work queue depth exceeded");
+        if (!workQueue->Try_Enqueue(hreq, path, i->handler))
+            hreq.WriteReply(HTTP_INTERNAL, "Work queue depth exceeded");
     } else {
-        hreq->WriteReply(HTTP_NOTFOUND);
+        hreq.WriteReply(HTTP_NOTFOUND);
     }
 }
 
