@@ -59,10 +59,6 @@
 #endif
 
 
-namespace {
-    const int MAX_OUTBOUND_CONNECTIONS = 8;
-}
-
 const static std::string NET_MESSAGE_COMMAND_OTHER = "*other*";
 
 //
@@ -75,7 +71,6 @@ CCriticalSection cs_mapLocalHost;
 std::map<CNetAddr, LocalServiceInfo> mapLocalHost;
 static bool vfLimited[NET_MAX] = {};
 static CNode* pnodeLocalHost = NULL;
-int nMaxConnections = DEFAULT_MAX_PEER_CONNECTIONS;
 std::string strSubVersion;
 
 limitedmap<uint256, int64_t> mapAlreadyAskedFor(MAX_INV_SZ);
@@ -970,7 +965,7 @@ void CConnman::AcceptConnection(const ListenSocket& hListenSocket) {
     SOCKET hSocket = accept(hListenSocket.socket, (struct sockaddr*)&sockaddr, &len);
     CAddress addr;
     int nInbound = 0;
-    int nMaxInbound = nMaxConnections - MAX_OUTBOUND_CONNECTIONS;
+    int nMaxInbound = nMaxConnections - nMaxOutbound;
 
     if (hSocket != INVALID_SOCKET)
         if (!addr.SetSockAddr((const struct sockaddr*)&sockaddr))
@@ -1996,13 +1991,15 @@ CConnman::CConnman()
     nSendBufferMaxSize = 0;
     nReceiveFloodSize = 0;
     semOutbound = NULL;
+    nMaxConnections = 0;
+    nMaxOutbound = 0;
 }
 
-bool StartNode(CConnman& connman, boost::thread_group& threadGroup, CScheduler& scheduler, ServiceFlags nLocalServices, ServiceFlags nRelevantServices, std::string& strNodeError)
+bool StartNode(CConnman& connman, boost::thread_group& threadGroup, CScheduler& scheduler, ServiceFlags nLocalServices, ServiceFlags nRelevantServices, int nMaxConnectionsIn, int nMaxOutboundIn, std::string& strNodeError)
 {
     Discover(threadGroup);
 
-    bool ret = connman.Start(threadGroup, scheduler, nLocalServices, nRelevantServices, strNodeError);
+    bool ret = connman.Start(threadGroup, scheduler, nLocalServices, nRelevantServices, nMaxConnectionsIn, nMaxOutboundIn, strNodeError);
 
     return ret;
 }
@@ -2012,7 +2009,7 @@ NodeId CConnman::GetNewNodeId()
     return nLastNodeId.fetch_add(1, std::memory_order_relaxed);
 }
 
-bool CConnman::Start(boost::thread_group& threadGroup, CScheduler& scheduler, ServiceFlags nLocalServicesIn, ServiceFlags nRelevantServicesIn, std::string& strNodeError)
+bool CConnman::Start(boost::thread_group& threadGroup, CScheduler& scheduler, ServiceFlags nLocalServicesIn, ServiceFlags nRelevantServicesIn, int nMaxConnectionsIn, int nMaxOutboundIn, std::string& strNodeError)
 {
     nTotalBytesRecv = 0;
     nTotalBytesSent = 0;
@@ -2022,6 +2019,9 @@ bool CConnman::Start(boost::thread_group& threadGroup, CScheduler& scheduler, Se
     nLocalServices = nLocalServicesIn;
     nRelevantServices = nRelevantServicesIn;
     nMaxOutboundCycleStartTime = 0;
+
+    nMaxConnections = nMaxConnectionsIn;
+    nMaxOutbound = nMaxOutboundIn;
 
     nSendBufferMaxSize = 1000*GetArg("-maxsendbuffer", DEFAULT_MAXSENDBUFFER);
     nReceiveFloodSize = 1000*GetArg("-maxreceivebuffer", DEFAULT_MAXRECEIVEBUFFER);
@@ -2064,7 +2064,6 @@ bool CConnman::Start(boost::thread_group& threadGroup, CScheduler& scheduler, Se
 
     if (semOutbound == NULL) {
         // initialize semaphore
-        int nMaxOutbound = std::min(MAX_OUTBOUND_CONNECTIONS, nMaxConnections);
         semOutbound = new CSemaphore(nMaxOutbound);
     }
 
@@ -2132,7 +2131,7 @@ instance_of_cnetcleanup;
 void CConnman::Stop()
 {
     if (semOutbound)
-        for (int i=0; i<MAX_OUTBOUND_CONNECTIONS; i++)
+        for (int i=0; i<nMaxOutbound; i++)
             semOutbound->post();
 
     if (fAddressesInitialized)
