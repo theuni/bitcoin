@@ -107,7 +107,7 @@ public:
 
     CConnman();
     ~CConnman();
-    bool Start(boost::thread_group& threadGroup, CScheduler& scheduler, ServiceFlags nLocalServicesIn, ServiceFlags nRelevantServicesIn, int nMaxConnectionsIn, int nMaxOutboundIn, std::string& strNodeError);
+    bool Start(boost::thread_group& threadGroup, CScheduler& scheduler, ServiceFlags nLocalServicesIn, ServiceFlags nRelevantServicesIn, int nMaxConnectionsIn, int nMaxOutboundIn, int nBestHeightIn, std::string& strNodeError);
     void Stop();
     bool BindListenPort(const CService &bindAddr, std::string& strError, bool fWhitelisted = false);
     bool OpenNetworkConnection(const CAddress& addrConnect, bool fCountFailure, CSemaphoreGrant *grantOutbound = NULL, const char *strDest = NULL, bool fOneShot = false);
@@ -196,6 +196,10 @@ public:
 
     uint64_t GetTotalBytesRecv();
     uint64_t GetTotalBytesSent();
+
+    void SetBestHeight(int height);
+    int GetBestHeight() const;
+
 
 private:
     struct ListenSocket {
@@ -286,12 +290,13 @@ private:
     CSemaphore *semOutbound;
     int nMaxConnections;
     int nMaxOutbound;
+    std::atomic<int> nBestHeight;
 };
 extern std::unique_ptr<CConnman> g_connman;
 void MapPort(bool fUseUPnP);
 unsigned short GetListenPort();
 bool BindListenPort(const CService &bindAddr, std::string& strError, bool fWhitelisted = false);
-bool StartNode(CConnman& connman, boost::thread_group& threadGroup, CScheduler& scheduler, ServiceFlags nLocalServices, ServiceFlags nRelevantServices, int nMaxConnections, int nMaxOutbound, std::string& strNodeError);
+bool StartNode(CConnman& connman, boost::thread_group& threadGroup, CScheduler& scheduler, ServiceFlags nLocalServices, ServiceFlags nRelevantServices, int nMaxConnections, int nMaxOutbound, int nBestHeightIn, std::string& strNodeError);
 bool StopNode(CConnman& connman);
 size_t SocketSendData(CNode *pnode);
 
@@ -313,7 +318,6 @@ struct CombinerAll
 // Signals for message handling
 struct CNodeSignals
 {
-    boost::signals2::signal<int ()> GetHeight;
     boost::signals2::signal<bool (CNode*, CConnman&), CombinerAll> ProcessMessages;
     boost::signals2::signal<bool (CNode*, CConnman&), CombinerAll> SendMessages;
     boost::signals2::signal<void (NodeId, const CNode*)> InitializeNode;
@@ -555,7 +559,7 @@ public:
     CAmount lastSentFeeFilter;
     int64_t nextSendTimeFeeFilter;
 
-    CNode(NodeId id, ServiceFlags nLocalServicesIn, SOCKET hSocketIn, const CAddress &addrIn, const std::string &addrNameIn = "", bool fInboundIn = false);
+    CNode(NodeId id, ServiceFlags nLocalServicesIn, int nMyStartingHeightIn, SOCKET hSocketIn, const CAddress &addrIn, const std::string &addrNameIn = "", bool fInboundIn = false);
     ~CNode();
 
 private:
@@ -566,6 +570,7 @@ private:
 
     uint64_t nLocalHostNonce;
     ServiceFlags nLocalServices;
+    int nMyStartingHeight;
 public:
 
     NodeId GetId() const {
