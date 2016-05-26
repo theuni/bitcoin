@@ -467,7 +467,8 @@ void CConnman::ClearBanned()
         setBannedIsDirty = true;
     }
     DumpBanlist(); //store banlist to disk
-    uiInterface.BannedListChanged();
+    if(clientInterface)
+        clientInterface->BannedListChanged();
 }
 
 bool CConnman::IsBanned(CNetAddr ip)
@@ -527,7 +528,8 @@ void CConnman::Ban(const CSubNet& subNet, const BanReason &banReason, int64_t ba
         else
             return;
     }
-    uiInterface.BannedListChanged();
+    if(clientInterface)
+        clientInterface->BannedListChanged();
     {
         LOCK(cs_vNodes);
         BOOST_FOREACH(CNode* pnode, vNodes) {
@@ -551,7 +553,8 @@ bool CConnman::Unban(const CSubNet &subNet) {
             return false;
         setBannedIsDirty = true;
     }
-    uiInterface.BannedListChanged();
+    if(clientInterface)
+        clientInterface->BannedListChanged();
     DumpBanlist(); //store banlist to disk immediately
     return true;
 }
@@ -1096,7 +1099,8 @@ void CConnman::ThreadSocketHandler()
         }
         if(vNodes.size() != nPrevNodeCount) {
             nPrevNodeCount = vNodes.size();
-            uiInterface.NotifyNumConnectionsChanged(nPrevNodeCount);
+            if(clientInterface)
+                clientInterface->NotifyNumConnectionsChanged(nPrevNodeCount);
         }
 
         //
@@ -1992,13 +1996,14 @@ CConnman::CConnman()
     nMaxConnections = 0;
     nMaxOutbound = 0;
     nBestHeight = 0;
+    clientInterface = NULL;
 }
 
-bool StartNode(CConnman& connman, boost::thread_group& threadGroup, CScheduler& scheduler, ServiceFlags nLocalServices, ServiceFlags nRelevantServices, int nMaxConnectionsIn, int nMaxOutboundIn, int nBestHeightIn, std::string& strNodeError)
+bool StartNode(CConnman& connman, boost::thread_group& threadGroup, CScheduler& scheduler, ServiceFlags nLocalServices, ServiceFlags nRelevantServices, int nMaxConnectionsIn, int nMaxOutboundIn, int nBestHeightIn, CClientUIInterface* interfaceIn, std::string& strNodeError)
 {
     Discover(threadGroup);
 
-    bool ret = connman.Start(threadGroup, scheduler, nLocalServices, nRelevantServices, nMaxConnectionsIn, nMaxOutboundIn, nBestHeightIn, strNodeError);
+    bool ret = connman.Start(threadGroup, scheduler, nLocalServices, nRelevantServices, nMaxConnectionsIn, nMaxOutboundIn, nBestHeightIn, interfaceIn, strNodeError);
 
     return ret;
 }
@@ -2008,7 +2013,7 @@ NodeId CConnman::GetNewNodeId()
     return nLastNodeId.fetch_add(1, std::memory_order_relaxed);
 }
 
-bool CConnman::Start(boost::thread_group& threadGroup, CScheduler& scheduler, ServiceFlags nLocalServicesIn, ServiceFlags nRelevantServicesIn, int nMaxConnectionsIn, int nMaxOutboundIn, int nBestHeightIn, std::string& strNodeError)
+bool CConnman::Start(boost::thread_group& threadGroup, CScheduler& scheduler, ServiceFlags nLocalServicesIn, ServiceFlags nRelevantServicesIn, int nMaxConnectionsIn, int nMaxOutboundIn, int nBestHeightIn, CClientUIInterface* interfaceIn, std::string& strNodeError)
 {
     nTotalBytesRecv = 0;
     nTotalBytesSent = 0;
@@ -2027,7 +2032,9 @@ bool CConnman::Start(boost::thread_group& threadGroup, CScheduler& scheduler, Se
 
     SetBestHeight(nBestHeightIn);
 
-    uiInterface.InitMessage(_("Loading addresses..."));
+    clientInterface = interfaceIn;
+    if (clientInterface)
+        clientInterface->InitMessage(_("Loading addresses..."));
     // Load addresses from peers.dat
     int64_t nStart = GetTimeMillis();
     {
@@ -2040,8 +2047,8 @@ bool CConnman::Start(boost::thread_group& threadGroup, CScheduler& scheduler, Se
             DumpAddresses();
         }
     }
-
-    uiInterface.InitMessage(_("Loading banlist..."));
+    if (clientInterface)
+        clientInterface->InitMessage(_("Loading banlist..."));
     // Load addresses from banlist.dat
     nStart = GetTimeMillis();
     CBanDB bandb;
