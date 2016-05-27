@@ -2018,8 +2018,8 @@ bool CConnman::Start(boost::thread_group& threadGroup, CScheduler& scheduler, st
     nMaxConnections = connOptions.nMaxConnections;
     nMaxOutbound = connOptions.nMaxOutbound;
 
-    nSendBufferMaxSize = 1000*GetArg("-maxsendbuffer", DEFAULT_MAXSENDBUFFER);
-    nReceiveFloodSize = 1000*GetArg("-maxreceivebuffer", DEFAULT_MAXRECEIVEBUFFER);
+    nSendBufferMaxSize = connOptions.nSendBufferMaxSize;
+    nReceiveFloodSize = connOptions.nSendBufferMaxSize;
 
     SetBestHeight(connOptions.nBestHeight);
 
