@@ -324,6 +324,7 @@ UniValue getaddednodeinfo(const UniValue& params, bool fHelp)
             UniValue address(UniValue::VOBJ);
             address.push_back(Pair("address", info.resolvedAddress.ToString()));
             address.push_back(Pair("connected", info.fInbound ? "inbound" : "outbound"));
+            addresses.push_back(address);
         }
         obj.push_back(Pair("addresses", addresses));
         ret.push_back(obj);
