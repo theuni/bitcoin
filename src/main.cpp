@@ -2987,7 +2987,6 @@ bool ActivateBestChain(CValidationState &state, const CChainParams& chainparams,
                                 pnode->PushBlockHash(hash);
                             }
                         }
-                        return true;
                     });
                 }
                 // Notify external listeners about the new tip.
@@ -4418,7 +4417,6 @@ static void RelayTransaction(const CTransaction& tx, CConnman& connman)
     connman.ForEachNode([&inv](CNode* pnode)
     {
         pnode->PushInventory(inv);
-        return true;
     });
 }
 
@@ -4443,7 +4441,6 @@ static void RelayAddress(const CAddress& addr, bool fReachable, CConnman& connma
             uint64_t hashKey = CSipHasher(hasher).Write(pnode->id).Finalize();
             mapMix.emplace(hashKey, pnode);
         }
-        return true;
     };
 
     auto pushfunc = [&addr, &mapMix, &nRelayNodes] {

@@ -115,10 +115,14 @@ public:
     bool OpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *grantOutbound = NULL, const char *strDest = NULL, bool fOneShot = false);
     bool CheckIncomingNonce(uint64_t nonce);
 
-    bool ForEachNode(std::function<bool(CNode* pnode)> func);
-    bool ForEachNode(std::function<bool(const CNode* pnode)> func) const;
-    bool ForEachNodeThen(std::function<bool(CNode* pnode)> pre, std::function<void()> post);
-    bool ForEachNodeThen(std::function<bool(const CNode* pnode)> pre, std::function<void()> post) const;
+    bool ForEachNodeContinueIf(std::function<bool(CNode* pnode)> func);
+    bool ForEachNodeContinueIf(std::function<bool(const CNode* pnode)> func) const;
+    bool ForEachNodeContinueIfThen(std::function<bool(CNode* pnode)> pre, std::function<void()> post);
+    bool ForEachNodeContinueIfThen(std::function<bool(const CNode* pnode)> pre, std::function<void()> post) const;
+    void ForEachNode(std::function<void(CNode* pnode)> func);
+    void ForEachNode(std::function<void(const CNode* pnode)> func) const;
+    void ForEachNodeThen(std::function<void(CNode* pnode)> pre, std::function<void()> post);
+    void ForEachNodeThen(std::function<void(const CNode* pnode)> pre, std::function<void()> post) const;
 
     // Addrman functions
     size_t GetAddressCount() const;
