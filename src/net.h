@@ -362,7 +362,7 @@ private:
     std::atomic<int> nBestHeight;
     CClientUIInterface* clientInterface;
 };
-extern std::shared_ptr<CConnman> g_connman;
+extern std::unique_ptr<CConnman> g_connman;
 
 void Discover(boost::thread_group& threadGroup);
 void MapPort(bool fUseUPnP);

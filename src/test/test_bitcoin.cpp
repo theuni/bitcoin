@@ -26,7 +26,7 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/thread.hpp>
 
-std::shared_ptr<CConnman> g_connman;
+std::unique_ptr<CConnman> g_connman;
 
 extern bool fPrintToConsole;
 extern void noui_connect();
@@ -35,12 +35,12 @@ BasicTestingSetup::BasicTestingSetup(const std::string& chainName)
 {
         ECC_Start();
         SetupEnvironment();
-        g_connman = std::make_shared<CConnman>();
         SetupNetworking();
         fPrintToDebugLog = false; // don't want to write to debug.log file
         fCheckBlockIndex = true;
         SelectParams(chainName);
         noui_connect();
+        g_connman = std::unique_ptr<CConnman>(new CConnman());
 }
 
 BasicTestingSetup::~BasicTestingSetup()
@@ -54,8 +54,7 @@ TestingSetup::TestingSetup(const std::string& chainName) : BasicTestingSetup(cha
     const CChainParams& chainparams = Params();
         // Ideally we'd move all the RPC tests to the functional testing framework
         // instead of unit tests, but for now we need these here.
-        connman = std::make_shared<CConnman>();
-        g_connman = connman;
+        connman = g_connman.get();
 
         RegisterAllCoreRPCCommands(tableRPC);
         ClearDatadirCache();
@@ -119,7 +118,7 @@ TestChain100Setup::CreateAndProcessBlock(const std::vector<CMutableTransaction>&
     while (!CheckProofOfWork(block.GetHash(), block.nBits, chainparams.GetConsensus())) ++block.nNonce;
 
     CValidationState state;
-    ProcessNewBlock(state, chainparams, NULL, &block, true, NULL, connman.get());
+    ProcessNewBlock(state, chainparams, NULL, &block, true, NULL, connman);
 
     CBlock result = block;
     delete pblocktemplate;

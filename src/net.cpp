@@ -1957,7 +1957,8 @@ bool CConnman::Start(boost::thread_group& threadGroup, CScheduler& scheduler, st
     SetBestHeight(connOptions.nBestHeight);
 
     clientInterface = connOptions.interface;
-    clientInterface->InitMessage(_("Loading addresses..."));
+    if (clientInterface)
+        clientInterface->InitMessage(_("Loading addresses..."));
     // Load addresses from peers.dat
     int64_t nStart = GetTimeMillis();
     {
@@ -1970,8 +1971,8 @@ bool CConnman::Start(boost::thread_group& threadGroup, CScheduler& scheduler, st
             DumpAddresses();
         }
     }
-
-    clientInterface->InitMessage(_("Loading banlist..."));
+    if (clientInterface)
+        clientInterface->InitMessage(_("Loading banlist..."));
     // Load addresses from banlist.dat
     nStart = GetTimeMillis();
     CBanDB bandb;

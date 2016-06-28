@@ -70,7 +70,7 @@ static const bool DEFAULT_REST_ENABLE = false;
 static const bool DEFAULT_DISABLE_SAFEMODE = false;
 static const bool DEFAULT_STOPAFTERBLOCKIMPORT = false;
 
-std::shared_ptr<CConnman> g_connman;
+std::unique_ptr<CConnman> g_connman;
 
 #if ENABLE_ZMQ
 static CZMQNotificationInterface* pzmqNotificationInterface = NULL;
@@ -1045,7 +1045,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     // ********************************************************* Step 6: network initialization
 
     assert(!g_connman);
-    g_connman = std::make_shared<CConnman>();
+    g_connman = std::unique_ptr<CConnman>(new CConnman());
     CConnman& connman = *g_connman;
 
     RegisterNodeSignals(GetNodeSignals());

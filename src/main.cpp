@@ -2979,6 +2979,9 @@ bool ActivateBestChain(CValidationState &state, const CChainParams& chainparams,
                 int nBlockEstimate = 0;
                 if (fCheckpointsEnabled)
                     nBlockEstimate = Checkpoints::GetTotalBlocksEstimate(chainparams.Checkpoints());
+
+                // Only relay the new block hash if a connman has been initialized. That may not be the case
+                // if (for example) we are reindexing.
                 if(connman) {
                     connman->SetBestHeight(nNewHeight);
                     connman->ForEachNode([nNewHeight, nBlockEstimate, &vHashes](CNode* pnode) {
