@@ -156,7 +156,43 @@ public:
         real_vector.swap(real_vector_alt);
         pre_vector.swap(pre_vector_alt);
         test();
+        real_vector_alt.swap(real_vector);
+        pre_vector_alt.swap(pre_vector);
+        test();
     }
+
+    void copy() {
+        {
+            pretype testpre(pre_vector);
+            pre_vector_alt = testpre;
+        }
+        pre_vector = pre_vector_alt;
+
+        {
+            realtype testreal(real_vector);
+            real_vector_alt = testreal;
+        }
+        real_vector = real_vector_alt;
+        test();
+    }
+
+    void move() {
+        {
+            pretype testpre(std::move(pre_vector));
+            pre_vector_alt = std::move(testpre);
+        }
+        pre_vector = std::move(pre_vector_alt);
+        pre_vector_alt = pretype();
+
+        {
+            realtype testreal(std::move(real_vector));
+            real_vector_alt = std::move(testreal);
+        }
+        real_vector = std::move(real_vector_alt);
+        real_vector_alt = realtype();
+        test();
+    }
+
 };
 
 BOOST_AUTO_TEST_CASE(PrevectorTestInt)
@@ -220,6 +256,8 @@ BOOST_AUTO_TEST_CASE(PrevectorTestInt)
             }
             if (((r >> 15) % 64) == 3) {
                 test.swap();
+                test.copy();
+                test.move();
             }
         }
     }

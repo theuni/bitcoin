@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <type_traits>
 
 #include <iterator>
 
@@ -184,6 +185,41 @@ private:
         }
     }
 
+    void assign_int(const prevector<N, T, Size, Diff>& other) {
+        size_type new_size = other._size;
+        if (new_size > N) {
+            size_type new_capacity = new_size - N - 1;
+            if (_size <= N) {
+                _union.indirect = static_cast<char*>(malloc(((size_t)sizeof(T)) * new_capacity));
+                _union.capacity = new_capacity;
+            }
+            else if(_union.capacity < new_capacity) {
+                _union.indirect = static_cast<char*>(realloc(_union.indirect, ((size_t)sizeof(T)) * new_capacity));
+                _union.capacity = new_capacity;
+            }
+            memcpy(_union.indirect, other._union.indirect, new_capacity * sizeof(T));
+        }
+        else {
+            if (_size > N)
+                free(_union.indirect);
+            memcpy(_union.direct, other._union.direct, new_size * sizeof(T));
+        }
+        _size = new_size;
+    }
+
+    void assign_int(prevector<N, T, Size, Diff>&& other) {
+        if (_size > N)
+            free(_union.indirect);
+        _size = other._size;
+        if (_size <= N)
+            memmove(_union.direct, other._union.direct, sizeof(T) * _size);
+        else {
+            _union.capacity = other._union.capacity;
+            _union.indirect = other._union.indirect;
+        }
+        other._size = 0;
+    }
+
     T* item_ptr(difference_type pos) { return is_direct() ? direct_ptr(pos) : indirect_ptr(pos); }
     const T* item_ptr(difference_type pos) const { return is_direct() ? direct_ptr(pos) : indirect_ptr(pos); }
 
@@ -213,13 +249,17 @@ public:
         }
     }
 
-    prevector() : _size(0) {}
+    prevector() : _size(0) {
+        static_assert(std::is_trivially_copyable<T>::value, "prevector may only be used with trivial types");
+    }
 
     explicit prevector(size_type n) : _size(0) {
+        static_assert(std::is_trivially_copyable<T>::value, "prevector may only be used with trivial types");
         resize(n);
     }
 
     explicit prevector(size_type n, const T& val = T()) : _size(0) {
+        static_assert(std::is_trivially_copyable<T>::value, "prevector may only be used with trivial types");
         change_capacity(n);
         while (size() < n) {
             _size++;
@@ -229,6 +269,7 @@ public:
 
     template<typename InputIterator>
     prevector(InputIterator first, InputIterator last) : _size(0) {
+        static_assert(std::is_trivially_copyable<T>::value, "prevector may only be used with trivial types");
         size_type n = last - first;
         change_capacity(n);
         while (first != last) {
@@ -239,28 +280,24 @@ public:
     }
 
     prevector(const prevector<N, T, Size, Diff>& other) : _size(0) {
-        change_capacity(other.size());
-        const_iterator it = other.begin();
-        while (it != other.end()) {
-            _size++;
-            new(static_cast<void*>(item_ptr(size() - 1))) T(*it);
-            ++it;
-        }
+        assign_int(other);
     }
 
     prevector& operator=(const prevector<N, T, Size, Diff>& other) {
         if (&other == this) {
             return *this;
         }
-        resize(0);
-        change_capacity(other.size());
-        const_iterator it = other.begin();
-        while (it != other.end()) {
-            _size++;
-            new(static_cast<void*>(item_ptr(size() - 1))) T(*it);
-            ++it;
-        }
+        assign_int(other);
         return *this;
+    }
+
+    prevector& operator=(prevector<N, T, Size, Diff>&& other) {
+        assign_int(std::move(other));
+        return *this;
+    }
+
+    prevector(prevector<N, T, Size, Diff>&& other) : _size(0) {
+        assign_int(std::move(other));
     }
 
     size_type size() const {
