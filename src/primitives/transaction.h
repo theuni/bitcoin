@@ -382,6 +382,10 @@ public:
 
     CTransaction& operator=(const CTransaction& tx);
 
+    CTransaction(const CTransaction &tx) = default;
+    CTransaction(CTransaction &&tx) = default;
+    CTransaction& operator=(CTransaction&& tx);
+
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream, typename Operation>

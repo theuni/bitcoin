@@ -93,6 +93,16 @@ CTransaction& CTransaction::operator=(const CTransaction &tx) {
     return *this;
 }
 
+CTransaction& CTransaction::operator=(CTransaction &&tx) {
+    *const_cast<int*>(&nVersion) = tx.nVersion;
+    *const_cast<std::vector<CTxIn>*>(&vin) = std::move(tx.vin);
+    *const_cast<std::vector<CTxOut>*>(&vout) = std::move(tx.vout);
+    *const_cast<CTxWitness*>(&wit) = std::move(tx.wit);
+    *const_cast<unsigned int*>(&nLockTime) = tx.nLockTime;
+    *const_cast<uint256*>(&hash) = std::move(tx.hash);
+    return *this;
+}
+
 CAmount CTransaction::GetValueOut() const
 {
     CAmount nValueOut = 0;
