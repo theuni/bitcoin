@@ -57,8 +57,6 @@ void CSignatureCache::Set(const uint256& entry)
 
 bool CachingTransactionSignatureChecker::VerifySignature(const std::vector<unsigned char>& vchSig, const CPubKey& pubkey, const uint256& sighash) const
 {
-    static CSignatureCache signatureCache;
-
     uint256 entry;
     signatureCache.ComputeEntry(entry, sighash, vchSig, pubkey);
 
