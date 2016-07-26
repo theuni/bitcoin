@@ -39,8 +39,8 @@ class CSignatureCache
 {
 public:
     CSignatureCache();
-    void ComputeEntry(uint256& entry, const uint256 &hash, const std::vector<unsigned char>& vchSig, const CPubKey& pubkey);
-    bool Get(const uint256& entry);
+    void ComputeEntry(uint256& entry, const uint256 &hash, const std::vector<unsigned char>& vchSig, const CPubKey& pubkey) const;
+    bool Get(const uint256& entry) const;
     void Erase(const uint256& entry);
     void Set(const uint256& entry);
 private:
@@ -48,7 +48,7 @@ private:
     uint256 nonce;
     typedef boost::unordered_set<uint256, CSignatureCacheHasher> map_type;
     map_type setValid;
-    boost::shared_mutex cs_sigcache;
+    mutable boost::shared_mutex cs_sigcache;
 };
 
 class CachingTransactionSignatureChecker : public TransactionSignatureChecker

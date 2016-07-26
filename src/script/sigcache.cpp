@@ -20,12 +20,12 @@ CSignatureCache::CSignatureCache()
     GetRandBytes(nonce.begin(), 32);
 }
 
-void CSignatureCache::ComputeEntry(uint256& entry, const uint256 &hash, const std::vector<unsigned char>& vchSig, const CPubKey& pubkey)
+void CSignatureCache::ComputeEntry(uint256& entry, const uint256 &hash, const std::vector<unsigned char>& vchSig, const CPubKey& pubkey) const
 {
     CSHA256().Write(nonce.begin(), 32).Write(hash.begin(), 32).Write(&pubkey[0], pubkey.size()).Write(&vchSig[0], vchSig.size()).Finalize(entry.begin());
 }
 
-bool CSignatureCache::Get(const uint256& entry)
+bool CSignatureCache::Get(const uint256& entry) const
 {
     boost::shared_lock<boost::shared_mutex> lock(cs_sigcache);
     return setValid.count(entry);
