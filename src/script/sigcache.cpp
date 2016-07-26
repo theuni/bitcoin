@@ -11,82 +11,48 @@
 #include "uint256.h"
 #include "util.h"
 
-#include <boost/thread.hpp>
-#include <boost/unordered_set.hpp>
+size_t CSignatureCacheHasher::operator()(const uint256& key) const {
+    return key.GetCheapHash();
+}
 
-namespace {
-
-/**
- * We're hashing a nonce into the entries themselves, so we don't need extra
- * blinding in the set hash computation.
- */
-class CSignatureCacheHasher
+CSignatureCache::CSignatureCache()
 {
-public:
-    size_t operator()(const uint256& key) const {
-        return key.GetCheapHash();
-    }
-};
+    GetRandBytes(nonce.begin(), 32);
+}
 
-/**
- * Valid signature cache, to avoid doing expensive ECDSA signature checking
- * twice for every transaction (once when accepted into memory pool, and
- * again when accepted into the block chain)
- */
-class CSignatureCache
+void CSignatureCache::ComputeEntry(uint256& entry, const uint256 &hash, const std::vector<unsigned char>& vchSig, const CPubKey& pubkey)
 {
-private:
-     //! Entries are SHA256(nonce || signature hash || public key || signature):
-    uint256 nonce;
-    typedef boost::unordered_set<uint256, CSignatureCacheHasher> map_type;
-    map_type setValid;
-    boost::shared_mutex cs_sigcache;
+    CSHA256().Write(nonce.begin(), 32).Write(hash.begin(), 32).Write(&pubkey[0], pubkey.size()).Write(&vchSig[0], vchSig.size()).Finalize(entry.begin());
+}
 
+bool CSignatureCache::Get(const uint256& entry)
+{
+    boost::shared_lock<boost::shared_mutex> lock(cs_sigcache);
+    return setValid.count(entry);
+}
 
-public:
-    CSignatureCache()
+void CSignatureCache::Erase(const uint256& entry)
+{
+    boost::unique_lock<boost::shared_mutex> lock(cs_sigcache);
+    setValid.erase(entry);
+}
+
+void CSignatureCache::Set(const uint256& entry)
+{
+    size_t nMaxCacheSize = GetArg("-maxsigcachesize", DEFAULT_MAX_SIG_CACHE_SIZE) * ((size_t) 1 << 20);
+    if (nMaxCacheSize <= 0) return;
+
+    boost::unique_lock<boost::shared_mutex> lock(cs_sigcache);
+    while (memusage::DynamicUsage(setValid) > nMaxCacheSize)
     {
-        GetRandBytes(nonce.begin(), 32);
-    }
-
-    void
-    ComputeEntry(uint256& entry, const uint256 &hash, const std::vector<unsigned char>& vchSig, const CPubKey& pubkey)
-    {
-        CSHA256().Write(nonce.begin(), 32).Write(hash.begin(), 32).Write(&pubkey[0], pubkey.size()).Write(&vchSig[0], vchSig.size()).Finalize(entry.begin());
-    }
-
-    bool
-    Get(const uint256& entry)
-    {
-        boost::shared_lock<boost::shared_mutex> lock(cs_sigcache);
-        return setValid.count(entry);
-    }
-
-    void Erase(const uint256& entry)
-    {
-        boost::unique_lock<boost::shared_mutex> lock(cs_sigcache);
-        setValid.erase(entry);
-    }
-
-    void Set(const uint256& entry)
-    {
-        size_t nMaxCacheSize = GetArg("-maxsigcachesize", DEFAULT_MAX_SIG_CACHE_SIZE) * ((size_t) 1 << 20);
-        if (nMaxCacheSize <= 0) return;
-
-        boost::unique_lock<boost::shared_mutex> lock(cs_sigcache);
-        while (memusage::DynamicUsage(setValid) > nMaxCacheSize)
-        {
-            map_type::size_type s = GetRand(setValid.bucket_count());
-            map_type::local_iterator it = setValid.begin(s);
-            if (it != setValid.end(s)) {
-                setValid.erase(*it);
-            }
+        map_type::size_type s = GetRand(setValid.bucket_count());
+        map_type::local_iterator it = setValid.begin(s);
+        if (it != setValid.end(s)) {
+            setValid.erase(*it);
         }
-
-        setValid.insert(entry);
     }
-};
 
+    setValid.insert(entry);
 }
 
 bool CachingTransactionSignatureChecker::VerifySignature(const std::vector<unsigned char>& vchSig, const CPubKey& pubkey, const uint256& sighash) const

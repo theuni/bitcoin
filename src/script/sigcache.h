@@ -9,12 +9,47 @@
 #include "script/interpreter.h"
 
 #include <vector>
+#include <boost/thread.hpp>
+#include <boost/unordered_set.hpp>
 
 // DoS prevention: limit cache size to less than 40MB (over 500000
 // entries on 64-bit systems).
 static const unsigned int DEFAULT_MAX_SIG_CACHE_SIZE = 40;
 
 class CPubKey;
+
+class CPubKey;
+
+/**
+ * We're hashing a nonce into the entries themselves, so we don't need extra
+ * blinding in the set hash computation.
+ */
+class CSignatureCacheHasher
+{
+public:
+    size_t operator()(const uint256& key) const;
+};
+
+/**
+ * Valid signature cache, to avoid doing expensive ECDSA signature checking
+ * twice for every transaction (once when accepted into memory pool, and
+ * again when accepted into the block chain)
+ */
+class CSignatureCache
+{
+public:
+    CSignatureCache();
+    void ComputeEntry(uint256& entry, const uint256 &hash, const std::vector<unsigned char>& vchSig, const CPubKey& pubkey);
+    bool Get(const uint256& entry);
+    void Erase(const uint256& entry);
+    void Set(const uint256& entry);
+private:
+     //! Entries are SHA256(nonce || signature hash || public key || signature):
+    uint256 nonce;
+    typedef boost::unordered_set<uint256, CSignatureCacheHasher> map_type;
+    map_type setValid;
+    boost::shared_mutex cs_sigcache;
+};
 
 class CachingTransactionSignatureChecker : public TransactionSignatureChecker
 {
