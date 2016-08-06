@@ -9,7 +9,6 @@
 #include "script/interpreter.h"
 
 #include <vector>
-#include <boost/thread.hpp>
 #include <boost/unordered_set.hpp>
 
 // DoS prevention: limit cache size to less than 40MB (over 500000
@@ -48,16 +47,17 @@ private:
     uint256 nonce;
     typedef boost::unordered_set<uint256, CSignatureCacheHasher> map_type;
     map_type setValid;
-    mutable boost::shared_mutex cs_sigcache;
 };
 
+struct SignatureCacheResults;
 class CachingTransactionSignatureChecker : public TransactionSignatureChecker
 {
 private:
-    bool store;
-    CSignatureCache& signatureCache;
+    const CSignatureCache& signatureCache;
+    SignatureCacheResults& cacheEntries;
+
 public:
-    CachingTransactionSignatureChecker(CSignatureCache& signatureCacheIn, const CTransaction* txToIn, unsigned int nInIn, const CAmount& amount, bool storeIn) : TransactionSignatureChecker(txToIn, nInIn, amount), store(storeIn), signatureCache(signatureCacheIn) {}
+    CachingTransactionSignatureChecker(const CSignatureCache& signatureCacheIn, const CTransaction* txToIn, unsigned int nInIn, const CAmount& amount, SignatureCacheResults& cacheEntriesIn) : TransactionSignatureChecker(txToIn, nInIn, amount), signatureCache(signatureCacheIn), cacheEntries(cacheEntriesIn) {}
 
     bool VerifySignature(const std::vector<unsigned char>& vchSig, const CPubKey& vchPubKey, const uint256& sighash) const;
 };

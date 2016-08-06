@@ -10,6 +10,7 @@
 #include "random.h"
 #include "uint256.h"
 #include "util.h"
+#include "scriptcheck.h"
 
 size_t CSignatureCacheHasher::operator()(const uint256& key) const {
     return key.GetCheapHash();
@@ -27,13 +28,11 @@ void CSignatureCache::ComputeEntry(uint256& entry, const uint256 &hash, const st
 
 bool CSignatureCache::Get(const uint256& entry) const
 {
-    boost::shared_lock<boost::shared_mutex> lock(cs_sigcache);
     return setValid.count(entry);
 }
 
 void CSignatureCache::Erase(const uint256& entry)
 {
-    boost::unique_lock<boost::shared_mutex> lock(cs_sigcache);
     setValid.erase(entry);
 }
 
@@ -42,7 +41,6 @@ void CSignatureCache::Set(const uint256& entry)
     size_t nMaxCacheSize = GetArg("-maxsigcachesize", DEFAULT_MAX_SIG_CACHE_SIZE) * ((size_t) 1 << 20);
     if (nMaxCacheSize <= 0) return;
 
-    boost::unique_lock<boost::shared_mutex> lock(cs_sigcache);
     while (memusage::DynamicUsage(setValid) > nMaxCacheSize)
     {
         map_type::size_type s = GetRand(setValid.bucket_count());
@@ -61,17 +59,14 @@ bool CachingTransactionSignatureChecker::VerifySignature(const std::vector<unsig
     signatureCache.ComputeEntry(entry, sighash, vchSig, pubkey);
 
     if (signatureCache.Get(entry)) {
-        if (!store) {
-            signatureCache.Erase(entry);
-        }
+        cacheEntries.hits.push_back(entry);
         return true;
     }
 
     if (!TransactionSignatureChecker::VerifySignature(vchSig, pubkey, sighash))
         return false;
 
-    if (store) {
-        signatureCache.Set(entry);
-    }
+    cacheEntries.misses.push_back(entry);
+
     return true;
 }

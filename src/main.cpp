@@ -37,6 +37,7 @@
 #include "utilstrencodings.h"
 #include "validationinterface.h"
 #include "versionbits.h"
+#include "scriptcheck.h"
 
 #include <atomic>
 #include <sstream>
@@ -85,6 +86,8 @@ bool fEnableReplacement = DEFAULT_ENABLE_REPLACEMENT;
 
 CFeeRate minRelayTxFee = CFeeRate(DEFAULT_MIN_RELAY_TX_FEE);
 CAmount maxTxFee = DEFAULT_TRANSACTION_MAXFEE;
+
+CScriptCheckList<18> sigcache_check_list;
 
 CTxMemPool mempool(::minRelayTxFee);
 FeeFilterRounder filterRounder(::minRelayTxFee);
@@ -1915,7 +1918,7 @@ void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, int nHeight)
 bool CScriptCheck::operator()() {
     const CScript &scriptSig = ptxTo->vin[nIn].scriptSig;
     const CScriptWitness *witness = (nIn < ptxTo->wit.vtxinwit.size()) ? &ptxTo->wit.vtxinwit[nIn].scriptWitness : NULL;
-    if (!VerifyScript(scriptSig, scriptPubKey, witness, nFlags, CachingTransactionSignatureChecker(signatureCache, ptxTo, nIn, amount, cacheStore), &error)) {
+    if (!VerifyScript(scriptSig, scriptPubKey, witness, nFlags, CachingTransactionSignatureChecker(signatureCache, ptxTo, nIn, amount, sigcache_check_list.get()), &error)) {
         return false;
     }
     return true;
@@ -1995,13 +1998,15 @@ bool CheckInputs(const CTransaction& tx, CValidationState &state, const CCoinsVi
         // the checkpoint is for a chain that's invalid due to false scriptSigs
         // this optimisation would allow an invalid chain to be accepted.
         if (fScriptChecks) {
+            sigcache_check_list.get_misses().clear();
+            sigcache_check_list.get_hits().clear();
             for (unsigned int i = 0; i < tx.vin.size(); i++) {
                 const COutPoint &prevout = tx.vin[i].prevout;
                 const CCoins* coins = inputs.AccessCoins(prevout.hash);
                 assert(coins);
 
                 // Verify signature
-                CScriptCheck check(*coins, tx, i, flags, cacheStore);
+                CScriptCheck check(*coins, tx, i, flags);
                 if (pvChecks) {
                     pvChecks->push_back(CScriptCheck());
                     check.swap(pvChecks->back());
@@ -2014,7 +2019,7 @@ bool CheckInputs(const CTransaction& tx, CValidationState &state, const CCoinsVi
                         // avoid splitting the network between upgraded and
                         // non-upgraded nodes.
                         CScriptCheck check2(*coins, tx, i,
-                                flags & ~STANDARD_NOT_MANDATORY_VERIFY_FLAGS, cacheStore);
+                                flags & ~STANDARD_NOT_MANDATORY_VERIFY_FLAGS);
                         if (check2())
                             return state.Invalid(false, REJECT_NONSTANDARD, strprintf("non-mandatory-script-verify-flag (%s)", ScriptErrorString(check.GetScriptError())));
                     }
@@ -2027,6 +2032,16 @@ bool CheckInputs(const CTransaction& tx, CValidationState &state, const CCoinsVi
                     // super-majority signaling has occurred.
                     return state.DoS(100,false, REJECT_INVALID, strprintf("mandatory-script-verify-flag-failed (%s)", ScriptErrorString(check.GetScriptError())));
                 }
+            }
+            if (!cacheStore) {
+                auto misses = sigcache_check_list.get_misses();
+                for (const auto& i : misses)
+                     signatureCache.Set(i);
+                return true;
+            } else {
+                auto hits = sigcache_check_list.get_hits();
+                for (const auto& i : hits)
+                    signatureCache.Erase(i);
             }
         }
     }
@@ -2295,6 +2310,7 @@ static int64_t nTimeConnect = 0;
 static int64_t nTimeIndex = 0;
 static int64_t nTimeCallbacks = 0;
 static int64_t nTimeTotal = 0;
+static int64_t nTotalInputs = 0;
 
 bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pindex,
                   CCoinsViewCache& view, const CChainParams& chainparams, bool fJustCheck)
@@ -2463,11 +2479,14 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             nFees += view.GetValueIn(tx)-tx.GetValueOut();
 
             std::vector<CScriptCheck> vChecks;
+            sigcache_check_list.get_misses().clear();
+            sigcache_check_list.get_hits().clear();
             bool fCacheResults = fJustCheck; /* Don't cache results if we're actually connecting blocks (still consult the cache, though) */
             if (!CheckInputs(tx, state, view, fScriptChecks, flags, fCacheResults, nScriptCheckThreads ? &vChecks : NULL))
                 return error("ConnectBlock(): CheckInputs on %s failed with %s",
                     tx.GetHash().ToString(), FormatStateMessage(state));
-            control.Add(vChecks);
+            if(vChecks.size())
+                control.Add(vChecks);
         }
 
         CTxUndo undoDummy;
@@ -2492,10 +2511,21 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     if (!control.Wait())
         return state.DoS(100, false);
     int64_t nTime4 = GetTimeMicros(); nTimeVerify += nTime4 - nTime2;
-    LogPrint("bench", "    - Verify %u txins: %.2fms (%.3fms/txin) [%.2fs]\n", nInputs - 1, 0.001 * (nTime4 - nTime2), nInputs <= 1 ? 0 : 0.001 * (nTime4 - nTime2) / (nInputs-1), nTimeVerify * 0.000001);
+    nTotalInputs += std::max(0, nInputs - 1);
 
-    if (fJustCheck)
+
+    if (fJustCheck) {
+        auto misses = sigcache_check_list.get_misses();
+        for (const auto& i : misses)
+             signatureCache.Set(i);
         return true;
+    } else {
+        auto hits = sigcache_check_list.get_hits();
+        for (const auto& i : hits)
+            signatureCache.Erase(i);
+    }
+
+    LogPrint("bench", "    - Verify %u txins: %.2fms (%.3fms/txin) [%.2fs] [%.3fs]\n", nInputs - 1, 0.001 * (nTime4 - nTime2), nInputs <= 1 ? 0 : 0.001 * (nTime4 - nTime2) / (nInputs-1), nTimeVerify * 0.000001, 0.001 * (nTimeVerify / (nTotalInputs == 0 ? 1 : nTotalInputs)));
 
     // Write undo information to disk
     if (pindex->GetUndoPos().IsNull() || !pindex->IsValid(BLOCK_VALID_SCRIPTS))
