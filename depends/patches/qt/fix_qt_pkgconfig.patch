@@ -1,5 +1,5 @@
---- old/qtbase/mkspecs/features/qt_module.prf 2016-03-17 02:06:42.705930685 +0000
-+++ new/qtbase/mkspecs/features/qt_module.prf 2016-03-17 02:06:42.705930685 +0000
+--- old/mkspecs/features/qt_module.prf 2016-03-17 02:06:42.705930685 +0000
++++ new/mkspecs/features/qt_module.prf 2016-03-17 02:06:42.705930685 +0000
 @@ -244,7 +244,7 @@
  load(qt_targets)
  
