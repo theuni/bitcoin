@@ -6,6 +6,7 @@
 
 #include "test_bitcoin.h"
 
+#include "backgroundsolver.h"
 #include "chainparams.h"
 #include "consensus/consensus.h"
 #include "consensus/validation.h"
@@ -26,8 +27,11 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/thread.hpp>
 
+#include <thread>
+
 extern bool fPrintToConsole;
 extern void noui_connect();
+static std::thread solver_thread;
 
 BasicTestingSetup::BasicTestingSetup(const std::string& chainName)
 {
@@ -56,6 +60,7 @@ TestingSetup::TestingSetup(const std::string& chainName) : BasicTestingSetup(cha
         boost::filesystem::create_directories(pathTemp);
         mapArgs["-datadir"] = pathTemp.string();
         mempool.setSanityCheck(1.0);
+        solver_thread = std::thread(&CBackgroundSolver::Thread, &backgroundSolver);
         pblocktree = new CBlockTreeDB(1 << 20, true);
         pcoinsdbview = new CCoinsViewDB(1 << 23, true);
         pcoinsTip = new CCoinsViewCache(pcoinsdbview);
@@ -74,7 +79,9 @@ TestingSetup::TestingSetup(const std::string& chainName) : BasicTestingSetup(cha
 TestingSetup::~TestingSetup()
 {
         UnregisterNodeSignals(GetNodeSignals());
+        backgroundSolver.Interrupt();
         threadGroup.interrupt_all();
+        solver_thread.join();
         threadGroup.join_all();
         UnloadBlockIndex();
         delete pcoinsTip;

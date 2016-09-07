@@ -37,6 +37,7 @@
 #include "utilstrencodings.h"
 #include "validationinterface.h"
 #include "versionbits.h"
+#include "backgroundsolver.h"
 
 #include <atomic>
 #include <sstream>
@@ -80,7 +81,7 @@ size_t nCoinCacheUsage = 5000 * 300;
 uint64_t nPruneTarget = 0;
 int64_t nMaxTipAge = DEFAULT_MAX_TIP_AGE;
 bool fEnableReplacement = DEFAULT_ENABLE_REPLACEMENT;
-
+CBackgroundSolver backgroundSolver;
 
 CFeeRate minRelayTxFee = CFeeRate(DEFAULT_MIN_RELAY_TX_FEE);
 CAmount maxTxFee = DEFAULT_TRANSACTION_MAXFEE;
@@ -1117,6 +1118,20 @@ std::string FormatStateMessage(const CValidationState &state)
         state.GetRejectCode());
 }
 
+class CBackgroundPrecompute
+{
+public:
+    CBackgroundPrecompute(PrecomputedTransactionData& data, const CTransaction& tx) : m_data(data), m_tx(tx){}
+
+    void operator()()
+    {
+        m_data = PrecomputedTransactionData(m_tx);
+    }
+private:
+    PrecomputedTransactionData& m_data;
+    const CTransaction& m_tx;
+};
+
 bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState& state, const CTransaction& tx, bool fLimitFree,
                               bool* pfMissingInputs, bool fOverrideMempoolLimit, const CAmount& nAbsurdFee,
                               std::vector<uint256>& vHashTxnToUncache)
@@ -1496,7 +1511,10 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState& state, const C
 
         // Check against previous transactions
         // This is done last to help prevent CPU exhaustion denial-of-service attacks.
-        PrecomputedTransactionData txdata(tx);
+        PrecomputedTransactionData txdata;
+        std::future<void> precomp_fut = backgroundSolver.Add(CBackgroundPrecompute(txdata, tx));
+        precomp_fut.wait();
+
         if (!CheckInputs(tx, state, view, true, scriptVerifyFlags, true, txdata)) {
             // SCRIPT_VERIFY_CLEANSTACK requires SCRIPT_VERIFY_WITNESS, so we
             // need to turn both off, and compare against just turning off CLEANSTACK

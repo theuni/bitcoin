@@ -11,6 +11,7 @@
 
 #include "addrman.h"
 #include "amount.h"
+#include "backgroundsolver.h"
 #include "chain.h"
 #include "chainparams.h"
 #include "checkpoints.h"
@@ -42,6 +43,7 @@
 #endif
 #include <stdint.h>
 #include <stdio.h>
+#include <thread>
 
 #ifndef WIN32
 #include <signal.h>
@@ -163,6 +165,7 @@ public:
 static CCoinsViewDB *pcoinsdbview = NULL;
 static CCoinsViewErrorCatcher *pcoinscatcher = NULL;
 static std::unique_ptr<ECCVerifyHandle> globalVerifyHandle;
+static std::thread solver_thread;
 
 void Interrupt(boost::thread_group& threadGroup)
 {
@@ -172,6 +175,7 @@ void Interrupt(boost::thread_group& threadGroup)
     InterruptREST();
     InterruptTorControl();
     threadGroup.interrupt_all();
+    backgroundSolver.Interrupt();
 }
 
 void Shutdown()
@@ -198,6 +202,7 @@ void Shutdown()
         pwalletMain->Flush(false);
 #endif
     StopNode();
+    solver_thread.join();
     StopTorControl();
     UnregisterNodeSignals(GetNodeSignals());
 
@@ -1067,6 +1072,8 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     LogPrintf("Using data directory %s\n", strDataDir);
     LogPrintf("Using config file %s\n", GetConfigFile().string());
     LogPrintf("Using at most %i connections (%i file descriptors available)\n", nMaxConnections, nFD);
+
+    solver_thread = std::thread(&CBackgroundSolver::Thread, &backgroundSolver);
 
     LogPrintf("Using %u threads for script verification\n", nScriptCheckThreads);
     if (nScriptCheckThreads) {

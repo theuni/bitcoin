@@ -103,6 +103,7 @@ struct PrecomputedTransactionData
     uint256 hashPrevouts, hashSequence, hashOutputs;
 
     PrecomputedTransactionData(const CTransaction& tx);
+    PrecomputedTransactionData() = default;
 };
 
 enum SigVersion
