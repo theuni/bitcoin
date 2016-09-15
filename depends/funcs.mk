@@ -25,7 +25,7 @@ define fetch_file_inner
     echo "$(5)  $$($(1)_download_dir)/$(4).temp" > $$($(1)_download_dir)/.$(4).hash && \
     $(build_SHA256SUM) -c $$($(1)_download_dir)/.$(4).hash && \
     mv $$($(1)_download_dir)/$(4).temp $$($(1)_source_dir)/$(4) && \
-    rm -rf $$($(1)_download_dir) )
+    echo rm -rf $$($(1)_download_dir) )
 endef
 
 define fetch_file
@@ -39,9 +39,11 @@ $(eval $(1)_all_file_checksums:=$(shell $(build_SHA256SUM) $(meta_depends) packa
 $(eval $(1)_recipe_hash:=$(shell echo -n "$($(1)_all_file_checksums)" | $(build_SHA256SUM) | cut -d" " -f1))
 endef
 
+
 define int_get_build_id
-$(eval $(1)_dependencies += $($(1)_$(host_arch)_$(host_os)_dependencies) $($(1)_$(host_os)_dependencies))
-$(eval $(1)_all_dependencies:=$(call int_get_all_dependencies,$(1),$($($(1)_type)_native_toolchain) $($(1)_dependencies)))
+$(eval $(1)_dependencies += $($(1)_$($($(1)_type)_arch)_$($($(1)_type)_os)_dependencies) $($(1)_$($($(1)_type)_os)_dependencies) $($(1)_toolchain_dependencies) )
+$(eval $(1)_all_dependencies:=$(call int_get_all_dependencies,$(1),$($(1)_dependencies)))
+$(eval $(1)_listed_dependencies:= $($(1)_dependencies))
 $(foreach dep,$($(1)_all_dependencies),$(eval $(1)_build_id_deps+=$(dep)-$($(dep)_version)-$($(dep)_recipe_hash)))
 $(eval $(1)_build_id_long:=$(1)-$($(1)_version)-$($(1)_recipe_hash)-$(release_type) $($(1)_build_id_deps) $($($(1)_type)_id_string))
 $(eval $(1)_build_id:=$(shell echo -n "$($(1)_build_id_long)" | $(build_SHA256SUM) | cut -c-$(HASH_LENGTH)))
@@ -52,15 +54,16 @@ $(1)_build_subdir?=.
 $(1)_download_file?=$($(1)_file_name)
 $(1)_source_dir:=$(SOURCES_PATH)
 $(1)_source:=$$($(1)_source_dir)/$($(1)_file_name)
-$(1)_staging_dir=$(base_staging_dir)/$(host)/$(1)/$($(1)_version)-$($(1)_build_id)
-$(1)_staging_prefix_dir:=$$($(1)_staging_dir)$($($(1)_type)_prefix)
-$(1)_extract_dir:=$(base_build_dir)/$(host)/$(1)/$($(1)_version)-$($(1)_build_id)
-$(1)_download_dir:=$(base_download_dir)/$(1)-$($(1)_version)
+$(1)_staging_dir:=$($($(1)_type)_work_dir)/staging/$(1)/$($(1)_version)-$($(1)_build_id)
+$(1)_staging_prefix_dir:=$$($($(1)_type)_work_dir)/staging/$(1)/$($(1)_version)-$($(1)_build_id)/$($($(1)_type)_prefix)
+$(1)_extract_dir:=$$($($(1)_type)_work_dir)/build/$(1)/$($(1)_version)-$($(1)_build_id)
+$(1)_download_dir:=$$($($(1)_type)_work_dir)/download/$(1)-$($(1)_version)
 $(1)_build_dir:=$$($(1)_extract_dir)/$$($(1)_build_subdir)
-$(1)_cached_checksum:=$(BASE_CACHE)/$(host)/$(1)/$(1)-$($(1)_version)-$($(1)_build_id).tar.gz.hash
-$(1)_patch_dir:=$(base_build_dir)/$(host)/$(1)/$($(1)_version)-$($(1)_build_id)/.patches-$($(1)_build_id)
+$(1)_cached_checksum:=$(BASE_CACHE)/$($($(1)_type)_storage_type)/$(1)/$(1)-$($(1)_version)-$($(1)_build_id).tar.gz.hash
+$(1)_patch_dir:=$$($($(1)_type)_work_dir)/build/$(1)/$($(1)_version)-$($(1)_build_id)/.patches-$($(1)_build_id)
+$(1)_prefix:=$($($(1)_type)_prefix)
 $(1)_prefixbin:=$($($(1)_type)_prefix)/bin/
-$(1)_cached:=$(BASE_CACHE)/$(host)/$(1)/$(1)-$($(1)_version)-$($(1)_build_id).tar.gz
+$(1)_cached:=$(BASE_CACHE)/$($($(1)_type)_storage_type)/$(1)/$(1)-$($(1)_version)-$($(1)_build_id).tar.gz
 $(1)_all_sources=$($(1)_file_name) $($(1)_extra_sources)
 
 #stamps
@@ -129,9 +132,9 @@ $(1)_config_env+=$($(1)_config_env_$(host_arch)_$(host_os)) $($(1)_config_env_$(
 
 $(1)_config_env+=PKG_CONFIG_LIBDIR=$($($(1)_type)_prefix)/lib/pkgconfig
 $(1)_config_env+=PKG_CONFIG_PATH=$($($(1)_type)_prefix)/share/pkgconfig
-$(1)_config_env+=PATH=$(build_prefix)/bin:$(PATH)
-$(1)_build_env+=PATH=$(build_prefix)/bin:$(PATH)
-$(1)_stage_env+=PATH=$(build_prefix)/bin:$(PATH)
+$(1)_config_env+=PATH=$(build_prefix)/$(host)/bin:$(build_prefix)/bin:$(PATH)
+$(1)_build_env+=PATH=$(build_prefix)/$(host)/bin:$(build_prefix)/bin:$(PATH)
+$(1)_stage_env+=PATH=$(build_prefix)/$(host)/bin:$(build_prefix)/bin:$(PATH)
 $(1)_autoconf=./configure --host=$($($(1)_type)_host) --disable-dependency-tracking --prefix=$($($(1)_type)_prefix) $$($(1)_config_opts) CC="$$($(1)_cc)" CXX="$$($(1)_cxx)"
 
 ifneq ($($(1)_nm),)
@@ -178,7 +181,7 @@ $($(1)_preprocessed): | $($(1)_dependencies) $($(1)_extracted)
 	$(AT)touch $$@
 $($(1)_configured): | $($(1)_preprocessed)
 	$(AT)echo Configuring $(1)...
-	$(AT)rm -rf $(host_prefix); mkdir -p $(host_prefix)/lib; cd $(host_prefix); $(foreach package,$($(1)_all_dependencies), tar xf $($(package)_cached); )
+	$(AT)rm -rf $($(1)_prefix); mkdir -p $($(1)_prefix)/lib; cd $($(1)_prefix); $(foreach package,$($(1)_listed_dependencies) $($(1)_toolchain_dependencies), tar xf $($(package)_cached); )
 	$(AT)mkdir -p $$(@D)
 	$(AT)+cd $$(@D); $($(1)_config_env) $(call $(1)_config_cmds, $(1))
 	$(AT)touch $$@
@@ -189,7 +192,7 @@ $($(1)_built): | $($(1)_configured)
 	$(AT)touch $$@
 $($(1)_staged): | $($(1)_built)
 	$(AT)echo Staging $(1)...
-	$(AT)mkdir -p $($(1)_staging_dir)/$(host_prefix)
+	$(AT)mkdir -p $($(1)_staging_prefix_dir)
 	$(AT)cd $($(1)_build_dir); $($(1)_stage_env) $(call $(1)_stage_cmds, $(1))
 	$(AT)rm -rf $($(1)_extract_dir)
 	$(AT)touch $$@
@@ -199,7 +202,7 @@ $($(1)_postprocessed): | $($(1)_staged)
 	$(AT)touch $$@
 $($(1)_cached): | $($(1)_dependencies) $($(1)_postprocessed)
 	$(AT)echo Caching $(1)...
-	$(AT)cd $$($(1)_staging_dir)/$(host_prefix); find . | sort | tar --no-recursion -czf $$($(1)_staging_dir)/$$(@F) -T -
+	$(AT)cd $($(1)_staging_prefix_dir); find . | sort | tar --no-recursion -czf $$($(1)_staging_dir)/$$(@F) -T -
 	$(AT)mkdir -p $$(@D)
 	$(AT)rm -rf $$(@D) && mkdir -p $$(@D)
 	$(AT)mv $$($(1)_staging_dir)/$$(@F) $$(@)
@@ -221,7 +224,12 @@ endef
 
 #set the type for host/build packages.
 $(foreach native_package,$(native_packages),$(eval $(native_package)_type=build))
+#$(foreach native_package,$(native_packages),$(eval $(native_package)_toolchain_dependencies=$($(build_arch)_$(build_os)_build_toolchain)))
+$(foreach native_package,$(native_packages),$(eval $(native_package)_toolchain_dependencies=$(build_toolchain_packages)))
 $(foreach package,$(packages),$(eval $(package)_type=$(host_arch)_$(host_os)))
+$(foreach package,$(packages),$(eval $(package)_toolchain_dependencies=$(host_toolchain_packages) $(build_toolchain_packages)))
+$(foreach host_toolchain_package,$(host_toolchain),$(eval $(host_toolchain_package)_type=host_toolchain))
+$(foreach build_toolchain_package,$($(build_arch)_$(build_os)_build_toolchain),$(eval $(build_toolchain_package)_type=build_toolchain))
 
 #set overridable defaults
 $(foreach package,$(all_packages),$(eval $(call int_vars,$(package))))
@@ -241,5 +249,5 @@ $(foreach package,$(all_packages),$(eval $(call int_config_attach_build_config,$
 #create build targets
 $(foreach package,$(all_packages),$(eval $(call int_add_cmds,$(package))))
 
-#special exception: if a toolchain package exists, all non-native packages depend on it
-$(foreach package,$(packages),$(eval $($(package)_unpacked): |$($($(host_arch)_$(host_os)_native_toolchain)_cached) ))
+#special exception: if toolchain packages exist, all non-native packages depend on them
+$(foreach package,$(packages),$(eval $($(package)_unpacked))): | $(foreach package,$($(host_arch)_$(host_os)_native_toolchain),$(eval $($(package)_cached)))

@@ -1,5 +1,4 @@
 .NOTPARALLEL :
-
 SOURCES_PATH ?= $(BASEDIR)/sources
 BASE_CACHE ?= $(BASEDIR)/built
 SDK_PATH ?= $(BASEDIR)/SDKs
@@ -21,7 +20,6 @@ BUILD_ID_SALT ?= salt
 host:=$(BUILD)
 ifneq ($(HOST),)
 host:=$(HOST)
-host_toolchain:=$(HOST)-
 endif
 
 ifneq ($(DEBUG),)
@@ -57,11 +55,30 @@ ifeq ($(host_os),)
 host_os=$(full_host_os)
 endif
 
-$(host_arch)_$(host_os)_prefix=$(BASEDIR)/$(host)
+$(host_arch)_$(host_os)_prefix=$(BASEDIR)/host/$(host)
 $(host_arch)_$(host_os)_host=$(host)
 host_prefix=$($(host_arch)_$(host_os)_prefix)
-build_prefix=$(host_prefix)/native
+build_prefix=$(BASEDIR)/host/$(host)/native
+build_toolchain_prefix=$(BASEDIR)/build_toolchain
+host_toolchain_prefix=$(BASEDIR)/host_toolchain/$(host)
+old_build_toolchain_prefix=$(BASEDIR)/build_toolchain/old
 build_host=$(build)
+build_toolchain_os=$(build_os)
+build_toolchain_arch=$(build_os)
+host_toolchain_os=$(host_os)
+host_toolchain_arch=$(host_arch)
+$(host_arch)_$(host_os)_arch=$(host_arch)
+$(host_arch)_$(host_os)_os=$(host_os)
+
+build_toolchain_storage_type=build/$(build)
+build_storage_type=build/$(build)/host/$(host)
+host_toolchain_storage_type=build/$(build)/host/$(host)
+$(host_arch)_$(host_os)_storage_type=build/$(build)/host/$(host)
+
+build_work_dir=$(BASEDIR)/work/$(build)
+build_toolchain_work_dir=$(BASEDIR)/work/$(build)
+host_toolchain_work_dir=$(BASEDIR)/work/$(host)
+$(host_arch)_$(host_os)_work_dir=$(BASEDIR)/work/$(host)
 
 AT_$(V):=
 AT_:=@
@@ -100,18 +117,29 @@ ifneq ($(qt_packages_),)
 native_packages += $(qt_native_packages)
 endif
 
-all_packages = $(packages) $(native_packages)
 
-meta_depends = Makefile funcs.mk builders/default.mk hosts/default.mk hosts/$(host_os).mk builders/$(build_os).mk
+meta_depends = builders/default.mk hosts/default.mk hosts/$(host_os).mk builders/$(build_os).mk
 
-$(host_arch)_$(host_os)_native_toolchain?=$($(host_os)_native_toolchain)
+$(build_arch)_$(build_os)_build_toolchain?=$($(build_os)_build_toolchain)
+$(build_arch)_$(build_os)_build_toolchain?=$(build_toolchain)
 
+#$(host_arch)_$(host_os)_host_toolchain?=$($(host_os)_host_toolchain)
+#$(host_arch)_$(host_os)_host_toolchain?=$(host_toolchain)
+host_toolchain = $($(host_os)_host_toolchain) $($(host_arch)_$(host_os)_host_toolchain)
+
+
+$($(host_arch)_$(host_os)_host_toolchain): $($(build_arch)_$(build_os)_build_toolchain)
+$(native_packages): $($(build_arch)_$(build_os)_build_toolchain)
+$(packages): $($(host_arch)_$(host_os)_host_toolchain)
+$(host_toolchain) : $(build_toolchain_packages)
+$(native_packages) : $(build_toolchain_packages)
+$(packages) : $(host_toolchain_packages)
+all_packages = $(packages) $(native_packages) $(host_toolchain) $($(build_arch)_$(build_os)_build_toolchain)
 include funcs.mk
 
-toolchain_path=$($($(host_arch)_$(host_os)_native_toolchain)_prefixbin)
 final_build_id_long+=$(shell $(build_SHA256SUM) config.site.in)
 final_build_id+=$(shell echo -n "$(final_build_id_long)" | $(build_SHA256SUM) | cut -c-$(HASH_LENGTH))
-$(host_prefix)/.stamp_$(final_build_id): $(native_packages) $(packages)
+$(host_prefix)/.stamp_$(final_build_id): $(host_toolchain_packages) $(host_toolchain_packages) $(native_packages) $(packages)
 	$(AT)rm -rf $(@D)
 	$(AT)mkdir -p $(@D)
 	$(AT)echo copying packages: $^
@@ -122,12 +150,12 @@ $(host_prefix)/.stamp_$(final_build_id): $(native_packages) $(packages)
 $(host_prefix)/share/config.site : config.site.in $(host_prefix)/.stamp_$(final_build_id)
 	$(AT)@mkdir -p $(@D)
 	$(AT)sed -e 's|@HOST@|$(host)|' \
-            -e 's|@CC@|$(toolchain_path)$(host_CC)|' \
-            -e 's|@CXX@|$(toolchain_path)$(host_CXX)|' \
-            -e 's|@AR@|$(toolchain_path)$(host_AR)|' \
-            -e 's|@RANLIB@|$(toolchain_path)$(host_RANLIB)|' \
-            -e 's|@NM@|$(toolchain_path)$(host_NM)|' \
-            -e 's|@STRIP@|$(toolchain_path)$(host_STRIP)|' \
+            -e 's|@CC@|$(host_CC)|' \
+            -e 's|@CXX@|$(host_CXX)|' \
+            -e 's|@AR@|$(host_AR)|' \
+            -e 's|@RANLIB@|$(host_RANLIB)|' \
+            -e 's|@NM@|$(host_NM)|' \
+            -e 's|@STRIP@|$(host_STRIP)|' \
             -e 's|@build_os@|$(build_os)|' \
             -e 's|@host_os@|$(host_os)|' \
             -e 's|@CFLAGS@|$(strip $(host_CFLAGS) $(host_$(release_type)_CFLAGS))|' \
@@ -143,7 +171,7 @@ $(host_prefix)/share/config.site : config.site.in $(host_prefix)/.stamp_$(final_
 
 
 define check_or_remove_cached
-  mkdir -p $(BASE_CACHE)/$(host)/$(package) && cd $(BASE_CACHE)/$(host)/$(package); \
+  mkdir -p $(BASE_CACHE)/$($($(package)_type)_storage_type)/$(package) && cd $(BASE_CACHE)/$($($(1)_type)_storage_type)/$(package); \
   $(build_SHA256SUM) -c $($(package)_cached_checksum) >/dev/null 2>/dev/null || \
   ( rm -f $($(package)_cached_checksum); \
     if test -f "$($(package)_cached)"; then echo "Checksum mismatch for $(package). Forcing rebuild.."; rm -f $($(package)_cached_checksum) $($(package)_cached); fi )
