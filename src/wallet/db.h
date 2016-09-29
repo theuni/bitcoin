@@ -18,7 +18,15 @@
 
 #include <boost/filesystem/path.hpp>
 
-#include <db_cxx.h>
+#if defined(HAVE_CONFIG_H)
+#include "config/bitcoin-config.h"
+#endif
+#ifdef BDB_PATH
+#define BDB_CXX_H <BDB_PATH/db_cxx.h>
+#else
+#define BDB_CXX_H <db_cxx.h>
+#endif
+#include BDB_CXX_H
 
 static const unsigned int DEFAULT_WALLET_DBLOGSIZE = 100;
 static const bool DEFAULT_WALLET_PRIVDB = true;

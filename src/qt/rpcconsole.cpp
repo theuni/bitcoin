@@ -26,7 +26,12 @@
 #include <univalue.h>
 
 #ifdef ENABLE_WALLET
-#include <db_cxx.h>
+#ifdef BDB_PATH
+#define BDB_CXX_H <BDB_PATH/db_cxx.h>
+#else
+#define BDB_CXX_H <db_cxx.h>
+#endif
+#include BDB_CXX_H
 #endif
 
 #include <QKeyEvent>
