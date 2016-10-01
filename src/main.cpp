@@ -3054,8 +3054,6 @@ bool ActivateBestChain(CValidationState &state, const CChainParams& chainparams,
         // When we reach this point, we switched to a new tip (stored in pindexNewTip).
 
         // Notifications/callbacks that can run without cs_main
-        if(connman)
-            connman->SetBestHeight(nNewHeight);
 
         // throw all transactions though the signal-interface
         // while _not_ holding the cs_main lock
@@ -3067,12 +3065,12 @@ bool ActivateBestChain(CValidationState &state, const CChainParams& chainparams,
         for(unsigned int i = 0; i < txChanged.size(); i++)
             SyncWithWallets(std::get<0>(txChanged[i]), std::get<1>(txChanged[i]), std::get<2>(txChanged[i]));
 
+        // Notify external listeners about the new tip.
+        GetMainSignals().UpdatedBlockTip(pindexNewTip, pindexFork, fInitialDownload);
+
         // Always notify the UI if a new block tip was connected
         if (pindexFork != pindexNewTip) {
             uiInterface.NotifyBlockTip(fInitialDownload, pindexNewTip);
-
-            // Notify external listeners about the new tip.
-            GetMainSignals().UpdatedBlockTip(pindexNewTip, pindexFork, fInitialDownload);
         }
     } while (pindexNewTip != pindexMostWork);
     CheckBlockIndex(chainparams.GetConsensus());
@@ -4670,6 +4668,7 @@ public:
 
     virtual void UpdatedBlockTip(const CBlockIndex *pindexNew, const CBlockIndex *pindexFork, bool fInitialDownload) {
         const int nNewHeight = pindexNew->nHeight;
+        connman->SetBestHeight(nNewHeight);
 
         if (!fInitialDownload) {
             // Find the hashes of all blocks that weren't previously in the best chain.
