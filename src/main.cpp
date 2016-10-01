@@ -3028,7 +3028,6 @@ bool ActivateBestChain(CValidationState &state, const CChainParams& chainparams,
         const CBlockIndex *pindexFork;
         std::list<CTransaction> txConflicted;
         bool fInitialDownload;
-        int nNewHeight;
         {
             LOCK(cs_main);
             CBlockIndex *pindexOldTip = chainActive.Tip();
@@ -3051,7 +3050,6 @@ bool ActivateBestChain(CValidationState &state, const CChainParams& chainparams,
             pindexNewTip = chainActive.Tip();
             pindexFork = chainActive.FindFork(pindexOldTip);
             fInitialDownload = IsInitialBlockDownload();
-            nNewHeight = chainActive.Height();
         }
         // When we reach this point, we switched to a new tip (stored in pindexNewTip).
 
@@ -3073,30 +3071,6 @@ bool ActivateBestChain(CValidationState &state, const CChainParams& chainparams,
         if (pindexFork != pindexNewTip) {
             uiInterface.NotifyBlockTip(fInitialDownload, pindexNewTip);
 
-            if (!fInitialDownload) {
-                // Find the hashes of all blocks that weren't previously in the best chain.
-                std::vector<uint256> vHashes;
-                CBlockIndex *pindexToAnnounce = pindexNewTip;
-                while (pindexToAnnounce != pindexFork) {
-                    vHashes.push_back(pindexToAnnounce->GetBlockHash());
-                    pindexToAnnounce = pindexToAnnounce->pprev;
-                    if (vHashes.size() == MAX_BLOCKS_TO_ANNOUNCE) {
-                        // Limit announcements in case of a huge reorganization.
-                        // Rely on the peer's synchronization mechanism in that case.
-                        break;
-                    }
-                }
-                // Relay inventory, but don't relay old inventory during initial block download.
-                if(connman) {
-                    connman->ForEachNode([nNewHeight, &vHashes](CNode* pnode) {
-                        if (nNewHeight > (pnode->nStartingHeight != -1 ? pnode->nStartingHeight - 2000 : 0)) {
-                            BOOST_REVERSE_FOREACH(const uint256& hash, vHashes) {
-                                pnode->PushBlockHash(hash);
-                            }
-                        }
-                    });
-                }
-            }
             // Notify external listeners about the new tip.
             GetMainSignals().UpdatedBlockTip(pindexNewTip, pindexFork, fInitialDownload);
         }
@@ -4680,6 +4654,62 @@ std::string GetWarnings(const std::string& strFor)
 
 
 
+
+
+//////////////////////////////////////////////////////////////////////////////
+//
+// blockchain -> download logic notification
+//
+
+class PeerLogicValidation : public CValidationInterface {
+private:
+    CConnman* connman;
+
+public:
+    PeerLogicValidation(CConnman* connmanIn) : connman(connmanIn) {}
+
+    virtual void UpdatedBlockTip(const CBlockIndex *pindexNew, const CBlockIndex *pindexFork, bool fInitialDownload) {
+        const int nNewHeight = pindexNew->nHeight;
+
+        if (!fInitialDownload) {
+            // Find the hashes of all blocks that weren't previously in the best chain.
+            std::vector<uint256> vHashes;
+            const CBlockIndex *pindexToAnnounce = pindexNew;
+            while (pindexToAnnounce != pindexFork) {
+                vHashes.push_back(pindexToAnnounce->GetBlockHash());
+                pindexToAnnounce = pindexToAnnounce->pprev;
+                if (vHashes.size() == MAX_BLOCKS_TO_ANNOUNCE) {
+                    // Limit announcements in case of a huge reorganization.
+                    // Rely on the peer's synchronization mechanism in that case.
+                    break;
+                }
+            }
+            // Relay inventory, but don't relay old inventory during initial block download.
+            connman->ForEachNode([nNewHeight, &vHashes](CNode* pnode) {
+                if (nNewHeight > (pnode->nStartingHeight != -1 ? pnode->nStartingHeight - 2000 : 0)) {
+                    BOOST_REVERSE_FOREACH(const uint256& hash, vHashes) {
+                        pnode->PushBlockHash(hash);
+                    }
+                }
+            });
+        }
+    }
+};
+std::map<CConnman*, std::unique_ptr<PeerLogicValidation> > mapPeerLogics;
+
+void InitPeerLogic(CConnman& connman) {
+    if (mapPeerLogics.count(&connman))
+        return;
+    mapPeerLogics.emplace(std::make_pair(&connman, std::unique_ptr<PeerLogicValidation>(new PeerLogicValidation(&connman))));
+    RegisterValidationInterface(mapPeerLogics[&connman].get());
+};
+
+void StopPeerLogic(CConnman& connman) {
+    if (!mapPeerLogics.count(&connman))
+        return;
+    UnregisterValidationInterface(mapPeerLogics[&connman].get());
+    mapPeerLogics.erase(&connman);
+};
 
 
 //////////////////////////////////////////////////////////////////////////////

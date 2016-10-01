@@ -200,6 +200,7 @@ void Shutdown()
         pwalletMain->Flush(false);
 #endif
     MapPort(false);
+    StopPeerLogic(*g_connman.get());
     g_connman.reset();
 
     StopTorControl();
@@ -1102,6 +1103,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     g_connman = std::unique_ptr<CConnman>(new CConnman(GetRand(std::numeric_limits<uint64_t>::max()), GetRand(std::numeric_limits<uint64_t>::max())));
     CConnman& connman = *g_connman;
 
+    InitPeerLogic(connman);
     RegisterNodeSignals(GetNodeSignals());
 
     // sanitize comments per BIP-0014, format user agent and check total size
