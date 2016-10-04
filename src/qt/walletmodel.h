@@ -113,6 +113,7 @@ public:
         DuplicateAddress,
         TransactionCreationFailed, // Error returned when wallet is still locked
         TransactionCommitFailed,
+        TransactionBroadcastFailed,
         AbsurdFee,
         PaymentRequestExpired
     };

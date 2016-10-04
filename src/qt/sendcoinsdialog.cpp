@@ -524,6 +524,10 @@ void SendCoinsDialog::processSendCoinsReturn(const WalletModel::SendCoinsReturn 
         msgParams.first = tr("The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
         msgParams.second = CClientUIInterface::MSG_ERROR;
         break;
+    case WalletModel::TransactionBroadcastFailed:
+        msgParams.first = tr("The transaction failed to broadcast.");
+        msgParams.second = CClientUIInterface::MSG_ERROR;
+        break;
     case WalletModel::AbsurdFee:
         msgParams.first = tr("A fee higher than %1 is considered an absurdly high fee.").arg(BitcoinUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(), maxTxFee));
         break;

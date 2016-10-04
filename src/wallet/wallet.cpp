@@ -1467,26 +1467,6 @@ void CWallet::ReacceptWalletTransactions()
     }
 }
 
-bool CWalletTx::RelayWalletTransaction(CConnman* connman)
-{
-    assert(pwallet->GetBroadcastTransactions());
-    if (!IsCoinBase())
-    {
-        if (GetDepthInMainChain() == 0 && !isAbandoned() && InMempool()) {
-            LogPrintf("Relaying wtx %s\n", GetHash().ToString());
-            if (connman) {
-                CInv inv(MSG_TX, GetHash());
-                connman->ForEachNode([&inv](CNode* pnode)
-                {
-                    pnode->PushInventory(inv);
-                });
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
 set<uint256> CWalletTx::GetConflicts() const
 {
     set<uint256> result;
@@ -1708,7 +1688,7 @@ bool CWalletTx::IsEquivalentTo(const CWalletTx& tx) const
         return CTransaction(tx1) == CTransaction(tx2);
 }
 
-std::vector<uint256> CWallet::ResendWalletTransactionsBefore(int64_t nTime, CConnman* connman)
+std::vector<uint256> CWallet::ResendWalletTransactionsBefore(int64_t nTime)
 {
     std::vector<uint256> result;
 
@@ -1726,13 +1706,13 @@ std::vector<uint256> CWallet::ResendWalletTransactionsBefore(int64_t nTime, CCon
     BOOST_FOREACH(PAIRTYPE(const unsigned int, CWalletTx*)& item, mapSorted)
     {
         CWalletTx& wtx = *item.second;
-        if (wtx.RelayWalletTransaction(connman))
+        if (wtx.GetDepthInMainChain() == 0 && !wtx.isAbandoned() && wtx.InMempool())
             result.push_back(wtx.GetHash());
     }
     return result;
 }
 
-void CWallet::ResendWalletTransactions(int64_t nBestBlockTime, CConnman* connman)
+void CWallet::ResendWalletTransactions(int64_t nBestBlockTime, std::vector<uint256>& vHashes)
 {
     // Do this infrequently and randomly to avoid giving away
     // that these are our transactions.
@@ -1750,9 +1730,7 @@ void CWallet::ResendWalletTransactions(int64_t nBestBlockTime, CConnman* connman
 
     // Rebroadcast unconfirmed txes older than 5 minutes before the last
     // block was found:
-    std::vector<uint256> relayed = ResendWalletTransactionsBefore(nBestBlockTime-5*60, connman);
-    if (!relayed.empty())
-        LogPrintf("%s: rebroadcast %u unconfirmed transactions\n", __func__, relayed.size());
+    vHashes = ResendWalletTransactionsBefore(nBestBlockTime-5*60);
 }
 
 /** @} */ // end of mapWallet
@@ -2474,7 +2452,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
 /**
  * Call after CreateTransaction unless you want to abort
  */
-bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, CConnman* connman)
+bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey)
 {
     {
         LOCK2(cs_main, cs_wallet);
@@ -2498,18 +2476,6 @@ bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, CCon
 
         // Track how many getdata requests our transaction gets
         mapRequestCount[wtxNew.GetHash()] = 0;
-
-        if (fBroadcastTransactions)
-        {
-            // Broadcast
-            if (!wtxNew.AcceptToMemoryPool(false, maxTxFee))
-            {
-                // This must not fail. The transaction has already been signed and recorded.
-                LogPrintf("CommitTransaction(): Error: Transaction not valid\n");
-                return false;
-            }
-            wtxNew.RelayWalletTransaction(connman);
-        }
     }
     return true;
 }

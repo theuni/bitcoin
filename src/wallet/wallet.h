@@ -403,8 +403,6 @@ public:
     int64_t GetTxTime() const;
     int GetRequestCount() const;
 
-    bool RelayWalletTransaction(CConnman* connman);
-
     std::set<uint256> GetConflicts() const;
 };
 
@@ -752,8 +750,8 @@ public:
     bool AddToWalletIfInvolvingMe(const CTransaction& tx, const CBlockIndex* pIndex, int posInBlock, bool fUpdate);
     int ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate = false);
     void ReacceptWalletTransactions();
-    void ResendWalletTransactions(int64_t nBestBlockTime, CConnman* connman);
-    std::vector<uint256> ResendWalletTransactionsBefore(int64_t nTime, CConnman* connman);
+    void ResendWalletTransactions(int64_t nBestBlockTime, std::vector<uint256>& vHashes);
+    std::vector<uint256> ResendWalletTransactionsBefore(int64_t nTime);
     CAmount GetBalance() const;
     CAmount GetUnconfirmedBalance() const;
     CAmount GetImmatureBalance() const;
@@ -774,7 +772,7 @@ public:
      */
     bool CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosInOut,
                            std::string& strFailReason, const CCoinControl *coinControl = NULL, bool sign = true);
-    bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, CConnman* connman);
+    bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey);
 
     void ListAccountCreditDebit(const std::string& strAccount, std::list<CAccountingEntry>& entries);
     bool AddAccountingEntry(const CAccountingEntry&);

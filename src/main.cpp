@@ -6457,7 +6457,19 @@ bool SendMessages(CNode* pto, CConnman& connman)
         // transactions become unconfirmed and spams other nodes.
         if (!fReindex && !fImporting && !IsInitialBlockDownload())
         {
-            GetMainSignals().Broadcast(nTimeBestReceived, &connman);
+            std::vector<uint256> vHashes;
+            std::vector<CInv> vInv;
+            GetMainSignals().Broadcast(nTimeBestReceived, vHashes);
+            vInv.reserve(vHashes.size());
+            for(const auto& hash : vHashes)
+                vInv.emplace_back(MSG_TX, hash);
+            if (!vInv.empty()) {
+                connman.ForEachNode([&vInv](CNode* pnode)
+                {
+                    for(const auto& inv : vInv)
+                        pnode->PushInventory(inv);
+                });
+            }
         }
 
         //

@@ -328,8 +328,20 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction &tran
         }
 
         CReserveKey *keyChange = transaction.getPossibleKeyChange();
-        if(!wallet->CommitTransaction(*newTx, *keyChange, g_connman.get()))
+        if(!wallet->CommitTransaction(*newTx, *keyChange))
             return TransactionCommitFailed;
+
+        if (wallet->GetBroadcastTransactions() && newTx->GetDepthInMainChain() == 0 && !newTx->isAbandoned()) {
+            if (!newTx->AcceptToMemoryPool(false, maxTxFee))
+                return TransactionBroadcastFailed; // Need more accurate message?
+            if (!g_connman)
+                return TransactionBroadcastFailed;
+            CInv inv(MSG_TX, newTx->GetHash());
+            g_connman->ForEachNode([&inv](CNode* pnode)
+            {
+                pnode->PushInventory(inv);
+            });
+        }
 
         CTransaction* t = (CTransaction*)newTx;
         CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
