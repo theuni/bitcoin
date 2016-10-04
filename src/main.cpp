@@ -4649,10 +4649,10 @@ std::string GetWarnings(const std::string& strFor)
 
 class PeerLogicValidation : public CValidationInterface {
 private:
-    CConnman* connman;
+    std::shared_ptr<CConnman> connman;
 
 public:
-    PeerLogicValidation(CConnman* connmanIn) : connman(connmanIn) {}
+    PeerLogicValidation(std::shared_ptr<CConnman>& connmanIn) : connman(connmanIn) {}
 
     virtual void UpdatedBlockTip(const CBlockIndex *pindexNew, const CBlockIndex *pindexFork, bool fInitialDownload) {
         const int nNewHeight = pindexNew->nHeight;
@@ -4702,20 +4702,20 @@ public:
             mapBlockSource.erase(it);
     }
 };
-std::map<CConnman*, std::unique_ptr<PeerLogicValidation> > mapPeerLogics;
+std::map<std::shared_ptr<CConnman>, std::unique_ptr<PeerLogicValidation> > mapPeerLogics;
 
-void InitPeerLogic(CConnman& connman) {
-    if (mapPeerLogics.count(&connman))
+void InitPeerLogic(std::shared_ptr<CConnman>& connman) {
+    if (mapPeerLogics.count(connman))
         return;
-    mapPeerLogics.emplace(std::make_pair(&connman, std::unique_ptr<PeerLogicValidation>(new PeerLogicValidation(&connman))));
-    RegisterValidationInterface(mapPeerLogics[&connman].get());
+    mapPeerLogics.emplace(connman, std::unique_ptr<PeerLogicValidation>(new PeerLogicValidation(connman)));
+    RegisterValidationInterface(mapPeerLogics[connman].get());
 };
 
-void StopPeerLogic(CConnman& connman) {
-    if (!mapPeerLogics.count(&connman))
+void StopPeerLogic(std::shared_ptr<CConnman>& connman) {
+    if (!mapPeerLogics.count(connman))
         return;
-    UnregisterValidationInterface(mapPeerLogics[&connman].get());
-    mapPeerLogics.erase(&connman);
+    UnregisterValidationInterface(mapPeerLogics[connman].get());
+    mapPeerLogics.erase(connman);
 };
 
 
