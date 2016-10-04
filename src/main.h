@@ -212,10 +212,11 @@ void RegisterNodeSignals(CNodeSignals& nodeSignals);
 /** Unregister a network node */
 void UnregisterNodeSignals(CNodeSignals& nodeSignals);
 
+
 /** InitPeerLogic sets up the blockchain logic to notify the peer logic */
-void InitPeerLogic(std::shared_ptr<CConnman>& connman);
+std::unique_ptr<CValidationInterface> InitPeerLogic(CConnman& connman);
 /** StopPeerLogic makes the blockchain logic stop notifying the peer logic */
-void StopPeerLogic(std::shared_ptr<CConnman>& connman);
+void StopPeerLogic(std::unique_ptr<CValidationInterface>&& peerLogic);
 
 /** 
  * Process an incoming block. This only returns after the best known valid

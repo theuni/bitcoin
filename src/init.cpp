@@ -165,6 +165,7 @@ public:
 static CCoinsViewDB *pcoinsdbview = NULL;
 static CCoinsViewErrorCatcher *pcoinscatcher = NULL;
 static std::unique_ptr<ECCVerifyHandle> globalVerifyHandle;
+static std::unique_ptr<CValidationInterface> peerLogic;
 
 void Interrupt(boost::thread_group& threadGroup)
 {
@@ -200,7 +201,7 @@ void Shutdown()
         pwalletMain->Flush(false);
 #endif
     MapPort(false);
-    StopPeerLogic(g_connman);
+    StopPeerLogic(std::move(peerLogic));
     g_connman.reset();
 
     StopTorControl();
@@ -1103,7 +1104,8 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     g_connman = std::shared_ptr<CConnman>(new CConnman(GetRand(std::numeric_limits<uint64_t>::max()), GetRand(std::numeric_limits<uint64_t>::max())));
     CConnman& connman = *g_connman;
 
-    InitPeerLogic(g_connman);
+    peerLogic = std::move(InitPeerLogic(*g_connman));
+
     RegisterNodeSignals(GetNodeSignals());
 
     // sanitize comments per BIP-0014, format user agent and check total size

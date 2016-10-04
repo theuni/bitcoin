@@ -4649,14 +4649,14 @@ std::string GetWarnings(const std::string& strFor)
 
 class PeerLogicValidation : public CValidationInterface {
 private:
-    std::shared_ptr<CConnman> connman;
+    CConnman& connman;
 
 public:
-    PeerLogicValidation(std::shared_ptr<CConnman>& connmanIn) : connman(connmanIn) {}
+    PeerLogicValidation(CConnman& connmanIn) : connman(connmanIn) {}
 
     virtual void UpdatedBlockTip(const CBlockIndex *pindexNew, const CBlockIndex *pindexFork, bool fInitialDownload) {
         const int nNewHeight = pindexNew->nHeight;
-        connman->SetBestHeight(nNewHeight);
+        connman.SetBestHeight(nNewHeight);
 
         if (!fInitialDownload) {
             // Find the hashes of all blocks that weren't previously in the best chain.
@@ -4672,7 +4672,7 @@ public:
                 }
             }
             // Relay inventory, but don't relay old inventory during initial block download.
-            connman->ForEachNode([nNewHeight, &vHashes](CNode* pnode) {
+            connman.ForEachNode([nNewHeight, &vHashes](CNode* pnode) {
                 if (nNewHeight > (pnode->nStartingHeight != -1 ? pnode->nStartingHeight - 2000 : 0)) {
                     BOOST_REVERSE_FOREACH(const uint256& hash, vHashes) {
                         pnode->PushBlockHash(hash);
@@ -4702,21 +4702,20 @@ public:
             mapBlockSource.erase(it);
     }
 };
-std::map<std::shared_ptr<CConnman>, std::unique_ptr<PeerLogicValidation> > mapPeerLogics;
 
-void InitPeerLogic(std::shared_ptr<CConnman>& connman) {
-    if (mapPeerLogics.count(connman))
-        return;
-    mapPeerLogics.emplace(connman, std::unique_ptr<PeerLogicValidation>(new PeerLogicValidation(connman)));
-    RegisterValidationInterface(mapPeerLogics[connman].get());
-};
+// This should go away and be handled in PeerLogicValidation's ctor, once it can be exposed
+std::unique_ptr<CValidationInterface> InitPeerLogic(CConnman& connman) {
+    PeerLogicValidation* peerValidation = new PeerLogicValidation(connman);
+    RegisterValidationInterface(peerValidation);
+    std::unique_ptr<CValidationInterface> ret(peerValidation);
+    return ret;
+}
 
-void StopPeerLogic(std::shared_ptr<CConnman>& connman) {
-    if (!mapPeerLogics.count(connman))
-        return;
-    UnregisterValidationInterface(mapPeerLogics[connman].get());
-    mapPeerLogics.erase(connman);
-};
+// This should go away and be handled in PeerLogicValidation's dtor, once it can be exposed
+void StopPeerLogic(std::unique_ptr<CValidationInterface>&&  peerLogic) {
+    UnregisterValidationInterface(peerLogic.get());
+    // add some kind of peerLogic->Stop()
+}
 
 
 //////////////////////////////////////////////////////////////////////////////
