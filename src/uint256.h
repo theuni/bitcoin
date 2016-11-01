@@ -13,36 +13,36 @@
 #include <string>
 #include <vector>
 #include "crypto/common.h"
+#include <array>
 
 /** Template base class for fixed-sized opaque blobs. */
 template<unsigned int BITS>
 class base_blob
 {
 protected:
-    enum { WIDTH=BITS/8 };
-    uint8_t data[WIDTH];
+    static constexpr unsigned int WIDTH = BITS/8;
+    std::array<uint8_t, WIDTH> data;
 public:
-    base_blob()
-    {
-        memset(data, 0, sizeof(data));
-    }
+    constexpr base_blob() : data {}{}
 
     explicit base_blob(const std::vector<unsigned char>& vch);
 
+    explicit constexpr base_blob(std::array<uint8_t, WIDTH> vch) : data(vch){}
+
     bool IsNull() const
     {
-        for (int i = 0; i < WIDTH; i++)
-            if (data[i] != 0)
+        for(const auto& i : data)
+            if(i != 0)
                 return false;
         return true;
     }
 
     void SetNull()
     {
-        memset(data, 0, sizeof(data));
+        data.fill(0);
     }
 
-    inline int Compare(const base_blob& other) const { return memcmp(data, other.data, sizeof(data)); }
+    inline int Compare(const base_blob& other) const { return memcmp(data.data(), other.data.data(), size()); }
 
     friend inline bool operator==(const base_blob& a, const base_blob& b) { return a.Compare(b) == 0; }
     friend inline bool operator!=(const base_blob& a, const base_blob& b) { return a.Compare(b) != 0; }
@@ -55,37 +55,37 @@ public:
 
     unsigned char* begin()
     {
-        return &data[0];
+        return data.data();
     }
 
     unsigned char* end()
     {
-        return &data[WIDTH];
+        return data.data() + size();
     }
 
     const unsigned char* begin() const
     {
-        return &data[0];
+        return data.data();
     }
 
     const unsigned char* end() const
     {
-        return &data[WIDTH];
+        return data.data() + size();
     }
 
-    unsigned int size() const
+    static constexpr unsigned int size()
     {
-        return sizeof(data);
+        return WIDTH;
     }
 
     unsigned int GetSerializeSize(int nType, int nVersion) const
     {
-        return sizeof(data);
+        return size();
     }
 
     uint64_t GetUint64(int pos) const
     {
-        const uint8_t* ptr = data + pos * 8;
+        const uint8_t* ptr = data.data() + pos * 8;
         return ((uint64_t)ptr[0]) | \
                ((uint64_t)ptr[1]) << 8 | \
                ((uint64_t)ptr[2]) << 16 | \
@@ -99,13 +99,13 @@ public:
     template<typename Stream>
     void Serialize(Stream& s, int nType, int nVersion) const
     {
-        s.write((char*)data, sizeof(data));
+        s.write((char*)data.data(), size());
     }
 
     template<typename Stream>
     void Unserialize(Stream& s, int nType, int nVersion)
     {
-        s.read((char*)data, sizeof(data));
+        s.read((char*)data.data(), size());
     }
 };
 
@@ -138,7 +138,7 @@ public:
      */
     uint64_t GetCheapHash() const
     {
-        return ReadLE64(data);
+        return ReadLE64(data.data());
     }
 };
 
