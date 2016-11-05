@@ -111,6 +111,7 @@ BITCOIN_CORE_H = \
   net.h \
   netaddress.h \
   netbase.h \
+  netmessagemaker.h \
   noui.h \
   policy/fees.h \
   policy/policy.h \
@@ -182,6 +183,7 @@ libbitcoin_server_a_SOURCES = \
   merkleblock.cpp \
   miner.cpp \
   net.cpp \
+  netmessagemaker.cpp \
   noui.cpp \
   policy/fees.cpp \
   policy/policy.cpp \
