@@ -101,6 +101,13 @@ class CTransaction;
 class CNodeStats;
 class CClientUIInterface;
 
+struct CSerializedNetMsg
+{
+    std::vector<unsigned char> data;
+    std::string command;
+};
+
+
 class CConnman
 {
 public:
@@ -136,32 +143,7 @@ public:
 
     bool ForNode(NodeId id, std::function<bool(CNode* pnode)> func);
 
-    template <typename... Args>
-    void PushMessageWithVersionAndFlag(CNode* pnode, int nVersion, int flag, const std::string& sCommand, Args&&... args)
-    {
-        auto msg(BeginMessage(pnode, nVersion, flag, sCommand));
-        ::SerializeMany(msg, msg.nType, msg.nVersion, std::forward<Args>(args)...);
-        EndMessage(msg);
-        PushMessage(pnode, msg, sCommand);
-    }
-
-    template <typename... Args>
-    void PushMessageWithFlag(CNode* pnode, int flag, const std::string& sCommand, Args&&... args)
-    {
-        PushMessageWithVersionAndFlag(pnode, 0, flag, sCommand, std::forward<Args>(args)...);
-    }
-
-    template <typename... Args>
-    void PushMessageWithVersion(CNode* pnode, int nVersion, const std::string& sCommand, Args&&... args)
-    {
-        PushMessageWithVersionAndFlag(pnode, nVersion, 0, sCommand, std::forward<Args>(args)...);
-    }
-
-    template <typename... Args>
-    void PushMessage(CNode* pnode, const std::string& sCommand, Args&&... args)
-    {
-        PushMessageWithVersionAndFlag(pnode, 0, 0, sCommand, std::forward<Args>(args)...);
-    }
+    void PushMessage(CNode* pnode, CSerializedNetMsg msg);
 
     template<typename Callable>
     bool ForEachNodeContinueIf(Callable&& func)
@@ -593,7 +575,7 @@ public:
     size_t nSendSize; // total size of all vSendMsg entries
     size_t nSendOffset; // offset inside the first vSendMsg already sent
     uint64_t nSendBytes;
-    std::deque<CSerializeData> vSendMsg;
+    std::deque<CSerializedNetMsg> vSendMsg;
     CCriticalSection cs_vSend;
 
     std::deque<CInv> vRecvGetData;
