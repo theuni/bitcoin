@@ -5207,19 +5207,20 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         int64_t nTimeOffset = nTime - GetTime();
         pfrom->nTimeOffset = nTimeOffset;
         AddTimeData(pfrom->addr, nTimeOffset);
+        return true;
     }
 
 
-    else if (pfrom->nVersion == 0)
+    else if (!pfrom->fSuccessfullyConnected)
     {
-        // Must have a version message before anything else
+        // Must be happy with the version message before anything else
         LOCK(cs_main);
         Misbehaving(pfrom->GetId(), 1);
         return false;
     }
 
 
-    else if (strCommand == NetMsgType::VERACK)
+    if (strCommand == NetMsgType::VERACK)
     {
         pfrom->SetRecvVersion(min(pfrom->nVersion, PROTOCOL_VERSION));
 
@@ -6502,7 +6503,7 @@ bool SendMessages(CNode* pto, CConnman& connman)
     const Consensus::Params& consensusParams = Params().GetConsensus();
     {
         // Don't send anything until we get its version message
-        if (pto->nVersion == 0)
+        if (!pto->fSuccessfullyConnected || pto->fDisconnect)
             return true;
 
         //
@@ -6537,6 +6538,28 @@ bool SendMessages(CNode* pto, CConnman& connman)
         TRY_LOCK(cs_main, lockMain); // Acquire cs_main for IsInitialBlockDownload() and CNodeState()
         if (!lockMain)
             return true;
+
+        CNodeState &state = *State(pto->GetId());
+
+        BOOST_FOREACH(const CBlockReject& reject, state.rejects)
+            connman.PushMessage(pto, NetMsgType::REJECT, (string)NetMsgType::BLOCK, reject.chRejectCode, reject.strRejectReason, reject.hashBlock);
+        state.rejects.clear();
+
+        if (state.fShouldBan) {
+            if (pto->fWhitelisted)
+                LogPrintf("Warning: not punishing whitelisted peer %s!\n", pto->addr.ToString());
+            else {
+                pto->fDisconnect = true;
+                if (pto->addr.IsLocal())
+                    LogPrintf("Warning: not banning local peer %s!\n", pto->addr.ToString());
+                else
+                {
+                    connman.Ban(pto->addr, BanReasonNodeMisbehaving);
+                }
+            }
+            state.fShouldBan = false;
+            return true;
+        }
 
         // Address refresh broadcast
         int64_t nNow = GetTimeMicros();
@@ -6573,26 +6596,6 @@ bool SendMessages(CNode* pto, CConnman& connman)
             if (pto->vAddrToSend.capacity() > 40)
                 pto->vAddrToSend.shrink_to_fit();
         }
-
-        CNodeState &state = *State(pto->GetId());
-        if (state.fShouldBan) {
-            if (pto->fWhitelisted)
-                LogPrintf("Warning: not punishing whitelisted peer %s!\n", pto->addr.ToString());
-            else {
-                pto->fDisconnect = true;
-                if (pto->addr.IsLocal())
-                    LogPrintf("Warning: not banning local peer %s!\n", pto->addr.ToString());
-                else
-                {
-                    connman.Ban(pto->addr, BanReasonNodeMisbehaving);
-                }
-            }
-            state.fShouldBan = false;
-        }
-
-        BOOST_FOREACH(const CBlockReject& reject, state.rejects)
-            connman.PushMessage(pto, NetMsgType::REJECT, (string)NetMsgType::BLOCK, reject.chRejectCode, reject.strRejectReason, reject.hashBlock);
-        state.rejects.clear();
 
         // Start block sync
         if (pindexBestHeader == NULL)
@@ -6891,6 +6894,7 @@ bool SendMessages(CNode* pto, CConnman& connman)
             // should only happen during initial block download.
             LogPrintf("Peer=%d is stalling block download, disconnecting\n", pto->id);
             pto->fDisconnect = true;
+            return true;
         }
         // In case there is a block that has been in flight from this peer for 2 + 0.5 * N times the block interval
         // (with N the number of peers from which we're downloading validated blocks), disconnect due to timeout.
@@ -6903,6 +6907,7 @@ bool SendMessages(CNode* pto, CConnman& connman)
             if (nNow > state.nDownloadingSince + consensusParams.nPowTargetSpacing * (BLOCK_DOWNLOAD_TIMEOUT_BASE + BLOCK_DOWNLOAD_TIMEOUT_PER_PEER * nOtherPeersWithValidatedDownloads)) {
                 LogPrintf("Timeout downloading block %s from peer=%d, disconnecting\n", queuedBlock.hash.ToString(), pto->id);
                 pto->fDisconnect = true;
+                return true;
             }
         }
 
