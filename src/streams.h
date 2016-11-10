@@ -69,6 +69,29 @@ OverrideStream<S> WithOrVersion(S* s, int nVersionFlag)
     return OverrideStream<S>(s, s->GetType(), s->GetVersion() | nVersionFlag);
 }
 
+class CVectorWriter
+{
+ public:
+    CVectorWriter(int nTypeIn, int nVersionIn, std::vector<unsigned char>& vchDataIn) : nType(nTypeIn), nVersion(nVersionIn), vchData(vchDataIn){}
+
+    void write(const char* pch, size_t nSize)
+    {
+        vchData.insert(vchData.end(), reinterpret_cast<const unsigned char*>(pch), reinterpret_cast<const unsigned char*>(pch) + nSize);
+    }
+    int GetVersion() const
+    {
+        return nVersion;
+    }
+    int GetType() const
+    {
+        return nType;
+    }
+private:
+    const int nType;
+    const int nVersion;
+    std::vector<unsigned char>& vchData;
+};
+
 /** Double ended buffer combining vector and stream-like interfaces.
  *
  * >> and << read and write unformatted data using the above serialization templates.

@@ -101,6 +101,13 @@ class CTransaction;
 class CNodeStats;
 class CClientUIInterface;
 
+struct CSerializedNetMsg
+{
+    std::vector<unsigned char> data;
+    std::string command;
+};
+
+
 class CConnman
 {
 public:
