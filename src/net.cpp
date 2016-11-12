@@ -335,18 +335,31 @@ bool CConnman::CheckIncomingNonce(uint64_t nonce)
     return true;
 }
 
-CNode* CConnman::ConnectNode(const CAddress& addrConnect, const char *pszDest, bool fCountFailure)
+bool CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFailure, CSemaphoreGrant *grantOutbound, const char *pszDest, bool fOneShot, bool fFeeler)
 {
+
+    //
+    // Initiate outbound network connection
+    //
+    boost::this_thread::interruption_point();
+    if (!pszDest) {
+        if (IsLocal(addrConnect) ||
+            FindNode((CNetAddr)addrConnect) || IsBanned(addrConnect) ||
+            FindNode(addrConnect.ToStringIPPort()))
+            return false;
+    } else if (FindNode(std::string(pszDest)))
+        return false;
+
     if (pszDest == NULL) {
         if (IsLocal(addrConnect))
-            return NULL;
+            return false;
 
         // Look for an existing connection
         CNode* pnode = FindNode((CService)addrConnect);
         if (pnode)
         {
             pnode->AddRef();
-            return pnode;
+            return true;
         }
     }
 
@@ -365,7 +378,7 @@ CNode* CConnman::ConnectNode(const CAddress& addrConnect, const char *pszDest, b
         if (!IsSelectableSocket(hSocket)) {
             LogPrintf("Cannot create connection: non-selectable socket created (fd >= FD_SETSIZE ?)\n");
             CloseSocket(hSocket);
-            return NULL;
+            return false;
         }
 
         if (pszDest && addrResult.IsValid()) {
@@ -384,7 +397,7 @@ CNode* CConnman::ConnectNode(const CAddress& addrConnect, const char *pszDest, b
                     }
                 }
                 CloseSocket(hSocket);
-                return pnode;
+                return true;
             }
         }
 
@@ -403,14 +416,22 @@ CNode* CConnman::ConnectNode(const CAddress& addrConnect, const char *pszDest, b
             vNodes.push_back(pnode);
         }
 
-        return pnode;
+        if (grantOutbound)
+            grantOutbound->MoveTo(pnode->grantOutbound);
+        pnode->fNetworkNode = true;
+        if (fOneShot)
+            pnode->fOneShot = true;
+        if (fFeeler)
+            pnode->fFeeler = true;
+
+        return true;
     } else if (!proxyConnectionFailed) {
         // If connecting to the node failed, and failure is not caused by a problem connecting to
         // the proxy, mark this as an attempt.
         addrman.Attempt(addrResult, fCountFailure);
     }
 
-    return NULL;
+    return false;
 }
 
 void CConnman::DumpBanlist()
@@ -1777,38 +1798,6 @@ void CConnman::ThreadOpenAddedConnections()
         MilliSleep(120000); // Retry every 2 minutes
     }
 }
-
-// if successful, this moves the passed grant to the constructed node
-bool CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFailure, CSemaphoreGrant *grantOutbound, const char *pszDest, bool fOneShot, bool fFeeler)
-{
-    //
-    // Initiate outbound network connection
-    //
-    boost::this_thread::interruption_point();
-    if (!pszDest) {
-        if (IsLocal(addrConnect) ||
-            FindNode((CNetAddr)addrConnect) || IsBanned(addrConnect) ||
-            FindNode(addrConnect.ToStringIPPort()))
-            return false;
-    } else if (FindNode(std::string(pszDest)))
-        return false;
-
-    CNode* pnode = ConnectNode(addrConnect, pszDest, fCountFailure);
-    boost::this_thread::interruption_point();
-
-    if (!pnode)
-        return false;
-    if (grantOutbound)
-        grantOutbound->MoveTo(pnode->grantOutbound);
-    pnode->fNetworkNode = true;
-    if (fOneShot)
-        pnode->fOneShot = true;
-    if (fFeeler)
-        pnode->fFeeler = true;
-
-    return true;
-}
-
 
 void CConnman::ThreadMessageHandler()
 {
