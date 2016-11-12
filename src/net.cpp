@@ -335,7 +335,72 @@ bool CConnman::CheckIncomingNonce(uint64_t nonce)
     return true;
 }
 
-bool CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFailure, CSemaphoreGrant *grantOutbound, const char *pszDest, bool fOneShot, bool fFeeler)
+void CConnman::OnOutgoingConnected(const CAddress& addrConnect, SOCKET hSocket, bool fCountFailure, CSemaphoreGrant *grantOutbound, const char *pszDest, bool fOneShot, bool fFeeler)
+{
+    if (pszDest && addrConnect.IsValid()) {
+        // It is possible that we already have a connection to the IP/port pszDest resolved to.
+        // In that case, drop the connection that was just created, and return the existing CNode instead.
+        // Also store the name we used to connect in that CNode, so that future FindNode() calls to that
+        // name catch this early.
+        CNode* pnode = FindNode((CService)addrConnect);
+        if (pnode)
+        {
+            pnode->AddRef();
+            {
+                LOCK(cs_vNodes);
+                if (pnode->addrName.empty()) {
+                    pnode->addrName = std::string(pszDest);
+                }
+            }
+            CloseSocket(hSocket);
+            return;
+        }
+    }
+
+    addrman.Attempt(addrConnect, fCountFailure);
+
+    // Add node
+    NodeId id = GetNewNodeId();
+    uint64_t nonce = GetDeterministicRandomizer(RANDOMIZER_ID_LOCALHOSTNONCE).Write(id).Finalize();
+    CNode* pnode = new CNode(id, nLocalServices, GetBestHeight(), hSocket, addrConnect, CalculateKeyedNetGroup(addrConnect), nonce, pszDest ? pszDest : "", false);
+    pnode->nServicesExpected = ServiceFlags(addrConnect.nServices & nRelevantServices);
+    pnode->nTimeConnected = GetTime();
+    pnode->AddRef();
+    GetNodeSignals().InitializeNode(pnode, *this);
+    {
+        LOCK(cs_vNodes);
+        vNodes.push_back(pnode);
+    }
+
+    if (grantOutbound)
+        grantOutbound->MoveTo(pnode->grantOutbound);
+    pnode->fNetworkNode = true;
+    if (fOneShot)
+        pnode->fOneShot = true;
+    if (fFeeler)
+        pnode->fFeeler = true;
+}
+
+void CConnman::OnOutgoingFailed(const CAddress& addrConnect, SOCKET hSocket, bool fCountFailure, const char *pszDest, bool fOneShot)
+{
+        if (!IsSelectableSocket(hSocket)) {
+            LogPrintf("Cannot create connection: non-selectable socket created (fd >= FD_SETSIZE ?)\n");
+            CloseSocket(hSocket);
+        } else {
+            // If connecting to the node failed, and failure is not caused by a problem creating the socket
+            // or connecting to the proxy, mark this as an attempt.
+            addrman.Attempt(addrConnect, fCountFailure);
+        }
+        if(fOneShot)
+            AddOneShot(pszDest);
+}
+
+void CConnman::OnOutgoingProxyFailed(const CAddress& addrConnect, SOCKET hSocket, bool fCountFailure, const char *pszDest, bool fOneShot)
+{
+
+}
+
+void CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFailure, CSemaphoreGrant *grantOutbound, const char *pszDest, bool fOneShot, bool fFeeler)
 {
 
     //
@@ -346,20 +411,20 @@ bool CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFai
         if (IsLocal(addrConnect) ||
             FindNode((CNetAddr)addrConnect) || IsBanned(addrConnect) ||
             FindNode(addrConnect.ToStringIPPort()))
-            return false;
+            return;
     } else if (FindNode(std::string(pszDest)))
-        return false;
+        return;
 
     if (pszDest == NULL) {
         if (IsLocal(addrConnect))
-            return false;
+            return;
 
         // Look for an existing connection
         CNode* pnode = FindNode((CService)addrConnect);
         if (pnode)
         {
             pnode->AddRef();
-            return true;
+            return;
         }
     }
 
@@ -375,63 +440,15 @@ bool CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFai
     if (pszDest ? ConnectSocketByName(addrResult, hSocket, pszDest, Params().GetDefaultPort(), nConnectTimeout, &proxyConnectionFailed) :
                   ConnectSocket(addrResult, hSocket, nConnectTimeout, &proxyConnectionFailed))
     {
-        if (!IsSelectableSocket(hSocket)) {
-            LogPrintf("Cannot create connection: non-selectable socket created (fd >= FD_SETSIZE ?)\n");
-            CloseSocket(hSocket);
-            return false;
+        if (IsSelectableSocket(hSocket)) {
+            OnOutgoingConnected(addrResult, hSocket, fCountFailure, grantOutbound, pszDest, fOneShot, fFeeler);
+        } else {
+            OnOutgoingFailed(addrResult, hSocket, fCountFailure, pszDest, fOneShot);
         }
-
-        if (pszDest && addrResult.IsValid()) {
-            // It is possible that we already have a connection to the IP/port pszDest resolved to.
-            // In that case, drop the connection that was just created, and return the existing CNode instead.
-            // Also store the name we used to connect in that CNode, so that future FindNode() calls to that
-            // name catch this early.
-            CNode* pnode = FindNode((CService)addrResult);
-            if (pnode)
-            {
-                pnode->AddRef();
-                {
-                    LOCK(cs_vNodes);
-                    if (pnode->addrName.empty()) {
-                        pnode->addrName = std::string(pszDest);
-                    }
-                }
-                CloseSocket(hSocket);
-                return true;
-            }
-        }
-
-        addrman.Attempt(addrResult, fCountFailure);
-
-        // Add node
-        NodeId id = GetNewNodeId();
-        uint64_t nonce = GetDeterministicRandomizer(RANDOMIZER_ID_LOCALHOSTNONCE).Write(id).Finalize();
-        CNode* pnode = new CNode(id, nLocalServices, GetBestHeight(), hSocket, addrResult, CalculateKeyedNetGroup(addrResult), nonce, pszDest ? pszDest : "", false);
-        pnode->nServicesExpected = ServiceFlags(addrResult.nServices & nRelevantServices);
-        pnode->nTimeConnected = GetTime();
-        pnode->AddRef();
-        GetNodeSignals().InitializeNode(pnode, *this);
-        {
-            LOCK(cs_vNodes);
-            vNodes.push_back(pnode);
-        }
-
-        if (grantOutbound)
-            grantOutbound->MoveTo(pnode->grantOutbound);
-        pnode->fNetworkNode = true;
-        if (fOneShot)
-            pnode->fOneShot = true;
-        if (fFeeler)
-            pnode->fFeeler = true;
-
-        return true;
-    } else if (!proxyConnectionFailed) {
-        // If connecting to the node failed, and failure is not caused by a problem connecting to
-        // the proxy, mark this as an attempt.
-        addrman.Attempt(addrResult, fCountFailure);
+    } else if (proxyConnectionFailed) {
+        OnOutgoingProxyFailed(addrResult, hSocket, fCountFailure, pszDest, fOneShot);
     }
-
-    return false;
+        OnOutgoingFailed(addrResult, hSocket, fCountFailure, pszDest, fOneShot);
 }
 
 void CConnman::DumpBanlist()
@@ -1574,8 +1591,7 @@ void CConnman::ProcessOneShot()
     CAddress addr;
     CSemaphoreGrant grant(*semOutbound, true);
     if (grant) {
-        if (!OpenNetworkConnection(addr, false, &grant, strDest.c_str(), true))
-            AddOneShot(strDest);
+        OpenNetworkConnection(addr, false, &grant, strDest.c_str(), true);
     }
 }
 

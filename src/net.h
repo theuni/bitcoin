@@ -138,7 +138,7 @@ public:
     bool Start(boost::thread_group& threadGroup, CScheduler& scheduler, std::string& strNodeError, Options options);
     void Stop();
     bool BindListenPort(const CService &bindAddr, std::string& strError, bool fWhitelisted = false);
-    bool OpenNetworkConnection(const CAddress& addrConnect, bool fCountFailure, CSemaphoreGrant *grantOutbound = NULL, const char *strDest = NULL, bool fOneShot = false, bool fFeeler = false);
+    void OpenNetworkConnection(const CAddress& addrConnect, bool fCountFailure, CSemaphoreGrant *grantOutbound = NULL, const char *strDest = NULL, bool fOneShot = false, bool fFeeler = false);
     bool CheckIncomingNonce(uint64_t nonce);
 
     bool ForNode(NodeId id, std::function<bool(CNode* pnode)> func);
@@ -356,6 +356,10 @@ private:
     CDataStream BeginMessage(CNode* node, int nVersion, int flags, const std::string& sCommand);
     void PushMessage(CNode* pnode, CDataStream& strm, const std::string& sCommand);
     void EndMessage(CDataStream& strm);
+
+    void OnOutgoingFailed(const CAddress& addrConnect, SOCKET hSocket, bool fCountFailure, const char *pszDest, bool fOneShot);
+    void OnOutgoingProxyFailed(const CAddress& addrConnect, SOCKET hSocket, bool fCountFailure, const char *pszDest, bool fOneShot);
+    void OnOutgoingConnected(const CAddress& addrResult, SOCKET hSocket, bool fCountFailure, CSemaphoreGrant *grantOutbound, const char *pszDest, bool fOneShot, bool fFeeler);
 
     // Network stats
     void RecordBytesRecv(uint64_t bytes);
