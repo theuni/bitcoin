@@ -1843,8 +1843,10 @@ void CConnman::ThreadMessageHandler()
                 TRY_LOCK(pnode->cs_vRecvMsg, lockRecv);
                 if (lockRecv)
                 {
-                    if (!GetNodeSignals().ProcessMessages(pnode, *this))
+                    if (!GetNodeSignals().ProcessMessages(pnode, *this)) {
                         pnode->CloseSocketDisconnect();
+                        continue;
+                    }
 
                     if (pnode->nSendSize < GetSendBufferSize())
                     {
@@ -1856,13 +1858,15 @@ void CConnman::ThreadMessageHandler()
                 }
             }
             boost::this_thread::interruption_point();
-
+            bool fOk = true;
             // Send messages
             {
                 TRY_LOCK(pnode->cs_vSend, lockSend);
                 if (lockSend)
-                    GetNodeSignals().SendMessages(pnode, *this);
+                    fOk = GetNodeSignals().SendMessages(pnode, *this);
             }
+            if (!fOk)
+                pnode->CloseSocketDisconnect();
             boost::this_thread::interruption_point();
         }
 

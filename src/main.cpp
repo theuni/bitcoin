@@ -4870,7 +4870,7 @@ static void RelayAddress(const CAddress& addr, bool fReachable, CConnman& connma
     connman.ForEachNodeThen(std::move(sortfunc), std::move(pushfunc));
 }
 
-void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParams, CConnman& connman)
+bool static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParams, CConnman& connman)
 {
     std::deque<CInv>::iterator it = pfrom->vRecvGetData.begin();
     unsigned int nMaxSendBufferSize = connman.GetSendBufferSize();
@@ -4917,8 +4917,7 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
                     LogPrint("net", "historical block serving limit reached, disconnect peer=%d\n", pfrom->GetId());
 
                     //disconnect node
-                    pfrom->fDisconnect = true;
-                    send = false;
+                    return false;
                 }
                 // Pruned nodes may have deleted the block, so check whether
                 // it's available before trying to send.
@@ -5029,6 +5028,7 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
         // having to download the entire memory pool.
         connman.PushMessage(pfrom, msgMaker.Make(NetMsgType::NOTFOUND, vNotFound));
     }
+    return true;
 }
 
 uint32_t GetFetchFlags(CNode* pfrom, CBlockIndex* pprev, const Consensus::Params& chainparams) {
@@ -5060,7 +5060,6 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
             Misbehaving(pfrom->GetId(), 100);
             return false;
         } else {
-            pfrom->fDisconnect = true;
             return false;
         }
     }
@@ -5068,12 +5067,6 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
 
     if (strCommand == NetMsgType::VERSION)
     {
-        // Feeler connections exist only to verify if address is online.
-        if (pfrom->fFeeler) {
-            assert(pfrom->fInbound == false);
-            pfrom->fDisconnect = true;
-        }
-
         // Each connection can only send one version message
         if (pfrom->nVersion != 0)
         {
@@ -5099,7 +5092,6 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
             LogPrint("net", "peer=%d does not offer the expected services (%08x offered, %08x expected); disconnecting\n", pfrom->id, pfrom->nServices, pfrom->nServicesExpected);
             connman.PushMessage(pfrom, CNetMsgMaker(INIT_PROTO_VERSION).Make(NetMsgType::REJECT, strCommand, REJECT_NONSTANDARD,
                                strprintf("Expected to offer services %08x", pfrom->nServicesExpected)));
-            pfrom->fDisconnect = true;
             return false;
         }
 
@@ -5109,7 +5101,6 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
             LogPrintf("peer=%d using obsolete version %i; disconnecting\n", pfrom->id, pfrom->nVersion);
             connman.PushMessage(pfrom, CNetMsgMaker(INIT_PROTO_VERSION).Make(NetMsgType::REJECT, strCommand, REJECT_OBSOLETE,
                                strprintf("Version must be %d or greater", MIN_PEER_PROTO_VERSION)));
-            pfrom->fDisconnect = true;
             return false;
         }
 
@@ -5136,8 +5127,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         if (pfrom->fInbound && !connman.CheckIncomingNonce(nNonce))
         {
             LogPrintf("connected to self at %s, disconnecting\n", pfrom->addr.ToString());
-            pfrom->fDisconnect = true;
-            return true;
+            return false;
         }
 
         pfrom->addrLocal = addrMe;
@@ -5270,7 +5260,8 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         {
             LOCK(cs_main);
             Misbehaving(pfrom->GetId(), 20);
-            return error("message addr size() = %u", vAddr.size());
+            LogPrintf("message addr size() = %u", vAddr.size());
+            return true;
         }
 
         // Store the new addresses
@@ -5300,8 +5291,15 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         connman.AddNewAddresses(vAddrOk, pfrom->addr, 2 * 60 * 60);
         if (vAddr.size() < 1000)
             pfrom->fGetAddr = false;
-        if (pfrom->fOneShot)
-            pfrom->fDisconnect = true;
+
+        if (pfrom->fOneShot) {
+            return false;
+        }
+        // Feeler connections exist only to verify if address is online.
+        if (pfrom->fFeeler) {
+            assert(pfrom->fInbound == false);
+            return false;
+        }
     }
 
     else if (strCommand == NetMsgType::SENDHEADERS)
@@ -5342,7 +5340,8 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         {
             LOCK(cs_main);
             Misbehaving(pfrom->GetId(), 20);
-            return error("message inv size() = %u", vInv.size());
+            LogPrintf("message inv size() = %u", vInv.size());
+            return true;
         }
 
         bool fBlocksOnly = !fRelayTxes;
@@ -5412,7 +5411,8 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
 
             if (pfrom->nSendSize > (nMaxSendBufferSize * 2)) {
                 Misbehaving(pfrom->GetId(), 50);
-                return error("send buffer size() = %u", pfrom->nSendSize);
+                LogPrintf("send buffer size() = %u", pfrom->nSendSize);
+                return true;
             }
         }
 
@@ -5429,7 +5429,8 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         {
             LOCK(cs_main);
             Misbehaving(pfrom->GetId(), 20);
-            return error("message getdata size() = %u", vInv.size());
+            LogPrintf("message getdata size() = %u", vInv.size());
+            return true;
         }
 
         if (fDebug || (vInv.size() != 1))
@@ -5439,7 +5440,8 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
             LogPrint("net", "received getdata for: %s peer=%d\n", vInv[0].ToString(), pfrom->id);
 
         pfrom->vRecvGetData.insert(pfrom->vRecvGetData.end(), vInv.begin(), vInv.end());
-        ProcessGetData(pfrom, chainparams.GetConsensus(), connman);
+        if(!ProcessGetData(pfrom, chainparams.GetConsensus(), connman))
+            return false;
     }
 
 
@@ -5951,7 +5953,8 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         if (nCount > MAX_HEADERS_RESULTS) {
             LOCK(cs_main);
             Misbehaving(pfrom->GetId(), 20);
-            return error("headers message size = %u", nCount);
+            LogPrintf("headers message size = %u", nCount);
+            return true;
         }
         headers.resize(nCount);
         for (unsigned int n = 0; n < nCount; n++) {
@@ -6001,14 +6004,16 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
             CValidationState state;
             if (pindexLast != NULL && header.hashPrevBlock != pindexLast->GetBlockHash()) {
                 Misbehaving(pfrom->GetId(), 20);
-                return error("non-continuous headers sequence");
+                LogPrintf("non-continuous headers sequence");
+                return true;
             }
             if (!AcceptBlockHeader(header, state, chainparams, &pindexLast)) {
                 int nDoS;
                 if (state.IsInvalid(nDoS)) {
                     if (nDoS > 0)
                         Misbehaving(pfrom->GetId(), nDoS);
-                    return error("invalid header received");
+                    LogPrintf("invalid header received");
+                    return true;
                 }
             }
         }
@@ -6155,15 +6160,13 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         if (!(pfrom->GetLocalServices() & NODE_BLOOM) && !pfrom->fWhitelisted)
         {
             LogPrint("net", "mempool request with bloom filters disabled, disconnect peer=%d\n", pfrom->GetId());
-            pfrom->fDisconnect = true;
-            return true;
+            return false;
         }
 
         if (connman.OutboundTargetReached(false) && !pfrom->fWhitelisted)
         {
             LogPrint("net", "mempool request with bandwidth limit reached, disconnect peer=%d\n", pfrom->GetId());
-            pfrom->fDisconnect = true;
-            return true;
+            return false;
         }
 
         LOCK(pfrom->cs_inventory);
@@ -6378,13 +6381,13 @@ bool ProcessMessages(CNode* pfrom, CConnman& connman)
     bool fOk = true;
 
     if (!pfrom->vRecvGetData.empty())
-        ProcessGetData(pfrom, chainparams.GetConsensus(), connman);
+        fOk = ProcessGetData(pfrom, chainparams.GetConsensus(), connman);
 
     // this maintains the order of responses
     if (!pfrom->vRecvGetData.empty()) return fOk;
 
     std::deque<CNetMessage>::iterator it = pfrom->vRecvMsg.begin();
-    while (!pfrom->fDisconnect && it != pfrom->vRecvMsg.end()) {
+    while (fOk && it != pfrom->vRecvMsg.end()) {
         // Don't bother if send buffer is too full to respond anyway
         if (pfrom->nSendSize >= nMaxSendBufferSize)
             break;
@@ -6436,10 +6439,9 @@ bool ProcessMessages(CNode* pfrom, CConnman& connman)
         }
 
         // Process message
-        bool fRet = false;
         try
         {
-            fRet = ProcessMessage(pfrom, strCommand, vRecv, msg.nTime, chainparams, connman);
+            fOk = ProcessMessage(pfrom, strCommand, vRecv, msg.nTime, chainparams, connman);
             boost::this_thread::interruption_point();
         }
         catch (const std::ios_base::failure& e)
@@ -6474,15 +6476,10 @@ bool ProcessMessages(CNode* pfrom, CConnman& connman)
             PrintExceptionContinue(NULL, "ProcessMessages()");
         }
 
-        if (!fRet)
-            LogPrintf("%s(%s, %u bytes) FAILED peer=%d\n", __func__, SanitizeString(strCommand), nMessageSize, pfrom->id);
-
         break;
     }
 
-    // In case the connection got shut down, its receive buffer was wiped
-    if (!pfrom->fDisconnect)
-        pfrom->vRecvMsg.erase(pfrom->vRecvMsg.begin(), it);
+    pfrom->vRecvMsg.erase(pfrom->vRecvMsg.begin(), it);
 
     return fOk;
 }
@@ -6509,7 +6506,7 @@ bool SendMessages(CNode* pto, CConnman& connman)
     const Consensus::Params& consensusParams = Params().GetConsensus();
     {
         // Don't send anything until we get its version message
-        if (!pto->fSuccessfullyConnected || pto->fDisconnect)
+        if (!pto->fSuccessfullyConnected)
             return true;
 
         // If pto->fSuccessfullyConnected, the outgoing message serialization
@@ -6559,16 +6556,15 @@ bool SendMessages(CNode* pto, CConnman& connman)
             if (pto->fWhitelisted)
                 LogPrintf("Warning: not punishing whitelisted peer %s!\n", pto->addr.ToString());
             else {
-                pto->fDisconnect = true;
                 if (pto->addr.IsLocal())
                     LogPrintf("Warning: not banning local peer %s!\n", pto->addr.ToString());
                 else
                 {
                     connman.Ban(pto->addr, BanReasonNodeMisbehaving);
                 }
+                return false;
             }
             state.fShouldBan = false;
-            return true;
         }
 
         // Address refresh broadcast
@@ -6904,8 +6900,7 @@ bool SendMessages(CNode* pto, CConnman& connman)
             // the download window should be much larger than the to-be-downloaded set of blocks, so disconnection
             // should only happen during initial block download.
             LogPrintf("Peer=%d is stalling block download, disconnecting\n", pto->id);
-            pto->fDisconnect = true;
-            return true;
+            return false;
         }
         // In case there is a block that has been in flight from this peer for 2 + 0.5 * N times the block interval
         // (with N the number of peers from which we're downloading validated blocks), disconnect due to timeout.
@@ -6917,8 +6912,7 @@ bool SendMessages(CNode* pto, CConnman& connman)
             int nOtherPeersWithValidatedDownloads = nPeersWithValidatedDownloads - (state.nBlocksInFlightValidHeaders > 0);
             if (nNow > state.nDownloadingSince + consensusParams.nPowTargetSpacing * (BLOCK_DOWNLOAD_TIMEOUT_BASE + BLOCK_DOWNLOAD_TIMEOUT_PER_PEER * nOtherPeersWithValidatedDownloads)) {
                 LogPrintf("Timeout downloading block %s from peer=%d, disconnecting\n", queuedBlock.hash.ToString(), pto->id);
-                pto->fDisconnect = true;
-                return true;
+                return false;
             }
         }
 
