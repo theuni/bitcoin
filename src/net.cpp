@@ -1849,16 +1849,15 @@ void CConnman::ThreadMessageHandler()
         {
             if (pnode->fDisconnect)
                 continue;
+            bool fOk = true;
 
             // Receive messages
             {
                 TRY_LOCK(pnode->cs_vRecvMsg, lockRecv);
                 if (lockRecv)
                 {
-                    if (!GetNodeSignals().ProcessMessages(pnode, *this))
-                        pnode->CloseSocketDisconnect();
-
-                    if (pnode->nSendSize < GetSendBufferSize())
+                    fOk = GetNodeSignals().ProcessMessages(pnode, *this);
+                    if (fOk && pnode->nSendSize < GetSendBufferSize())
                     {
                         if (!pnode->vRecvGetData.empty() || (!pnode->vRecvMsg.empty() && pnode->vRecvMsg[0].complete()))
                         {
@@ -1869,13 +1868,15 @@ void CConnman::ThreadMessageHandler()
             }
             if(!interruptMessageHandler.test_and_set())
                 return;
-
             // Send messages
+            if (fOk)
             {
                 TRY_LOCK(pnode->cs_vSend, lockSend);
                 if (lockSend)
-                    GetNodeSignals().SendMessages(pnode, *this);
+                    fOk = GetNodeSignals().SendMessages(pnode, *this);
             }
+            if (!fOk)
+                pnode->CloseSocketDisconnect();
 
             if(!interruptMessageHandler.test_and_set())
                 return;
