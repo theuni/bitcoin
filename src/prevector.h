@@ -248,6 +248,25 @@ public:
         }
     }
 
+    prevector(prevector<N, T, Size, Diff>&& other)  : _size(other._size), _union(other._union) {
+        if (other._size > N) {
+            other._union.indirect = nullptr;
+            other._size = 0;
+        }
+    }
+
+    prevector& operator=(prevector<N, T, Size, Diff>&& other)  {
+        if(_size > N)
+            free(_union.indirect);
+        _union = other._union;
+        _size = other._size;
+        if (other._size > N) {
+            other._union.indirect = nullptr;
+            other._size = 0;
+        }
+        return *this;
+    }
+
     prevector& operator=(const prevector<N, T, Size, Diff>& other) {
         if (&other == this) {
             return *this;
