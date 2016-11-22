@@ -7,6 +7,7 @@
 #define BITCOIN_ADDRDB_H
 
 #include "serialize.h"
+#include "streams.h"
 
 #include <string>
 #include <map>
@@ -14,7 +15,6 @@
 
 class CSubNet;
 class CAddrMan;
-class CDataStream;
 
 typedef enum BanReason
 {
