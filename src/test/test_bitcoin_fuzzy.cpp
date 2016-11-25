@@ -6,6 +6,8 @@
 #include "config/bitcoin-config.h"
 #endif
 
+#include "addrdb.h"
+#include "bloom.h"
 #include "consensus/merkle.h"
 #include "primitives/block.h"
 #include "script/script.h"
@@ -13,7 +15,7 @@
 #include "chain.h"
 #include "coins.h"
 #include "compressor.h"
-#include "net.h"
+#include "netaddress.h"
 #include "protocol.h"
 #include "streams.h"
 #include "undo.h"
