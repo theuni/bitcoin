@@ -821,21 +821,66 @@ const uint256& CNetMessage::GetMessageHash() const
 
 
 
+void CConnman::OnBytesSent(CNode* pnode, int nBytes)
+{
+    uint64_t now = GetTime();
+    pnode->nLastSend = now;
+    pnode->nSendBytes += nBytes;
 
+    LOCK(cs_totalBytesSent);
+    nTotalBytesSent += nBytes;
+
+    if (nMaxOutboundCycleStartTime + nMaxOutboundTimeframe < now)
+    {
+        // timeframe expired, reset cycle
+        nMaxOutboundCycleStartTime = now;
+        nMaxOutboundTotalBytesSentInCycle = 0;
+    }
+
+    // TODO, exclude whitebind peers
+    nMaxOutboundTotalBytesSentInCycle += nBytes;
+}
+
+
+void CConnman::OnBytesReceived(CNode* pnode, const char* pchBuf, int nBytes)
+{
+    uint64_t now = GetTime();
+    bool notify = false;
+    if (!pnode->ReceiveMsgBytes(pchBuf, nBytes, notify))
+        pnode->CloseSocketDisconnect();
+    if(notify)
+        messageHandlerCondition.notify_one();
+    pnode->nLastRecv = now;
+    pnode->nRecvBytes += nBytes;
+
+    LOCK(cs_totalBytesRecv);
+    nTotalBytesRecv += nBytes;
+}
+
+void CConnman::OnSendError(CNode* pnode, std::string strErr)
+{
+    LogPrintf("socket send error %s\n", strErr);
+    pnode->CloseSocketDisconnect();
+}
+
+static int SendNodeData(SOCKET sock, const std::vector<unsigned char>& data, size_t nSendOffset)
+{
+    assert(data.size() > nSendOffset);
+    return send(sock, reinterpret_cast<const char*>(data.data()) + nSendOffset, data.size() - nSendOffset, MSG_NOSIGNAL | MSG_DONTWAIT);
+}
 
 // requires LOCK(cs_vSend)
-size_t SocketSendData(CNode *pnode)
+void CConnman::SocketSendData(CNode *pnode)
 {
     auto it = pnode->vSendMsg.begin();
-    size_t nSentSize = 0;
+    int nSentSize = 0;
+    bool fSendError = false;
 
     while (it != pnode->vSendMsg.end()) {
         const auto &data = *it;
         assert(data.size() > pnode->nSendOffset);
-        int nBytes = send(pnode->hSocket, reinterpret_cast<const char*>(data.data()) + pnode->nSendOffset, data.size() - pnode->nSendOffset, MSG_NOSIGNAL | MSG_DONTWAIT);
+        int nBytes = SendNodeData(pnode->hSocket, data, pnode->nSendOffset);
         if (nBytes > 0) {
-            pnode->nLastSend = GetTime();
-            pnode->nSendBytes += nBytes;
             pnode->nSendOffset += nBytes;
             nSentSize += nBytes;
             if (pnode->nSendOffset == data.size()) {
@@ -849,14 +894,8 @@ size_t SocketSendData(CNode *pnode)
         } else {
             if (nBytes < 0) {
                 // error
-                int nErr = WSAGetLastError();
-                if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS)
-                {
-                    LogPrintf("socket send error %s\n", NetworkErrorString(nErr));
-                    pnode->CloseSocketDisconnect();
-                }
+                fSendError = true;
             }
-            // couldn't send anything at all
             break;
         }
     }
@@ -866,7 +905,17 @@ size_t SocketSendData(CNode *pnode)
         assert(pnode->nSendSize == 0);
     }
     pnode->vSendMsg.erase(pnode->vSendMsg.begin(), it);
-    return nSentSize;
+
+    if (nSentSize)
+        OnBytesSent(pnode, nSentSize);
+
+    if(fSendError) {
+        int nErr = WSAGetLastError();
+        if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS)
+        {
+            OnSendError(pnode, NetworkErrorString(nErr));
+        }
+    }
 }
 
 struct NodeEvictionCandidate
@@ -1299,14 +1348,7 @@ void CConnman::ThreadSocketHandler()
                         int nBytes = recv(pnode->hSocket, pchBuf, sizeof(pchBuf), MSG_DONTWAIT);
                         if (nBytes > 0)
                         {
-                            bool notify = false;
-                            if (!pnode->ReceiveMsgBytes(pchBuf, nBytes, notify))
-                                pnode->CloseSocketDisconnect();
-                            if(notify)
-                                messageHandlerCondition.notify_one();
-                            pnode->nLastRecv = GetTime();
-                            pnode->nRecvBytes += nBytes;
-                            RecordBytesRecv(nBytes);
+                            OnBytesReceived(pnode, pchBuf, nBytes);
                         }
                         else if (nBytes == 0)
                         {
@@ -1335,9 +1377,7 @@ void CConnman::ThreadSocketHandler()
             {
                 TRY_LOCK(pnode->cs_vSend, lockSend);
                 if (lockSend) {
-                    size_t nBytes = SocketSendData(pnode);
-                    if (nBytes)
-                        RecordBytesSent(nBytes);
+                    SocketSendData(pnode);
                 }
             }
 
@@ -2439,29 +2479,6 @@ void CConnman::RelayTransaction(const CTransaction& tx)
     }
 }
 
-void CConnman::RecordBytesRecv(uint64_t bytes)
-{
-    LOCK(cs_totalBytesRecv);
-    nTotalBytesRecv += bytes;
-}
-
-void CConnman::RecordBytesSent(uint64_t bytes)
-{
-    LOCK(cs_totalBytesSent);
-    nTotalBytesSent += bytes;
-
-    uint64_t now = GetTime();
-    if (nMaxOutboundCycleStartTime + nMaxOutboundTimeframe < now)
-    {
-        // timeframe expired, reset cycle
-        nMaxOutboundCycleStartTime = now;
-        nMaxOutboundTotalBytesSentInCycle = 0;
-    }
-
-    // TODO, exclude whitebind peers
-    nMaxOutboundTotalBytesSentInCycle += bytes;
-}
-
 void CConnman::SetMaxOutboundTarget(uint64_t limit)
 {
     LOCK(cs_totalBytesSent);
@@ -2688,7 +2705,6 @@ void CConnman::PushMessage(CNode* pnode, CSerializedNetMsg&& msg)
 
     CVectorWriter{SER_NETWORK, INIT_PROTO_VERSION, serializedHeader, 0, hdr};
 
-    size_t nBytesSent = 0;
     {
         LOCK(pnode->cs_vSend);
         if(pnode->hSocket == INVALID_SOCKET) {
@@ -2705,11 +2721,9 @@ void CConnman::PushMessage(CNode* pnode, CSerializedNetMsg&& msg)
             pnode->vSendMsg.push_back(std::move(msg.data));
 
         // If write queue empty, attempt "optimistic write"
-        if (optimisticSend == true)
-            nBytesSent = SocketSendData(pnode);
+        if(optimisticSend)
+            SocketSendData(pnode);
     }
-    if (nBytesSent)
-        RecordBytesSent(nBytesSent);
 }
 
 bool CConnman::ForNode(NodeId id, std::function<bool(CNode* pnode)> func)

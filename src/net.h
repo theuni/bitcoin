@@ -364,7 +364,12 @@ private:
     void DumpBanlist();
 
     unsigned int GetReceiveFloodSize() const;
+    void SocketSendData(CNode *pnode);
 
+
+    void OnBytesReceived(CNode* pnode, const char* pchBuf, int nBytes);
+    void OnBytesSent(CNode* pnode, int nBytes);
+    void OnSendError(CNode* pnode, std::string strErr);
     void OnReceiveError(CNode* pnode, std::string strError);
     void OnRemoteDisconnect(CNode* pnode);
     void OnFirstMessageTimeout(CNode* pnode, int64_t nTime);
@@ -449,7 +454,6 @@ void Discover(boost::thread_group& threadGroup);
 void MapPort(bool fUseUPnP);
 unsigned short GetListenPort();
 bool BindListenPort(const CService &bindAddr, std::string& strError, bool fWhitelisted = false);
-size_t SocketSendData(CNode *pnode);
 
 struct CombinerAll
 {
