@@ -365,6 +365,8 @@ private:
 
     unsigned int GetReceiveFloodSize() const;
 
+    void OnReceiveError(CNode* pnode, std::string strError);
+    void OnRemoteDisconnect(CNode* pnode);
     void OnFirstMessageTimeout(CNode* pnode, int64_t nTime);
     void OnPingTimeout(CNode* pnode, int64_t nTime);
     void OnSendTimeout(CNode* pnode, int64_t nTime);

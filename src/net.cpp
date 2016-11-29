@@ -408,6 +408,20 @@ void CConnman::OnReceiveTimeout(CNode* pnode, int64_t nTime)
     pnode->fDisconnect = true;
 }
 
+void CConnman::OnRemoteDisconnect(CNode* pnode)
+{
+    if (!pnode->fDisconnect)
+        LogPrint("net", "socket closed\n");
+    pnode->CloseSocketDisconnect();
+}
+
+void CConnman::OnReceiveError(CNode* pnode, std::string strError)
+{
+    if (!pnode->fDisconnect)
+        LogPrintf("socket recv error %s\n", strError);
+    pnode->CloseSocketDisconnect();
+}
+
 void CConnman::OnOutgoingFailed(const CAddress& addrConnect, SOCKET hSocket, bool fCountFailure, const char *pszDest, bool fOneShot)
 {
     // If a connection to the node was attempted and failed, mark this as an attempt
@@ -1297,9 +1311,7 @@ void CConnman::ThreadSocketHandler()
                         else if (nBytes == 0)
                         {
                             // socket closed gracefully
-                            if (!pnode->fDisconnect)
-                                LogPrint("net", "socket closed\n");
-                            pnode->CloseSocketDisconnect();
+                            OnRemoteDisconnect(pnode);
                         }
                         else if (nBytes < 0)
                         {
@@ -1307,9 +1319,7 @@ void CConnman::ThreadSocketHandler()
                             int nErr = WSAGetLastError();
                             if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS)
                             {
-                                if (!pnode->fDisconnect)
-                                    LogPrintf("socket recv error %s\n", NetworkErrorString(nErr));
-                                pnode->CloseSocketDisconnect();
+                                OnReceiveError(pnode, NetworkErrorString(nErr));
                             }
                         }
                     }
