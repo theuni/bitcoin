@@ -365,6 +365,10 @@ private:
 
     unsigned int GetReceiveFloodSize() const;
 
+    void OnFirstMessageTimeout(CNode* pnode, int64_t nTime);
+    void OnPingTimeout(CNode* pnode, int64_t nTime);
+    void OnSendTimeout(CNode* pnode, int64_t nTime);
+    void OnReceiveTimeout(CNode* pnode, int64_t nTime);
     void OnOutgoingFailed(const CAddress& addrConnect, SOCKET hSocket, bool fCountFailure, const char *pszDest, bool fOneShot);
     void OnOutgoingProxyFailed(const CAddress& addrConnect, SOCKET hSocket, bool fCountFailure, const char *pszDest, bool fOneShot);
     void OnOutgoingConnected(const CAddress& addrResult, SOCKET hSocket, bool fCountFailure, CSemaphoreGrant *grantOutbound, const char *pszDest, bool fOneShot, bool fFeeler);

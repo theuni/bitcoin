@@ -384,6 +384,30 @@ void CConnman::OnOutgoingConnected(const CAddress& addrConnect, SOCKET hSocket, 
         pnode->fFeeler = true;
 }
 
+void CConnman::OnPingTimeout(CNode* pnode, int64_t nTime)
+{
+    LogPrintf("ping timeout: %fs\n", 0.000001 * (nTime * 1000000 - pnode->nPingUsecStart));
+    pnode->fDisconnect = true;
+}
+
+void CConnman::OnFirstMessageTimeout(CNode* pnode, int64_t nTime)
+{
+    LogPrint("net", "socket no message in first 60 seconds, %d %d from %d\n", pnode->nLastRecv != 0, pnode->nLastSend != 0, pnode->id);
+    pnode->fDisconnect = true;
+}
+
+void CConnman::OnSendTimeout(CNode* pnode, int64_t nTime)
+{
+    LogPrintf("socket sending timeout: %is\n", nTime - pnode->nLastSend);
+    pnode->fDisconnect = true;
+}
+
+void CConnman::OnReceiveTimeout(CNode* pnode, int64_t nTime)
+{
+    LogPrintf("socket receive timeout: %is\n", nTime - pnode->nLastRecv);
+    pnode->fDisconnect = true;
+}
+
 void CConnman::OnOutgoingFailed(const CAddress& addrConnect, SOCKET hSocket, bool fCountFailure, const char *pszDest, bool fOneShot)
 {
     // If a connection to the node was attempted and failed, mark this as an attempt
@@ -1315,23 +1339,19 @@ void CConnman::ThreadSocketHandler()
             {
                 if (pnode->nLastRecv == 0 || pnode->nLastSend == 0)
                 {
-                    LogPrint("net", "socket no message in first 60 seconds, %d %d from %d\n", pnode->nLastRecv != 0, pnode->nLastSend != 0, pnode->id);
-                    pnode->fDisconnect = true;
+                    OnFirstMessageTimeout(pnode, nTime);
                 }
                 else if (nTime - pnode->nLastSend > TIMEOUT_INTERVAL)
                 {
-                    LogPrintf("socket sending timeout: %is\n", nTime - pnode->nLastSend);
-                    pnode->fDisconnect = true;
+                    OnSendTimeout(pnode, nTime);
                 }
                 else if (nTime - pnode->nLastRecv > (pnode->nVersion > BIP0031_VERSION ? TIMEOUT_INTERVAL : 90*60))
                 {
-                    LogPrintf("socket receive timeout: %is\n", nTime - pnode->nLastRecv);
-                    pnode->fDisconnect = true;
+                    OnReceiveTimeout(pnode, nTime);
                 }
                 else if (pnode->nPingNonceSent && pnode->nPingUsecStart + TIMEOUT_INTERVAL * 1000000 < GetTimeMicros())
                 {
-                    LogPrintf("ping timeout: %fs\n", 0.000001 * (GetTimeMicros() - pnode->nPingUsecStart));
-                    pnode->fDisconnect = true;
+                    OnPingTimeout(pnode, nTime);
                 }
             }
         }
