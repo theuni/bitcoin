@@ -335,7 +335,7 @@ private:
     void ProcessOneShot();
     void ThreadOpenConnections();
     void ThreadMessageHandler();
-    void AcceptConnection(const ListenSocket& hListenSocket);
+    void AcceptConnection(SOCKET hListenSocket);
     void ThreadSocketHandler();
     void ThreadDNSAddressSeed();
 
@@ -367,6 +367,7 @@ private:
     void SocketSendData(CNode *pnode);
 
 
+    void OnIncomingConnection(SOCKET hListenSocket, SOCKET hSocket, sockaddr* saddr, size_t len);
     void OnBytesReceived(CNode* pnode, const char* pchBuf, int nBytes);
     void OnBytesSent(CNode* pnode, int nBytes);
     void OnSendError(CNode* pnode, std::string strErr);

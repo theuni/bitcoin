@@ -1064,33 +1064,26 @@ bool CConnman::AttemptToEvictConnection()
     return false;
 }
 
-void CConnman::AcceptConnection(const ListenSocket& hListenSocket) {
+void CConnman::AcceptConnection(SOCKET hListenSocket) {
     struct sockaddr_storage sockaddr;
     socklen_t len = sizeof(sockaddr);
-    SOCKET hSocket = accept(hListenSocket.socket, (struct sockaddr*)&sockaddr, &len);
-    CAddress addr;
-    int nInbound = 0;
-    int nMaxInbound = nMaxConnections - (nMaxOutbound + nMaxFeeler);
-
-    if (hSocket != INVALID_SOCKET)
-        if (!addr.SetSockAddr((const struct sockaddr*)&sockaddr))
-            LogPrintf("Warning: Unknown socket family\n");
-
-    bool whitelisted = hListenSocket.whitelisted || IsWhitelistedRange(addr);
-    {
-        LOCK(cs_vNodes);
-        BOOST_FOREACH(CNode* pnode, vNodes)
-            if (pnode->fInbound)
-                nInbound++;
-    }
+    SOCKET hSocket = accept(hListenSocket, (struct sockaddr*)&sockaddr, &len);
 
     if (hSocket == INVALID_SOCKET)
     {
         int nErr = WSAGetLastError();
         if (nErr != WSAEWOULDBLOCK)
             LogPrintf("socket error accept failed: %s\n", NetworkErrorString(nErr));
-        return;
+    } else {
+        OnIncomingConnection(hListenSocket, hSocket, (struct sockaddr*)&sockaddr, len);
     }
+}
+
+void CConnman::OnIncomingConnection(SOCKET hListenSocket, SOCKET hSocket, sockaddr* saddr, size_t len)
+{
+    CAddress addr;
+    int nInbound = 0;
+    int nMaxInbound = nMaxConnections - (nMaxOutbound + nMaxFeeler);
 
     if (!fNetworkActive) {
         LogPrintf("connection from %s dropped: not accepting new connections\n", addr.ToString());
@@ -1103,6 +1096,26 @@ void CConnman::AcceptConnection(const ListenSocket& hListenSocket) {
         LogPrintf("connection from %s dropped: non-selectable socket\n", addr.ToString());
         CloseSocket(hSocket);
         return;
+    }
+
+    if (hSocket != INVALID_SOCKET)
+        if (!addr.SetSockAddr(saddr))
+            LogPrintf("Warning: Unknown socket family\n");
+
+    bool whitelisted = IsWhitelistedRange(addr);
+    if (!whitelisted) {
+        BOOST_FOREACH(const ListenSocket& hCheckListenSocket, vhListenSocket) {
+            if (hListenSocket == hCheckListenSocket.socket) {
+                whitelisted = hCheckListenSocket.whitelisted;
+                break;
+            }
+        }
+    }
+    {
+        LOCK(cs_vNodes);
+        BOOST_FOREACH(CNode* pnode, vNodes)
+            if (pnode->fInbound)
+                nInbound++;
     }
 
     // According to the internet TCP_NODELAY is not carried into accepted sockets
@@ -1313,7 +1326,7 @@ void CConnman::ThreadSocketHandler()
         {
             if (hListenSocket.socket != INVALID_SOCKET && FD_ISSET(hListenSocket.socket, &fdsetRecv))
             {
-                AcceptConnection(hListenSocket);
+                AcceptConnection(hListenSocket.socket);
             }
         }
 
