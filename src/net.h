@@ -367,6 +367,8 @@ private:
     void SocketSendData(CNode *pnode);
 
 
+    void MarkForDisconnect(CNode* pnode);
+    void OnReadyToDisconnect(CNode* pnode);
     void OnIncomingConnection(SOCKET hListenSocket, SOCKET hSocket, sockaddr* saddr, size_t len);
     void OnBytesReceived(CNode* pnode, const char* pchBuf, int nBytes);
     void OnBytesSent(CNode* pnode, int nBytes);

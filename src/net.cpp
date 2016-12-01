@@ -387,39 +387,37 @@ void CConnman::OnOutgoingConnected(const CAddress& addrConnect, SOCKET hSocket, 
 void CConnman::OnPingTimeout(CNode* pnode, int64_t nTime)
 {
     LogPrintf("ping timeout: %fs\n", 0.000001 * (nTime * 1000000 - pnode->nPingUsecStart));
-    pnode->fDisconnect = true;
+    MarkForDisconnect(pnode);
 }
 
 void CConnman::OnFirstMessageTimeout(CNode* pnode, int64_t nTime)
 {
     LogPrint("net", "socket no message in first 60 seconds, %d %d from %d\n", pnode->nLastRecv != 0, pnode->nLastSend != 0, pnode->id);
-    pnode->fDisconnect = true;
+    MarkForDisconnect(pnode);
 }
 
 void CConnman::OnSendTimeout(CNode* pnode, int64_t nTime)
 {
     LogPrintf("socket sending timeout: %is\n", nTime - pnode->nLastSend);
-    pnode->fDisconnect = true;
+    MarkForDisconnect(pnode);
 }
 
 void CConnman::OnReceiveTimeout(CNode* pnode, int64_t nTime)
 {
     LogPrintf("socket receive timeout: %is\n", nTime - pnode->nLastRecv);
-    pnode->fDisconnect = true;
+    MarkForDisconnect(pnode);
 }
 
 void CConnman::OnRemoteDisconnect(CNode* pnode)
 {
-    if (!pnode->fDisconnect)
-        LogPrint("net", "socket closed\n");
-    pnode->CloseSocketDisconnect();
+    LogPrint("net", "socket closed\n");
+    MarkForDisconnect(pnode);
 }
 
 void CConnman::OnReceiveError(CNode* pnode, std::string strError)
 {
-    if (!pnode->fDisconnect)
-        LogPrintf("socket recv error %s\n", strError);
-    pnode->CloseSocketDisconnect();
+    LogPrintf("socket recv error %s\n", strError);
+    MarkForDisconnect(pnode);
 }
 
 void CConnman::OnOutgoingFailed(const CAddress& addrConnect, SOCKET hSocket, bool fCountFailure, const char *pszDest, bool fOneShot)
@@ -490,19 +488,45 @@ void CConnman::DumpBanlist()
         banmap.size(), GetTimeMillis() - nStart);
 }
 
-void CNode::CloseSocketDisconnect()
+void CConnman::MarkForDisconnect(CNode* pnode)
 {
-    fDisconnect = true;
-    if (hSocket != INVALID_SOCKET)
+    pnode->fDisconnect = true;
+}
+
+void CConnman::OnReadyToDisconnect(CNode* pnode)
+{
+    size_t vNodesSize;
     {
-        LogPrint("net", "disconnecting peer=%d\n", id);
-        CloseSocket(hSocket);
+        LOCK(cs_vNodes);
+        // remove from vNodes
+        vNodes.erase(remove(vNodes.begin(), vNodes.end(), pnode), vNodes.end());
+        vNodesSize = vNodes.size();
     }
 
-    // in case this fails, we'll empty the recv buffer when the CNode is deleted
-    TRY_LOCK(cs_vRecvMsg, lockRecv);
-    if (lockRecv)
-        vRecvMsg.clear();
+    // release outbound grant (if any)
+    pnode->grantOutbound.Release();
+
+    // close socket and cleanup
+    if (pnode->hSocket != INVALID_SOCKET)
+    {
+        LogPrint("net", "disconnecting peer=%d\n", pnode->id);
+        CloseSocket(pnode->hSocket);
+    }
+
+    {
+        // in case this fails, we'll empty the recv buffer when the CNode is deleted
+        TRY_LOCK(pnode->cs_vRecvMsg, lockRecv);
+        if (lockRecv)
+            pnode->vRecvMsg.clear();
+    }
+
+    // hold in disconnected pool until all refs are released
+    pnode->Release();
+    vNodesDisconnected.push_back(pnode);
+
+    if(clientInterface)
+        clientInterface->NotifyNumConnectionsChanged(vNodesSize);
+
 }
 
 void CConnman::ClearBanned()
@@ -580,7 +604,7 @@ void CConnman::Ban(const CSubNet& subNet, const BanReason &banReason, int64_t ba
         LOCK(cs_vNodes);
         BOOST_FOREACH(CNode* pnode, vNodes) {
             if (subNet.Match((CNetAddr)pnode->addr))
-                pnode->fDisconnect = true;
+                MarkForDisconnect(pnode);
         }
     }
     if(banReason == BanReasonManuallyAdded)
@@ -846,12 +870,12 @@ void CConnman::OnBytesReceived(CNode* pnode, const char* pchBuf, int nBytes)
 {
     uint64_t now = GetTime();
     bool notify = false;
-    if (!pnode->ReceiveMsgBytes(pchBuf, nBytes, notify))
-        pnode->CloseSocketDisconnect();
-    if(notify)
-        messageHandlerCondition.notify_one();
     pnode->nLastRecv = now;
     pnode->nRecvBytes += nBytes;
+    if (!pnode->ReceiveMsgBytes(pchBuf, nBytes, notify))
+        MarkForDisconnect(pnode);
+    if(notify)
+        messageHandlerCondition.notify_one();
 
     LOCK(cs_totalBytesRecv);
     nTotalBytesRecv += nBytes;
@@ -860,7 +884,7 @@ void CConnman::OnBytesReceived(CNode* pnode, const char* pchBuf, int nBytes)
 void CConnman::OnSendError(CNode* pnode, std::string strErr)
 {
     LogPrintf("socket send error %s\n", strErr);
-    pnode->CloseSocketDisconnect();
+    MarkForDisconnect(pnode);
 }
 
 static int SendNodeData(SOCKET sock, const std::vector<unsigned char>& data, size_t nSendOffset)
@@ -1057,7 +1081,7 @@ bool CConnman::AttemptToEvictConnection()
     LOCK(cs_vNodes);
     for(std::vector<CNode*>::const_iterator it(vNodes.begin()); it != vNodes.end(); ++it) {
         if ((*it)->GetId() == evicted) {
-            (*it)->fDisconnect = true;
+            MarkForDisconnect(*it);
             return true;
         }
     }
@@ -1162,7 +1186,6 @@ void CConnman::OnIncomingConnection(SOCKET hListenSocket, SOCKET hSocket, sockad
 
 void CConnman::ThreadSocketHandler()
 {
-    unsigned int nPrevNodeCount = 0;
     while (interruptSocketHandler.test_and_set())
     {
         //
@@ -1177,18 +1200,7 @@ void CConnman::ThreadSocketHandler()
                 if (pnode->fDisconnect ||
                     (pnode->GetRefCount() <= 0 && pnode->vRecvMsg.empty() && pnode->nSendSize == 0))
                 {
-                    // remove from vNodes
-                    vNodes.erase(remove(vNodes.begin(), vNodes.end(), pnode), vNodes.end());
-
-                    // release outbound grant (if any)
-                    pnode->grantOutbound.Release();
-
-                    // close socket and cleanup
-                    pnode->CloseSocketDisconnect();
-
-                    // hold in disconnected pool until all refs are released
-                    pnode->Release();
-                    vNodesDisconnected.push_back(pnode);
+                    OnReadyToDisconnect(pnode);
                 }
             }
         }
@@ -1221,16 +1233,6 @@ void CConnman::ThreadSocketHandler()
                     }
                 }
             }
-        }
-        size_t vNodesSize;
-        {
-            LOCK(cs_vNodes);
-            vNodesSize = vNodes.size();
-        }
-        if(vNodesSize != nPrevNodeCount) {
-            nPrevNodeCount = vNodesSize;
-            if(clientInterface)
-                clientInterface->NotifyNumConnectionsChanged(nPrevNodeCount);
         }
 
         //
@@ -1959,7 +1961,7 @@ void CConnman::ThreadMessageHandler()
                     fOk = GetNodeSignals().SendMessages(pnode, *this);
             }
             if (!fOk)
-                pnode->CloseSocketDisconnect();
+                MarkForDisconnect(pnode);
 
             if(!interruptMessageHandler.test_and_set())
                 return;
@@ -2143,7 +2145,7 @@ void CConnman::SetNetworkActive(bool active)
         LOCK(cs_vNodes);
         // Close sockets to all nodes
         BOOST_FOREACH(CNode* pnode, vNodes) {
-            pnode->CloseSocketDisconnect();
+            MarkForDisconnect(pnode);
         }
     } else {
         fNetworkActive = true;
@@ -2447,7 +2449,7 @@ void CConnman::GetNodeStats(std::vector<CNodeStats>& vstats)
 bool CConnman::DisconnectAddress(const CNetAddr& netAddr)
 {
     if (CNode* pnode = FindNode(netAddr)) {
-        pnode->fDisconnect = true;
+        MarkForDisconnect(pnode);
         return true;
     }
     return false;
@@ -2456,7 +2458,7 @@ bool CConnman::DisconnectAddress(const CNetAddr& netAddr)
 bool CConnman::DisconnectSubnet(const CSubNet& subNet)
 {
     if (CNode* pnode = FindNode(subNet)) {
-        pnode->fDisconnect = true;
+        MarkForDisconnect(pnode);
         return true;
     }
     return false;
@@ -2465,7 +2467,7 @@ bool CConnman::DisconnectSubnet(const CSubNet& subNet)
 bool CConnman::DisconnectNode(const std::string& strNode)
 {
     if (CNode* pnode = FindNode(strNode)) {
-        pnode->fDisconnect = true;
+        MarkForDisconnect(pnode);
         return true;
     }
     return false;
@@ -2475,7 +2477,7 @@ bool CConnman::DisconnectNode(NodeId id)
     LOCK(cs_vNodes);
     for(CNode* pnode : vNodes) {
         if (id == pnode->id) {
-            pnode->fDisconnect = true;
+            MarkForDisconnect(pnode);
             return true;
         }
     }
