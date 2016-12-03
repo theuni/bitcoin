@@ -76,10 +76,6 @@ std::string strSubVersion;
 
 limitedmap<uint256, int64_t> mapAlreadyAskedFor(MAX_INV_SZ);
 
-// Signals for message handling
-static CNodeSignals g_signals;
-CNodeSignals& GetNodeSignals() { return g_signals; }
-
 void CConnman::AddOneShot(const std::string& strDest)
 {
     LOCK(cs_vOneShots);
@@ -393,7 +389,7 @@ CNode* CConnman::ConnectNode(CAddress addrConnect, const char *pszDest, bool fCo
         pnode->nServicesExpected = ServiceFlags(addrConnect.nServices & nRelevantServices);
         pnode->nTimeConnected = GetTime();
         pnode->AddRef();
-        GetNodeSignals().InitializeNode(pnode, *this);
+        msgProc->InitializeNode(pnode);
         {
             LOCK(cs_vNodes);
             vNodes.push_back(pnode);
@@ -1027,7 +1023,7 @@ void CConnman::AcceptConnection(const ListenSocket& hListenSocket) {
     CNode* pnode = new CNode(id, nLocalServices, GetBestHeight(), hSocket, addr, CalculateKeyedNetGroup(addr), nonce, "", true);
     pnode->AddRef();
     pnode->fWhitelisted = whitelisted;
-    GetNodeSignals().InitializeNode(pnode, *this);
+    msgProc->InitializeNode(pnode);
 
     LogPrint("net", "connection from %s accepted\n", addr.ToString());
 
@@ -1864,7 +1860,7 @@ void CConnman::ThreadMessageHandler()
                 TRY_LOCK(pnode->cs_vRecvMsg, lockRecv);
                 if (lockRecv)
                 {
-                    if (!GetNodeSignals().ProcessMessages(pnode, *this))
+                    if (!msgProc->ProcessMessages(pnode))
                         pnode->CloseSocketDisconnect();
 
                     if (pnode->nSendSize < GetSendBufferSize())
@@ -1883,7 +1879,7 @@ void CConnman::ThreadMessageHandler()
             {
                 TRY_LOCK(pnode->cs_vSend, lockSend);
                 if (lockSend)
-                    GetNodeSignals().SendMessages(pnode, *this);
+                    msgProc->SendMessages(pnode);
             }
 
             if(!interruptMessageHandler.test_and_set())
@@ -2119,6 +2115,10 @@ bool CConnman::Start(CScheduler& scheduler, std::string& strNodeError, Options c
     SetBestHeight(connOptions.nBestHeight);
 
     clientInterface = connOptions.uiInterface;
+    msgProc = std::move(connOptions.msgProc);
+
+    msgProc->OnStartup();
+
     if (clientInterface)
         clientInterface->InitMessage(_("Loading addresses..."));
     // Load addresses from peers.dat
@@ -2212,6 +2212,7 @@ public:
 instance_of_cnetcleanup;
 void CConnman::Interrupt()
 {
+    msgProc->OnShutdown();
     LogPrintf("%s\n",__func__);
     {
         std::lock_guard<std::mutex> lock(interruptMutex);
@@ -2278,7 +2279,7 @@ void CConnman::DeleteNode(CNode* pnode)
 {
     assert(pnode);
     bool fUpdateConnectionTime = false;
-    GetNodeSignals().FinalizeNode(pnode->GetId(), fUpdateConnectionTime);
+    msgProc->FinalizeNode(pnode->GetId(), fUpdateConnectionTime);
     if(fUpdateConnectionTime)
         addrman.Connected(pnode->addr);
     delete pnode;

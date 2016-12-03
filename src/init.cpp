@@ -175,7 +175,6 @@ void Interrupt(boost::thread_group& threadGroup)
     InterruptRPC();
     InterruptREST();
     InterruptTorControl();
-    InterruptNetProcessing();
     if(g_connman)
         g_connman->Interrupt();
     threadGroup.interrupt_all();
@@ -210,7 +209,6 @@ void Shutdown()
     g_connman.reset();
 
     StopTorControl();
-    UnregisterNodeSignals(GetNodeSignals());
     DumpMempool();
 
     if (fFeeEstimatesInitialized)
@@ -1143,7 +1141,6 @@ bool AppInitMain(boost::thread_group& threadGroup, CScheduler& scheduler)
 
     peerLogic.reset(new PeerLogicValidation(&connman));
     RegisterValidationInterface(peerLogic.get());
-    RegisterNodeSignals(GetNodeSignals());
 
     // sanitize comments per BIP-0014, format user agent and check total size
     std::vector<string> uacomments;
@@ -1550,6 +1547,7 @@ bool AppInitMain(boost::thread_group& threadGroup, CScheduler& scheduler)
     connOptions.nMaxOutbound = std::min(MAX_OUTBOUND_CONNECTIONS, connOptions.nMaxConnections);
     connOptions.nMaxFeeler = 1;
     connOptions.nBestHeight = chainActive.Height();
+    connOptions.msgProc = std::unique_ptr<CMessageProcessorInterface>(new CMessageProcessor(connman));
     connOptions.uiInterface = &uiInterface;
     connOptions.nSendBufferMaxSize = 1000*GetArg("-maxsendbuffer", DEFAULT_MAXSENDBUFFER);
     connOptions.nReceiveFloodSize = 1000*GetArg("-maxreceivebuffer", DEFAULT_MAXRECEIVEBUFFER);
@@ -1557,7 +1555,7 @@ bool AppInitMain(boost::thread_group& threadGroup, CScheduler& scheduler)
     connOptions.nMaxOutboundTimeframe = nMaxOutboundTimeframe;
     connOptions.nMaxOutboundLimit = nMaxOutboundLimit;
 
-    if(!connman.Start(scheduler, strNodeError, connOptions))
+    if(!connman.Start(scheduler, strNodeError, std::move(connOptions)))
         return InitError(strNodeError);
 
     // ********************************************************* Step 12: finished

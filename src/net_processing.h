@@ -6,16 +6,8 @@
 #ifndef BITCOIN_NET_PROCESSING_H
 #define BITCOIN_NET_PROCESSING_H
 
-#include "net.h"
+#include "messageinterface.h"
 #include "validationinterface.h"
-
-/** Register with a network node to receive its signals */
-void RegisterNodeSignals(CNodeSignals& nodeSignals);
-/** Unregister a network node */
-void UnregisterNodeSignals(CNodeSignals& nodeSignals);
-
-/* Quickly break out of any current message processing */
-void InterruptNetProcessing();
 
 class PeerLogicValidation : public CValidationInterface {
 private:
@@ -41,14 +33,21 @@ bool GetNodeStateStats(NodeId nodeid, CNodeStateStats &stats);
 /** Increase a node's misbehavior score. */
 void Misbehaving(NodeId nodeid, int howmuch);
 
-/** Process protocol messages received from a given node */
-bool ProcessMessages(CNode* pfrom, CConnman& connman);
-/**
- * Send queued protocol messages to be sent to a give node.
- *
- * @param[in]   pto             The node which we are sending messages to.
- * @param[in]   connman         The connection manager for that node.
- */
-bool SendMessages(CNode* pto, CConnman& connman);
+class CMessageProcessor final : public CMessageProcessorInterface
+{
+public:
+    CMessageProcessor(CConnman& connmanIn);
+    ~CMessageProcessor() final = default;
+protected:
+    void OnStartup() final;
+    void OnShutdown() final;
+    void OnInterrupt() final;
+    bool ProcessMessages(CNode* pfrom) final;
+    bool SendMessages(CNode* pto) final;
+    void InitializeNode(CNode *pnode) final;
+    void FinalizeNode(NodeId nodeid, bool& fUpdateConnectionTime) final;
+private:
+    CConnman& connman;
+};
 
 #endif // BITCOIN_NET_PROCESSING_H

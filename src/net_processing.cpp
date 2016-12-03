@@ -262,8 +262,24 @@ void PushNodeVersion(CNode *pnode, CConnman& connman, int64_t nTime)
     else
         LogPrint("net", "send version message: version %d, blocks=%d, us=%s, peer=%d\n", PROTOCOL_VERSION, nNodeStartingHeight, addrMe.ToString(), nodeid);
 }
+} // anon namespace
 
-void InitializeNode(CNode *pnode, CConnman& connman) {
+CMessageProcessor::CMessageProcessor(CConnman& connmanIn) : connman(connmanIn){}
+
+void CMessageProcessor::OnStartup()
+{
+}
+
+void CMessageProcessor::OnShutdown()
+{
+}
+
+void CMessageProcessor::OnInterrupt()
+{
+    interruptNetProcessing = true;
+}
+
+void CMessageProcessor::InitializeNode(CNode *pnode) {
     CAddress addr = pnode->addr;
     std::string addrName = pnode->addrName;
     NodeId nodeid = pnode->GetId();
@@ -272,10 +288,10 @@ void InitializeNode(CNode *pnode, CConnman& connman) {
         mapNodeState.emplace_hint(mapNodeState.end(), std::piecewise_construct, std::forward_as_tuple(nodeid), std::forward_as_tuple(addr, std::move(addrName)));
     }
     if(!pnode->fInbound)
-        PushNodeVersion(pnode, connman, GetTime());
+        ::PushNodeVersion(pnode, connman, GetTime());
 }
 
-void FinalizeNode(NodeId nodeid, bool& fUpdateConnectionTime) {
+void CMessageProcessor::FinalizeNode(NodeId nodeid, bool& fUpdateConnectionTime) {
     fUpdateConnectionTime = false;
     LOCK(cs_main);
     CNodeState *state = State(nodeid);
@@ -550,13 +566,6 @@ void FindNextBlocksToDownload(NodeId nodeid, unsigned int count, std::vector<CBl
     }
 }
 
-} // anon namespace
-
-void InterruptNetProcessing()
-{
-    interruptNetProcessing = true;
-}
-
 bool GetNodeStateStats(NodeId nodeid, CNodeStateStats &stats) {
     LOCK(cs_main);
     CNodeState *state = State(nodeid);
@@ -570,22 +579,6 @@ bool GetNodeStateStats(NodeId nodeid, CNodeStateStats &stats) {
             stats.vHeightInFlight.push_back(queue.pindex->nHeight);
     }
     return true;
-}
-
-void RegisterNodeSignals(CNodeSignals& nodeSignals)
-{
-    nodeSignals.ProcessMessages.connect(&ProcessMessages);
-    nodeSignals.SendMessages.connect(&SendMessages);
-    nodeSignals.InitializeNode.connect(&InitializeNode);
-    nodeSignals.FinalizeNode.connect(&FinalizeNode);
-}
-
-void UnregisterNodeSignals(CNodeSignals& nodeSignals)
-{
-    nodeSignals.ProcessMessages.disconnect(&ProcessMessages);
-    nodeSignals.SendMessages.disconnect(&SendMessages);
-    nodeSignals.InitializeNode.disconnect(&InitializeNode);
-    nodeSignals.FinalizeNode.disconnect(&FinalizeNode);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -2388,7 +2381,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
 }
 
 // requires LOCK(cs_vRecvMsg)
-bool ProcessMessages(CNode* pfrom, CConnman& connman)
+bool CMessageProcessor::ProcessMessages(CNode* pfrom)
 {
     const CChainParams& chainparams = Params();
     unsigned int nMaxSendBufferSize = connman.GetSendBufferSize();
@@ -2533,7 +2526,7 @@ public:
     }
 };
 
-bool SendMessages(CNode* pto, CConnman& connman)
+bool CMessageProcessor::SendMessages(CNode* pto)
 {
     const Consensus::Params& consensusParams = Params().GetConsensus();
     {
