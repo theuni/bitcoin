@@ -72,6 +72,7 @@ static const bool DEFAULT_REST_ENABLE = false;
 static const bool DEFAULT_DISABLE_SAFEMODE = false;
 static const bool DEFAULT_STOPAFTERBLOCKIMPORT = false;
 
+std::unique_ptr<CMessageProcessorInterface> g_msgProc;
 std::unique_ptr<CConnman> g_connman;
 std::unique_ptr<PeerLogicValidation> peerLogic;
 
@@ -207,7 +208,6 @@ void Shutdown()
     g_connman.reset();
 
     StopTorControl();
-    UnregisterNodeSignals(GetNodeSignals());
     DumpMempool();
 
     if (fFeeEstimatesInitialized)
@@ -1134,13 +1134,14 @@ bool AppInitMain(boost::thread_group& threadGroup, CScheduler& scheduler)
     // is not yet setup and may end up being set up twice if we
     // need to reindex later.
 
+    assert(!g_msgProc);
+    g_msgProc = std::unique_ptr<CMessageProcessorInterface>(new CMessageProcessor);
     assert(!g_connman);
-    g_connman = std::unique_ptr<CConnman>(new CConnman(GetRand(std::numeric_limits<uint64_t>::max()), GetRand(std::numeric_limits<uint64_t>::max())));
+    g_connman = std::unique_ptr<CConnman>(new CConnman(GetRand(std::numeric_limits<uint64_t>::max()), GetRand(std::numeric_limits<uint64_t>::max()), *g_msgProc));
     CConnman& connman = *g_connman;
 
     peerLogic.reset(new PeerLogicValidation(&connman));
     RegisterValidationInterface(peerLogic.get());
-    RegisterNodeSignals(GetNodeSignals());
 
     // sanitize comments per BIP-0014, format user agent and check total size
     std::vector<string> uacomments;
