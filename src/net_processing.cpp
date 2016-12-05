@@ -38,6 +38,8 @@ using namespace std;
 # error "Bitcoin cannot be compiled without assertions."
 #endif
 
+std::atomic<bool> interruptNetProcessing(false);
+
 int64_t nTimeBestReceived = 0; // Used only to inform the wallet of when we last received a block
 
 struct IteratorComparator
@@ -550,6 +552,11 @@ void FindNextBlocksToDownload(NodeId nodeid, unsigned int count, std::vector<CBl
 
 } // anon namespace
 
+void InterruptNetProcessing()
+{
+    interruptNetProcessing = true;
+}
+
 bool GetNodeStateStats(NodeId nodeid, CNodeStateStats &stats) {
     LOCK(cs_main);
     CNodeState *state = State(nodeid);
@@ -901,7 +908,9 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
 
         const CInv &inv = *it;
         {
-            boost::this_thread::interruption_point();
+            if(interruptNetProcessing)
+                return;
+
             it++;
 
             if (inv.type == MSG_BLOCK || inv.type == MSG_FILTERED_BLOCK || inv.type == MSG_CMPCT_BLOCK || inv.type == MSG_WITNESS_BLOCK)
@@ -1295,7 +1304,8 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         int64_t nSince = nNow - 10 * 60;
         BOOST_FOREACH(CAddress& addr, vAddr)
         {
-            boost::this_thread::interruption_point();
+            if(interruptNetProcessing)
+                return true;
 
             if ((addr.nServices & REQUIRED_SERVICES) != REQUIRED_SERVICES)
                 continue;
@@ -1377,7 +1387,8 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         {
             CInv &inv = vInv[nInv];
 
-            boost::this_thread::interruption_point();
+            if(interruptNetProcessing)
+                return true;
 
             bool fAlreadyHave = AlreadyHave(inv);
             LogPrint("net", "got inv: %s  %s peer=%d\n", inv.ToString(), fAlreadyHave ? "have" : "new", pfrom->id);
@@ -2457,7 +2468,8 @@ bool ProcessMessages(CNode* pfrom, CConnman& connman)
         try
         {
             fRet = ProcessMessage(pfrom, strCommand, vRecv, msg.nTime, chainparams, connman);
-            boost::this_thread::interruption_point();
+            if(interruptNetProcessing)
+                return true;
         }
         catch (const std::ios_base::failure& e)
         {
