@@ -14,6 +14,9 @@ void RegisterNodeSignals(CNodeSignals& nodeSignals);
 /** Unregister a network node */
 void UnregisterNodeSignals(CNodeSignals& nodeSignals);
 
+/* Quickly break out of any current message processing */
+void InterruptNetProcessing();
+
 class PeerLogicValidation : public CValidationInterface {
 private:
     CConnman* connman;

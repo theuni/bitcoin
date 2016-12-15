@@ -2154,6 +2154,7 @@ bool CConnman::Start(CScheduler& scheduler, std::string& strNodeError, Options c
     // Start threads
     //
 
+    InterruptSocks5(false);
     interruptNet.reset();
     interruptMsgProc.reset();
 
@@ -2200,6 +2201,7 @@ void CConnman::Interrupt()
     LogPrintf("%s\n",__func__);
     interruptMsgProc();
     interruptNet();
+    InterruptSocks5(true);
 
     if (semOutbound)
         for (int i=0; i<(nMaxOutbound + nMaxFeeler); i++)
