@@ -138,6 +138,123 @@ struct CBlockReject {
     uint256 hashBlock;
 };
 
+struct CnodeInfo
+{
+    const NodeId id;
+    CAddress addr;
+    //! String name of this peer (debugging/logging purposes).
+    std::string name;
+    //! Whether we have a fully established connection.
+    bool fCurrentlyConnected;
+    bool fInbound;
+
+
+    uint64_t nLocalHostNonce;
+    ServiceFlags nLocalServices;
+    int nMyStartingHeight;
+
+    //! Whether we consider this a preferred download peer.
+    bool fPreferredDownload;
+    //! Whether this peer wants invs or headers (when possible) for block announcements.
+    bool fPreferHeaders;
+    //! Whether this peer wants invs or cmpctblocks (when possible) for block announcements.
+    bool fPreferHeaderAndIDs;
+    /**
+      * Whether this peer will send us cmpctblocks if we request them.
+      * This is not used to gate request logic, as we really only care about fSupportsDesiredCmpctVersion,
+      * but is used as a flag to "lock in" the version of compact blocks (fWantsCmpctWitness) we send.
+      */
+    bool fProvidesHeaderAndIDs;
+    //! Whether this peer can give us witnesses
+    bool fHaveWitness;
+    //! Whether this peer wants witnesses in cmpctblocks/blocktxns
+    bool fWantsCmpctWitness;
+    /**
+     * If we've announced NODE_WITNESS to this peer: whether the peer sends witnesses in cmpctblocks/blocktxns,
+     * otherwise: whether this peer sends non-witnesses in cmpctblocks/blocktxns.
+     */
+    bool fSupportsDesiredCmpctVersion;
+
+
+    int nSendVersion;
+
+    int nVersion;
+
+    ServiceFlags nServices;
+    ServiceFlags nServicesExpected;
+
+    std::string strSubVer;
+    std::string cleanSubVer;
+
+    bool fRelayTxes;
+    CAddress addrLocal;
+
+    int nStartingHeight;
+
+    bool fFeeler;
+    bool fClient;
+    bool fOneShot;
+    bool fWhitelisted;
+
+    CnodeInfo(NodeId idIn, CAddress addrIn, std::string addrNameIn, bool fInboundIn) : id(idIn), addr(addrIn), name(std::move(addrNameIn)), fInbound(fInboundIn) {}
+    bool operator<(const CnodeInfo& rhs)
+    {
+        return id < rhs.id;
+    }
+    CnodeInfo& operator=(const CnodeInfo& rhs)
+    {
+        set_if(nLocalHostNonce, 0ul, rhs.nLocalHostNonce);
+        set_if(fFeeler, false, rhs.fFeeler);
+        set_if(strSubVer, "", rhs.strSubVer);
+        return *this;
+    }
+
+    template <typename T, typename U>
+    static bool set_if(T& dest, U&& expected, const T& desired)
+    {
+        
+        if (dest == expected || dest == desired)
+            return false;
+        dest = desired;
+        return true;
+    }
+};
+
+class CnodeInfoManager
+{
+public:
+    void insert(CnodeInfo nodeInfo)
+    {
+        LOCK(cs_nodeInfo);
+        mapnodeInfo.emplace_hint(mapnodeInfo.end(), nodeInfo.id, std::move(nodeInfo));
+    }
+    template<typename... Args>
+    void emplace(NodeId id, Args&&... args)
+    {
+        LOCK(cs_nodeInfo);
+        mapnodeInfo.emplace_hint(mapnodeInfo.end(), std::piecewise_construct, std::forward_as_tuple(id), std::forward_as_tuple(id, std::forward<Args>(args)...));
+    }
+    void erase(NodeId id)
+    {
+        LOCK(cs_nodeInfo);
+        mapnodeInfo.erase(id);
+    }
+    CnodeInfo load(NodeId id)
+    {
+        LOCK(cs_nodeInfo);
+        return mapnodeInfo.at(id);
+    }
+    void store(CnodeInfo nodeInfo)
+    {
+        LOCK(cs_nodeInfo);
+        mapnodeInfo.at(nodeInfo.id) = std::move(nodeInfo);
+    }
+private:
+    std::map<NodeId, CnodeInfo> mapnodeInfo;
+    CCriticalSection cs_nodeInfo;
+};
+CnodeInfoManager nodeMan;
+
 /**
  * Maintain validation-specific state about nodes, protected by cs_main, instead
  * by CNode's own locks. This simplifies asynchronous operation, where
@@ -271,6 +388,7 @@ void InitializeNode(CNode *pnode, CConnman& connman) {
         LOCK(cs_main);
         mapNodeState.emplace_hint(mapNodeState.end(), std::piecewise_construct, std::forward_as_tuple(nodeid), std::forward_as_tuple(addr, std::move(addrName)));
     }
+    nodeMan.emplace(nodeid, addr, std::move(addrName), pnode->fInbound);
     if(!pnode->fInbound)
         PushNodeVersion(pnode, connman, GetTime());
 }
@@ -1064,7 +1182,7 @@ uint32_t GetFetchFlags(CNode* pfrom, CBlockIndex* pprev, const Consensus::Params
     return nFetchFlags;
 }
 
-bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, int64_t nTimeReceived, const CChainParams& chainparams, CConnman& connman)
+bool static ProcessMessage(CNode* pfrom, CnodeInfo& nodeInfo, string strCommand, CDataStream& vRecv, int64_t nTimeReceived, const CChainParams& chainparams, CConnman& connman)
 {
     unsigned int nMaxSendBufferSize = connman.GetSendBufferSize();
 
@@ -1075,14 +1193,15 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         return true;
     }
 
+    NodeId id = nodeInfo.id;
 
-    if (!(pfrom->GetLocalServices() & NODE_BLOOM) &&
+    if (!(nodeInfo.nLocalServices & NODE_BLOOM) &&
               (strCommand == NetMsgType::FILTERLOAD ||
                strCommand == NetMsgType::FILTERADD))
     {
-        if (pfrom->nVersion >= NO_BLOOM_VERSION) {
+        if (nodeInfo.nVersion >= NO_BLOOM_VERSION) {
             LOCK(cs_main);
-            Misbehaving(pfrom->GetId(), 100);
+            Misbehaving(id, 100);
             return false;
         } else {
             return false;
@@ -2468,9 +2587,11 @@ bool ProcessMessages(CNode* pfrom, CConnman& connman)
         // Process message
         try
         {
-            fOk = ProcessMessage(pfrom, strCommand, vRecv, msg.nTime, chainparams, connman);
+            CnodeInfo nodeInfo = nodeMan.load(pfrom->id);
+            fOk = ProcessMessage(pfrom, nodeInfo, strCommand, vRecv, msg.nTime, chainparams, connman);
             if(interruptNetProcessing)
                 return true;
+            nodeMan.store(std::move(nodeInfo));
         }
         catch (const std::ios_base::failure& e)
         {
