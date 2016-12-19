@@ -368,13 +368,7 @@ void CConnman::OnOutgoingConnected(const CAddress& addrConnect, SOCKET hSocket, 
     uint64_t nonce = GetDeterministicRandomizer(RANDOMIZER_ID_LOCALHOSTNONCE).Write(id).Finalize();
     CNode* pnode = new CNode(id, nLocalServices, GetBestHeight(), hSocket, addrConnect, CalculateKeyedNetGroup(addrConnect), nonce, pszDest ? pszDest : "", false);
     pnode->nServicesExpected = ServiceFlags(addrConnect.nServices & nRelevantServices);
-    pnode->nTimeConnected = GetTime();
     pnode->AddRef();
-    GetNodeSignals().InitializeNode(pnode, *this);
-    {
-        LOCK(cs_vNodes);
-        vNodes.push_back(pnode);
-    }
 
     if (grantOutbound)
         grantOutbound->MoveTo(pnode->grantOutbound);
@@ -382,6 +376,12 @@ void CConnman::OnOutgoingConnected(const CAddress& addrConnect, SOCKET hSocket, 
         pnode->fOneShot = true;
     if (fFeeler)
         pnode->fFeeler = true;
+
+    GetNodeSignals().InitializeNode(pnode, *this);
+    {
+        LOCK(cs_vNodes);
+        vNodes.push_back(pnode);
+    }
 }
 
 void CConnman::OnPingTimeout(CNode* pnode, int64_t nTime)
