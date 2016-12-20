@@ -9,6 +9,15 @@
 #include "messageinterface.h"
 #include "validationinterface.h"
 
+#include <string>
+
+class CDataStream;
+class CChainParams;
+namespace Consensus
+{
+    struct Params;
+}
+
 class PeerLogicValidation : public CValidationInterface {
 private:
     CConnman* connman;
@@ -47,6 +56,9 @@ protected:
     void InitializeNode(CNode *pnode) final;
     void FinalizeNode(NodeId nodeid, bool& fUpdateConnectionTime) final;
 private:
+    bool ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vRecv, int64_t nTimeReceived, const CChainParams& chainparams);
+    void ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParams);
+
     CConnman& connman;
 };
 
