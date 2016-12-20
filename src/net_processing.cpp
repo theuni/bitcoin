@@ -38,8 +38,6 @@ using namespace std;
 # error "Bitcoin cannot be compiled without assertions."
 #endif
 
-std::atomic<bool> interruptNetProcessing(false);
-
 int64_t nTimeBestReceived = 0; // Used only to inform the wallet of when we last received a block
 
 struct IteratorComparator
@@ -268,6 +266,7 @@ CMessageProcessor::CMessageProcessor(CConnman& connmanIn) : connman(connmanIn){}
 
 void CMessageProcessor::OnStartup()
 {
+    interruptNetProcessing.test_and_set();
 }
 
 void CMessageProcessor::OnShutdown()
@@ -276,7 +275,7 @@ void CMessageProcessor::OnShutdown()
 
 void CMessageProcessor::OnInterrupt()
 {
-    interruptNetProcessing = true;
+    interruptNetProcessing.clear();
 }
 
 void CMessageProcessor::InitializeNode(CNode *pnode) {
@@ -901,7 +900,7 @@ void CMessageProcessor::ProcessGetData(CNode* pfrom, const Consensus::Params& co
 
         const CInv &inv = *it;
         {
-            if(interruptNetProcessing)
+            if(!interruptNetProcessing.test_and_set())
                 return;
 
             it++;
@@ -1297,7 +1296,7 @@ bool CMessageProcessor::ProcessMessage(CNode* pfrom, string strCommand, CDataStr
         int64_t nSince = nNow - 10 * 60;
         BOOST_FOREACH(CAddress& addr, vAddr)
         {
-            if(interruptNetProcessing)
+            if(!interruptNetProcessing.test_and_set())
                 return true;
 
             if ((addr.nServices & REQUIRED_SERVICES) != REQUIRED_SERVICES)
@@ -1380,7 +1379,7 @@ bool CMessageProcessor::ProcessMessage(CNode* pfrom, string strCommand, CDataStr
         {
             CInv &inv = vInv[nInv];
 
-            if(interruptNetProcessing)
+            if(!interruptNetProcessing.test_and_set())
                 return true;
 
             bool fAlreadyHave = AlreadyHave(inv);
@@ -2461,7 +2460,7 @@ bool CMessageProcessor::ProcessMessages(CNode* pfrom)
         try
         {
             fRet = ProcessMessage(pfrom, strCommand, vRecv, msg.nTime, chainparams);
-            if(interruptNetProcessing)
+            if(!interruptNetProcessing.test_and_set())
                 return true;
         }
         catch (const std::ios_base::failure& e)

@@ -10,6 +10,7 @@
 #include "validationinterface.h"
 
 #include <string>
+#include <atomic>
 
 class CDataStream;
 class CChainParams;
@@ -60,6 +61,7 @@ private:
     void ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParams);
 
     CConnman& connman;
+    std::atomic_flag interruptNetProcessing = ATOMIC_FLAG_INIT;
 };
 
 #endif // BITCOIN_NET_PROCESSING_H
