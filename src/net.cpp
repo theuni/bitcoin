@@ -2213,19 +2213,21 @@ instance_of_cnetcleanup;
 void CConnman::Interrupt()
 {
     LogPrintf("%s\n",__func__);
-    interruptMessageHandler.clear();
-    messageHandlerCondition.notify_all();
-
-    interruptOpenConnections.clear();
-    interruptOpenAddedConnections.clear();
-    interruptDNSAddressSeed.clear();
-    InterruptSocks5(true);
+    {
+        std::lock_guard<std::mutex> lock(interruptMutex);
+        interruptMessageHandler.clear();
+        interruptOpenConnections.clear();
+        interruptOpenAddedConnections.clear();
+        interruptDNSAddressSeed.clear();
+        InterruptSocks5(true);
+        interruptSocketHandler.clear();
+    }
 
     if (semOutbound)
         for (int i=0; i<(nMaxOutbound + nMaxFeeler); i++)
             semOutbound->post();
 
-    interruptSocketHandler.clear();
+    messageHandlerCondition.notify_all();
     interruptCond.notify_all();
 }
 
