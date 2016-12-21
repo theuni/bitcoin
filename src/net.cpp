@@ -1238,7 +1238,7 @@ void CConnman::ThreadSocketHandler()
                             if (!pnode->ReceiveMsgBytes(pchBuf, nBytes, notify))
                                 pnode->CloseSocketDisconnect();
                             if(notify)
-                                messageHandlerCondition.notify_one();
+                                msgProc->OnNewMessage(pnode->id);
                             pnode->nLastRecv = GetTime();
                             pnode->nRecvBytes += nBytes;
                             RecordBytesRecv(nBytes);
@@ -1835,74 +1835,6 @@ bool CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFai
     return true;
 }
 
-void CConnman::ThreadMessageHandler()
-{
-    while (interruptMessageHandler.test_and_set())
-    {
-        std::vector<CNode*> vNodesCopy;
-        {
-            LOCK(cs_vNodes);
-            vNodesCopy = vNodes;
-            BOOST_FOREACH(CNode* pnode, vNodesCopy) {
-                pnode->AddRef();
-            }
-        }
-
-        bool fSleep = true;
-
-        BOOST_FOREACH(CNode* pnode, vNodesCopy)
-        {
-            if (pnode->fDisconnect)
-                continue;
-
-            // Receive messages
-            {
-                TRY_LOCK(pnode->cs_vRecvMsg, lockRecv);
-                if (lockRecv)
-                {
-                    if (!msgProc->ProcessMessages(pnode))
-                        pnode->CloseSocketDisconnect();
-
-                    if (pnode->nSendSize < GetSendBufferSize())
-                    {
-                        if (!pnode->vRecvGetData.empty() || (!pnode->vRecvMsg.empty() && pnode->vRecvMsg[0].complete()))
-                        {
-                            fSleep = false;
-                        }
-                    }
-                }
-            }
-            if(!interruptMessageHandler.test_and_set())
-                return;
-
-            // Send messages
-            {
-                TRY_LOCK(pnode->cs_vSend, lockSend);
-                if (lockSend)
-                    msgProc->SendMessages(pnode);
-            }
-
-            if(!interruptMessageHandler.test_and_set())
-                return;
-        }
-
-        {
-            LOCK(cs_vNodes);
-            BOOST_FOREACH(CNode* pnode, vNodesCopy)
-                pnode->Release();
-        }
-
-        if (fSleep && !InterruptibleSleep(std::chrono::milliseconds(100), messageHandlerCondition, interruptMessageHandler)) {
-            return;
-        }
-    }
-}
-
-
-
-
-
-
 bool CConnman::BindListenPort(const CService &addrBind, std::string& strError, bool fWhitelisted)
 {
     strError = "";
@@ -2117,8 +2049,6 @@ bool CConnman::Start(CScheduler& scheduler, std::string& strNodeError, Options c
     clientInterface = connOptions.uiInterface;
     msgProc = std::move(connOptions.msgProc);
 
-    msgProc->OnStartup();
-
     if (clientInterface)
         clientInterface->InitMessage(_("Loading addresses..."));
     // Load addresses from peers.dat
@@ -2170,7 +2100,6 @@ bool CConnman::Start(CScheduler& scheduler, std::string& strNodeError, Options c
     interruptDNSAddressSeed.test_and_set();
     interruptOpenAddedConnections.test_and_set();
     interruptOpenConnections.test_and_set();
-    interruptMessageHandler.test_and_set();
 
     // Send and receive from sockets, accept connections
     threadSocketHandler = std::thread(&TraceThread<std::function<void()> >, "net", std::function<void()>(std::bind(&CConnman::ThreadSocketHandler, this)));
@@ -2187,8 +2116,7 @@ bool CConnman::Start(CScheduler& scheduler, std::string& strNodeError, Options c
     if (!mapArgs.count("-connect") || mapMultiArgs["-connect"].size() != 1 || mapMultiArgs["-connect"][0] != "0")
         threadOpenConnections = std::thread(&TraceThread<std::function<void()> >, "opencon", std::function<void()>(std::bind(&CConnman::ThreadOpenConnections, this)));
 
-    // Process messages
-    threadMessageHandler = std::thread(&TraceThread<std::function<void()> >, "msghand", std::function<void()>(std::bind(&CConnman::ThreadMessageHandler, this)));
+    msgProc->OnStartup();
 
     // Dump network addresses
     scheduler.scheduleEvery(boost::bind(&CConnman::DumpData, this), DUMP_ADDRESSES_INTERVAL);
@@ -2212,11 +2140,10 @@ public:
 instance_of_cnetcleanup;
 void CConnman::Interrupt()
 {
-    msgProc->OnShutdown();
     LogPrintf("%s\n",__func__);
+    msgProc->OnInterrupt();
     {
         std::lock_guard<std::mutex> lock(interruptMutex);
-        interruptMessageHandler.clear();
         interruptOpenConnections.clear();
         interruptOpenAddedConnections.clear();
         interruptDNSAddressSeed.clear();
@@ -2228,15 +2155,12 @@ void CConnman::Interrupt()
         for (int i=0; i<(nMaxOutbound + nMaxFeeler); i++)
             semOutbound->post();
 
-    messageHandlerCondition.notify_all();
     interruptCond.notify_all();
 }
 
 void CConnman::Stop()
 {
     LogPrintf("%s\n",__func__);
-    if (threadMessageHandler.joinable())
-        threadMessageHandler.join();
     if (threadOpenConnections.joinable())
         threadOpenConnections.join();
     if (threadOpenAddedConnections.joinable())
@@ -2245,12 +2169,6 @@ void CConnman::Stop()
         threadDNSAddressSeed.join();
     if (threadSocketHandler.joinable())
         threadSocketHandler.join();
-
-    if (fAddressesInitialized)
-    {
-        DumpData();
-        fAddressesInitialized = false;
-    }
 
     // Close sockets
     BOOST_FOREACH(CNode* pnode, vNodes)
@@ -2268,6 +2186,16 @@ void CConnman::Stop()
     BOOST_FOREACH(CNode *pnode, vNodesDisconnected) {
         DeleteNode(pnode);
     }
+
+    msgProc->OnShutdown();
+    msgProc.reset();
+
+    if (fAddressesInitialized)
+    {
+        DumpData();
+        fAddressesInitialized = false;
+    }
+
     vNodes.clear();
     vNodesDisconnected.clear();
     vhListenSocket.clear();

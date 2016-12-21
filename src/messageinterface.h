@@ -16,6 +16,7 @@ public:
     virtual void OnStartup() = 0;
     virtual void OnShutdown() = 0;
     virtual void OnInterrupt() = 0;
+    virtual void OnNewMessage(NodeId id) = 0;
     virtual bool ProcessMessages(CNode* pfrom) = 0;
     virtual bool SendMessages(CNode* pto) = 0;
     virtual void InitializeNode(CNode *pnode) = 0;

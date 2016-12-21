@@ -11,6 +11,8 @@
 
 #include <string>
 #include <atomic>
+#include <mutex>
+#include <thread>
 
 class CDataStream;
 class CChainParams;
@@ -52,6 +54,7 @@ protected:
     void OnStartup() final;
     void OnShutdown() final;
     void OnInterrupt() final;
+    void OnNewMessage(NodeId id) final;
     bool ProcessMessages(CNode* pfrom) final;
     bool SendMessages(CNode* pto) final;
     void InitializeNode(CNode *pnode) final;
@@ -59,9 +62,22 @@ protected:
 private:
     bool ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vRecv, int64_t nTimeReceived, const CChainParams& chainparams);
     void ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParams);
+    void Run();
+
+    template <typename Duration>
+    inline bool InterruptibleSleep(const Duration& rel_time)
+    {
+        std::unique_lock<std::mutex> lock(interruptMutex);
+        return !interruptCond.wait_for(lock, rel_time, [this](){ return !interruptNetProcessing.test_and_set(); });
+    }
 
     CConnman& connman;
     std::atomic_flag interruptNetProcessing = ATOMIC_FLAG_INIT;
+    std::map<NodeId, CNode*> mapNodes;
+    std::mutex mapNodesMutex;
+    std::mutex interruptMutex;
+    std::thread processThread;
+    std::condition_variable interruptCond;
 };
 
 #endif // BITCOIN_NET_PROCESSING_H

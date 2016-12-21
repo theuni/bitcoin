@@ -264,18 +264,92 @@ void PushNodeVersion(CNode *pnode, CConnman& connman, int64_t nTime)
 
 CMessageProcessor::CMessageProcessor(CConnman& connmanIn) : connman(connmanIn){}
 
+void CMessageProcessor::Run()
+{
+    while (interruptNetProcessing.test_and_set())
+    {
+         std::map<NodeId, CNode*> mapNodesCopy;
+        {
+            std::lock_guard<std::mutex> lock(mapNodesMutex);
+            mapNodesCopy = mapNodes;
+            for (auto& nodepair : mapNodesCopy)
+                nodepair.second->AddRef();
+        }
+
+        bool fSleep = true;
+
+        for (auto& nodepair : mapNodesCopy)
+        {
+            CNode* pnode = nodepair.second;
+            if (pnode->fDisconnect)
+                continue;
+
+            // Receive messages
+            {
+                TRY_LOCK(pnode->cs_vRecvMsg, lockRecv);
+                if (lockRecv)
+                {
+                    if (!ProcessMessages(pnode))
+                        pnode->CloseSocketDisconnect();
+
+                    if (pnode->nSendSize < connman.GetSendBufferSize())
+                    {
+                        if (!pnode->vRecvGetData.empty() || (!pnode->vRecvMsg.empty() && pnode->vRecvMsg[0].complete()))
+                        {
+                            fSleep = false;
+                        }
+                    }
+                }
+            }
+            if(!interruptNetProcessing.test_and_set())
+                return;
+
+            // Send messages
+            {
+                TRY_LOCK(pnode->cs_vSend, lockSend);
+                if (lockSend)
+                    SendMessages(pnode);
+            }
+
+            if(!interruptNetProcessing.test_and_set())
+                return;
+        }
+
+        {
+            for (auto& nodepair : mapNodesCopy)
+                nodepair.second->Release();
+        }
+
+        if (fSleep && !InterruptibleSleep(std::chrono::milliseconds(100))) {
+            return;
+        }
+    }
+}
+
 void CMessageProcessor::OnStartup()
 {
     interruptNetProcessing.test_and_set();
+    processThread = std::thread(&TraceThread<std::function<void()> >, "msghand", std::function<void()>(std::bind(&CMessageProcessor::Run, this)));
 }
 
 void CMessageProcessor::OnShutdown()
 {
+    if (processThread.joinable())
+        processThread.join();
 }
 
 void CMessageProcessor::OnInterrupt()
 {
-    interruptNetProcessing.clear();
+    {
+        std::lock_guard<std::mutex> lock(interruptMutex);
+        interruptNetProcessing.clear();
+    }
+    interruptCond.notify_all();
+}
+
+void CMessageProcessor::OnNewMessage(NodeId id)
+{
+    interruptCond.notify_all();
 }
 
 void CMessageProcessor::InitializeNode(CNode *pnode) {
@@ -285,6 +359,10 @@ void CMessageProcessor::InitializeNode(CNode *pnode) {
     {
         LOCK(cs_main);
         mapNodeState.emplace_hint(mapNodeState.end(), std::piecewise_construct, std::forward_as_tuple(nodeid), std::forward_as_tuple(addr, std::move(addrName)));
+    }
+    {
+        std::lock_guard<std::mutex> lock(mapNodesMutex);
+        mapNodes.emplace_hint(mapNodes.end(), nodeid, pnode);
     }
     if(!pnode->fInbound)
         ::PushNodeVersion(pnode, connman, GetTime());
@@ -311,7 +389,10 @@ void CMessageProcessor::FinalizeNode(NodeId nodeid, bool& fUpdateConnectionTime)
     assert(nPeersWithValidatedDownloads >= 0);
 
     mapNodeState.erase(nodeid);
-
+    {
+        std::lock_guard<std::mutex> lock(mapNodesMutex);
+        mapNodes.erase(nodeid);
+    }
     if (mapNodeState.empty()) {
         // Do a consistency check after the last peer is removed.
         assert(mapBlocksInFlight.empty());
