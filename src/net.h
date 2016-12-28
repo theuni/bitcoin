@@ -32,6 +32,8 @@
 #include <arpa/inet.h>
 #endif
 
+#include "messageinterface.h"
+
 #include <boost/filesystem/path.hpp>
 #include <boost/foreach.hpp>
 #include <boost/signals2/signal.hpp>
@@ -90,8 +92,6 @@ static const ServiceFlags REQUIRED_SERVICES = NODE_NETWORK;
 // NOTE: When adjusting this, update rpcnet:setban's help ("24h")
 static const unsigned int DEFAULT_MISBEHAVING_BANTIME = 60 * 60 * 24;  // Default 24-hour ban
 
-typedef int NodeId;
-
 struct AddedNodeInfo
 {
     std::string strAddedNode;
@@ -138,6 +138,7 @@ public:
         int nMaxFeeler = 0;
         int nBestHeight = 0;
         CClientUIInterface* uiInterface = nullptr;
+        CMessageProcessorInterface* msgProc = nullptr;
         unsigned int nSendBufferMaxSize = 0;
         unsigned int nReceiveFloodSize = 0;
         uint64_t nMaxOutboundTimeframe = 0;
@@ -318,6 +319,8 @@ public:
     uint64_t GetTotalBytesRecv();
     uint64_t GetTotalBytesSent();
 
+    unsigned int GetReceiveFloodSize() const;
+
     void SetBestHeight(int height);
     int GetBestHeight() const;
 
@@ -364,8 +367,6 @@ private:
     void DumpAddresses();
     void DumpData();
     void DumpBanlist();
-
-    unsigned int GetReceiveFloodSize() const;
 
     // Network stats
     void RecordBytesRecv(uint64_t bytes);
@@ -419,13 +420,10 @@ private:
     int nMaxFeeler;
     std::atomic<int> nBestHeight;
     CClientUIInterface* clientInterface;
+    CMessageProcessorInterface* msgProc;
 
     /** SipHasher seeds for deterministic randomness */
     const uint64_t nSeed0, nSeed1;
-
-    std::condition_variable condMsgProc;
-    std::mutex mutexMsgProc;
-    std::atomic<bool> flagInterruptMsgProc;
 
     CThreadInterrupt interruptNet;
 
@@ -433,7 +431,6 @@ private:
     std::thread threadSocketHandler;
     std::thread threadOpenAddedConnections;
     std::thread threadOpenConnections;
-    std::thread threadMessageHandler;
 };
 extern std::unique_ptr<CConnman> g_connman;
 void Discover(boost::thread_group& threadGroup);
@@ -598,21 +595,20 @@ public:
     ServiceFlags nServices;
     ServiceFlags nServicesExpected;
     SOCKET hSocket;
-    size_t nSendSize; // total size of all vSendMsg entries
+    std::atomic<size_t> nSendSize; // total size of all vSendMsg entries
     size_t nSendOffset; // offset inside the first vSendMsg already sent
     uint64_t nSendBytes;
     std::deque<std::vector<unsigned char>> vSendMsg;
     CCriticalSection cs_vSend;
+    std::atomic<bool> fPauseRecv;
 
-    std::deque<CInv> vRecvGetData;
-    std::deque<CNetMessage> vRecvMsg;
-    CCriticalSection cs_vRecvMsg;
-    uint64_t nRecvBytes;
+    //std::deque<CInv> vRecvGetData;
+    std::atomic<uint64_t> nRecvBytes;
     int nRecvVersion;
 
     int64_t nLastSend;
-    int64_t nLastRecv;
-    int64_t nTimeConnected;
+    std::atomic<int64_t> nLastRecv;
+    std::atomic<int64_t> nTimeConnected;
     int64_t nTimeOffset;
     const CAddress addr;
     std::string addrName;
@@ -639,7 +635,7 @@ public:
     CSemaphoreGrant grantOutbound;
     CCriticalSection cs_filter;
     CBloomFilter* pfilter;
-    int nRefCount;
+    std::atomic<int> nRefCount;
     const NodeId id;
 
     const uint64_t nKeyedNetGroup;
@@ -716,6 +712,8 @@ private:
     const ServiceFlags nLocalServices;
     const int nMyStartingHeight;
     int nSendVersion;
+    std::list<CNetMessage> vRecvMsg;
+    CCriticalSection cs_vRecvMsg;
 public:
 
     NodeId GetId() const {

@@ -260,8 +260,159 @@ void PushNodeVersion(CNode *pnode, CConnman& connman, int64_t nTime)
     else
         LogPrint("net", "send version message: version %d, blocks=%d, us=%s, peer=%d\n", PROTOCOL_VERSION, nNodeStartingHeight, addrMe.ToString(), nodeid);
 }
+} // anon namespace
 
-void InitializeNode(CNode *pnode, CConnman& connman) {
+CMessageProcessor::CMessageProcessor(CConnman& connmanIn) : connman(connmanIn), interruptNetProcessing(false){}
+
+void CMessageProcessor::Run()
+{
+    const CChainParams& chainparams(Params());
+    unsigned int nMaxSendBufferSize = connman.GetSendBufferSize();
+    while (!interruptNetProcessing)
+    {
+        bool work = false;
+        std::map<NodeId, std::shared_ptr<CProcessQueue>> mapNodesCopy;
+        {
+            std::lock_guard<std::mutex> lock(mapNodesMutex);
+            mapNodesCopy = mapNodes;
+            for (auto& nodepair : mapNodesCopy)
+                nodepair.second->pnode->AddRef();
+        }
+
+        for (auto& nodepair : mapNodesCopy)
+        {
+            CProcessQueue* workitem(nodepair.second.get());
+            CNode* pnode = workitem->pnode;
+            if (pnode->fDisconnect)
+                continue;
+
+            if (!workitem->vRecvGetData.empty())
+                ProcessGetData(workitem, chainparams.GetConsensus());
+            // this maintains the order of responses
+            if (!workitem->vRecvGetData.empty()) {
+                work = true;
+                continue;
+            }
+
+            if (pnode->nSendSize >= nMaxSendBufferSize)
+                continue;
+
+            // Only take 1 message
+            size_t messagesize = 0;
+            std::list<CNetMessage> msgs;
+            {
+                std::lock_guard<std::mutex> lock(workitem->cs_vRecvMsg);
+                for (const auto& msg : workitem->vRecvMsg)
+                    messagesize += msg.vRecv.size() + 24;
+                if (messagesize) {
+                    msgs.splice(msgs.begin(), workitem->vRecvMsg, workitem->vRecvMsg.begin());
+                }
+                if (!workitem->vRecvMsg.empty())
+                    work = true;
+            }
+            
+            if (!msgs.empty()) {
+                if (messagesize >= connman.GetReceiveFloodSize() && (messagesize - msgs.front().vRecv.size() - 24 < connman.GetReceiveFloodSize()))
+                    pnode->fPauseRecv = false;
+                if (!ProcessMessages(workitem, msgs.front())) {
+                    pnode->CloseSocketDisconnect();
+                    continue;
+                }
+            }
+
+            if(interruptNetProcessing)
+                break;
+
+            if (pnode->nVersion != 0 &&  !pnode->fDisconnect)
+                SendMessages(workitem);
+
+            if(interruptNetProcessing)
+                break;
+        }
+
+        for (auto& nodepair : mapNodesCopy)
+            nodepair.second->pnode->Release();
+
+        if (interruptNetProcessing)
+            return;
+
+        std::unique_lock<std::mutex> lock(mutexNetProcessing);
+        if (work)
+            fSleep = false;
+        condNetProcessing.wait_until(lock, std::chrono::steady_clock::now() + std::chrono::milliseconds(100), [this]{ return !fSleep; });
+        fSleep = true;
+    }
+}
+
+    void CMessageProcessor::OnStartup()
+    {
+        {
+            std::lock_guard<std::mutex> lock(mutexNetProcessing);
+            fSleep = true;
+        }
+        interruptNetProcessing = false;
+        processThread = std::thread(&TraceThread<std::function<void()> >, "msghand", std::function<void()>(std::bind(&CMessageProcessor::Run, this)));
+    }
+
+    void CMessageProcessor::OnShutdown()
+    {
+        if (processThread.joinable())
+            processThread.join();
+
+        {
+            std::map<NodeId, std::shared_ptr<CProcessQueue>> mapNodesCopy;
+            {
+                std::lock_guard<std::mutex> lock(mapNodesMutex);
+                mapNodesCopy = mapNodes;
+                mapNodes.clear();
+            }
+            for (const auto& nodepair : mapNodesCopy) {
+                CProcessQueue* workitem(nodepair.second.get());
+                std::lock_guard<std::mutex> lock(workitem->cs_vRecvMsg);
+                workitem->vRecvMsg.clear();
+            }
+        }
+    }
+
+    void CMessageProcessor::OnInterrupt()
+    {
+        interruptNetProcessing = true;
+        {
+            std::lock_guard<std::mutex> lock(mutexNetProcessing);
+            fSleep = false;
+        }
+        condNetProcessing.notify_all();
+    }
+
+bool CMessageProcessor::OnNewMessages(NodeId id, std::list<CNetMessage>&& messages)
+{
+    size_t messagesize = 0;
+    for (const auto& msg : messages)
+        messagesize += msg.vRecv.size() + 24;
+
+    std::shared_ptr<CProcessQueue> workitem;
+    {
+        std::lock_guard<std::mutex> lock(mapNodesMutex);
+        workitem = mapNodes.at(id);
+    }
+    {
+        std::lock_guard<std::mutex> lock(workitem->cs_vRecvMsg);
+        for (const auto& msg : workitem->vRecvMsg)
+            messagesize += msg.vRecv.size() + 24;
+        workitem->vRecvMsg.splice(workitem->vRecvMsg.end(), std::move(messages));
+    }
+    {
+        std::lock_guard<std::mutex> lock(mutexNetProcessing);
+        fSleep = false;
+    }
+    condNetProcessing.notify_all();
+
+    if (messagesize >= connman.GetReceiveFloodSize())
+        return false;
+    return true;
+}
+
+void CMessageProcessor::InitializeNode(CNode *pnode) {
     CAddress addr = pnode->addr;
     std::string addrName = pnode->addrName;
     NodeId nodeid = pnode->GetId();
@@ -269,11 +420,16 @@ void InitializeNode(CNode *pnode, CConnman& connman) {
         LOCK(cs_main);
         mapNodeState.emplace_hint(mapNodeState.end(), std::piecewise_construct, std::forward_as_tuple(nodeid), std::forward_as_tuple(addr, std::move(addrName)));
     }
+    {
+        auto node(std::make_shared<CProcessQueue>(pnode));
+        std::lock_guard<std::mutex> lock(mapNodesMutex);
+        mapNodes.emplace_hint(mapNodes.end(), nodeid, std::move(node));
+    }
     if(!pnode->fInbound)
-        PushNodeVersion(pnode, connman, GetTime());
+        ::PushNodeVersion(pnode, connman, GetTime());
 }
 
-void FinalizeNode(NodeId nodeid, bool& fUpdateConnectionTime) {
+void CMessageProcessor::FinalizeNode(NodeId nodeid, bool& fUpdateConnectionTime) {
     fUpdateConnectionTime = false;
     LOCK(cs_main);
     CNodeState *state = State(nodeid);
@@ -294,7 +450,10 @@ void FinalizeNode(NodeId nodeid, bool& fUpdateConnectionTime) {
     assert(nPeersWithValidatedDownloads >= 0);
 
     mapNodeState.erase(nodeid);
-
+    {
+        std::lock_guard<std::mutex> lock(mapNodesMutex);
+        mapNodes.erase(nodeid);
+    }
     if (mapNodeState.empty()) {
         // Do a consistency check after the last peer is removed.
         assert(mapBlocksInFlight.empty());
@@ -548,8 +707,6 @@ void FindNextBlocksToDownload(NodeId nodeid, unsigned int count, std::vector<CBl
     }
 }
 
-} // anon namespace
-
 bool GetNodeStateStats(NodeId nodeid, CNodeStateStats &stats) {
     LOCK(cs_main);
     CNodeState *state = State(nodeid);
@@ -563,22 +720,6 @@ bool GetNodeStateStats(NodeId nodeid, CNodeStateStats &stats) {
             stats.vHeightInFlight.push_back(queue.pindex->nHeight);
     }
     return true;
-}
-
-void RegisterNodeSignals(CNodeSignals& nodeSignals)
-{
-    nodeSignals.ProcessMessages.connect(&ProcessMessages);
-    nodeSignals.SendMessages.connect(&SendMessages);
-    nodeSignals.InitializeNode.connect(&InitializeNode);
-    nodeSignals.FinalizeNode.connect(&FinalizeNode);
-}
-
-void UnregisterNodeSignals(CNodeSignals& nodeSignals)
-{
-    nodeSignals.ProcessMessages.disconnect(&ProcessMessages);
-    nodeSignals.SendMessages.disconnect(&SendMessages);
-    nodeSignals.InitializeNode.disconnect(&InitializeNode);
-    nodeSignals.FinalizeNode.disconnect(&FinalizeNode);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -886,22 +1027,23 @@ static void RelayAddress(const CAddress& addr, bool fReachable, CConnman& connma
     connman.ForEachNodeThen(std::move(sortfunc), std::move(pushfunc));
 }
 
-void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParams, CConnman& connman, std::atomic<bool>& interruptMsgProc)
+void CMessageProcessor::ProcessGetData(CProcessQueue* workitem, const Consensus::Params& consensusParams)
 {
-    std::deque<CInv>::iterator it = pfrom->vRecvGetData.begin();
+    CNode* pfrom = workitem->pnode;
+    std::deque<CInv>::iterator it = workitem->vRecvGetData.begin();
     unsigned int nMaxSendBufferSize = connman.GetSendBufferSize();
     vector<CInv> vNotFound;
     CNetMsgMaker msgMaker(pfrom->GetSendVersion());
     LOCK(cs_main);
 
-    while (it != pfrom->vRecvGetData.end()) {
+    while (it != workitem->vRecvGetData.end()) {
         // Don't bother if send buffer is too full to respond anyway
         if (pfrom->nSendSize >= nMaxSendBufferSize)
             break;
 
         const CInv &inv = *it;
         {
-            if(interruptMsgProc)
+            if(interruptNetProcessing)
                 return;
 
             it++;
@@ -1035,7 +1177,7 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
         }
     }
 
-    pfrom->vRecvGetData.erase(pfrom->vRecvGetData.begin(), it);
+    workitem->vRecvGetData.erase(workitem->vRecvGetData.begin(), it);
 
     if (!vNotFound.empty()) {
         // Let the peer know that we didn't find what it asked for, so it doesn't
@@ -1057,8 +1199,9 @@ uint32_t GetFetchFlags(CNode* pfrom, CBlockIndex* pprev, const Consensus::Params
     return nFetchFlags;
 }
 
-bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, int64_t nTimeReceived, const CChainParams& chainparams, CConnman& connman, std::atomic<bool>& interruptMsgProc)
+bool CMessageProcessor::ProcessMessage(CProcessQueue* workitem, string strCommand, CDataStream& vRecv, int64_t nTimeReceived, const CChainParams& chainparams)
 {
+    CNode* pfrom = workitem->pnode;
     unsigned int nMaxSendBufferSize = connman.GetSendBufferSize();
 
     LogPrint("net", "received: %s (%u bytes) peer=%d\n", SanitizeString(strCommand), vRecv.size(), pfrom->id);
@@ -1297,7 +1440,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         int64_t nSince = nNow - 10 * 60;
         BOOST_FOREACH(CAddress& addr, vAddr)
         {
-            if(interruptMsgProc)
+            if(interruptNetProcessing)
                 return true;
 
             if ((addr.nServices & REQUIRED_SERVICES) != REQUIRED_SERVICES)
@@ -1380,7 +1523,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         {
             CInv &inv = vInv[nInv];
 
-            if(interruptMsgProc)
+            if(interruptNetProcessing)
                 return true;
 
             bool fAlreadyHave = AlreadyHave(inv);
@@ -1442,8 +1585,8 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         if ((fDebug && vInv.size() > 0) || (vInv.size() == 1))
             LogPrint("net", "received getdata for: %s peer=%d\n", vInv[0].ToString(), pfrom->id);
 
-        pfrom->vRecvGetData.insert(pfrom->vRecvGetData.end(), vInv.begin(), vInv.end());
-        ProcessGetData(pfrom, chainparams.GetConsensus(), connman, interruptMsgProc);
+        workitem->vRecvGetData.insert(workitem->vRecvGetData.end(), vInv.begin(), vInv.end());
+        ProcessGetData(workitem, chainparams.GetConsensus());
     }
 
 
@@ -1516,8 +1659,8 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
             CInv inv;
             inv.type = State(pfrom->GetId())->fWantsCmpctWitness ? MSG_WITNESS_BLOCK : MSG_BLOCK;
             inv.hash = req.blockhash;
-            pfrom->vRecvGetData.push_back(inv);
-            ProcessGetData(pfrom, chainparams.GetConsensus(), connman, interruptMsgProc);
+            workitem->vRecvGetData.push_back(inv);
+            ProcessGetData(workitem, chainparams.GetConsensus());
             return true;
         }
 
@@ -1874,7 +2017,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
                     txn.blockhash = cmpctblock.header.GetHash();
                     CDataStream blockTxnMsg(SER_NETWORK, PROTOCOL_VERSION);
                     blockTxnMsg << txn;
-                    return ProcessMessage(pfrom, NetMsgType::BLOCKTXN, blockTxnMsg, nTimeReceived, chainparams, connman, interruptMsgProc);
+                    return ProcessMessage(workitem, NetMsgType::BLOCKTXN, blockTxnMsg, nTimeReceived, chainparams);
                 } else {
                     req.blockhash = pindex->GetBlockHash();
                     connman.PushMessage(pfrom, msgMaker.Make(NetMsgType::GETBLOCKTXN, req));
@@ -1912,7 +2055,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
                 headers.push_back(cmpctblock.header);
                 CDataStream vHeadersMsg(SER_NETWORK, PROTOCOL_VERSION);
                 vHeadersMsg << headers;
-                return ProcessMessage(pfrom, NetMsgType::HEADERS, vHeadersMsg, nTimeReceived, chainparams, connman, interruptMsgProc);
+                return ProcessMessage(workitem, NetMsgType::HEADERS, vHeadersMsg, nTimeReceived, chainparams);
             }
         }
 
@@ -2426,14 +2569,10 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
     return true;
 }
 
-// requires LOCK(cs_vRecvMsg)
-bool ProcessMessages(CNode* pfrom, CConnman& connman, std::atomic<bool>& interruptMsgProc)
+bool CMessageProcessor::ProcessMessages(CProcessQueue* workitem, CNetMessage& msg)
 {
+    CNode* pfrom = workitem->pnode;
     const CChainParams& chainparams = Params();
-    unsigned int nMaxSendBufferSize = connman.GetSendBufferSize();
-    //if (fDebug)
-    //    LogPrintf("%s(%u messages)\n", __func__, pfrom->vRecvMsg.size());
-
     //
     // Message format
     //  (4) message start
@@ -2442,40 +2581,10 @@ bool ProcessMessages(CNode* pfrom, CConnman& connman, std::atomic<bool>& interru
     //  (4) checksum
     //  (x) data
     //
-    bool fOk = true;
-
-    if (!pfrom->vRecvGetData.empty())
-        ProcessGetData(pfrom, chainparams.GetConsensus(), connman, interruptMsgProc);
-
-    // this maintains the order of responses
-    if (!pfrom->vRecvGetData.empty()) return fOk;
-
-    std::deque<CNetMessage>::iterator it = pfrom->vRecvMsg.begin();
-    while (!pfrom->fDisconnect && it != pfrom->vRecvMsg.end()) {
-        // Don't bother if send buffer is too full to respond anyway
-        if (pfrom->nSendSize >= nMaxSendBufferSize)
-            break;
-
-        // get next message
-        CNetMessage& msg = *it;
-
-        //if (fDebug)
-        //    LogPrintf("%s(message %u msgsz, %u bytes, complete:%s)\n", __func__,
-        //            msg.hdr.nMessageSize, msg.vRecv.size(),
-        //            msg.complete() ? "Y" : "N");
-
-        // end, if an incomplete message is found
-        if (!msg.complete())
-            break;
-
-        // at this point, any failure means we can delete the current message
-        it++;
-
         // Scan for message start
         if (memcmp(msg.hdr.pchMessageStart, chainparams.MessageStart(), CMessageHeader::MESSAGE_START_SIZE) != 0) {
             LogPrintf("PROCESSMESSAGE: INVALID MESSAGESTART %s peer=%d\n", SanitizeString(msg.hdr.GetCommand()), pfrom->id);
-            fOk = false;
-            break;
+            return false;
         }
 
         // Read header
@@ -2483,7 +2592,7 @@ bool ProcessMessages(CNode* pfrom, CConnman& connman, std::atomic<bool>& interru
         if (!hdr.IsValid(chainparams.MessageStart()))
         {
             LogPrintf("PROCESSMESSAGE: ERRORS IN HEADER %s peer=%d\n", SanitizeString(hdr.GetCommand()), pfrom->id);
-            continue;
+            return true;
         }
         string strCommand = hdr.GetCommand();
 
@@ -2499,15 +2608,15 @@ bool ProcessMessages(CNode* pfrom, CConnman& connman, std::atomic<bool>& interru
                SanitizeString(strCommand), nMessageSize,
                HexStr(hash.begin(), hash.begin()+CMessageHeader::CHECKSUM_SIZE),
                HexStr(hdr.pchChecksum, hdr.pchChecksum+CMessageHeader::CHECKSUM_SIZE));
-            continue;
+            return true;
         }
 
         // Process message
         bool fRet = false;
         try
         {
-            fRet = ProcessMessage(pfrom, strCommand, vRecv, msg.nTime, chainparams, connman, interruptMsgProc);
-            if(interruptMsgProc)
+            fRet = ProcessMessage(workitem, strCommand, vRecv, msg.nTime, chainparams);
+            if(interruptNetProcessing)
                 return true;
         }
         catch (const std::ios_base::failure& e)
@@ -2542,14 +2651,7 @@ bool ProcessMessages(CNode* pfrom, CConnman& connman, std::atomic<bool>& interru
         if (!fRet)
             LogPrintf("%s(%s, %u bytes) FAILED peer=%d\n", __func__, SanitizeString(strCommand), nMessageSize, pfrom->id);
 
-        break;
-    }
-
-    // In case the connection got shut down, its receive buffer was wiped
-    if (!pfrom->fDisconnect)
-        pfrom->vRecvMsg.erase(pfrom->vRecvMsg.begin(), it);
-
-    return fOk;
+    return true;
 }
 
 class CompareInvMempoolOrder
@@ -2569,14 +2671,11 @@ public:
     }
 };
 
-bool SendMessages(CNode* pto, CConnman& connman, std::atomic<bool>& interruptMsgProc)
+bool CMessageProcessor::SendMessages(CProcessQueue* workitem)
 {
+    CNode* pto = workitem->pnode;
     const Consensus::Params& consensusParams = Params().GetConsensus();
     {
-        // Don't send anything until we get its version message
-        if (pto->nVersion == 0 || pto->fDisconnect)
-            return true;
-
         // If we get here, the outgoing message serialization version is set and can't change.
         CNetMsgMaker msgMaker(pto->GetSendVersion());
 

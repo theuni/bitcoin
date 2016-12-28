@@ -6,13 +6,24 @@
 #ifndef BITCOIN_NET_PROCESSING_H
 #define BITCOIN_NET_PROCESSING_H
 
-#include "net.h"
+#include "messageinterface.h"
 #include "validationinterface.h"
+#include "threadinterrupt.h"
+#include "protocol.h"
+#include "net.h"
 
-/** Register with a network node to receive its signals */
-void RegisterNodeSignals(CNodeSignals& nodeSignals);
-/** Unregister a network node */
-void UnregisterNodeSignals(CNodeSignals& nodeSignals);
+#include <string>
+#include <atomic>
+#include <mutex>
+#include <thread>
+#include <deque>
+
+namespace Consensus
+{
+    struct Params;
+}
+class CChainParams;
+class CDataStream;
 
 class PeerLogicValidation : public CValidationInterface {
 private:
@@ -38,15 +49,41 @@ bool GetNodeStateStats(NodeId nodeid, CNodeStateStats &stats);
 /** Increase a node's misbehavior score. */
 void Misbehaving(NodeId nodeid, int howmuch);
 
-/** Process protocol messages received from a given node */
-bool ProcessMessages(CNode* pfrom, CConnman& connman, std::atomic<bool>& interrupt);
-/**
- * Send queued protocol messages to be sent to a give node.
- *
- * @param[in]   pto             The node which we are sending messages to.
- * @param[in]   connman         The connection manager for that node.
- * @param[in]   interrupt       Interrupt condition for processing threads
- */
-bool SendMessages(CNode* pto, CConnman& connman, std::atomic<bool>& interrupt);
+struct CProcessQueue
+{
+    CProcessQueue(CNode* pnodeIn) : pnode(pnodeIn){}
+    CNode* pnode;
+    std::deque<CInv> vRecvGetData;
+    std::list<CNetMessage> vRecvMsg;
+    std::mutex cs_vRecvMsg;
+};
+
+class CMessageProcessor final : public CMessageProcessorInterface
+{
+public:
+    CMessageProcessor(CConnman& connmanIn);
+    ~CMessageProcessor() final = default;
+protected:
+    void OnStartup() final;
+    void OnShutdown() final;
+    void OnInterrupt() final;
+    bool OnNewMessages(NodeId id, std::list<CNetMessage>&& messages) final;
+    void InitializeNode(CNode *pnode) final;
+    void FinalizeNode(NodeId nodeid, bool& fUpdateConnectionTime) final;
+private:
+    bool ProcessMessages(CProcessQueue* pfrom, CNetMessage& msg);
+    bool SendMessages(CProcessQueue* pto);
+    void ProcessGetData(CProcessQueue* pfrom, const Consensus::Params& consensusParams);
+    bool ProcessMessage(CProcessQueue* pfrom, std::string strCommand, CDataStream& vRecv, int64_t nTimeReceived, const CChainParams& chainparams);
+    void Run();
+    CConnman& connman;
+    std::map<NodeId, std::shared_ptr<CProcessQueue>> mapNodes;
+    std::mutex mapNodesMutex;
+    std::mutex mutexNetProcessing;
+    std::condition_variable condNetProcessing;
+    std::atomic<bool> interruptNetProcessing;
+    std::thread processThread;
+    bool fSleep;
+};
 
 #endif // BITCOIN_NET_PROCESSING_H
