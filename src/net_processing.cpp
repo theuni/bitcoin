@@ -227,20 +227,13 @@ struct CNodeState {
 class CNodeStateAccessor {
 private:
     std::shared_ptr<CNodeState> pstate;
-
-    CNodeStateAccessor() : pstate() { }
-    CNodeStateAccessor(std::shared_ptr<CNodeState> pstateIn) : pstate(pstateIn) { ENTER_CRITICAL_SECTION(pstate->cs); }
+    boost::unique_lock<boost::recursive_mutex> lock;
+    CNodeStateAccessor() = default;
+    CNodeStateAccessor(std::shared_ptr<CNodeState> pstateIn, CCriticalSection& cs) : pstate(std::move(pstateIn)), lock(cs){}
     friend class NodeStateStorage;
 
 public:
-    ~CNodeStateAccessor() { if (pstate) LEAVE_CRITICAL_SECTION(pstate->cs); }
-
-    CNodeStateAccessor(const CNodeStateAccessor&) =delete;
-    CNodeStateAccessor& operator= (const CNodeStateAccessor&) =delete;
-
-    CNodeStateAccessor(CNodeStateAccessor&& o) { pstate = o.pstate; o.pstate = NULL; }
-
-    bool operator()() const { return (bool)pstate; }
+    explicit operator bool() const { return pstate.operator bool(); }
 
     CNodeState* operator->() { return &(*pstate); }
     const CNodeState* operator->() const { return &(*pstate); }
@@ -261,7 +254,7 @@ public:
                 return CNodeStateAccessor();
             pstate = it->second;
         }
-        return CNodeStateAccessor(pstate);
+        return CNodeStateAccessor(pstate, pstate->cs);
     }
 
     void AddStateForNode(NodeId nodeid, const CAddress& addr, const std::string& addrName) {
@@ -380,7 +373,7 @@ bool MarkBlockAsInFlight(NodeId nodeid, const uint256& hash, const Consensus::Pa
     AssertLockHeld(cs_main);
 
     CNodeStateAccessor state = State(nodeid);
-    assert(state());
+    assert(state);
 
     // Short-circuit most stuff in case its from the same node
     map<uint256, pair<NodeId, list<QueuedBlock>::iterator> >::iterator itInFlight = mapBlocksInFlight.find(hash);
@@ -414,7 +407,7 @@ void ProcessBlockAvailability(NodeId nodeid) {
     AssertLockHeld(cs_main);
 
     CNodeStateAccessor state = State(nodeid);
-    assert(state());
+    assert(state);
 
     if (!state->hashLastUnknownBlock.IsNull()) {
         BlockMap::iterator itOld = mapBlockIndex.find(state->hashLastUnknownBlock);
@@ -431,7 +424,7 @@ void UpdateBlockAvailability(NodeId nodeid, const uint256 &hash) {
     AssertLockHeld(cs_main);
 
     CNodeStateAccessor state = State(nodeid);
-    assert(state());
+    assert(state);
 
     ProcessBlockAvailability(nodeid);
 
@@ -524,7 +517,7 @@ void FindNextBlocksToDownload(NodeId nodeid, unsigned int count, std::vector<con
 
     vBlocks.reserve(vBlocks.size() + count);
     CNodeStateAccessor state = State(nodeid);
-    assert(state());
+    assert(state);
 
     // Make sure pindexBestKnownBlock is up to date, we'll need it.
     ProcessBlockAvailability(nodeid);
@@ -608,7 +601,7 @@ void FindNextBlocksToDownload(NodeId nodeid, unsigned int count, std::vector<con
 
 bool GetNodeStateStats(NodeId nodeid, CNodeStateStats &stats) {
     CNodeStateAccessor state = State(nodeid);
-    if (!state())
+    if (!state)
         return false;
     stats.nMisbehavior = state->nMisbehavior;
     stats.nSyncHeight = state->pindexBestKnownBlock ? state->pindexBestKnownBlock->nHeight : -1;
@@ -748,7 +741,7 @@ void Misbehaving(NodeId pnode, int howmuch)
         return;
 
     CNodeStateAccessor state = State(pnode);
-    if (!state())
+    if (!state)
         return;
 
     state->nMisbehavior += howmuch;
@@ -844,7 +837,7 @@ void PeerLogicValidation::BlockChecked(const CBlock& block, const CValidationSta
 
     int nDoS = 0;
     if (state.IsInvalid(nDoS)) {
-        if (it != mapBlockSource.end() && State(it->second.first)()) {
+        if (it != mapBlockSource.end() && State(it->second.first)) {
             assert (state.GetRejectCode() < REJECT_INTERNAL); // Blocks are never rejected with internal reject codes
             CBlockReject reject = {(unsigned char)state.GetRejectCode(), state.GetRejectReason().substr(0, MAX_REJECT_MESSAGE_LENGTH), hash};
             State(it->second.first)->rejects.push_back(reject);
