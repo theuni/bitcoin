@@ -1287,8 +1287,11 @@ void CConnman::ThreadSocketHandler()
                 TRY_LOCK(pnode->cs_vSend, lockSend);
                 if (lockSend) {
                     size_t nBytes = SocketSendData(pnode);
-                    if (nBytes)
+                    if (nBytes) {
                         RecordBytesSent(nBytes);
+                        if (pnode->fPauseSend && pnode->nSendSize < nSendBufferMaxSize)
+                            pnode->fPauseSend = false;
+                    }
                 }
             }
 
@@ -1869,7 +1872,7 @@ void CConnman::ThreadMessageHandler()
                 if (lockRecv)
                 {
                     bool fMoreNodeWork = GetNodeSignals().ProcessMessages(pnode, *this, flagInterruptMsgProc);
-                    fMoreWork |= (fMoreNodeWork && pnode->nSendSize < GetSendBufferSize());
+                    fMoreWork |= (fMoreNodeWork && !pnode->fPauseSend);
                 }
             }
             if (flagInterruptMsgProc)
@@ -2595,6 +2598,7 @@ CNode::CNode(NodeId idIn, ServiceFlags nLocalServicesIn, int nMyStartingHeightIn
     lastSentFeeFilter = 0;
     nextSendTimeFeeFilter = 0;
     fPauseRecv = false;
+    fPauseSend = false;
     nProcessQueueSize = 0;
 
     BOOST_FOREACH(const std::string &msg, getAllNetMessageTypes())
@@ -2675,6 +2679,8 @@ void CConnman::PushMessage(CNode* pnode, CSerializedNetMsg&& msg)
         pnode->mapSendBytesPerMsgCmd[msg.command] += nTotalSize;
         pnode->nSendSize += nTotalSize;
 
+        if (pnode->nSendSize > nSendBufferMaxSize)
+            pnode->fPauseSend = true;
         pnode->vSendMsg.push_back(std::move(serializedHeader));
         if (nMessageSize)
             pnode->vSendMsg.push_back(std::move(msg.data));
