@@ -2455,11 +2455,11 @@ bool ProcessMessages(CNode* pfrom, CConnman& connman, std::atomic<bool>& interru
     if (!pfrom->vRecvGetData.empty())
         ProcessGetData(pfrom, chainparams.GetConsensus(), connman, interruptMsgProc);
 
-    // this maintains the order of responses
-    if (!pfrom->vRecvGetData.empty()) return true;
-
     if (pfrom->fDisconnect)
         return false;
+
+    // this maintains the order of responses
+    if (!pfrom->vRecvGetData.empty()) return true;
 
         // Don't bother if send buffer is too full to respond anyway
         if (pfrom->fPauseSend)
