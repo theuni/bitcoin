@@ -760,7 +760,7 @@ const uint256& CNetMessage::GetMessageHash() const
 
 
 // requires LOCK(cs_vSend)
-size_t SocketSendData(CNode *pnode)
+size_t CConnman::SocketSendData(CNode *pnode)
 {
     auto it = pnode->vSendMsg.begin();
     size_t nSentSize = 0;
@@ -777,6 +777,7 @@ size_t SocketSendData(CNode *pnode)
             if (pnode->nSendOffset == data.size()) {
                 pnode->nSendOffset = 0;
                 pnode->nSendSize -= data.size();
+                pnode->fPauseSend = pnode->nSendSize > nSendBufferMaxSize;
                 it++;
             } else {
                 // could not send full message; stop sending more
@@ -1236,8 +1237,7 @@ void CConnman::ThreadSocketHandler()
                                     LOCK(pnode->cs_vProcessMsg);
                                     pnode->vProcessMsg.splice(pnode->vProcessMsg.end(), pnode->vRecvMsg, pnode->vRecvMsg.begin(), it);
                                     pnode->nProcessQueueSize += nSizeAdded;
-                                    if (pnode->nProcessQueueSize >= nReceiveFloodSize)
-                                        pnode->fPauseRecv = true;
+                                    pnode->fPauseRecv = pnode->nProcessQueueSize > nReceiveFloodSize;
                                 }
                                 WakeMessageHandler();
                             }
@@ -1276,8 +1276,6 @@ void CConnman::ThreadSocketHandler()
                     size_t nBytes = SocketSendData(pnode);
                     if (nBytes) {
                         RecordBytesSent(nBytes);
-                        if (pnode->fPauseSend && pnode->nSendSize < nSendBufferMaxSize)
-                            pnode->fPauseSend = false;
                     }
                 }
             }

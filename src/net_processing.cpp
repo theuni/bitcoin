@@ -2473,8 +2473,7 @@ bool ProcessMessages(CNode* pfrom, CConnman& connman, std::atomic<bool>& interru
             // Just take one message
             msgs.splice(msgs.begin(), pfrom->vProcessMsg, pfrom->vProcessMsg.begin());
             pfrom->nProcessQueueSize -= msgs.front().vRecv.size() + CMessageHeader::HEADER_SIZE;
-            if (pfrom->nProcessQueueSize < connman.GetReceiveFloodSize())
-                pfrom->fPauseRecv = false;
+            pfrom->fPauseRecv = pfrom->nProcessQueueSize > connman.GetReceiveFloodSize();
             fMoreWork = !pfrom->vProcessMsg.empty();
         }
         CNetMessage& msg(msgs.front());
