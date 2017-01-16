@@ -10,7 +10,7 @@
 // boost::thread / boost::function / boost::chrono should be ported to
 // std::thread / std::function / std::chrono when we support C++11.
 //
-#include <boost/function.hpp>
+#include <functional>
 #include <boost/chrono/chrono.hpp>
 #include <boost/thread.hpp>
 #include <map>
@@ -23,7 +23,7 @@
 //
 // CScheduler* s = new CScheduler();
 // s->scheduleFromNow(doSomething, 11); // Assuming a: void doSomething() { }
-// s->scheduleFromNow(boost::bind(Class::func, this, argument), 3);
+// s->scheduleFromNow(std::bind(Class::func, this, argument), 3);
 // boost::thread* t = new boost::thread(boost::bind(CScheduler::serviceQueue, s));
 //
 // ... then at program shutdown, clean up the thread running serviceQueue:
@@ -39,7 +39,7 @@ public:
     CScheduler();
     ~CScheduler();
 
-    typedef boost::function<void(void)> Function;
+    typedef std::function<void(void)> Function;
 
     // Call func at/after time t
     void schedule(Function f, boost::chrono::system_clock::time_point t);
