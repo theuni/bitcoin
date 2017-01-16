@@ -5,14 +5,10 @@
 #ifndef BITCOIN_SCHEDULER_H
 #define BITCOIN_SCHEDULER_H
 
-//
-// NOTE:
-// boost::thread / boost::function / boost::chrono should be ported to
-// std::thread / std::function / std::chrono when we support C++11.
-//
 #include <functional>
-#include <boost/chrono/chrono.hpp>
-#include <boost/thread.hpp>
+#include <chrono>
+#include <mutex>
+#include <condition_variable>
 #include <map>
 
 //
@@ -24,7 +20,7 @@
 // CScheduler* s = new CScheduler();
 // s->scheduleFromNow(doSomething, 11); // Assuming a: void doSomething() { }
 // s->scheduleFromNow(std::bind(Class::func, this, argument), 3);
-// boost::thread* t = new boost::thread(boost::bind(CScheduler::serviceQueue, s));
+// std::thread* t = new std::thread(std::bind(CScheduler::serviceQueue, s));
 //
 // ... then at program shutdown, clean up the thread running serviceQueue:
 // t->interrupt();
@@ -42,7 +38,7 @@ public:
     typedef std::function<void(void)> Function;
 
     // Call func at/after time t
-    void schedule(Function f, boost::chrono::system_clock::time_point t);
+    void schedule(Function f, std::chrono::system_clock::time_point t);
 
     // Convenience method: call f once deltaSeconds from now
     void scheduleFromNow(Function f, int64_t deltaSeconds);
@@ -67,13 +63,13 @@ public:
 
     // Returns number of tasks waiting to be serviced,
     // and first and last task times
-    size_t getQueueInfo(boost::chrono::system_clock::time_point &first,
-                        boost::chrono::system_clock::time_point &last) const;
+    size_t getQueueInfo(std::chrono::system_clock::time_point &first,
+                        std::chrono::system_clock::time_point &last) const;
 
 private:
-    std::multimap<boost::chrono::system_clock::time_point, Function> taskQueue;
-    boost::condition_variable newTaskScheduled;
-    mutable boost::mutex newTaskMutex;
+    std::multimap<std::chrono::system_clock::time_point, Function> taskQueue;
+    std::condition_variable newTaskScheduled;
+    mutable std::mutex newTaskMutex;
     int nThreadsServicingQueue;
     bool stopRequested;
     bool stopWhenEmpty;

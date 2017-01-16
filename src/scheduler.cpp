@@ -20,16 +20,9 @@ CScheduler::~CScheduler()
 }
 
 
-#if BOOST_VERSION < 105000
-static boost::system_time toPosixTime(const boost::chrono::system_clock::time_point& t)
-{
-    return boost::posix_time::from_time_t(boost::chrono::system_clock::to_time_t(t));
-}
-#endif
-
 void CScheduler::serviceQueue()
 {
-    boost::unique_lock<boost::mutex> lock(newTaskMutex);
+    std::unique_lock<std::mutex> lock(newTaskMutex);
     ++nThreadsServicingQueue;
 
     // newTaskMutex is locked throughout this loop EXCEPT
@@ -45,21 +38,11 @@ void CScheduler::serviceQueue()
             // Wait until either there is a new task, or until
             // the time of the first item on the queue:
 
-// wait_until needs boost 1.50 or later; older versions have timed_wait:
-#if BOOST_VERSION < 105000
-            while (!shouldStop() && !taskQueue.empty() &&
-                   newTaskScheduled.timed_wait(lock, toPosixTime(taskQueue.begin()->first))) {
-                // Keep waiting until timeout
-            }
-#else
-            // Some boost versions have a conflicting overload of wait_until that returns void.
-            // Explicitly use a template here to avoid hitting that overload.
             while (!shouldStop() && !taskQueue.empty()) {
-                boost::chrono::system_clock::time_point timeToWaitFor = taskQueue.begin()->first;
-                if (newTaskScheduled.wait_until<>(lock, timeToWaitFor) == boost::cv_status::timeout)
+                std::chrono::system_clock::time_point timeToWaitFor = taskQueue.begin()->first;
+                if (newTaskScheduled.wait_until(lock, timeToWaitFor) == std::cv_status::timeout)
                     break; // Exit loop after timeout, it means we reached the time of the event
             }
-#endif
             // If there are multiple threads, the queue can empty while we're waiting (another
             // thread may service the task we were waiting on).
             if (shouldStop() || taskQueue.empty())
@@ -71,7 +54,7 @@ void CScheduler::serviceQueue()
             {
                 // Unlock before calling f, so it can reschedule itself or another task
                 // without deadlocking:
-                reverse_lock<boost::unique_lock<boost::mutex> > rlock(lock);
+                reverse_lock<std::unique_lock<std::mutex> > rlock(lock);
                 f();
             }
         } catch (...) {
@@ -86,7 +69,7 @@ void CScheduler::serviceQueue()
 void CScheduler::interrupt(bool drain)
 {
     {
-        boost::unique_lock<boost::mutex> lock(newTaskMutex);
+        std::unique_lock<std::mutex> lock(newTaskMutex);
         if (drain)
             stopWhenEmpty = true;
         else {
@@ -97,10 +80,10 @@ void CScheduler::interrupt(bool drain)
     newTaskScheduled.notify_all();
 }
 
-void CScheduler::schedule(CScheduler::Function f, boost::chrono::system_clock::time_point t)
+void CScheduler::schedule(CScheduler::Function f, std::chrono::system_clock::time_point t)
 {
     {
-        boost::unique_lock<boost::mutex> lock(newTaskMutex);
+        std::unique_lock<std::mutex> lock(newTaskMutex);
         if (shouldStop())
             return;
         taskQueue.insert(std::make_pair(t, f));
@@ -110,7 +93,7 @@ void CScheduler::schedule(CScheduler::Function f, boost::chrono::system_clock::t
 
 void CScheduler::scheduleFromNow(CScheduler::Function f, int64_t deltaSeconds)
 {
-    schedule(f, boost::chrono::system_clock::now() + boost::chrono::seconds(deltaSeconds));
+    schedule(f, std::chrono::system_clock::now() + std::chrono::seconds(deltaSeconds));
 }
 
 static void Repeat(CScheduler* s, CScheduler::Function f, int64_t deltaSeconds)
@@ -124,10 +107,10 @@ void CScheduler::scheduleEvery(CScheduler::Function f, int64_t deltaSeconds)
     scheduleFromNow(std::bind(&Repeat, this, f, deltaSeconds), deltaSeconds);
 }
 
-size_t CScheduler::getQueueInfo(boost::chrono::system_clock::time_point &first,
-                             boost::chrono::system_clock::time_point &last) const
+size_t CScheduler::getQueueInfo(std::chrono::system_clock::time_point &first,
+                             std::chrono::system_clock::time_point &last) const
 {
-    boost::unique_lock<boost::mutex> lock(newTaskMutex);
+    std::unique_lock<std::mutex> lock(newTaskMutex);
     size_t result = taskQueue.size();
     if (!taskQueue.empty()) {
         first = taskQueue.begin()->first;
