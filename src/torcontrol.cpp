@@ -16,6 +16,7 @@
 
 #include <boost/function.hpp>
 #include <boost/bind.hpp>
+#include <boost/thread.hpp>
 #include <boost/signals2/signal.hpp>
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string/predicate.hpp>
@@ -672,7 +673,7 @@ static void TorControlThread()
     event_base_dispatch(base);
 }
 
-void StartTorControl(boost::thread_group& threadGroup, CScheduler& scheduler)
+void StartTorControl()
 {
     assert(!base);
 #ifdef WIN32

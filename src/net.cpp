@@ -22,6 +22,8 @@
 #include "ui_interface.h"
 #include "utilstrencodings.h"
 
+#include <boost/thread.hpp>
+
 #ifdef WIN32
 #include <string.h>
 #else
