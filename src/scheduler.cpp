@@ -83,14 +83,16 @@ void CScheduler::serviceQueue()
     newTaskScheduled.notify_one();
 }
 
-void CScheduler::stop(bool drain)
+void CScheduler::interrupt(bool drain)
 {
     {
         boost::unique_lock<boost::mutex> lock(newTaskMutex);
         if (drain)
             stopWhenEmpty = true;
-        else
+        else {
             stopRequested = true;
+            taskQueue.clear();
+        }
     }
     newTaskScheduled.notify_all();
 }
@@ -99,6 +101,8 @@ void CScheduler::schedule(CScheduler::Function f, boost::chrono::system_clock::t
 {
     {
         boost::unique_lock<boost::mutex> lock(newTaskMutex);
+        if (shouldStop())
+            return;
         taskQueue.insert(std::make_pair(t, f));
     }
     newTaskScheduled.notify_one();

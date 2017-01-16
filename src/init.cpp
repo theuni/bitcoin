@@ -169,8 +169,9 @@ public:
 static CCoinsViewDB *pcoinsdbview = NULL;
 static CCoinsViewErrorCatcher *pcoinscatcher = NULL;
 static std::unique_ptr<ECCVerifyHandle> globalVerifyHandle;
+static std::vector<std::thread> schedulerThreads;
 
-void Interrupt(boost::thread_group& threadGroup)
+void Interrupt(CScheduler& scheduler, boost::thread_group& threadGroup)
 {
     InterruptHTTPServer();
     InterruptHTTPRPC();
@@ -179,6 +180,7 @@ void Interrupt(boost::thread_group& threadGroup)
     InterruptTorControl();
     if (g_connman)
         g_connman->Interrupt();
+    scheduler.interrupt();
     threadGroup.interrupt_all();
 }
 
@@ -195,6 +197,9 @@ void Shutdown()
     /// Be sure that anything that writes files or flushes caches only does this if the respective
     /// module was initialized.
     RenameThread("bitcoin-shutoff");
+    for(auto& thread : schedulerThreads)
+        thread.join();
+    schedulerThreads.clear();
     mempool.AddTransactionsUpdated(1);
 
     StopHTTPRPC();
@@ -1130,7 +1135,7 @@ bool AppInitMain(boost::thread_group& threadGroup, CScheduler& scheduler)
 
     // Start the lightweight task scheduler thread
     CScheduler::Function serviceLoop = boost::bind(&CScheduler::serviceQueue, &scheduler);
-    threadGroup.create_thread(boost::bind(&TraceThread<CScheduler::Function>, "scheduler", serviceLoop));
+    schedulerThreads.emplace_back(boost::bind(&TraceThread<CScheduler::Function>, "scheduler", serviceLoop));
 
     /* Start the RPC server already.  It will be started in "warmup" mode
      * and not really process calls already (but it will signify connections

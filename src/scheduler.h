@@ -57,13 +57,13 @@ public:
     // To keep things as simple as possible, there is no unschedule.
 
     // Services the queue 'forever'. Should be run in a thread,
-    // and interrupted using boost::interrupt_thread
+    // and interrupted using interrupt()
     void serviceQueue();
 
     // Tell any threads running serviceQueue to stop as soon as they're
     // done servicing whatever task they're currently servicing (drain=false)
     // or when there is no work left to be done (drain=true)
-    void stop(bool drain=false);
+    void interrupt(bool drain=false);
 
     // Returns number of tasks waiting to be serviced,
     // and first and last task times

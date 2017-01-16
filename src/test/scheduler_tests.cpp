@@ -103,7 +103,7 @@ BOOST_AUTO_TEST_CASE(manythreads)
     }
 
     // Drain the task queue then exit threads
-    microTasks.stop(true);
+    microTasks.interrupt(true);
     microThreads.join_all(); // ... wait until all the threads are done
 
     int counterSum = 0;
