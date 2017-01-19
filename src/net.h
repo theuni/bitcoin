@@ -145,6 +145,10 @@ public:
         unsigned int nReceiveFloodSize = 0;
         uint64_t nMaxOutboundTimeframe = 0;
         uint64_t nMaxOutboundLimit = 0;
+        bool fRelayTxesTo;
+        bool fAcceptTxesFrom;
+        bool fWhitelistRelayTo;
+        bool fWhitelistRelayFrom;
     };
     CConnman(uint64_t seed0, uint64_t seed1);
     ~CConnman();
@@ -296,6 +300,7 @@ public:
     void AddWhitelistedRange(const CSubNet &subnet);
 
     ServiceFlags GetLocalServices() const;
+    bool IsRelaying() const;
 
     //!set the max outbound target in bytes
     void SetMaxOutboundTarget(uint64_t limit);
@@ -418,6 +423,11 @@ private:
     /** Services this instance cares about */
     ServiceFlags nRelevantServices;
 
+    bool fRelayTxesTo;
+    bool fAcceptTxesFrom;
+    bool fWhitelistRelayTo;
+    bool fWhitelistRelayFrom;
+
     CSemaphore *semOutbound;
     CSemaphore *semAddnode;
     int nMaxConnections;
@@ -508,7 +518,6 @@ CAddress GetLocalAddress(const CNetAddr *paddrPeer, ServiceFlags nLocalServices)
 
 extern bool fDiscover;
 extern bool fListen;
-extern bool fRelayTxes;
 
 extern limitedmap<uint256, int64_t> mapAlreadyAskedFor;
 
@@ -529,7 +538,8 @@ class CNodeStats
 public:
     NodeId nodeid;
     ServiceFlags nServices;
-    bool fRelayTxes;
+    bool fRelayTxesTo;
+    bool fAcceptTxesFrom;
     int64_t nLastSend;
     int64_t nLastRecv;
     int64_t nTimeConnected;
@@ -647,7 +657,8 @@ public:
     // a) it allows us to not relay tx invs before receiving the peer's version message
     // b) the peer may tell us in its version message that we should not relay tx invs
     //    unless it loads a bloom filter.
-    bool fRelayTxes; //protected by cs_filter
+    bool fRelayTxesTo; //protected by cs_filter
+    bool fAcceptTxesFrom; //protected by cs_filter
     bool fSentAddr;
     CSemaphoreGrant grantOutbound;
     CCriticalSection cs_filter;

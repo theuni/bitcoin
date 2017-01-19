@@ -68,7 +68,6 @@ static const uint64_t RANDOMIZER_ID_LOCALHOSTNONCE = 0xd93e69e2bbfa5735ULL; // S
 //
 bool fDiscover = true;
 bool fListen = true;
-bool fRelayTxes = true;
 CCriticalSection cs_mapLocalHost;
 std::map<CNetAddr, LocalServiceInfo> mapLocalHost;
 static bool vfLimited[NET_MAX] = {};
@@ -607,7 +606,8 @@ void CNode::copyStats(CNodeStats &stats)
     stats.nodeid = this->GetId();
     X(nServices);
     X(addr);
-    X(fRelayTxes);
+    X(fRelayTxesTo);
+    X(fAcceptTxesFrom);
     X(nLastSend);
     X(nLastRecv);
     X(nTimeConnected);
@@ -815,7 +815,7 @@ struct NodeEvictionCandidate
     int64_t nLastBlockTime;
     int64_t nLastTXTime;
     bool fRelevantServices;
-    bool fRelayTxes;
+    bool fAcceptTxesFrom;
     bool fBloomFilter;
     CAddress addr;
     uint64_t nKeyedNetGroup;
@@ -847,7 +847,7 @@ static bool CompareNodeTXTime(const NodeEvictionCandidate &a, const NodeEviction
 {
     // There is a fall-through here because it is common for a node to have more than a few peers that have not yet relayed txn.
     if (a.nLastTXTime != b.nLastTXTime) return a.nLastTXTime < b.nLastTXTime;
-    if (a.fRelayTxes != b.fRelayTxes) return b.fRelayTxes;
+    if (a.fAcceptTxesFrom != b.fAcceptTxesFrom) return b.fAcceptTxesFrom;
     if (a.fBloomFilter != b.fBloomFilter) return a.fBloomFilter;
     return a.nTimeConnected > b.nTimeConnected;
 }
@@ -876,7 +876,7 @@ bool CConnman::AttemptToEvictConnection()
             NodeEvictionCandidate candidate = {node->id, node->nTimeConnected, node->nMinPingUsecTime,
                                                node->nLastBlockTime, node->nLastTXTime,
                                                (node->nServices & nRelevantServices) == nRelevantServices,
-                                               node->fRelayTxes, node->pfilter != NULL, node->addr, node->nKeyedNetGroup};
+                                               node->fAcceptTxesFrom, node->pfilter != NULL, node->addr, node->nKeyedNetGroup};
             vEvictionCandidates.push_back(candidate);
         }
     }
@@ -1026,6 +1026,8 @@ void CConnman::AcceptConnection(const ListenSocket& hListenSocket) {
     CNode* pnode = new CNode(id, nLocalServices, GetBestHeight(), hSocket, addr, CalculateKeyedNetGroup(addr), nonce, "", true);
     pnode->AddRef();
     pnode->fWhitelisted = whitelisted;
+    pnode->fAcceptTxesFrom = fAcceptTxesFrom || (whitelisted && fWhitelistRelayFrom);
+    pnode->fRelayTxesTo = fRelayTxesTo || (whitelisted && fWhitelistRelayTo);
     GetNodeSignals().InitializeNode(pnode, *this);
 
     LogPrint("net", "connection from %s accepted\n", addr.ToString());
@@ -2088,6 +2090,10 @@ CConnman::CConnman(uint64_t nSeed0In, uint64_t nSeed1In) : nSeed0(nSeed0In), nSe
     nBestHeight = 0;
     clientInterface = NULL;
     flagInterruptMsgProc = false;
+    fRelayTxesTo = false;
+    fAcceptTxesFrom = false;
+    fWhitelistRelayTo = false;
+    fWhitelistRelayFrom = false;
 }
 
 NodeId CConnman::GetNewNodeId()
@@ -2114,6 +2120,11 @@ bool CConnman::Start(CScheduler& scheduler, std::string& strNodeError, Options c
 
     nMaxOutboundLimit = connOptions.nMaxOutboundLimit;
     nMaxOutboundTimeframe = connOptions.nMaxOutboundTimeframe;
+
+    fRelayTxesTo = connOptions.fRelayTxesTo;
+    fAcceptTxesFrom = connOptions.fAcceptTxesFrom;
+    fWhitelistRelayTo = connOptions.fWhitelistRelayTo;
+    fWhitelistRelayFrom = connOptions.fWhitelistRelayFrom;
 
     SetBestHeight(connOptions.nBestHeight);
 
@@ -2537,6 +2548,11 @@ ServiceFlags CConnman::GetLocalServices() const
     return nLocalServices;
 }
 
+bool CConnman::IsRelaying() const
+{
+    return fRelayTxesTo;
+}
+
 void CConnman::SetBestHeight(int height)
 {
     nBestHeight.store(height, std::memory_order_release);
@@ -2593,7 +2609,8 @@ CNode::CNode(NodeId idIn, ServiceFlags nLocalServicesIn, int nMyStartingHeightIn
     nNextLocalAddrSend = 0;
     nNextAddrSend = 0;
     nNextInvSend = 0;
-    fRelayTxes = false;
+    fRelayTxesTo = false;
+    fAcceptTxesFrom = false;
     fSentAddr = false;
     pfilter = new CBloomFilter();
     timeLastMempoolReq = 0;

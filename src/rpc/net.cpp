@@ -135,7 +135,8 @@ UniValue getpeerinfo(const JSONRPCRequest& request)
         if (!(stats.addrLocal.empty()))
             obj.push_back(Pair("addrlocal", stats.addrLocal));
         obj.push_back(Pair("services", strprintf("%016x", stats.nServices)));
-        obj.push_back(Pair("relaytxes", stats.fRelayTxes));
+        obj.push_back(Pair("relaytxes", stats.fRelayTxesTo));
+        obj.push_back(Pair("accepttxes", stats.fAcceptTxesFrom));
         obj.push_back(Pair("lastsend", stats.nLastSend));
         obj.push_back(Pair("lastrecv", stats.nLastRecv));
         obj.push_back(Pair("bytessent", stats.nSendBytes));
@@ -439,7 +440,7 @@ UniValue getnetworkinfo(const JSONRPCRequest& request)
     obj.push_back(Pair("protocolversion",PROTOCOL_VERSION));
     if(g_connman)
         obj.push_back(Pair("localservices", strprintf("%016x", g_connman->GetLocalServices())));
-    obj.push_back(Pair("localrelay",     fRelayTxes));
+    obj.push_back(Pair("localrelay",     g_connman->IsRelaying()));
     obj.push_back(Pair("timeoffset",    GetTimeOffset()));
     if (g_connman) {
         obj.push_back(Pair("networkactive", g_connman->GetNetworkActive()));

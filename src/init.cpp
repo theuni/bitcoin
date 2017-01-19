@@ -1286,7 +1286,10 @@ bool AppInitMain(boost::thread_group& threadGroup, CScheduler& scheduler)
     fListen = GetBoolArg("-listen", DEFAULT_LISTEN);
     fDiscover = GetBoolArg("-discover", true);
     fNameLookup = GetBoolArg("-dns", DEFAULT_NAME_LOOKUP);
-    fRelayTxes = !GetBoolArg("-blocksonly", DEFAULT_BLOCKSONLY);
+    bool fRelayTxes = !GetBoolArg("-blocksonly", DEFAULT_BLOCKSONLY);
+
+    bool fWhitelistRelayTo = GetBoolArg("-whitelistrelay", DEFAULT_WHITELISTRELAY);
+    bool fWhitelistRelayFrom = GetBoolArg("-whitelistforcerelay", DEFAULT_WHITELISTFORCERELAY);
 
     if (fListen) {
         bool fBound = false;
@@ -1625,6 +1628,11 @@ bool AppInitMain(boost::thread_group& threadGroup, CScheduler& scheduler)
 
     connOptions.nMaxOutboundTimeframe = nMaxOutboundTimeframe;
     connOptions.nMaxOutboundLimit = nMaxOutboundLimit;
+
+    connOptions.fRelayTxesTo = fRelayTxes;
+    connOptions.fAcceptTxesFrom = fRelayTxes;
+    connOptions.fWhitelistRelayTo = fWhitelistRelayTo;
+    connOptions.fWhitelistRelayFrom = fWhitelistRelayFrom;
 
     if (!connman.Start(scheduler, strNodeError, connOptions))
         return InitError(strNodeError);
