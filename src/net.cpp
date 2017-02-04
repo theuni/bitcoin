@@ -2556,6 +2556,7 @@ CNode::CNode(NodeId idIn, ServiceFlags nLocalServicesIn, int nMyStartingHeightIn
     fInbound(fInboundIn),
     id(idIn),
     nKeyedNetGroup(nKeyedNetGroupIn),
+    hSocket(hSocketIn),
     addrKnown(5000, 0.001),
     filterInventoryKnown(50000, 0.000001),
     nLocalHostNonce(nLocalHostNonceIn),
@@ -2565,7 +2566,6 @@ CNode::CNode(NodeId idIn, ServiceFlags nLocalServicesIn, int nMyStartingHeightIn
 {
     nServices = NODE_NONE;
     nServicesExpected = NODE_NONE;
-    hSocket = hSocketIn;
     nRecvVersion = INIT_PROTO_VERSION;
     nLastSend = 0;
     nLastRecv = 0;

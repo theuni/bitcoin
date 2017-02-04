@@ -670,7 +670,7 @@ std::string NetworkErrorString(int err)
 }
 #endif
 
-bool CloseSocket(SOCKET& hSocket)
+bool CloseSocket(SOCKET hSocket)
 {
     if (hSocket == INVALID_SOCKET)
         return false;
@@ -679,7 +679,6 @@ bool CloseSocket(SOCKET& hSocket)
 #else
     int ret = close(hSocket);
 #endif
-    hSocket = INVALID_SOCKET;
     return ret != SOCKET_ERROR;
 }
 

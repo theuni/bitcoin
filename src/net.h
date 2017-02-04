@@ -566,7 +566,6 @@ public:
     // socket
     ServiceFlags nServices;
     ServiceFlags nServicesExpected;
-    SOCKET hSocket;
     size_t nSendSize; // total size of all vSendMsg entries
     size_t nSendOffset; // offset inside the first vSendMsg already sent
     uint64_t nSendBytes;
@@ -617,6 +616,7 @@ public:
     const NodeId id;
 
     const uint64_t nKeyedNetGroup;
+    const SOCKET hSocket;
     std::atomic_bool fPauseRecv;
     std::atomic_bool fPauseSend;
 protected:
