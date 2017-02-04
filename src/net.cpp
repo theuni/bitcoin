@@ -787,6 +787,8 @@ size_t CConnman::SocketSendData(CNode *pnode)
     size_t nSentSize = 0;
 
     while (it != pnode->vSendMsg.end()) {
+        if (pnode->fDisconnect)
+            break;
         const auto &data = *it;
         assert(data.size() > pnode->nSendOffset);
         int nBytes = send(pnode->hSocket, reinterpret_cast<const char*>(data.data()) + pnode->nSendOffset, data.size() - pnode->nSendOffset, MSG_NOSIGNAL | MSG_DONTWAIT);
@@ -811,7 +813,7 @@ size_t CConnman::SocketSendData(CNode *pnode)
                 if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS)
                 {
                     LogPrintf("socket send error %s\n", NetworkErrorString(nErr));
-                    pnode->CloseSocketDisconnect();
+                    pnode->fDisconnect = true;
                 }
             }
             // couldn't send anything at all
@@ -1150,7 +1152,7 @@ void CConnman::ThreadSocketHandler()
             LOCK(cs_vNodes);
             BOOST_FOREACH(CNode* pnode, vNodes)
             {
-                if (pnode->hSocket == INVALID_SOCKET)
+                if (pnode->hSocket == INVALID_SOCKET || pnode->fDisconnect)
                     continue;
                 FD_SET(pnode->hSocket, &fdsetError);
                 hSocketMax = std::max(hSocketMax, pnode->hSocket);
@@ -1229,7 +1231,7 @@ void CConnman::ThreadSocketHandler()
             //
             // Receive
             //
-            if (pnode->hSocket == INVALID_SOCKET)
+            if (pnode->hSocket == INVALID_SOCKET || pnode->fDisconnect)
                 continue;
             if (FD_ISSET(pnode->hSocket, &fdsetRecv) || FD_ISSET(pnode->hSocket, &fdsetError))
             {
@@ -1242,7 +1244,7 @@ void CConnman::ThreadSocketHandler()
                         {
                             bool notify = false;
                             if (!pnode->ReceiveMsgBytes(pchBuf, nBytes, notify))
-                                pnode->CloseSocketDisconnect();
+                                pnode->fDisconnect = true;
                             RecordBytesRecv(nBytes);
                             if (notify) {
                                 size_t nSizeAdded = 0;
@@ -1264,9 +1266,8 @@ void CConnman::ThreadSocketHandler()
                         else if (nBytes == 0)
                         {
                             // socket closed gracefully
-                            if (!pnode->fDisconnect)
+                            if (!pnode->fDisconnect.exchange(true))
                                 LogPrint("net", "socket closed\n");
-                            pnode->CloseSocketDisconnect();
                         }
                         else if (nBytes < 0)
                         {
@@ -1274,9 +1275,8 @@ void CConnman::ThreadSocketHandler()
                             int nErr = WSAGetLastError();
                             if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS)
                             {
-                                if (!pnode->fDisconnect)
+                                if (!pnode->fDisconnect.exchange(true))
                                     LogPrintf("socket recv error %s\n", NetworkErrorString(nErr));
-                                pnode->CloseSocketDisconnect();
                             }
                         }
                     }
@@ -1286,7 +1286,7 @@ void CConnman::ThreadSocketHandler()
             //
             // Send
             //
-            if (pnode->hSocket == INVALID_SOCKET)
+            if (pnode->hSocket == INVALID_SOCKET || pnode->fDisconnect)
                 continue;
             if (FD_ISSET(pnode->hSocket, &fdsetSend))
             {
@@ -2084,7 +2084,7 @@ void CConnman::SetNetworkActive(bool active)
         LOCK(cs_vNodes);
         // Close sockets to all nodes
         BOOST_FOREACH(CNode* pnode, vNodes) {
-            pnode->CloseSocketDisconnect();
+            pnode->fDisconnect = true;
         }
     } else {
         fNetworkActive = true;
@@ -2617,8 +2617,6 @@ CNode::CNode(NodeId idIn, ServiceFlags nLocalServicesIn, int nMyStartingHeightIn
 
 CNode::~CNode()
 {
-    CloseSocket(hSocket);
-
     if (pfilter)
         delete pfilter;
 }
@@ -2679,7 +2677,7 @@ void CConnman::PushMessage(CNode* pnode, CSerializedNetMsg&& msg)
     size_t nBytesSent = 0;
     {
         LOCK(pnode->cs_vSend);
-        if(pnode->hSocket == INVALID_SOCKET) {
+        if(pnode->hSocket == INVALID_SOCKET || pnode->fDisconnect) {
             return;
         }
         bool optimisticSend(pnode->vSendMsg.empty());
