@@ -693,6 +693,8 @@ private:
     const int nMyStartingHeight;
     int nSendVersion;
     std::list<CNetMessage> vRecvMsg;  // Used only by SocketHandler thread
+    bool fSocketClosed;
+    CCriticalSection cs_SocketClosed;
 public:
 
     NodeId GetId() const {
