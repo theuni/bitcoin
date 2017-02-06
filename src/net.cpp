@@ -1255,6 +1255,13 @@ void CConnman::ThreadSocketHandler()
                                 {
                                     LOCK(pnode->cs_vProcessMsg);
                                     pnode->vProcessMsg.splice(pnode->vProcessMsg.end(), pnode->vRecvMsg, pnode->vRecvMsg.begin(), it);
+                                    /*
+                                    LOCK(cs_debugFile);
+                                    for(const auto& msg : pnode->vProcessMsg) {
+                                        debugFile << msg.hdr;
+                                        debugFile << CFlatData((void*)msg.vRecv.data(), (void*)msg.vRecv.data() + msg.vRecv.size());
+                                    }
+                                    */
                                     pnode->nProcessQueueSize += nSizeAdded;
                                     pnode->fPauseRecv = pnode->nProcessQueueSize > nReceiveFloodSize;
                                 }
@@ -2093,7 +2100,7 @@ void CConnman::SetNetworkActive(bool active)
     uiInterface.NotifyNetworkActiveChanged(fNetworkActive);
 }
 
-CConnman::CConnman(uint64_t nSeed0In, uint64_t nSeed1In) : nSeed0(nSeed0In), nSeed1(nSeed1In)
+CConnman::CConnman(uint64_t nSeed0In, uint64_t nSeed1In) : nSeed0(nSeed0In), nSeed1(nSeed1In), debugFile(fopen("/tmp/netfuzzer_messages.bin", "a"), SER_DISK, CLIENT_VERSION)
 {
     fNetworkActive = true;
     setBannedIsDirty = false;
@@ -2675,6 +2682,14 @@ void CConnman::PushMessage(CNode* pnode, CSerializedNetMsg&& msg)
     memcpy(hdr.pchChecksum, hash.begin(), CMessageHeader::CHECKSUM_SIZE);
 
     CVectorWriter{SER_NETWORK, INIT_PROTO_VERSION, serializedHeader, 0, hdr};
+
+/*
+    {
+        LOCK(cs_debugFile);
+        debugFile << hdr;
+        debugFile << CFlatData(msg.data.data(), msg.data.data() + msg.data.size());
+    }
+*/
 
     size_t nBytesSent = 0;
     {

@@ -3,7 +3,7 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 TESTS += test/test_bitcoin
-bin_PROGRAMS += test/test_bitcoin
+bin_PROGRAMS += test/test_bitcoin test/bitcoin_netfuzz
 noinst_PROGRAMS += test/test_bitcoin_fuzzy
 TEST_SRCDIR = test
 TEST_BINARY=test/test_bitcoin$(EXEEXT)
@@ -161,6 +161,18 @@ if ENABLE_ZMQ
 test_test_bitcoin_LDADD += $(ZMQ_LIBS)
 endif
 #
+
+test_bitcoin_netfuzz_SOURCES = test/bitcoin_netfuzz.cpp test/netfuzz_connection.cpp test/netfuzz_connection.h
+test_bitcoin_netfuzz_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
+test_bitcoin_netfuzz_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+test_bitcoin_netfuzz_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
+test_bitcoin_netfuzz_LDADD = \
+  $(LIBBITCOIN_SERVER) \
+  $(LIBBITCOIN_COMMON) \
+  $(LIBBITCOIN_UTIL) \
+  $(LIBBITCOIN_CONSENSUS) \
+  $(LIBBITCOIN_CRYPTO)
+test_bitcoin_netfuzz_LDADD += $(BOOST_LIBS) $(CRYPTO_LIBS) $(EVENT_PTHREADS_LIBS) $(EVENT_LIBS)  $(MINIUPNPC_LIBS)
 
 # test_bitcoin_fuzzy binary #
 test_test_bitcoin_fuzzy_SOURCES = test/test_bitcoin_fuzzy.cpp
