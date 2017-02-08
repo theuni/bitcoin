@@ -1614,7 +1614,7 @@ class NodeConn(asyncore.dispatcher):
         "regtest": b"\xfa\xbf\xb5\xda",   # regtest
     }
 
-    def __init__(self, dstaddr, dstport, rpc, callback, net="regtest", services=NODE_NETWORK):
+    def __init__(self, dstaddr, dstport, rpc, callback, net="regtest", services=NODE_NETWORK, send_version=True):
         asyncore.dispatcher.__init__(self, map=mininode_socket_map)
         self.log = logging.getLogger("NodeConn(%s:%d)" % (dstaddr, dstport))
         self.dstaddr = dstaddr
@@ -1631,14 +1631,15 @@ class NodeConn(asyncore.dispatcher):
         self.disconnect = False
         self.nServices = 0
 
-        # stuff version msg into sendbuf
-        vt = msg_version()
-        vt.nServices = services
-        vt.addrTo.ip = self.dstaddr
-        vt.addrTo.port = self.dstport
-        vt.addrFrom.ip = "0.0.0.0"
-        vt.addrFrom.port = 0
-        self.send_message(vt, True)
+        if send_version:
+            # stuff version msg into sendbuf
+            vt = msg_version()
+            vt.nServices = services
+            vt.addrTo.ip = self.dstaddr
+            vt.addrTo.port = self.dstport
+            vt.addrFrom.ip = "0.0.0.0"
+            vt.addrFrom.port = 0
+            self.send_message(vt, True)
         print('MiniNode: Connecting to Bitcoin Node IP # ' + dstaddr + ':' \
             + str(dstport))
 
@@ -1681,6 +1682,8 @@ class NodeConn(asyncore.dispatcher):
 
     def writable(self):
         with mininode_lock:
+            if not self.connected:
+                return True
             length = len(self.sendbuf)
         return (length > 0)
 
