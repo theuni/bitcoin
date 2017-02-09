@@ -2601,13 +2601,14 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
     return true;
 }
 
-static bool SendRejectsAndCheckBan(CNode* pnode, CConnman& connman)
+static bool SendRejectsAndCheckIfBanned(CNode* pnode, CConnman& connman)
 {
     AssertLockHeld(cs_main);
     CNodeState &state = *State(pnode->GetId());
 
-    BOOST_FOREACH(const CBlockReject& reject, state.rejects)
+    BOOST_FOREACH(const CBlockReject& reject, state.rejects) {
         connman.PushMessage(pnode, CNetMsgMaker(INIT_PROTO_VERSION).Make(NetMsgType::REJECT, (std::string)NetMsgType::BLOCK, reject.chRejectCode, reject.strRejectReason, reject.hashBlock));
+    }
     state.rejects.clear();
 
     if (state.fShouldBan) {
@@ -2625,9 +2626,9 @@ static bool SendRejectsAndCheckBan(CNode* pnode, CConnman& connman)
                 connman.Ban(pnode->addr, BanReasonNodeMisbehaving);
             }
         }
-        return false;
+        return true;
     }
-    return true;
+    return false;
 }
 
 bool ProcessMessages(CNode* pfrom, CConnman& connman, const std::atomic<bool>& interruptMsgProc)
@@ -2742,9 +2743,10 @@ bool ProcessMessages(CNode* pfrom, CConnman& connman, const std::atomic<bool>& i
 
         if (!fRet) {
             LogPrintf("%s(%s, %u bytes) FAILED peer=%d\n", __func__, SanitizeString(strCommand), nMessageSize, pfrom->id);
-            LOCK(cs_main);
-            SendRejectsAndCheckBan(pfrom, connman);
         }
+
+        LOCK(cs_main);
+        SendRejectsAndCheckIfBanned(pfrom, connman);
 
     return fMoreWork;
 }
@@ -2810,7 +2812,7 @@ bool SendMessages(CNode* pto, CConnman& connman, const std::atomic<bool>& interr
         if (!lockMain)
             return true;
 
-        if (!SendRejectsAndCheckBan(pto, connman))
+        if (SendRejectsAndCheckIfBanned(pto, connman))
             return true;
         CNodeState &state = *State(pto->GetId());
 
