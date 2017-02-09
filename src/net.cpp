@@ -821,8 +821,7 @@ const uint256& CNetMessage::GetMessageHash() const
 
 
 
-// requires LOCK(cs_vSend)
-size_t CConnman::SocketSendData(CNode *pnode)
+size_t CConnman::SocketSendData(CNode *pnode) EXCLUSIVE_LOCKS_REQUIRED(pnode->cs_vSend)
 {
     auto it = pnode->vSendMsg.begin();
     size_t nSentSize = 0;
