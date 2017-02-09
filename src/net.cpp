@@ -922,17 +922,16 @@ static bool CompareNodeTXTime(const NodeEvictionCandidate &a, const NodeEviction
  */
 bool CConnman::AttemptToEvictConnection()
 {
-    std::vector<NodeEvictionCandidate> vEvictionCandidates;
+    std::vector<CNode*> vNodesCopy;
     {
         LOCK(cs_vNodes);
-
-        BOOST_FOREACH(CNode *node, vNodes) {
-            if (node->fWhitelisted)
-                continue;
-            if (!node->fInbound)
-                continue;
-            if (node->fDisconnect)
-                continue;
+        vNodesCopy = vNodes;
+        for(CNode* pnode : vNodes)
+            pnode->AddRef();
+    }
+    std::vector<NodeEvictionCandidate> vEvictionCandidates;
+    for(CNode* node : vNodesCopy) {
+        if (!node->fWhitelisted && node->fInbound && node->fDisconnect) {
             LOCK(node->cs_filter);
             NodeEvictionCandidate candidate = {node->id, node->nTimeConnected, node->nMinPingUsecTime,
                                                node->nLastBlockTime, node->nLastTXTime,
@@ -940,6 +939,7 @@ bool CConnman::AttemptToEvictConnection()
                                                node->fRelayTxes, node->pfilter != NULL, node->addr, node->nKeyedNetGroup};
             vEvictionCandidates.push_back(candidate);
         }
+        node->Release();
     }
 
     if (vEvictionCandidates.empty()) return false;
