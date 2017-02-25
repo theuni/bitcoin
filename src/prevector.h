@@ -165,18 +165,19 @@ private:
                 T* src = indirect;
                 T* dst = direct_ptr(0);
                 memcpy(dst, src, size() * sizeof(T));
-                free(indirect);
+                delete[] indirect;
                 _size -= N + 1;
             }
         } else {
+            char* new_indirect = reinterpret_cast<char*>(new T[new_capacity]);
             if (!is_direct()) {
-                _union.indirect = static_cast<char*>(realloc(_union.indirect, ((size_t)sizeof(T)) * new_capacity));
+                T* old_indirect = reinterpret_cast<T*>(_union.indirect);
+                memcpy(new_indirect, old_indirect, size() * sizeof(T));
+                _union.indirect = new_indirect;
                 _union.capacity = new_capacity;
+                delete[] old_indirect;
             } else {
-                char* new_indirect = static_cast<char*>(malloc(((size_t)sizeof(T)) * new_capacity));
-                T* src = direct_ptr(0);
-                T* dst = reinterpret_cast<T*>(new_indirect);
-                memcpy(dst, src, size() * sizeof(T));
+                memcpy(new_indirect, direct_ptr(0), size() * sizeof(T));
                 _union.indirect = new_indirect;
                 _union.capacity = new_capacity;
                 _size += N + 1;
@@ -428,7 +429,7 @@ public:
     ~prevector() {
         clear();
         if (!is_direct()) {
-            free(_union.indirect);
+            delete[] reinterpret_cast<T*>(_union.indirect);
             _union.indirect = NULL;
         }
     }
