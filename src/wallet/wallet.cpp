@@ -451,7 +451,7 @@ bool CWallet::Verify()
     uiInterface.InitMessage(_("Verifying wallet..."));
 
     // Wallet file must be a plain filename without a directory
-    if (walletFile != fs::basename(walletFile) + fs::extension(walletFile))
+    if (fs::path(walletFile).has_parent_path())
         return InitError(strprintf(_("Wallet %s resides outside data directory %s"), walletFile, GetDataDir().string()));
 
     if (!bitdb.Open(GetDataDir()))
@@ -3899,7 +3899,13 @@ bool CWallet::BackupWallet(const std::string& strDest)
                     pathDest /= strWalletFile;
 
                 try {
-                    fs::copy_file(pathSrc, pathDest, fs::copy_option::overwrite_if_exists);
+                    fs::file_status s = fs::symlink_status(pathDest);
+                    if (fs::status_known(s)) {
+                        if (fs::is_symlink(s))
+                            pathDest = read_symlink(pathDest);
+                        fs::remove(pathDest);
+                    }
+                    fs::copy_file(pathSrc, pathDest);
                     LogPrintf("copied %s to %s\n", strWalletFile, pathDest.string());
                     return true;
                 } catch (const fs::filesystem_error& e) {

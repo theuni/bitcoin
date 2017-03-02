@@ -37,6 +37,7 @@
 #endif // __linux__
 
 #include <algorithm>
+#include <fstream>
 #include <fcntl.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
@@ -546,7 +547,7 @@ void ClearDatadirCache()
 fs::path GetConfigFile(const std::string& confPath)
 {
     fs::path pathConfigFile(confPath);
-    if (!pathConfigFile.is_complete())
+    if (!pathConfigFile.is_absolute())
         pathConfigFile = GetDataDir(false) / pathConfigFile;
 
     return pathConfigFile;
@@ -554,7 +555,7 @@ fs::path GetConfigFile(const std::string& confPath)
 
 void ReadConfigFile(const std::string& confPath)
 {
-    fs::ifstream streamConfig(GetConfigFile(confPath));
+    std::ifstream streamConfig(GetConfigFile(confPath));
     if (!streamConfig.good())
         return; // No bitcoin.conf file is OK
 
@@ -582,7 +583,7 @@ void ReadConfigFile(const std::string& confPath)
 fs::path GetPidFile()
 {
     fs::path pathPidFile(GetArg("-pid", BITCOIN_PID_FILENAME));
-    if (!pathPidFile.is_complete()) pathPidFile = GetDataDir() / pathPidFile;
+    if (!pathPidFile.is_absolute()) pathPidFile = GetDataDir() / pathPidFile;
     return pathPidFile;
 }
 
