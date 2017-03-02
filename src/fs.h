@@ -8,12 +8,19 @@
 #include <stdio.h>
 #include <string>
 
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/fstream.hpp>
-#include <boost/filesystem/detail/utf8_codecvt_facet.hpp>
-
 /** Filesystem operations and types */
-namespace fs = boost::filesystem;
+#if defined(USE_EXPERIMENTAL_TS_FS)
+    #include <experimental/filesystem>
+    namespace fs = std::experimental::filesystem;
+#elif defined(USE_INTERNAL_FS)
+    #error not implemented
+#else
+    #include <boost/filesystem.hpp>
+    #include <boost/filesystem/fstream.hpp>
+    #include <boost/filesystem/detail/utf8_codecvt_facet.hpp>
+    namespace fs = boost::filesystem;
+#endif
+
 
 /** Bridge operations to C stdio */
 namespace fsbridge {
