@@ -30,7 +30,7 @@ public:
     }
 
 private:
-    const int nVersion;
+    int nVersion;
 };
 
 #endif // BITCOIN_NETMESSAGEMAKER_H

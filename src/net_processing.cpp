@@ -2584,47 +2584,66 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
         return true;
     }
 
+    CNetMsgMaker msgMaker(INIT_PROTO_VERSION);
 
-    if (!(pfrom->GetLocalServices() & NODE_BLOOM) &&
-              (strCommand == NetMsgType::FILTERLOAD ||
-               strCommand == NetMsgType::FILTERADD))
-    {
-        if (pfrom->nVersion >= NO_BLOOM_VERSION) {
+    // Check all message dependencies and filter out those which cannot be satisfied in the current state
+    if (!pfrom->nVersion) {
+        if (strCommand != NetMsgType::VERSION && strCommand != NetMsgType::REJECT) {
+            // Must have a version message before anything else
             LOCK(cs_main);
-            Misbehaving(pfrom->GetId(), 100);
-            return false;
-        } else {
-            pfrom->fDisconnect = true;
+            Misbehaving(pfrom->GetId(), 1);
             return false;
         }
+    } else {
+        if (strCommand == NetMsgType::VERSION) {
+            connman.PushMessage(pfrom, msgMaker.Make(NetMsgType::REJECT, strCommand, REJECT_DUPLICATE, std::string("Duplicate version message")));
+            LOCK(cs_main);
+            Misbehaving(pfrom->GetId(), 1);
+            return false;
+        }
+        if (!pfrom->fSuccessfullyConnected) {
+            if (strCommand != NetMsgType::VERACK && strCommand != NetMsgType::REJECT) {
+                // Must have a verack message before anything else
+                LOCK(cs_main);
+                Misbehaving(pfrom->GetId(), 1);
+                return false;
+            }
+        }
+    }
+
+    if (pfrom->nVersion && pfrom->fSuccessfullyConnected) {
+        // Handshake is complete
+        if (!(pfrom->GetLocalServices() & NODE_BLOOM) && (strCommand == NetMsgType::FILTERLOAD || strCommand == NetMsgType::FILTERADD)) {
+            if (pfrom->nVersion >= NO_BLOOM_VERSION) {
+                LOCK(cs_main);
+                Misbehaving(pfrom->GetId(), 100);
+            } else {
+                pfrom->fDisconnect = true;
+            }
+            return false;
+        }
+        if (fImporting || fReindex) {
+            // Ignore blocks and headers received while importing
+             if (strCommand == NetMsgType::CMPCTBLOCK ||
+               strCommand == NetMsgType::BLOCKTXN ||
+               strCommand == NetMsgType::HEADERS ||
+               strCommand == NetMsgType::BLOCK) {
+                return true;
+            }
+        }
+        // The message looks good and the outgoing message serialization version is set
+        msgMaker = CNetMsgMaker(pfrom->GetSendVersion());
     }
 
     if (strCommand == NetMsgType::REJECT)
     {
         return ProcessMsgReject(vRecv);
     }
-    if (strCommand == NetMsgType::VERSION) {
+    else if (strCommand == NetMsgType::VERSION) {
         return ProcessMsgVersion(pfrom, strCommand, vRecv, connman);
     }
-    else if (pfrom->nVersion == 0) {
-        // Must have a version message before anything else
-        LOCK(cs_main);
-        Misbehaving(pfrom->GetId(), 1);
-        return false;
-    }
-
-    // At this point, the outgoing message serialization version can't change.
-    const CNetMsgMaker msgMaker(pfrom->GetSendVersion());
-    
-    if (strCommand == NetMsgType::VERACK) {
+    else if (strCommand == NetMsgType::VERACK) {
         return ProcessMsgVerack(pfrom, connman, msgMaker);
-    }
-    else if (!pfrom->fSuccessfullyConnected)
-    {
-        // Must have a verack message before anything else
-        LOCK(cs_main);
-        Misbehaving(pfrom->GetId(), 1);
-        return false;
     }
     else if (strCommand == NetMsgType::ADDR) {
         return ProcessMsgAddr(pfrom, vRecv, connman, interruptMsgProc);
@@ -2653,16 +2672,16 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
     else if (strCommand == NetMsgType::TX) {
         return ProcessMsgTx(pfrom, strCommand, vRecv, chainparams, connman, msgMaker);
     }
-    else if (strCommand == NetMsgType::CMPCTBLOCK && !fImporting && !fReindex) { // Ignore blocks received while importing
+    else if (strCommand == NetMsgType::CMPCTBLOCK) {
         return ProcessMsgCmpctblock(pfrom, vRecv, nTimeReceived, chainparams, connman, interruptMsgProc, msgMaker);
     }
-    else if (strCommand == NetMsgType::BLOCKTXN && !fImporting && !fReindex) { // Ignore blocks received while importing
+    else if (strCommand == NetMsgType::BLOCKTXN) {
         return ProcessMsgBlocktxn(pfrom, vRecv, chainparams, connman, msgMaker);
     }
-    else if (strCommand == NetMsgType::HEADERS && !fImporting && !fReindex) { // Ignore headers received while importing
+    else if (strCommand == NetMsgType::HEADERS) {
         return ProcessMsgHeaders(pfrom, vRecv, chainparams, connman, msgMaker);
     }
-    else if (strCommand == NetMsgType::BLOCK && !fImporting && !fReindex) { // Ignore blocks received while importing
+    else if (strCommand == NetMsgType::BLOCK) {
         return ProcessMsgBlock(pfrom, vRecv, chainparams);
     }
     else if (strCommand == NetMsgType::GETADDR) {
