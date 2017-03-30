@@ -20,6 +20,7 @@
 #include <QApplication>
 #include <QObject>
 #include <QTest>
+#include <QPluginLoader>
 
 #include <openssl/ssl.h>
 
@@ -31,12 +32,8 @@ Q_IMPORT_PLUGIN(qjpcodecs)
 Q_IMPORT_PLUGIN(qtwcodecs)
 Q_IMPORT_PLUGIN(qkrcodecs)
 #else
-#if defined(QT_QPA_PLATFORM_XCB)
-Q_IMPORT_PLUGIN(QXcbIntegrationPlugin);
-#elif defined(QT_QPA_PLATFORM_WINDOWS)
-Q_IMPORT_PLUGIN(QWindowsIntegrationPlugin);
-#elif defined(QT_QPA_PLATFORM_COCOA)
-Q_IMPORT_PLUGIN(QCocoaIntegrationPlugin);
+#if defined(QT_QPA_PLATFORM_MINIMAL)
+Q_IMPORT_PLUGIN(QMinimalIntegrationPlugin);
 #endif
 #endif
 #endif
@@ -52,6 +49,8 @@ int main(int argc, char *argv[])
     noui_connect();
 
     bool fInvalid = false;
+
+    setenv("QT_QPA_PLATFORM", "minimal", 0);
 
     // Don't remove this, it's needed to access
     // QApplication:: and QCoreApplication:: in the tests
