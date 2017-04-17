@@ -85,7 +85,7 @@ public:
         SetNull();
     }
 
-    CBlock(const CBlockHeader &header)
+    CBlock(const CBlockHeader& header)
     {
         SetNull();
         *((CBlockHeader*)this) = header;
