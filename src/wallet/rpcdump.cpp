@@ -19,10 +19,9 @@
 
 #include <boost/algorithm/string.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/foreach.hpp>
 
 #include "univalue/univalue.h"
-
-#include <boost/foreach.hpp>
 
 using namespace std;
 

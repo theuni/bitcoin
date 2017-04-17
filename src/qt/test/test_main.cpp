@@ -6,12 +6,13 @@
 #include "config/bitcoin-config.h"
 #endif
 
-#include "util.h"
 #include "uritests.h"
 
 #ifdef ENABLE_WALLET
 #include "paymentservertests.h"
 #endif
+
+#include "util.h"
 
 #include <QCoreApplication>
 #include <QObject>

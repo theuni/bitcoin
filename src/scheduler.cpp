@@ -5,8 +5,9 @@
 #include "scheduler.h"
 
 #include <assert.h>
-#include <boost/bind.hpp>
 #include <utility>
+
+#include <boost/bind.hpp>
 
 CScheduler::CScheduler() : nThreadsServicingQueue(0), stopRequested(false), stopWhenEmpty(false)
 {

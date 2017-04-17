@@ -10,13 +10,14 @@
 #include <map>
 #include <stdint.h>
 #include <string>
+
 #include <boost/iostreams/concepts.hpp>
 #include <boost/iostreams/stream.hpp>
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
 #include <boost/filesystem.hpp>
 
-#include "univalue/univalue.h"
+class UniValue;
 
 //! HTTP status codes
 enum HTTPStatusCode
