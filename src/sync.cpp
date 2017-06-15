@@ -12,6 +12,8 @@
 #include <boost/foreach.hpp>
 #include <boost/thread.hpp>
 
+thread_local std::string g_thread_name = "unknown";
+
 #ifdef DEBUG_LOCKCONTENTION
 void PrintLockContention(const char* pszName, const char* pszFile, int nLine)
 {

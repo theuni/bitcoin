@@ -12,6 +12,7 @@
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/recursive_mutex.hpp>
 
+#include <chrono>
 
 ////////////////////////////////////////////////
 //                                            //
@@ -45,6 +46,8 @@ LEAVE_CRITICAL_SECTION(mutex); // no RAII
 // THE ACTUAL IMPLEMENTATION //
 //                           //
 ///////////////////////////////
+
+extern thread_local std::string g_thread_name;
 
 /**
  * Template mixin that adds -Wthread-safety locking
@@ -105,6 +108,68 @@ typedef boost::condition_variable CConditionVariable;
 #ifdef DEBUG_LOCKCONTENTION
 void PrintLockContention(const char* pszName, const char* pszFile, int nLine);
 #endif
+using lock_duration = std::chrono::steady_clock::duration;
+
+template <typename native_handle>
+struct thread_lock_map
+{
+    struct entry
+    {
+        entry(const char* pszNameIn, const char* pszFileIn, int nLineIn) : pszName(pszNameIn), pszFile(pszFileIn), nLine(nLineIn){}
+        bool operator<(const entry& rhs) const {
+            return std::tie(pszFile, pszName, nLine) < std::tie(rhs.pszFile, rhs.pszName, rhs.nLine);
+        }
+        const char* pszName;
+        const char* pszFile;
+        int nLine;
+    };
+    thread_lock_map() : m_start_time(std::chrono::steady_clock::now()){}
+    ~thread_lock_map()
+    {
+        bool printed_header = false;
+        auto running_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - m_start_time).count();
+        int i = 0;
+        for(const auto& mut : lockmap) {
+            int index = i++;
+            std::chrono::steady_clock::duration mut_time{0};
+            for(const auto& item : mut.second) {
+                mut_time += item.second;
+            }
+            auto mut_msec = std::chrono::duration_cast<std::chrono::milliseconds>(mut_time).count();
+            double mut_ratio = (double)mut_msec / running_time;
+            if (!(mut_ratio > 0)) {
+                continue;
+            }
+            if (!printed_header) {
+                printf("lock report for thread: %s\n", g_thread_name.c_str());
+                printed_header = true;
+            }
+            printf("\tmutex %i locked for %li msec. %g %% of thread\n", index, mut_msec, mut_ratio * 100.0);
+            for(const auto& item : mut.second) {
+                long msec = std::chrono::duration_cast<std::chrono::milliseconds>(item.second).count();
+                double thread_ratio = (double)msec / running_time;
+                double lock_ratio = (double)msec / std::chrono::duration_cast<std::chrono::milliseconds>(mut_time).count();
+                if (!(lock_ratio > 0)) {
+                    continue;
+                }
+                printf("\t\t%s:%i %s locked for: %li msec (%g %% of mutex, %g %% of thread)\n", item.first.pszFile, item.first.nLine, item.first.pszName, msec, lock_ratio * 100.0, thread_ratio * 100.0);
+            }
+        }
+        if (printed_header) {
+            printf("\n");
+        }
+    }
+    std::map<native_handle, std::map<entry, lock_duration>> lockmap;
+    std::chrono::steady_clock::time_point m_start_time;
+};
+
+static thread_local thread_lock_map<CCriticalSection::native_handle_type> g_locktimes;
+
+template <typename Mutex>
+static inline void LogLockTime(const char* pszName, const char* pszFile, int nLine, Mutex* mut, lock_duration locktime)
+{
+    g_locktimes.lockmap[mut->native_handle()][{pszName, pszFile, nLine}] += locktime;
+}
 
 /** Wrapper around boost::unique_lock<Mutex> */
 template <typename Mutex>
@@ -116,6 +181,7 @@ private:
     void Enter(const char* pszName, const char* pszFile, int nLine)
     {
         EnterCritical(pszName, pszFile, nLine, (void*)(lock.mutex()));
+        auto before = std::chrono::steady_clock::now();
 #ifdef DEBUG_LOCKCONTENTION
         if (!lock.try_lock()) {
             PrintLockContention(pszName, pszFile, nLine);
@@ -124,6 +190,7 @@ private:
 #ifdef DEBUG_LOCKCONTENTION
         }
 #endif
+        LogLockTime(pszName, pszFile, nLine, lock.mutex(), std::chrono::steady_clock::now() - before);
     }
 
     bool TryEnter(const char* pszName, const char* pszFile, int nLine)

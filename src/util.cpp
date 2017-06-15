@@ -827,6 +827,7 @@ void RenameThread(const char* name)
     // Prevent warnings for unused parameters...
     (void)name;
 #endif
+    g_thread_name = name;
 }
 
 void SetupEnvironment()
