@@ -103,7 +103,7 @@ public:
     void AddToProcessQueue(std::function<void (void)> func);
 
     // Processes all remaining queue members on the calling thread, blocking until queue is empty
-    void EmptyQueue();
+    void EmptyQueue(std::function<void (void)> finalcallback);
 };
 
 #endif

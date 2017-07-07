@@ -192,11 +192,12 @@ void SingleThreadedSchedulerClient::AddToProcessQueue(std::function<void (void)>
     MaybeScheduleProcessQueue();
 }
 
-void SingleThreadedSchedulerClient::EmptyQueue() {
+void SingleThreadedSchedulerClient::EmptyQueue(std::function<void (void)> finalcallback) {
     bool should_continue = true;
     while (should_continue) {
         ProcessQueue();
         LOCK(m_cs_callbacks_pending);
         should_continue = !m_callbacks_pending.empty();
     }
+    finalcallback();
 }

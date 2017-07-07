@@ -44,8 +44,8 @@ void CMainSignals::UnregisterBackgroundSignalScheduler() {
     m_internals.reset(nullptr);
 }
 
-void CMainSignals::FlushBackgroundCallbacks() {
-    m_internals->m_schedulerClient.EmptyQueue();
+void CMainSignals::FlushBackgroundCallbacks(std::function<void (void)> func) {
+    m_internals->m_schedulerClient.EmptyQueue(std::move(func));
 }
 
 CMainSignals& GetMainSignals()

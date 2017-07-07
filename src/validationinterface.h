@@ -80,7 +80,7 @@ public:
     /** Unregister a CScheduler to give callbacks which should run in the background - these callbacks will now be dropped! */
     void UnregisterBackgroundSignalScheduler();
     /** Call any remaining callbacks on the calling thread */
-    void FlushBackgroundCallbacks();
+    void FlushBackgroundCallbacks(std::function<void (void)> func);
 
     void UpdatedBlockTip(const CBlockIndex *, const CBlockIndex *, bool fInitialDownload);
     void TransactionAddedToMempool(const CTransactionRef &);
