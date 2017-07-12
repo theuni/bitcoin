@@ -198,7 +198,7 @@ public:
 
 
 /** CCoinsView that adds a memory cache for transactions to another CCoinsView */
-class CCoinsViewCache final : public CCoinsViewBacked
+class CCoinsViewCacheBase : public CCoinsViewBacked
 {
 protected:
     /**
@@ -212,7 +212,7 @@ protected:
     mutable size_t cachedCoinsUsage;
 
 public:
-    CCoinsViewCache(CCoinsView *baseIn);
+    CCoinsViewCacheBase(CCoinsView *baseIn);
 
     // Standard CCoinsView methods
     bool GetCoin(const COutPoint &outpoint, Coin &coin) const override;
@@ -294,8 +294,15 @@ private:
     /**
      * By making the copy constructor private, we prevent accidentally using it when one intends to create a cache on top of a base cache.
      */
-    CCoinsViewCache(const CCoinsViewCache &);
+    CCoinsViewCacheBase(const CCoinsViewCacheBase &);
 };
+
+class CCoinsViewCache final : public CCoinsViewCacheBase
+{
+public:
+    CCoinsViewCache(CCoinsView *baseIn);
+
+}
 
 //! Utility function to add all of a transaction's outputs to a cache.
 // When check is false, this assumes that overwrites are only possible for coinbase transactions.

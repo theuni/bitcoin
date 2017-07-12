@@ -71,10 +71,10 @@ public:
     }
 };
 
-class CCoinsViewCacheTest : public CCoinsViewCache
+class CCoinsViewCacheTest : public CCoinsViewCacheBase
 {
 public:
-    CCoinsViewCacheTest(CCoinsView* _base) : CCoinsViewCache(_base) {}
+    CCoinsViewCacheTest(CCoinsView* _base) : CCoinsViewCacheBase(_base) {}
 
     void SelfTest() const
     {
