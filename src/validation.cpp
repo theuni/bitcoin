@@ -1851,17 +1851,6 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         flags |= SCRIPT_VERIFY_NULLDUMMY;
     }
 
-    // SEGSIGNAL mandatory segwit signalling.
-    if (VersionBitsState(pindex->pprev, chainparams.GetConsensus(), Consensus::DEPLOYMENT_SEGSIGNAL, versionbitscache) == THRESHOLD_ACTIVE &&
-        VersionBitsState(pindex->pprev, chainparams.GetConsensus(), Consensus::DEPLOYMENT_SEGWIT,    versionbitscache) == THRESHOLD_STARTED)
-    {
-        bool fVersionBits = (pindex->nVersion & VERSIONBITS_TOP_MASK) == VERSIONBITS_TOP_BITS;
-        bool fSegbit = (pindex->nVersion & VersionBitsMask(chainparams.GetConsensus(), Consensus::DEPLOYMENT_SEGWIT)) != 0;
-        if (!(fVersionBits && fSegbit)) {
-            return state.DoS(0, error("ConnectBlock(): relayed block must signal for segwit, please upgrade"), REJECT_INVALID, "bad-no-segwit");
-        }
-    }
-
     int64_t nTime2 = GetTimeMicros(); nTimeForks += nTime2 - nTime1;
     LogPrint("bench", "    - Fork checks: %.2fms [%.2fs]\n", 0.001 * (nTime2 - nTime1), nTimeForks * 0.000001);
 
@@ -2691,7 +2680,6 @@ CBlockIndex* AddToBlockIndex(const CBlockHeader& block)
     }
     pindexNew->nTimeMax = (pindexNew->pprev ? std::max(pindexNew->pprev->nTimeMax, pindexNew->nTime) : pindexNew->nTime);
     pindexNew->nChainWork = (pindexNew->pprev ? pindexNew->pprev->nChainWork : 0) + GetBlockProof(*pindexNew);
-    pindexNew->RaiseValidity(BLOCK_VALID_TREE);
     if (pindexBestHeader == NULL || pindexBestHeader->nChainWork < pindexNew->nChainWork)
         pindexBestHeader = pindexNew;
 
@@ -2929,6 +2917,11 @@ bool IsWitnessEnabled(const CBlockIndex* pindexPrev, const Consensus::Params& pa
     return (VersionBitsState(pindexPrev, params, Consensus::DEPLOYMENT_SEGWIT, versionbitscache) == THRESHOLD_ACTIVE);
 }
 
+bool IsBIP91Active(const CBlockIndex* pindexPrev, const Consensus::Params& consensusParams)
+{
+    return (VersionBitsState(pindexPrev, consensusParams, Consensus::DEPLOYMENT_SEGSIGNAL, versionbitscache) == THRESHOLD_ACTIVE &&
+        VersionBitsState(pindexPrev, consensusParams, Consensus::DEPLOYMENT_SEGWIT,    versionbitscache) == THRESHOLD_STARTED);
+}
 
 // Compute at which vout of the block's coinbase transaction the witness
 // commitment occurs, or -1 if not found.
@@ -3009,6 +3002,18 @@ bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& sta
             return state.Invalid(false, REJECT_OBSOLETE, strprintf("bad-version(0x%08x)", block.nVersion),
                                  strprintf("rejected nVersion=0x%08x block", block.nVersion));
 
+    if (pindexPrev->nStatus < BLOCK_VALID_TREE) {
+        state.DoS(0, error("%s: prev block invalid", __func__), REJECT_INVALID, "known-bad-chain", true);
+    }
+
+    // SEGSIGNAL mandatory segwit signalling.
+    if (IsBIP91Active(pindexPrev, consensusParams)) {
+        bool fVersionBits = (block.nVersion & VERSIONBITS_TOP_MASK) == VERSIONBITS_TOP_BITS;
+        bool fSegbit = (block.nVersion & VersionBitsMask(consensusParams, Consensus::DEPLOYMENT_SEGWIT)) != 0;
+        if (!(fVersionBits && fSegbit)) {
+            state.DoS(0, error("ContextualCheckBlock: relayed block must signal for segwit, please upgrade"), REJECT_INVALID, "bad-no-segwit", true);
+        }
+    }
     return true;
 }
 
@@ -3136,6 +3141,11 @@ static bool AcceptBlockHeader(const CBlockHeader& block, CValidationState& state
 
     if (ppindex)
         *ppindex = pindex;
+
+    if (!state.IsValid()) {
+        return error("%s: Consensus::ContextualCheckBlockHeader: %s, %s", __func__, hash.ToString(), FormatStateMessage(state));
+    }
+    pindex->RaiseValidity(BLOCK_VALID_TREE);
 
     CheckBlockIndex(chainparams.GetConsensus());
 
@@ -3286,7 +3296,7 @@ bool TestBlockValidity(CValidationState& state, const CChainParams& chainparams,
     indexDummy.nHeight = pindexPrev->nHeight + 1;
 
     // NOTE: CheckBlockHeader is called by CheckBlock
-    if (!ContextualCheckBlockHeader(block, state, chainparams.GetConsensus(), pindexPrev, GetAdjustedTime()))
+    if (!ContextualCheckBlockHeader(block, state, chainparams.GetConsensus(), pindexPrev, GetAdjustedTime()) || state.IsInvalid())
         return error("%s: Consensus::ContextualCheckBlockHeader: %s", __func__, FormatStateMessage(state));
     if (!CheckBlock(block, state, chainparams.GetConsensus(), fCheckPOW, fCheckMerkleRoot))
         return error("%s: Consensus::CheckBlock: %s", __func__, FormatStateMessage(state));
@@ -4065,7 +4075,6 @@ void static CheckBlockIndex(const Consensus::Params& consensusParams)
         assert(pindex->nHeight == nHeight); // nHeight must be consistent.
         assert(pindex->pprev == NULL || pindex->nChainWork >= pindex->pprev->nChainWork); // For every block except the genesis block, the chainwork must be larger than the parent's.
         assert(nHeight < 2 || (pindex->pskip && (pindex->pskip->nHeight < nHeight))); // The pskip pointer must point back for all but the first 2 blocks.
-        assert(pindexFirstNotTreeValid == NULL); // All mapBlockIndex entries must at least be TREE valid
         if ((pindex->nStatus & BLOCK_VALID_MASK) >= BLOCK_VALID_TREE) assert(pindexFirstNotTreeValid == NULL); // TREE valid implies all parents are TREE valid
         if ((pindex->nStatus & BLOCK_VALID_MASK) >= BLOCK_VALID_CHAIN) assert(pindexFirstNotChainValid == NULL); // CHAIN valid implies all parents are CHAIN valid
         if ((pindex->nStatus & BLOCK_VALID_MASK) >= BLOCK_VALID_SCRIPTS) assert(pindexFirstNotScriptsValid == NULL); // SCRIPTS valid implies all parents are SCRIPTS valid
