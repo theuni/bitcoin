@@ -38,6 +38,8 @@
 class CScheduler;
 class CNode;
 
+struct event_base;
+struct event;
 namespace boost {
     class thread_group;
 } // namespace boost
@@ -310,7 +312,7 @@ private:
     void ProcessOneShot();
     void ThreadOpenConnections();
     void ThreadMessageHandler();
-    void AcceptConnection(const ListenSocket& hListenSocket);
+    void AcceptConnection(const SOCKET& socket, bool whitelisted);
     void ThreadSocketHandler();
     void ThreadDNSAddressSeed();
 
@@ -343,6 +345,9 @@ private:
     // Network stats
     void RecordBytesRecv(uint64_t bytes);
     void RecordBytesSent(uint64_t bytes);
+
+    void OnReceive(CNode* pnode);
+    void OnEvents(CNode* pnode, short events);
 
     // Whether the node should be passed out in ForEach* callbacks
     static bool NodeFullyConnected(const CNode* pnode);
@@ -414,6 +419,9 @@ private:
     std::thread threadOpenAddedConnections;
     std::thread threadOpenConnections;
     std::thread threadMessageHandler;
+
+    event_base* m_event_base = nullptr;
+    std::vector<event*> m_listen_events;
 };
 extern std::unique_ptr<CConnman> g_connman;
 void Discover(boost::thread_group& threadGroup);
@@ -704,7 +712,7 @@ private:
     CNode(const CNode&);
     void operator=(const CNode&);
     const NodeId id;
-
+    void ScheduleSend();
 
     const uint64_t nLocalHostNonce;
     // Services offered to this peer
@@ -716,10 +724,20 @@ private:
     mutable CCriticalSection cs_addrName;
     std::string addrName;
 
+    event* m_read_event = nullptr;
+    event* m_write_event = nullptr;
+    event* m_read_timeout_event = nullptr;
+    event* m_write_timeout_event = nullptr;
+    event* m_wake_event = nullptr;
+    std::function<void(short)> m_callback;
+
     // Our address, as reported by the peer
     CService addrLocal;
     mutable CCriticalSection cs_addrLocal;
 public:
+
+    void Disconnect();
+    void EnableReceive();
 
     NodeId GetId() const {
         return id;
@@ -756,18 +774,15 @@ public:
     //! May not be called more than once
     void SetAddrLocal(const CService& addrLocalIn);
 
-    CNode* AddRef()
+    int AddRef()
     {
-        nRefCount++;
-        return this;
+        return nRefCount++;
     }
 
-    void Release()
+    int Release()
     {
-        nRefCount--;
+        return nRefCount--;
     }
-
-
 
     void AddAddressKnown(const CAddress& _addr)
     {
