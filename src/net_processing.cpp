@@ -255,8 +255,11 @@ void PushNodeVersion(CNode *pnode, CConnman& connman, int64_t nTime)
     CAddress addrYou = (addr.IsRoutable() && !IsProxy(addr) ? addr : CAddress(CService(), addr.nServices));
     CAddress addrMe = CAddress(CService(), nLocalNodeServices);
 
+    NetChecksumType send_checksum_types = CMessageHeader::checksum_sha256d | CMessageHeader::checksum_none;
+    NetChecksumType receive_checksum_types = CMessageHeader::checksum_none;
+
     connman.PushMessage(pnode, CNetMsgMaker(INIT_PROTO_VERSION).Make(NetMsgType::VERSION, PROTOCOL_VERSION, (uint64_t)nLocalNodeServices, nTime, addrYou, addrMe,
-            nonce, strSubVersion, nNodeStartingHeight, ::fRelayTxes));
+            nonce, strSubVersion, nNodeStartingHeight, ::fRelayTxes, send_checksum_types, receive_checksum_types));
 
     if (fLogIPs) {
         LogPrint(BCLog::NET, "send version message: version %d, blocks=%d, us=%s, them=%s, peer=%d\n", PROTOCOL_VERSION, nNodeStartingHeight, addrMe.ToString(), addrYou.ToString(), nodeid);
@@ -1294,6 +1297,21 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
         }
         if (!vRecv.empty())
             vRecv >> fRelay;
+
+        NetChecksumType peer_send_checksum_types = CMessageHeader::checksum_sha256d;
+        NetChecksumType peer_receive_checksum_types = CMessageHeader::checksum_sha256d;
+        NetChecksumType us_send_checksum_type = CMessageHeader::checksum_sha256d;
+
+        if (nVersion >= ALT_CHECKSUM_TYPE_VERSION) {
+            if (!vRecv.empty()) {
+                vRecv >> peer_send_checksum_types >> peer_receive_checksum_types;
+
+                if (peer_receive_checksum_types & CMessageHeader::checksum_none) {
+                    us_send_checksum_type = CMessageHeader::checksum_none;
+                }
+            }
+        }
+
         // Disconnect if we connected to ourself
         if (pfrom->fInbound && !connman.CheckIncomingNonce(nNonce))
         {
@@ -1310,6 +1328,9 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
         // Be shy and don't send version until we hear
         if (pfrom->fInbound)
             PushNodeVersion(pfrom, connman, GetAdjustedTime());
+
+        pfrom->m_receive_checksum_types &= peer_send_checksum_types;
+        pfrom->m_send_checksum_type = us_send_checksum_type;
 
         connman.PushMessage(pfrom, CNetMsgMaker(INIT_PROTO_VERSION).Make(NetMsgType::VERACK));
 
@@ -2720,14 +2741,30 @@ bool ProcessMessages(CNode* pfrom, CConnman& connman, const std::atomic<bool>& i
 
     // Checksum
     CDataStream& vRecv = msg.vRecv;
-    const uint256& hash = msg.GetMessageHash();
-    if (memcmp(hash.begin(), hdr.pchChecksum, CMessageHeader::CHECKSUM_SIZE) != 0)
-    {
-        LogPrintf("%s(%s, %u bytes): CHECKSUM ERROR expected %s was %s\n", __func__,
-           SanitizeString(strCommand), nMessageSize,
-           HexStr(hash.begin(), hash.begin()+CMessageHeader::CHECKSUM_SIZE),
-           HexStr(hdr.pchChecksum, hdr.pchChecksum+CMessageHeader::CHECKSUM_SIZE));
-        return fMoreWork;
+    if (pfrom->nVersion < ALT_CHECKSUM_TYPE_VERSION) {
+        if (hdr.checksum_type != CMessageHeader::checksum_sha256d) {
+            LogPrintf("PROCESSMESSAGE: bad checksum type for node version %u peer=%d\n", hdr.checksum_type, pfrom->GetId());
+            return fMoreWork;
+        }
+    } else {
+        if ((hdr.checksum_type & pfrom->m_receive_checksum_types) != hdr.checksum_type) {
+            LogPrintf("PROCESSMESSAGE: forbidden checksum type %u peer=%d\n", hdr.checksum_type, pfrom->GetId());
+            return fMoreWork;
+        }
+    }
+    if (hdr.checksum_type == CMessageHeader::checksum_sha256d) {
+        const uint256& hash = msg.GetMessageHash();
+        if (memcmp(hash.begin(), hdr.pchChecksum, CMessageHeader::CHECKSUM_SIZE) != 0)
+        {
+            LogPrintf("%s(%s, %u bytes): CHECKSUM ERROR expected %s was %s\n", __func__,
+                SanitizeString(strCommand), nMessageSize,
+                HexStr(hash.begin(), hash.begin()+CMessageHeader::CHECKSUM_SIZE),
+                HexStr(hdr.pchChecksum, hdr.pchChecksum+CMessageHeader::CHECKSUM_SIZE));
+            return fMoreWork;
+        }
+    } else if (hdr.checksum_type == CMessageHeader::checksum_none) {
+        // do nothing
+    } else {
     }
 
     // Process message

@@ -24,19 +24,25 @@
  * (4) size.
  * (4) checksum.
  */
+
+using NetChecksumType = uint8_t;
 class CMessageHeader
 {
 public:
     enum {
         MESSAGE_START_SIZE = 4,
-        COMMAND_SIZE = 12,
+        COMMAND_SIZE = 11,
+        CHECKSUM_TYPE_SIZE = 1,
         MESSAGE_SIZE_SIZE = 4,
         CHECKSUM_SIZE = 4,
 
-        MESSAGE_SIZE_OFFSET = MESSAGE_START_SIZE + COMMAND_SIZE,
+        MESSAGE_SIZE_OFFSET = MESSAGE_START_SIZE + COMMAND_SIZE + CHECKSUM_TYPE_SIZE,
         CHECKSUM_OFFSET = MESSAGE_SIZE_OFFSET + MESSAGE_SIZE_SIZE,
-        HEADER_SIZE = MESSAGE_START_SIZE + COMMAND_SIZE + MESSAGE_SIZE_SIZE + CHECKSUM_SIZE
+        HEADER_SIZE = MESSAGE_START_SIZE + COMMAND_SIZE + CHECKSUM_TYPE_SIZE + MESSAGE_SIZE_SIZE + CHECKSUM_SIZE
     };
+    static constexpr NetChecksumType checksum_sha256d = 0;
+    static constexpr NetChecksumType checksum_none = 1 << 0;
+
     typedef unsigned char MessageStartChars[MESSAGE_START_SIZE];
 
     explicit CMessageHeader(const MessageStartChars& pchMessageStartIn);
@@ -52,12 +58,14 @@ public:
     {
         READWRITE(FLATDATA(pchMessageStart));
         READWRITE(FLATDATA(pchCommand));
+        READWRITE(checksum_type);
         READWRITE(nMessageSize);
         READWRITE(FLATDATA(pchChecksum));
     }
 
     char pchMessageStart[MESSAGE_START_SIZE];
     char pchCommand[COMMAND_SIZE];
+    NetChecksumType checksum_type;
     uint32_t nMessageSize;
     uint8_t pchChecksum[CHECKSUM_SIZE];
 };

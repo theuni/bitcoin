@@ -821,7 +821,11 @@ int CNetMessage::readData(const char *pch, unsigned int nBytes)
         vRecv.resize(std::min(hdr.nMessageSize, nDataPos + nCopy + 256 * 1024));
     }
 
-    hasher.Write((const unsigned char*)pch, nCopy);
+    switch (hdr.checksum_type)
+    {
+        case CMessageHeader::checksum_sha256d: hasher.Write((const unsigned char*)pch, nCopy);
+        default: break;
+    }
     memcpy(&vRecv[nDataPos], pch, nCopy);
     nDataPos += nCopy;
 
@@ -831,8 +835,13 @@ int CNetMessage::readData(const char *pch, unsigned int nBytes)
 const uint256& CNetMessage::GetMessageHash() const
 {
     assert(complete());
-    if (data_hash.IsNull())
-        hasher.Finalize(data_hash.begin());
+    if (data_hash.IsNull()) {
+        switch (hdr.checksum_type)
+        {
+            case CMessageHeader::checksum_sha256d: hasher.Finalize(data_hash.begin());
+            default: break;
+        }
+    }
     return data_hash;
 }
 
@@ -2804,9 +2813,21 @@ void CConnman::PushMessage(CNode* pnode, CSerializedNetMsg&& msg)
 
     std::vector<unsigned char> serializedHeader;
     serializedHeader.reserve(CMessageHeader::HEADER_SIZE);
-    uint256 hash = Hash(msg.data.data(), msg.data.data() + nMessageSize);
+
     CMessageHeader hdr(Params().MessageStart(), msg.command.c_str(), nMessageSize);
-    memcpy(hdr.pchChecksum, hash.begin(), CMessageHeader::CHECKSUM_SIZE);
+    hdr.checksum_type = pnode->m_send_checksum_type;
+    switch (hdr.checksum_type)
+    {
+        case CMessageHeader::checksum_sha256d:
+        {
+            uint256 hash = Hash(msg.data.data(), msg.data.data() + nMessageSize);
+            memcpy(hdr.pchChecksum, hash.begin(), CMessageHeader::CHECKSUM_SIZE);
+        } break;
+        case CMessageHeader::checksum_none:
+        default:
+            memset(hdr.pchChecksum, 0, CMessageHeader::CHECKSUM_SIZE);
+            break;
+    }
 
     CVectorWriter{SER_NETWORK, INIT_PROTO_VERSION, serializedHeader, 0, hdr};
 
