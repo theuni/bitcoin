@@ -368,16 +368,20 @@ static CAddress GetBindAddress(SOCKET sock)
 CNode* CConnman::ConnectNode(NewConnection conn)
 {
     if (conn.remote_str.empty()) {
-        if (IsLocal(conn.remote_addr))
-            return nullptr;
+        if (IsLocal(conn.remote_addr) || IsBanned(conn.remote_addr) ||
+            FindNode(conn.remote_addr.ToStringIPPort())) {
+                return nullptr;
+        }
 
         // Look for an existing connection
-        CNode* pnode = FindNode((CService)conn.remote_addr);
+        CNode* pnode = FindNode((CNetAddr)conn.remote_addr);
         if (pnode)
         {
             LogPrintf("Failed to open new connection, already connected\n");
             return nullptr;
         }
+    } else if (FindNode(conn.remote_str)) {
+        return nullptr;
     }
 
     /// debug print
@@ -1979,13 +1983,6 @@ bool CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFai
     if (!fNetworkActive) {
         return false;
     }
-    if (!pszDest) {
-        if (IsLocal(addrConnect) ||
-            FindNode((CNetAddr)addrConnect) || IsBanned(addrConnect) ||
-            FindNode(addrConnect.ToStringIPPort()))
-            return false;
-    } else if (FindNode(std::string(pszDest)))
-        return false;
 
     NewConnection conn;
     conn.sock = INVALID_SOCKET;
