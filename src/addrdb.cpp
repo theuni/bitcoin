@@ -105,9 +105,8 @@ bool DeserializeFileDB(const fs::path& path, Data& data)
 
 }
 
-CBanDB::CBanDB()
+CBanDB::CBanDB(fs::path ban_file) : pathBanlist(std::move(ban_file))
 {
-    pathBanlist = GetDataDir() / "banlist.dat";
 }
 
 bool CBanDB::Write(const banmap_t& banSet)
