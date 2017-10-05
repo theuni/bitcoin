@@ -4,6 +4,7 @@
 
 #include "bantablemodel.h"
 
+#include "banman.h"
 #include "clientmodel.h"
 #include "guiconstants.h"
 #include "guiutil.h"

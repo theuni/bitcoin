@@ -9,6 +9,7 @@
 #include "rpcconsole.h"
 #include "ui_debugwindow.h"
 
+#include "banman.h"
 #include "bantablemodel.h"
 #include "clientmodel.h"
 #include "guiutil.h"
