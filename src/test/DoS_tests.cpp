@@ -44,6 +44,8 @@ BOOST_FIXTURE_TEST_SUITE(DoS_tests, TestingSetup)
 
 BOOST_AUTO_TEST_CASE(DoS_banning)
 {
+    auto connman = std::unique_ptr<CConnman>(new CConnman(0x1337, 0x1337));
+    auto peerLogic = std::unique_ptr<PeerLogicValidation>(new PeerLogicValidation(connman.get()));
     std::atomic<bool> interruptDummy(false);
 
     connman->ClearBanned();
@@ -75,6 +77,8 @@ BOOST_AUTO_TEST_CASE(DoS_banning)
 
 BOOST_AUTO_TEST_CASE(DoS_banscore)
 {
+    auto connman = std::unique_ptr<CConnman>(new CConnman(0x1337, 0x1337));
+    auto peerLogic = std::unique_ptr<PeerLogicValidation>(new PeerLogicValidation(connman.get()));
     std::atomic<bool> interruptDummy(false);
 
     connman->ClearBanned();
@@ -99,6 +103,8 @@ BOOST_AUTO_TEST_CASE(DoS_banscore)
 
 BOOST_AUTO_TEST_CASE(DoS_bantime)
 {
+    auto connman = std::unique_ptr<CConnman>(new CConnman(0x1337, 0x1337));
+    auto peerLogic = std::unique_ptr<PeerLogicValidation>(new PeerLogicValidation(connman.get()));
     std::atomic<bool> interruptDummy(false);
 
     connman->ClearBanned();
