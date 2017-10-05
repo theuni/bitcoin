@@ -48,8 +48,8 @@ public:
     void refreshBanlist()
     {
         banmap_t banMap;
-        if(g_connman)
-            g_connman->GetBanned(banMap);
+        if(g_banman)
+            g_banman->GetBanned(banMap);
 
         cachedBanlist.clear();
 #if QT_VERSION >= 0x040700

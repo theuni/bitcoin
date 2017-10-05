@@ -1145,7 +1145,7 @@ void RPCConsole::disconnectSelectedNode()
 
 void RPCConsole::banSelectedNode(int bantime)
 {
-    if (!clientModel || !g_connman)
+    if (!clientModel)
         return;
     
     // Get selected peer addresses
@@ -1163,8 +1163,12 @@ void RPCConsole::banSelectedNode(int bantime)
         // Find possible nodes, ban it and clear the selected node
         const CNodeCombinedStats *stats = clientModel->getPeerTableModel()->getNodeStats(detailNodeRow);
         if(stats) {
-            g_connman->Ban(stats->nodeStats.addr, BanReasonManuallyAdded, bantime);
-            g_connman->DisconnectNode(stats->nodeStats.addr);
+            if (g_banman) {
+                g_banman->Ban(stats->nodeStats.addr, BanReasonManuallyAdded, bantime);
+            }
+            if (g_connman) {
+                g_connman->DisconnectNode(stats->nodeStats.addr);
+            }
         }
     }
     clearSelectedNode();
@@ -1173,7 +1177,7 @@ void RPCConsole::banSelectedNode(int bantime)
 
 void RPCConsole::unbanSelectedNode()
 {
-    if (!clientModel)
+    if (!clientModel || !g_banman)
         return;
 
     // Get selected ban addresses
@@ -1185,9 +1189,9 @@ void RPCConsole::unbanSelectedNode()
         CSubNet possibleSubnet;
 
         LookupSubNet(strNode.toStdString().c_str(), possibleSubnet);
-        if (possibleSubnet.IsValid() && g_connman)
+        if (possibleSubnet.IsValid() && g_banman)
         {
-            g_connman->Unban(possibleSubnet);
+            g_banman->Unban(possibleSubnet);
             clientModel->getBanTableModel()->refresh();
         }
     }

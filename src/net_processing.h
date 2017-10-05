@@ -25,9 +25,11 @@ static constexpr int64_t HEADERS_DOWNLOAD_TIMEOUT_PER_HEADER = 1000; // 1ms/head
 class PeerLogicValidation : public CValidationInterface, public NetEventsInterface {
 private:
     CConnman* connman;
+    BanMan* m_banman;
 
+    bool SendRejectsAndCheckIfBanned(CNode* pnode);
 public:
-    explicit PeerLogicValidation(CConnman* connman);
+    PeerLogicValidation(CConnman* connman, BanMan* banman);
 
     void BlockConnected(const std::shared_ptr<const CBlock>& pblock, const CBlockIndex* pindexConnected, const std::vector<CTransactionRef>& vtxConflicted) override;
     void UpdatedBlockTip(const CBlockIndex *pindexNew, const CBlockIndex *pindexFork, bool fInitialDownload) override;
