@@ -515,8 +515,7 @@ void PeerLogicValidation::InitializeNode(CNode *pnode) {
         PushNodeVersion(pnode, connman, GetTime());
 }
 
-void PeerLogicValidation::FinalizeNode(NodeId nodeid, bool& fUpdateConnectionTime) {
-    fUpdateConnectionTime = false;
+void PeerLogicValidation::FinalizeNode(NodeId nodeid) {
     LOCK(cs_main);
     CNodeState *state = State(nodeid);
     assert(state != nullptr);
@@ -524,8 +523,8 @@ void PeerLogicValidation::FinalizeNode(NodeId nodeid, bool& fUpdateConnectionTim
     if (state->fSyncStarted)
         nSyncStarted--;
 
-    if (state->nMisbehavior == 0 && state->fCurrentlyConnected) {
-        fUpdateConnectionTime = true;
+    if (state->nMisbehavior == 0 && state->fCurrentlyConnected && m_addrman) {
+        m_addrman->Connected(state->address);
     }
 
     for (const QueuedBlock& entry : state->vBlocksInFlight) {

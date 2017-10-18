@@ -2266,11 +2266,7 @@ void CConnman::Stop()
 void CConnman::DeleteNode(CNode* pnode)
 {
     assert(pnode);
-    bool fUpdateConnectionTime = false;
-    m_msgproc->FinalizeNode(pnode->GetId(), fUpdateConnectionTime);
-    if(fUpdateConnectionTime) {
-        m_addrman->Connected(pnode->addr);
-    }
+    m_msgproc->FinalizeNode(pnode->GetId());
     delete pnode;
 }
 
