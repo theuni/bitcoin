@@ -22,12 +22,15 @@ static const unsigned int DEFAULT_BLOCK_RECONSTRUCTION_EXTRA_TXN = 100;
 static constexpr int64_t HEADERS_DOWNLOAD_TIMEOUT_BASE = 15 * 60 * 1000000; // 15 minutes
 static constexpr int64_t HEADERS_DOWNLOAD_TIMEOUT_PER_HEADER = 1000; // 1ms/header
 
+class CChainParams;
+
 class PeerLogicValidation : public CValidationInterface, public NetEventsInterface {
 private:
     CConnman* connman;
     BanMan* m_banman;
 
     bool SendRejectsAndCheckIfBanned(CNode* pnode);
+    bool ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStream& vRecv, int64_t nTimeReceived, const CChainParams& chainparams, const std::atomic<bool>& interruptMsgProc);
 public:
     PeerLogicValidation(CConnman* connman, BanMan* banman);
 
