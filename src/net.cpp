@@ -425,7 +425,9 @@ CNode* CConnman::ConnectNode(CAddress addrConnect, const char *pszDest, bool fCo
         if (!proxyConnectionFailed) {
             // If a connection to the node was attempted, and failure (if any) is not caused by a problem connecting to
             // the proxy, mark this as an attempt.
-            addrman.Attempt(addrConnect, fCountFailure);
+            if (m_addrman) {
+                m_addrman->Attempt(addrConnect, fCountFailure);
+            }
         }
     } else if (pszDest && GetNameProxy(proxy)) {
         std::string host;
@@ -1426,11 +1428,12 @@ static std::string GetDNSHost(const CDNSSeedData& data, ServiceFlags* requiredSe
 
 void CConnman::ThreadDNSAddressSeed()
 {
+    assert(m_addrman);
     // goal: only query DNS seeds if address need is acute
     // Avoiding DNS seeds when we don't need them improves user privacy by
     //  creating fewer identifying DNS requests, reduces trust by giving seeds
     //  less influence on the network topology, and reduces traffic to the seeds.
-    if ((addrman.size() > 0) &&
+    if ((m_addrman->size() > 0) &&
         (!gArgs.GetBoolArg("-forcednsseed", DEFAULT_FORCEDNSSEED))) {
         if (!interruptNet.sleep_for(std::chrono::seconds(11)))
             return;
@@ -1476,7 +1479,7 @@ void CConnman::ThreadDNSAddressSeed()
                     vAdd.push_back(addr);
                     found++;
                 }
-                addrman.Add(vAdd, resolveSource);
+                m_addrman->Add(vAdd, resolveSource);
             }
         }
     }
@@ -1497,13 +1500,14 @@ void CConnman::ThreadDNSAddressSeed()
 
 void CConnman::DumpAddresses()
 {
+    assert(m_addrman);
     int64_t nStart = GetTimeMillis();
 
     CAddrDB adb;
-    adb.Write(addrman);
+    adb.Write(*m_addrman);
 
     LogPrint(BCLog::NET, "Flushed %d addresses to peers.dat  %dms\n",
-           addrman.size(), GetTimeMillis() - nStart);
+           m_addrman->size(), GetTimeMillis() - nStart);
 }
 
 void CConnman::ProcessOneShot()
@@ -1546,7 +1550,7 @@ void CConnman::ThreadOpenConnections(const std::vector<std::string> connect)
                 return;
         }
     }
-
+    assert(m_addrman);
     // Initiate network connections
     int64_t nStart = GetTime();
 
@@ -1564,13 +1568,13 @@ void CConnman::ThreadOpenConnections(const std::vector<std::string> connect)
             return;
 
         // Add seed nodes if DNS seeds are all down (an infrastructure attack?).
-        if (addrman.size() == 0 && (GetTime() - nStart > 60)) {
+        if (m_addrman->size() == 0 && (GetTime() - nStart > 60)) {
             static bool done = false;
             if (!done) {
                 LogPrintf("Adding fixed seed nodes as DNS doesn't seem to be available.\n");
                 CNetAddr local;
                 local.SetInternal("fixedseeds");
-                addrman.Add(convertSeed6(Params().FixedSeeds()), local);
+                m_addrman->Add(convertSeed6(Params().FixedSeeds()), local);
                 done = true;
             }
         }
@@ -1626,7 +1630,7 @@ void CConnman::ThreadOpenConnections(const std::vector<std::string> connect)
         int nTries = 0;
         while (!interruptNet)
         {
-            CAddrInfo addr = addrman.Select(fFeeler);
+            CAddrInfo addr = m_addrman->Select(fFeeler);
 
             // if we selected an invalid address, restart
             if (!addr.IsValid() || setConnected.count(addr.GetGroup()) || IsLocal(addr))
@@ -2102,12 +2106,13 @@ bool CConnman::Start(CScheduler& scheduler, const Options& connOptions)
     }
     // Load addresses from peers.dat
     int64_t nStart = GetTimeMillis();
+    if (m_addrman)
     {
         CAddrDB adb;
-        if (adb.Read(addrman))
-            LogPrintf("Loaded %i addresses from peers.dat  %dms\n", addrman.size(), GetTimeMillis() - nStart);
+        if (adb.Read(*m_addrman))
+            LogPrintf("Loaded %i addresses from peers.dat  %dms\n", m_addrman->size(), GetTimeMillis() - nStart);
         else {
-            addrman.Clear(); // Addrman can be in an inconsistent state after failure, reset it
+            m_addrman->Clear(); // Addrman can be in an inconsistent state after failure, reset it
             LogPrintf("Invalid or missing peers.dat; recreating\n");
             DumpAddresses();
         }
@@ -2144,7 +2149,7 @@ bool CConnman::Start(CScheduler& scheduler, const Options& connOptions)
     // Send and receive from sockets, accept connections
     threadSocketHandler = std::thread(&TraceThread<std::function<void()> >, "net", std::function<void()>(std::bind(&CConnman::ThreadSocketHandler, this)));
 
-    if (!gArgs.GetBoolArg("-dnsseed", true))
+    if (!gArgs.GetBoolArg("-dnsseed", true) || !m_addrman)
         LogPrintf("DNS seeding disabled\n");
     else
         threadDNSAddressSeed = std::thread(&TraceThread<std::function<void()> >, "dnsseed", std::function<void()>(std::bind(&CConnman::ThreadDNSAddressSeed, this)));
@@ -2160,14 +2165,16 @@ bool CConnman::Start(CScheduler& scheduler, const Options& connOptions)
         }
         return false;
     }
-    if (connOptions.m_use_addrman_outgoing || !connOptions.m_specified_outgoing.empty())
+    if ((m_addrman && connOptions.m_use_addrman_outgoing) || !connOptions.m_specified_outgoing.empty())
         threadOpenConnections = std::thread(&TraceThread<std::function<void()> >, "opencon", std::function<void()>(std::bind(&CConnman::ThreadOpenConnections, this, connOptions.m_specified_outgoing)));
 
     // Process messages
     threadMessageHandler = std::thread(&TraceThread<std::function<void()> >, "msghand", std::function<void()>(std::bind(&CConnman::ThreadMessageHandler, this)));
 
     // Dump network addresses
-    scheduler.scheduleEvery(std::bind(&CConnman::DumpAddresses, this), DUMP_PEERS_INTERVAL * 1000);
+    if (m_addrman) {
+        scheduler.scheduleEvery(std::bind(&CConnman::DumpAddresses, this), DUMP_PEERS_INTERVAL * 1000);
+    }
 
     return true;
 }
@@ -2226,7 +2233,9 @@ void CConnman::Stop()
 
     if (fAddressesInitialized)
     {
-        DumpAddresses();
+        if (m_addrman) {
+            DumpAddresses();
+        }
         fAddressesInitialized = false;
     }
 
@@ -2260,7 +2269,7 @@ void CConnman::DeleteNode(CNode* pnode)
     bool fUpdateConnectionTime = false;
     m_msgproc->FinalizeNode(pnode->GetId(), fUpdateConnectionTime);
     if(fUpdateConnectionTime) {
-        addrman.Connected(pnode->addr);
+        m_addrman->Connected(pnode->addr);
     }
     delete pnode;
 }
@@ -2273,27 +2282,27 @@ CConnman::~CConnman()
 
 size_t CConnman::GetAddressCount() const
 {
-    return addrman.size();
+    return m_addrman->size();
 }
 
 void CConnman::SetServices(const CService &addr, ServiceFlags nServices)
 {
-    addrman.SetServices(addr, nServices);
+    m_addrman->SetServices(addr, nServices);
 }
 
 void CConnman::MarkAddressGood(const CAddress& addr)
 {
-    addrman.Good(addr);
+    m_addrman->Good(addr);
 }
 
 void CConnman::AddNewAddresses(const std::vector<CAddress>& vAddr, const CAddress& addrFrom, int64_t nTimePenalty)
 {
-    addrman.Add(vAddr, addrFrom, nTimePenalty);
+    m_addrman->Add(vAddr, addrFrom, nTimePenalty);
 }
 
 std::vector<CAddress> CConnman::GetAddresses()
 {
-    return addrman.GetAddr();
+    return m_addrman->GetAddr();
 }
 
 bool CConnman::AddNode(const std::string& strNode)

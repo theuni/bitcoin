@@ -79,6 +79,7 @@ static constexpr int DUMP_BANS_INTERVAL = 60 * 15;
 std::unique_ptr<CConnman> g_connman;
 std::unique_ptr<PeerLogicValidation> peerLogic;
 std::unique_ptr<BanMan> g_banman;
+std::unique_ptr<CAddrMan> g_addrman;
 
 #if ENABLE_ZMQ
 static CZMQNotificationInterface* pzmqNotificationInterface = nullptr;
@@ -203,6 +204,7 @@ void Shutdown()
     peerLogic.reset();
     g_connman.reset();
     g_banman.reset();
+    g_addrman.reset();
 
     StopTorControl();
     if (fDumpMempoolLater && gArgs.GetArg("-persistmempool", DEFAULT_PERSIST_MEMPOOL)) {
@@ -1274,6 +1276,8 @@ bool AppInitMain(boost::thread_group& threadGroup, CScheduler& scheduler)
 
     assert(!g_banman);
     g_banman = std::unique_ptr<BanMan>(new BanMan(GetDataDir() / "banlist.dat", &uiInterface, gArgs.GetArg("-bantime", DEFAULT_MISBEHAVING_BANTIME)));
+    assert(!g_addrman);
+    g_addrman = std::unique_ptr<CAddrMan>(new CAddrMan());
     assert(!g_connman);
     g_connman = std::unique_ptr<CConnman>(new CConnman(GetRand(std::numeric_limits<uint64_t>::max()), GetRand(std::numeric_limits<uint64_t>::max())));
     CConnman& connman = *g_connman;
@@ -1674,6 +1678,7 @@ bool AppInitMain(boost::thread_group& threadGroup, CScheduler& scheduler)
     connOptions.nBestHeight = chain_active_height;
     connOptions.uiInterface = &uiInterface;
     connOptions.m_banman = g_banman.get();
+    connOptions.m_addrman = g_addrman.get();
     connOptions.m_msgproc = peerLogic.get();
     connOptions.nSendBufferMaxSize = 1000*gArgs.GetArg("-maxsendbuffer", DEFAULT_MAXSENDBUFFER);
     connOptions.nReceiveFloodSize = 1000*gArgs.GetArg("-maxreceivebuffer", DEFAULT_MAXRECEIVEBUFFER);
