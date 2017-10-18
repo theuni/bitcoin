@@ -724,7 +724,7 @@ static bool StaleBlockRequestAllowed(const CBlockIndex* pindex, const Consensus:
         (GetBlockProofEquivalentTime(*pindexBestHeader, *pindex, *pindexBestHeader, consensusParams) < STALE_RELAY_AGE_LIMIT);
 }
 
-PeerLogicValidation::PeerLogicValidation(CConnman* connmanIn, BanMan* banman) : connman(connmanIn), m_banman(banman) {
+PeerLogicValidation::PeerLogicValidation(CConnman* connmanIn, BanMan* banman, CAddrMan* addrman) : connman(connmanIn), m_banman(banman), m_addrman(addrman) {
     // Initialize global variables that cannot be constructed at startup.
     recentRejects.reset(new CRollingBloomFilter(120000, 0.000001));
 }
@@ -1240,9 +1240,9 @@ bool PeerLogicValidation::ProcessMessage(CNode* pfrom, const std::string& strCom
         vRecv >> nVersion >> nServiceInt >> nTime >> addrMe;
         nSendVersion = std::min(nVersion, PROTOCOL_VERSION);
         nServices = ServiceFlags(nServiceInt);
-        if (!pfrom->fInbound)
+        if (!pfrom->fInbound && m_addrman)
         {
-            connman->SetServices(pfrom->addr, nServices);
+            m_addrman->SetServices(pfrom->addr, nServices);
         }
         if (!pfrom->fInbound && !pfrom->fFeeler && !pfrom->m_manual_connection && !HasAllDesirableServiceFlags(nServices))
         {
@@ -1355,12 +1355,14 @@ bool PeerLogicValidation::ProcessMessage(CNode* pfrom, const std::string& strCom
             }
 
             // Get recent addresses
-            if (pfrom->fOneShot || pfrom->nVersion >= CADDR_TIME_VERSION || connman->GetAddressCount() < 1000)
+            if (pfrom->fOneShot || pfrom->nVersion >= CADDR_TIME_VERSION || (m_addrman && m_addrman->size() < 1000))
             {
                 connman->PushMessage(pfrom, CNetMsgMaker(nSendVersion).Make(NetMsgType::GETADDR));
                 pfrom->fGetAddr = true;
             }
-            connman->MarkAddressGood(pfrom->addr);
+            if (m_addrman) {
+                m_addrman->Good(pfrom->addr);
+            }
         }
 
         std::string remoteAddr;
@@ -1449,7 +1451,7 @@ bool PeerLogicValidation::ProcessMessage(CNode* pfrom, const std::string& strCom
         vRecv >> vAddr;
 
         // Don't want addr from older versions unless seeding
-        if (pfrom->nVersion < CADDR_TIME_VERSION && connman->GetAddressCount() > 1000)
+        if (pfrom->nVersion < CADDR_TIME_VERSION && m_addrman && m_addrman->size() > 1000)
             return true;
         if (vAddr.size() > 1000)
         {
@@ -1486,7 +1488,9 @@ bool PeerLogicValidation::ProcessMessage(CNode* pfrom, const std::string& strCom
             if (fReachable)
                 vAddrOk.push_back(addr);
         }
-        connman->AddNewAddresses(vAddrOk, pfrom->addr, 2 * 60 * 60);
+        if (m_addrman) {
+            m_addrman->Add(vAddrOk, pfrom->addr, 2 * 60 * 60);
+        }
         if (vAddr.size() < 1000)
             pfrom->fGetAddr = false;
         if (pfrom->fOneShot)
@@ -2440,11 +2444,13 @@ bool PeerLogicValidation::ProcessMessage(CNode* pfrom, const std::string& strCom
         }
         pfrom->fSentAddr = true;
 
-        pfrom->vAddrToSend.clear();
-        std::vector<CAddress> vAddr = connman->GetAddresses();
-        FastRandomContext insecure_rand;
-        for (const CAddress &addr : vAddr)
-            pfrom->PushAddress(addr, insecure_rand);
+        if (m_addrman) {
+            pfrom->vAddrToSend.clear();
+            std::vector<CAddress> vAddr = m_addrman->GetAddr();
+            FastRandomContext insecure_rand;
+            for (const CAddress &addr : vAddr)
+                pfrom->PushAddress(addr, insecure_rand);
+        }
     }
 
 

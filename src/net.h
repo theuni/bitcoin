@@ -223,13 +223,6 @@ public:
         post();
     };
 
-    // Addrman functions
-    size_t GetAddressCount() const;
-    void SetServices(const CService &addr, ServiceFlags nServices);
-    void MarkAddressGood(const CAddress& addr);
-    void AddNewAddresses(const std::vector<CAddress>& vAddr, const CAddress& addrFrom, int64_t nTimePenalty = 0);
-    std::vector<CAddress> GetAddresses();
-
     bool AddNode(const std::string& node);
     bool RemoveAddedNode(const std::string& node);
     std::vector<AddedNodeInfo> GetAddedNodeInfo();

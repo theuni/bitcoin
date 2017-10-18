@@ -28,11 +28,12 @@ class PeerLogicValidation : public CValidationInterface, public NetEventsInterfa
 private:
     CConnman* connman;
     BanMan* m_banman;
+    CAddrMan* m_addrman;
 
     bool SendRejectsAndCheckIfBanned(CNode* pnode);
     bool ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStream& vRecv, int64_t nTimeReceived, const CChainParams& chainparams, const std::atomic<bool>& interruptMsgProc);
 public:
-    PeerLogicValidation(CConnman* connman, BanMan* banman);
+    PeerLogicValidation(CConnman* connman, BanMan* banman, CAddrMan* addrman);
 
     void BlockConnected(const std::shared_ptr<const CBlock>& pblock, const CBlockIndex* pindexConnected, const std::vector<CTransactionRef>& vtxConflicted) override;
     void UpdatedBlockTip(const CBlockIndex *pindexNew, const CBlockIndex *pindexFork, bool fInitialDownload) override;

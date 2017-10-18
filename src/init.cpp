@@ -1282,7 +1282,7 @@ bool AppInitMain(boost::thread_group& threadGroup, CScheduler& scheduler)
     g_connman = std::unique_ptr<CConnman>(new CConnman(GetRand(std::numeric_limits<uint64_t>::max()), GetRand(std::numeric_limits<uint64_t>::max())));
     CConnman& connman = *g_connman;
 
-    peerLogic.reset(new PeerLogicValidation(g_connman.get(), g_banman.get()));
+    peerLogic.reset(new PeerLogicValidation(g_connman.get(), g_banman.get(), g_addrman.get()));
     RegisterValidationInterface(peerLogic.get());
 
     // sanitize comments per BIP-0014, format user agent and check total size

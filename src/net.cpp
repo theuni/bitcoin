@@ -2280,31 +2280,6 @@ CConnman::~CConnman()
     Stop();
 }
 
-size_t CConnman::GetAddressCount() const
-{
-    return m_addrman->size();
-}
-
-void CConnman::SetServices(const CService &addr, ServiceFlags nServices)
-{
-    m_addrman->SetServices(addr, nServices);
-}
-
-void CConnman::MarkAddressGood(const CAddress& addr)
-{
-    m_addrman->Good(addr);
-}
-
-void CConnman::AddNewAddresses(const std::vector<CAddress>& vAddr, const CAddress& addrFrom, int64_t nTimePenalty)
-{
-    m_addrman->Add(vAddr, addrFrom, nTimePenalty);
-}
-
-std::vector<CAddress> CConnman::GetAddresses()
-{
-    return m_addrman->GetAddr();
-}
-
 bool CConnman::AddNode(const std::string& strNode)
 {
     LOCK(cs_vAddedNodes);
