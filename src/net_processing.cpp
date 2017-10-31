@@ -3044,15 +3044,21 @@ void PeerLogicValidation::EvictExtraOutboundPeers(int64_t time_in_seconds)
 
         LOCK(cs_main);
 
-        connman->ForEachNode([&](CNode* pnode) {
-            // Ignore non-outbound peers, or nodes marked for disconnect already
-            if (!IsOutboundDisconnectionCandidate(pnode) || pnode->fDisconnect) return;
-            CNodeState &state = *State(pnode->GetId());
-            if (state.m_last_block_announcement < oldest_block_announcement || (state.m_last_block_announcement == oldest_block_announcement && pnode->GetId() > worst_peer)) {
-                worst_peer = pnode->GetId();
+        for (auto& entry : mapNodeState) {
+            // Skip over entries that are not outbound disconnection
+            // candidates, or that are already marked for disconnection.
+            if (!connman->ForNode(entry.first, [&](CNode *pnode){
+                return IsOutboundDisconnectionCandidate(pnode) && !pnode->fDisconnect;
+            })) {
+                continue;
+            }
+            CNodeState &state = entry.second;
+            if (state.m_last_block_announcement < oldest_block_announcement || (state.m_last_block_announcement == oldest_block_announcement && entry.first > worst_peer)) {
+                worst_peer = entry.first;
                 oldest_block_announcement = state.m_last_block_announcement;
             }
-        });
+        }
+
         if (worst_peer != -1) {
             bool disconnected = connman->ForNode(worst_peer, [&](CNode *pnode) {
                 // Only disconnect a peer that has been connected to us for
