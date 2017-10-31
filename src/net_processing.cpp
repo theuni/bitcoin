@@ -208,6 +208,9 @@ struct CNodeState {
      */
     bool fSupportsDesiredCmpctVersion;
 
+    //! Whether this peer may be disconnected and replaced with a potentially better one
+    bool m_outbound_eviction_candidate;
+
     /** State used to enforce CHAIN_SYNC_TIMEOUT
       * Only in effect for outbound, non-manual connections, with
       * m_protect == false
@@ -262,6 +265,7 @@ struct CNodeState {
         fSupportsDesiredCmpctVersion = false;
         m_chain_sync = { 0, nullptr, false, false };
         m_last_block_announcement = 0;
+        m_outbound_eviction_candidate = false;
     }
 };
 
@@ -559,23 +563,19 @@ void UpdateLastBlockAnnounceTime(NodeId node, int64_t time_in_seconds)
     if (state) state->m_last_block_announcement = time_in_seconds;
 }
 
-// Returns true for outbound peers, excluding manual connections, feelers, and
-// one-shots
-bool IsOutboundDisconnectionCandidate(const CNode *node)
-{
-    return !(node->fInbound || node->m_manual_connection || node->fFeeler || node->fOneShot);
-}
-
 void PeerLogicValidation::InitializeNode(CNode *pnode) {
     CAddress addr = pnode->addr;
     std::string addrName = pnode->GetAddrName();
     NodeId nodeid = pnode->GetId();
     {
         LOCK(cs_main);
-        mapNodeState.emplace_hint(mapNodeState.end(), std::piecewise_construct, std::forward_as_tuple(nodeid), std::forward_as_tuple(addr, std::move(addrName)));
+        auto it = mapNodeState.emplace_hint(mapNodeState.end(), std::piecewise_construct, std::forward_as_tuple(nodeid), std::forward_as_tuple(addr, std::move(addrName)));
+        assert(it->first);
+        it->second.m_outbound_eviction_candidate = !(pnode->fInbound || pnode->m_manual_connection || pnode->fFeeler || pnode->fOneShot);
     }
-    if(!pnode->fInbound)
+    if(!pnode->fInbound) {
         PushNodeVersion(pnode, connman, GetTime());
+    }
 }
 
 void PeerLogicValidation::FinalizeNode(NodeId nodeid, bool& fUpdateConnectionTime) {
@@ -1439,14 +1439,14 @@ bool static ProcessHeadersMessage(CNode *pfrom, CConnman *connman, const std::ve
                 // until we have a headers chain that has at least
                 // nMinimumChainWork, even if a peer has a chain past our tip,
                 // as an anti-DoS measure.
-                if (IsOutboundDisconnectionCandidate(pfrom)) {
+                if (nodestate->m_outbound_eviction_candidate) {
                     LogPrintf("Disconnecting outbound peer %d -- headers chain has insufficient work\n", pfrom->GetId());
                     pfrom->fDisconnect = true;
                 }
             }
         }
 
-        if (!pfrom->fDisconnect && IsOutboundDisconnectionCandidate(pfrom) && nodestate->pindexBestKnownBlock != nullptr) {
+        if (!pfrom->fDisconnect && nodestate->m_outbound_eviction_candidate && nodestate->pindexBestKnownBlock != nullptr) {
             // If this is an outbound peer, check to see if we should protect
             // it from the bad/lagging chain logic.
             if (g_outbound_peers_with_protect_from_disconnect < MAX_OUTBOUND_PEERS_TO_PROTECT_FROM_DISCONNECT && nodestate->pindexBestKnownBlock->nChainWork >= chainActive.Tip()->nChainWork && !nodestate->m_chain_sync.m_protect) {
@@ -2985,7 +2985,7 @@ void PeerLogicValidation::ConsiderEviction(CNode *pto, int64_t time_in_seconds)
     CNodeState &state = *State(pto->GetId());
     const CNetMsgMaker msgMaker(pto->GetSendVersion());
 
-    if (!state.m_chain_sync.m_protect && IsOutboundDisconnectionCandidate(pto) && state.fSyncStarted) {
+    if (!state.m_chain_sync.m_protect && state.m_outbound_eviction_candidate && state.fSyncStarted) {
         // This is an outbound peer subject to disconnection if they don't
         // announce a block with as much work as the current tip within
         // CHAIN_SYNC_TIMEOUT + HEADERS_RESPONSE_TIME seconds (note: if
@@ -3047,12 +3047,12 @@ void PeerLogicValidation::EvictExtraOutboundPeers(int64_t time_in_seconds)
         for (auto& entry : mapNodeState) {
             // Skip over entries that are not outbound disconnection
             // candidates, or that are already marked for disconnection.
+            CNodeState &state = entry.second;
             if (!connman->ForNode(entry.first, [&](CNode *pnode){
-                return IsOutboundDisconnectionCandidate(pnode) && !pnode->fDisconnect;
+                return state.m_outbound_eviction_candidate && !pnode->fDisconnect;
             })) {
                 continue;
             }
-            CNodeState &state = entry.second;
             if (state.m_last_block_announcement < oldest_block_announcement || (state.m_last_block_announcement == oldest_block_announcement && entry.first > worst_peer)) {
                 worst_peer = entry.first;
                 oldest_block_announcement = state.m_last_block_announcement;
