@@ -628,6 +628,11 @@ BOOST_AUTO_TEST_CASE(test_LockDirectory)
     fs::path dirname = fs::temp_directory_path() / fs::unique_path();
     const std::string lockname = ".lock";
 #ifndef WIN32
+    // Revert SIGCHLD to default, otherwise boost.test will catch and fail on
+    // it: there is BOOST_TEST_IGNORE_SIGCHLD but that only works when defined
+    // at build-time of the boost library
+    void (*old_handler)(int) = signal(SIGCHLD, SIG_DFL);
+
     // Fork another process for testing before creating the lock, so that we
     // won't fork while holding the lock (which might be undefined, and is not
     // relevant as test case as that is avoided with -daemonize).
@@ -667,6 +672,9 @@ BOOST_AUTO_TEST_CASE(test_LockDirectory)
 
     // Lock on data directory from child should have failed, because this process is holding it
     BOOST_CHECK_EQUAL(processstatus, (int)false);
+
+    // Restore SIGCHLD
+    signal(SIGCHLD, old_handler);
 #endif
     // Clean up
     ReleaseDirectoryLocks();
