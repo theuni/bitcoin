@@ -392,23 +392,28 @@ bool LockDirectory(const fs::path& directory, const std::string lockfile_name, b
         return true;
     }
 
-    // Create empty lock file if it doesn't exist.
-    FILE* file = fsbridge::fopen(pathLockFile, "a");
-    if (file) fclose(file);
-
     try {
-        auto lock = MakeUnique<boost::interprocess::file_lock>(pathLockFile.string().c_str());
-        if (!lock->try_lock()) {
-            return false;
-        }
-        if (!probe_only) {
-            // Lock successful and we're not just probing, put it into the map
-            dir_locks.emplace(pathLockFile.string(), std::move(lock));
+        // Create empty lock file if it doesn't exist.
+        if (FILE* file = fsbridge::fopen(pathLockFile, "a")) {
+            fclose(file);
+            auto flock = MakeUnique<boost::interprocess::file_lock>(pathLockFile.string().c_str());
+            std::unique_lock<boost::interprocess::file_lock> lock(*flock, std::try_to_lock);
+            if (lock.owns_lock()) {
+                if (probe_only) {
+                    return true;
+                }
+                if (dir_locks.emplace(pathLockFile.string(), std::move(flock)).second) {
+                    // Now that the file lock has been successfully inserted in the map, release it from
+                    // the unique_lock so that it remains locked indefinitely.
+                    lock.release();
+                    return true;
+                }
+            }
         }
     } catch (const boost::interprocess::interprocess_exception& e) {
-        return error("Error while attempting to lock directory %s: %s", directory.string(), e.what());
+        PrintExceptionContinue(&e, nullptr);
     }
-    return true;
+    return error("Error while attempting to lock directory %s", directory.string());
 }
 
 void ReleaseDirectoryLocks()
