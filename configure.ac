@@ -214,12 +214,12 @@ AC_ARG_ENABLE([debug],
     [enable_debug=$enableval],
     [enable_debug=no])
 
-# Enable profiling
-AC_ARG_ENABLE([profiling],
-    [AS_HELP_STRING([--enable-profiling],
-                    [use profiling compiler flags (default is no)])],
-    [enable_profiling=$enableval],
-    [enable_profiling=no])
+# Enable gprof profiling
+AC_ARG_ENABLE([gprof],
+    [AS_HELP_STRING([--enable-gprof],
+                    [use gprof profiling compiler flags (default is no)])],
+    [enable_gprof=$enableval],
+    [enable_gprof=no])
 
 # Turn warnings into errors
 AC_ARG_ENABLE([werror],
@@ -231,7 +231,7 @@ AC_ARG_ENABLE([werror],
 AC_LANG_PUSH([C++])
 AX_CHECK_COMPILE_FLAG([-Werror],[CXXFLAG_WERROR="-Werror"],[CXXFLAG_WERROR=""])
 
-if test "x$enable_profiling" = xyes; then
+if test "x$enable_gprof" = xyes; then
     LDFLAGS="$LDFLAGS -pg"
     if test "x$GCC" = xyes; then
         CFLAGS="$CFLAGS -pg"
@@ -1348,7 +1348,7 @@ echo "  with bench    = $use_bench"
 echo "  with upnp     = $use_upnp"
 echo "  use asm       = $use_asm"
 echo "  debug enabled = $enable_debug"
-echo "  profiling enabled = $enable_profiling"
+echo "  gprof enabled = $enable_gprof"
 echo "  werror        = $enable_werror"
 echo
 echo "  target os     = $TARGET_OS"
