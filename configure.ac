@@ -143,9 +143,9 @@ AC_ARG_WITH([qrencode],
 
 AC_ARG_ENABLE([hardening],
   [AS_HELP_STRING([--disable-hardening],
-  [do not attempt to harden the resulting executables (default is to harden)])],
+  [do not attempt to harden the resulting executables (default is to harden when possible)])],
   [use_hardening=$enableval],
-  [use_hardening=yes])
+  [use_hardening=auto])
 
 AC_ARG_ENABLE([reduce-exports],
   [AS_HELP_STRING([--enable-reduce-exports],
@@ -561,13 +561,20 @@ else
 fi
 
 if test "x$enable_gprof" = xyes; then
-    AX_CHECK_LINK_FLAG([[-pg]],[LDFLAGS="$LDFLAGS -pg"],
-        [AC_MSG_ERROR("gprof profiling requested but not available")])
+    dnl -pg is incompatible with -pie. Since hardening and profiling together doesn't make sense,
+    dnl we simply make them mutually exclusive here. Additionally, hardened toolchains may force
+    dnl -pie by default, in which case it needs to be turned off with -no-pie.
 
-    if test "x$GXX" = xyes; then
-        AX_CHECK_COMPILE_FLAG([-pg],[GPROF_CXXFLAGS="-pg"],
-            [AC_MSG_ERROR("gprof profiling requested but not available")])
+    if test x$use_hardening = xyes; then
+        AC_MSG_ERROR(gprof profiling is not compatible with hardening. Reconfigure with --disable-hardening or --disable-gprof)
     fi
+    use_hardening=no
+    AX_CHECK_COMPILE_FLAG([-pg],[GPROF_CXXFLAGS="-pg"],
+        [AC_MSG_ERROR(gprof profiling requested but not available)], [[$CXXFLAG_WERROR]])
+
+    AX_CHECK_LINK_FLAG([[-no-pie]], [GPROF_LDFLAGS="-no-pie"])
+    AX_CHECK_LINK_FLAG([[-pg]],[GPROF_LDFLAGS="$GPROF_LDFLAGS -pg"],
+        [AC_MSG_ERROR(gprof profiling requested but not available)], [[$GPROF_LDFLAGS]])
 fi
 
 if test x$TARGET_OS != xwindows; then
@@ -576,6 +583,7 @@ if test x$TARGET_OS != xwindows; then
 fi
 
 if test x$use_hardening != xno; then
+  use_hardening=yes
   AX_CHECK_COMPILE_FLAG([-Wstack-protector],[HARDENED_CXXFLAGS="$HARDENED_CXXFLAGS -Wstack-protector"])
   AX_CHECK_COMPILE_FLAG([-fstack-protector-all],[HARDENED_CXXFLAGS="$HARDENED_CXXFLAGS -fstack-protector-all"])
 
@@ -819,10 +827,6 @@ fi
 if test x$use_reduce_exports = xyes; then
     CXXFLAGS="$CXXFLAGS $RE_CXXFLAGS"
     AX_CHECK_LINK_FLAG([[-Wl,--exclude-libs,ALL]], [RELDFLAGS="-Wl,--exclude-libs,ALL"])
-fi
-
-if test x$enable_gprof = xyes; then
-    CXXFLAGS="$GPROF_CXXFLAGS $CXXFLAGS"
 fi
 
 if test x$use_tests = xyes; then
@@ -1258,6 +1262,8 @@ AC_SUBST(BITCOIN_TX_NAME)
 
 AC_SUBST(RELDFLAGS)
 AC_SUBST(ERROR_CXXFLAGS)
+AC_SUBST(GPROF_CXXFLAGS)
+AC_SUBST(GPROF_LDFLAGS)
 AC_SUBST(HARDENED_CXXFLAGS)
 AC_SUBST(HARDENED_CPPFLAGS)
 AC_SUBST(HARDENED_LDFLAGS)
