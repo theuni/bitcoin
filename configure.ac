@@ -231,17 +231,6 @@ AC_ARG_ENABLE([werror],
 AC_LANG_PUSH([C++])
 AX_CHECK_COMPILE_FLAG([-Werror],[CXXFLAG_WERROR="-Werror"],[CXXFLAG_WERROR=""])
 
-if test "x$enable_gprof" = xyes; then
-    LDFLAGS="$LDFLAGS -pg"
-    if test "x$GCC" = xyes; then
-        CFLAGS="$CFLAGS -pg"
-    fi
-
-    if test "x$GXX" = xyes; then
-        CXXFLAGS="$CXXFLAGS -pg"
-    fi
-fi
-
 if test "x$enable_debug" = xyes; then
     CPPFLAGS="$CPPFLAGS -DDEBUG -DDEBUG_LOCKORDER"
     if test "x$GCC" = xyes; then
@@ -571,6 +560,16 @@ else
   AC_SEARCH_LIBS([clock_gettime],[rt])
 fi
 
+if test "x$enable_gprof" = xyes; then
+    AX_CHECK_LINK_FLAG([[-pg]],[LDFLAGS="$LDFLAGS -pg"],
+        [AC_MSG_ERROR("gprof profiling requested but not available")])
+
+    if test "x$GXX" = xyes; then
+        AX_CHECK_COMPILE_FLAG([-pg],[GPROF_CXXFLAGS="-pg"],
+            [AC_MSG_ERROR("gprof profiling requested but not available")])
+    fi
+fi
+
 if test x$TARGET_OS != xwindows; then
   # All windows code is PIC, forcing it on just adds useless compile warnings
   AX_CHECK_COMPILE_FLAG([-fPIC],[PIC_FLAGS="-fPIC"])
@@ -820,6 +819,10 @@ fi
 if test x$use_reduce_exports = xyes; then
     CXXFLAGS="$CXXFLAGS $RE_CXXFLAGS"
     AX_CHECK_LINK_FLAG([[-Wl,--exclude-libs,ALL]], [RELDFLAGS="-Wl,--exclude-libs,ALL"])
+fi
+
+if test x$enable_gprof = xyes; then
+    CXXFLAGS="$GPROF_CXXFLAGS $CXXFLAGS"
 fi
 
 if test x$use_tests = xyes; then
