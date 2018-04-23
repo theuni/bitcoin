@@ -64,5 +64,5 @@ void test_one_input(const std::vector<uint8_t>& buffer)
     if ((flags & SCRIPT_VERIFY_WITNESS) != 0 && (flags & SCRIPT_VERIFY_P2SH) == 0) {
         return;
     }
-    (void)VerifyScript({script_bytes_1.begin(), script_bytes_1.end()}, {script_bytes_2.begin(), script_bytes_2.end()}, nullptr, flags, FuzzedSignatureChecker(fuzzed_data_provider), nullptr);
+    (void)VerifyScript(script_bytes_1, script_bytes_2, nullptr, flags, FuzzedSignatureChecker(fuzzed_data_provider), nullptr);
 }
