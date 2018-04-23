@@ -57,7 +57,7 @@ void test_one_input(const std::vector<uint8_t>& buffer)
     const std::string script_string_2 = fuzzed_data_provider.ConsumeRandomLengthString(65536);
     const std::vector<uint8_t> script_bytes_2{script_string_2.begin(), script_string_2.end()};
     std::vector<std::vector<unsigned char>> stack;
-    (void)EvalScript(stack, {script_bytes_1.begin(), script_bytes_1.end()}, flags, FuzzedSignatureChecker(fuzzed_data_provider), sig_version, nullptr);
+    (void)EvalScript(stack, script_bytes_1, flags, FuzzedSignatureChecker(fuzzed_data_provider), sig_version, nullptr);
     if ((flags & SCRIPT_VERIFY_CLEANSTACK) != 0 && ((flags & SCRIPT_VERIFY_P2SH) == 0 || (flags & SCRIPT_VERIFY_WITNESS) == 0)) {
         return;
     }
