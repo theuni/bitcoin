@@ -950,7 +950,7 @@ void Transform(uint32_t* s, const unsigned char* chunk, size_t blocks)
         "Ldone_hash_%=:"
 
         : "+r"(s), "+r"(chunk), "+r"(blocks), "=r"(a), "=r"(b), "=r"(c), "=r"(d), /* e = chunk */ "=r"(f), "=r"(g), "=r"(h), "=r"(y0), "=r"(y1), "=r"(y2), "=r"(tbl), "+m"(inp_end), "+m"(inp), "+m"(xfer)
-        : "m"(K256), "m"(FLIP_MASK), "m"(SHUF_00BA), "m"(SHUF_DC00)
+        : "o"(K256[0]), "o"(FLIP_MASK[0]), "o"(SHUF_00BA[0]), "o"(SHUF_DC00[0])
         : "cc", "memory", "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12"
    );
 }
