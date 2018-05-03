@@ -6,6 +6,7 @@
 #include <logging.h>
 #include <util.h>
 #include <utilstrencodings.h>
+#include <threadval.h>
 
 #include <list>
 #include <mutex>
@@ -214,7 +215,9 @@ int LogPrintStr(const std::string &str)
     int ret = 0; // Returns total number of characters written
     static std::atomic_bool fStartedNewLine(true);
 
-    std::string strTimestamped = LogTimestampStr(str, &fStartedNewLine);
+    std::string thread_name(thread_data::get_internal_name());
+    thread_name.resize(16, ' ');
+    std::string strTimestamped = "[" + std::move(thread_name) + "] " + LogTimestampStr(str, &fStartedNewLine);
 
     if (fPrintToConsole) {
         // print to console

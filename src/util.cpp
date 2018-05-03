@@ -9,6 +9,7 @@
 #include <random.h>
 #include <serialize.h>
 #include <utilstrencodings.h>
+#include <threadval.h>
 
 #include <stdarg.h>
 
@@ -923,6 +924,7 @@ void runCommand(const std::string& strCommand)
 
 void RenameThread(const char* name)
 {
+    thread_data::set_internal_name(name);
 #if defined(PR_SET_NAME)
     // Only the first 15 characters are used (16 - NUL terminator)
     ::prctl(PR_SET_NAME, name, 0, 0, 0);
