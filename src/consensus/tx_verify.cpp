@@ -248,3 +248,75 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, CValidationState& state, c
     txfee = txfee_aux;
     return true;
 }
+
+unsigned int GetP2SHSigOpCount(const CTransaction& tx)
+{
+    if (tx.IsCoinBase())
+        return 0;
+
+    unsigned int nSigOps = 0;
+    for (unsigned int i = 0; i < tx.vin.size(); i++)
+    {
+        const CPrevOutType& fullPrev(tx.vin[i].fullPrev);
+        const CScript& scriptPubKey(fullPrev.get_prev_script());
+        if (scriptPubKey.IsPayToScriptHash())
+            nSigOps += scriptPubKey.GetSigOpCount(tx.vin[i].scriptSig);
+    }
+    return nSigOps;
+}
+
+int64_t GetTransactionSigOpCost(const CTransaction& tx, int flags)
+{
+    int64_t nSigOps = GetLegacySigOpCount(tx) * WITNESS_SCALE_FACTOR;
+
+    if (tx.IsCoinBase())
+        return nSigOps;
+
+    if (flags & SCRIPT_VERIFY_P2SH) {
+        nSigOps += GetP2SHSigOpCount(tx) * WITNESS_SCALE_FACTOR;
+    }
+
+    for (unsigned int i = 0; i < tx.vin.size(); i++)
+    {
+        const CPrevOutType& fullPrev(tx.vin[i].fullPrev);
+        const CScript& scriptPubKey(fullPrev.get_prev_script());
+        nSigOps += CountWitnessSigOps(tx.vin[i].scriptSig, scriptPubKey, &tx.vin[i].scriptWitness, flags);
+    }
+    return nSigOps;
+}
+
+bool Consensus::CheckTxInputs(const CTransaction& tx, CValidationState& state, int nSpendHeight, CAmount& txfee)
+{
+    CAmount nValueIn = 0;
+    for (unsigned int i = 0; i < tx.vin.size(); ++i) {
+        const CPrevOutType& prev(tx.vin[i].fullPrev);
+
+        // If prev is coinbase, check that it's matured
+        if (prev.is_coinbase() && nSpendHeight - prev.get_height() < COINBASE_MATURITY) {
+            return state.Invalid(false,
+                REJECT_INVALID, "bad-txns-premature-spend-of-coinbase",
+                strprintf("tried to spend coinbase at depth %d", nSpendHeight - prev.get_height()));
+        }
+
+        // Check for negative or overflow input values
+        nValueIn += prev.get_amount();
+        if (!MoneyRange(prev.get_amount()) || !MoneyRange(nValueIn)) {
+            return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
+        }
+    }
+
+    const CAmount value_out = tx.GetValueOut();
+    if (nValueIn < value_out) {
+        return state.DoS(100, false, REJECT_INVALID, "bad-txns-in-belowout", false,
+            strprintf("value in (%s) < value out (%s)", FormatMoney(nValueIn), FormatMoney(value_out)));
+    }
+
+    // Tally transaction fees
+    const CAmount txfee_aux = nValueIn - value_out;
+    if (!MoneyRange(txfee_aux)) {
+        return state.DoS(100, false, REJECT_INVALID, "bad-txns-fee-outofrange");
+    }
+
+    txfee = txfee_aux;
+    return true;
+}
