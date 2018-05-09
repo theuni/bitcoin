@@ -268,6 +268,8 @@ enum ServiceFlags : uint64_t {
     // serving the last 288 (2 day) blocks
     // See BIP159 for details on how this is implemented.
     NODE_NETWORK_LIMITED = (1 << 10),
+    //
+    NODE_TXIN_DATA = (1 << 11),
 
     // Bits 24-31 are reserved for temporary experiments. Just pick a bit that
     // isn't getting used, or one not being used much, and notify the
@@ -361,8 +363,9 @@ public:
 };
 
 /** getdata message type flags */
-const uint32_t MSG_WITNESS_FLAG = 1 << 30;
-const uint32_t MSG_TYPE_MASK    = 0xffffffff >> 2;
+const uint32_t MSG_WITNESS_FLAG  = 1 << 30;
+const uint32_t MSG_TXINDATA_FLAG = 1 << 29;
+const uint32_t MSG_TYPE_MASK    = 0xffffffff >> 3;
 
 /** getdata / inv message types.
  * These numbers are defined by the protocol. When adding a new value, be sure
@@ -379,6 +382,7 @@ enum GetDataMsg
     MSG_WITNESS_BLOCK = MSG_BLOCK | MSG_WITNESS_FLAG, //!< Defined in BIP144
     MSG_WITNESS_TX = MSG_TX | MSG_WITNESS_FLAG,       //!< Defined in BIP144
     MSG_FILTERED_WITNESS_BLOCK = MSG_FILTERED_BLOCK | MSG_WITNESS_FLAG,
+    MSG_WITNESS_TXINDATA_BLOCK = MSG_WITNESS_BLOCK | MSG_TXINDATA_FLAG
 };
 
 /** inv message data */

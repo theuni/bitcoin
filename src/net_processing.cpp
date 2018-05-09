@@ -1019,6 +1019,7 @@ bool static AlreadyHave(const CInv& inv) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
         }
     case MSG_BLOCK:
     case MSG_WITNESS_BLOCK:
+    case MSG_WITNESS_TXINDATA_BLOCK:
         return LookupBlockIndex(inv.hash) != nullptr;
     }
     // Don't know what it is, just say we already got one
@@ -1140,19 +1141,29 @@ void static ProcessGetBlockData(CNode* pfrom, const Consensus::Params& consensus
     if (send && (pindex->nStatus & BLOCK_HAVE_DATA))
     {
         std::shared_ptr<const CBlock> pblock;
-        if (a_recent_block && a_recent_block->GetHash() == pindex->GetBlockHash()) {
+        // TODO
+        if (0 && a_recent_block && a_recent_block->GetHash() == pindex->GetBlockHash()) {
             pblock = a_recent_block;
         } else {
             // Send block from disk
             std::shared_ptr<CBlock> pblockRead = std::make_shared<CBlock>();
             if (!ReadBlockFromDisk(*pblockRead, pindex, consensusParams))
                 assert(!"cannot load block from disk");
+            if ((inv.type & MSG_TXINDATA_FLAG)) {
+                assert(AddTxInData(*pblockRead, pindex));
+            }
             pblock = pblockRead;
         }
-        if (inv.type == MSG_BLOCK)
-            connman->PushMessage(pfrom, msgMaker.Make(SERIALIZE_TRANSACTION_NO_WITNESS, NetMsgType::BLOCK, *pblock));
-        else if (inv.type == MSG_WITNESS_BLOCK)
-            connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::BLOCK, *pblock));
+
+        if ((inv.type & MSG_TYPE_MASK) == MSG_BLOCK) {
+            int send_flags = 0;
+            if (!(inv.type & MSG_WITNESS_FLAG))
+                send_flags |= SERIALIZE_TRANSACTION_NO_WITNESS;
+            if ((inv.type & MSG_TXINDATA_FLAG) && HasPrevoutData(*pblock)) {
+                send_flags |= SERIALIZE_TRANSACTION_WITH_PREVDATA;
+            }
+            connman->PushMessage(pfrom, msgMaker.Make(send_flags, NetMsgType::BLOCK, *pblock));
+        }
         else if (inv.type == MSG_FILTERED_BLOCK)
         {
             bool sendMerkleBlock = false;
@@ -1260,7 +1271,7 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
 
     if (it != pfrom->vRecvGetData.end() && !pfrom->fPauseSend) {
         const CInv &inv = *it;
-        if (inv.type == MSG_BLOCK || inv.type == MSG_FILTERED_BLOCK || inv.type == MSG_CMPCT_BLOCK || inv.type == MSG_WITNESS_BLOCK) {
+        if (inv.type == MSG_BLOCK || inv.type == MSG_FILTERED_BLOCK || inv.type == MSG_CMPCT_BLOCK || inv.type == MSG_WITNESS_BLOCK || inv.type == MSG_WITNESS_TXINDATA_BLOCK) {
             it++;
             ProcessGetBlockData(pfrom, consensusParams, inv, connman, interruptMsgProc);
         }
@@ -1284,6 +1295,9 @@ static uint32_t GetFetchFlags(CNode* pfrom) {
     uint32_t nFetchFlags = 0;
     if ((pfrom->GetLocalServices() & NODE_WITNESS) && State(pfrom->GetId())->fHaveWitness) {
         nFetchFlags |= MSG_WITNESS_FLAG;
+    }
+    if (pfrom->nServices & NODE_TXIN_DATA) {
+        nFetchFlags |= MSG_TXINDATA_FLAG;
     }
     return nFetchFlags;
 }
