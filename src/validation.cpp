@@ -3381,6 +3381,39 @@ bool ProcessNewBlockHeaders(const std::vector<CBlockHeader>& headers, CValidatio
     return true;
 }
 
+bool HasPrevoutData(const CBlock &block)
+{
+    return block.vtx.size() > 1 && block.vtx[1]->HasPrevData();
+}
+
+bool AddTxInData(CBlock& block, const CBlockIndex* pindex)
+{
+    if (block.vtx.empty() || !(pindex->nStatus & BLOCK_HAVE_UNDO)) {
+        return false;
+    }
+
+    if (block.vtx.size() == 1 || (pindex->nStatus & BLOCK_OPT_PREVOUT_DATA)) {
+        return true;
+    }
+
+    CBlockUndo blockundo;
+    if (!UndoReadFromDisk(blockundo, pindex)) {
+        assert(!"cannot load undo from disk");
+    }
+    CTransactionRef coinbase(block.vtx.front());
+    for (size_t i = 1; i < block.vtx.size(); i++) {
+        CMutableTransaction mtx(*block.vtx[i]);
+        const CTxUndo& txundo(blockundo.vtxundo[i-1]);
+        assert(txundo.vprevout.size() == mtx.vin.size());
+        for (size_t j = 0; j < mtx.vin.size(); j++) {
+            const Coin& coin(txundo.vprevout[j]);
+            mtx.vin[j].fullPrev.Update(coin.out, coin.nHeight, coin.fCoinBase);
+        }
+        block.vtx[i] = MakeTransactionRef(std::move(mtx));
+    }
+    return true;
+}
+
 /** Store block on disk. If dbp is non-nullptr, the file is known to already reside on disk */
 static CDiskBlockPos SaveBlockToDisk(const CBlock& block, int nHeight, const CChainParams& chainparams, const CDiskBlockPos* dbp) {
     unsigned int nBlockSize = ::GetSerializeSize(block, SER_DISK, CLIENT_VERSION);

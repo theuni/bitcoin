@@ -391,6 +391,9 @@ public:
     ScriptError GetScriptError() const { return error; }
 };
 
+bool HasPrevoutData(const CBlock &block);
+bool AddTxInData(CBlock& block, const CBlockIndex* pindex);
+
 /** Initializes the script-execution cache */
 void InitScriptExecutionCache();
 
