@@ -164,6 +164,7 @@ BITCOIN_CORE_H = \
   util.h \
   utilmoneystr.h \
   utiltime.h \
+  utxohashset.h \
   validation.h \
   validationinterface.h \
   versionbits.h \
@@ -229,6 +230,7 @@ libbitcoin_server_a_SOURCES = \
   txdb.cpp \
   txmempool.cpp \
   ui_interface.cpp \
+  utxohashset.cpp \
   validation.cpp \
   validationinterface.cpp \
   versionbits.cpp \
