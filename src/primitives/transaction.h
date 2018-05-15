@@ -13,6 +13,101 @@
 #include <uint256.h>
 
 static const int SERIALIZE_TRANSACTION_NO_WITNESS = 0x40000000;
+static const int SERIALIZE_TRANSACTION_WITH_PREVDATA = 0x20000000;
+
+class CTxOut;
+
+class CPrevOutType
+{
+    using value_type = uint8_t;
+public:
+    enum template_type : value_type {
+        type_none     = 0,
+        type_full     = 1ULL << 5,
+        type_p2pkh    = 2ULL << 5,
+        type_p2sh     = 3ULL << 5,
+        type_unknown0 = 4ULL << 5,
+        type_unknown1 = 5ULL << 5,
+        type_unknown2 = 6ULL << 5,
+        type_unknown3 = 7ULL << 5,
+        type_mask    = 0x7ULL << 5
+    };
+
+    enum flag_type : value_type {
+        flag_none     = 0,
+        flag_witness  = 1ULL << 0,
+        flag_height   = 1ULL << 1,
+        flag_coinbase = 1ULL << 2,
+        flag_sameblock   = 1ULL << 3,
+        flag_unknown0 = 1ULL << 4,
+        flag_mask     = 0x1fULL
+    };
+
+    CPrevOutType(CTxOut txout, uint32_t height, bool coinbase);
+
+    CPrevOutType() = default;
+
+    std::string ToString() const;
+    template <typename Stream>
+    inline void Serialize(Stream& s) const {
+        ::Serialize(s, m_type);
+        if (!get_flags(flag_sameblock)) {
+            ::Serialize(s, AmountCompressor(m_amount));
+            if (get_flags(flag_height)) {
+                ::Serialize(s, VARINT(m_height));
+            }
+            if (get_type() == type_full) {
+                ::Serialize(s, m_script);
+            }
+        }
+    }
+
+    inline template_type get_type() const {
+        return template_type(m_type & type_mask);
+    }
+    inline flag_type get_flags(flag_type flags) const {
+        return flag_type(flags & m_type & flag_mask);
+    }
+    inline flag_type get_flags() const {
+        return flag_type(m_type & flag_mask);
+    }
+    inline CScript get_prev_script() const {
+        return m_script;
+    }
+    inline uint32_t get_height() const {
+        return m_height;
+    }
+    bool is_coinbase() const {
+        return m_type & flag_coinbase;
+    }
+    void Update(CTxOut txout, uint32_t height, bool coinbase);
+    void SameBlockUpdate(CTxOut txout);
+
+    template <typename Stream>
+    inline void Unserialize(Stream& s) {
+        m_script.clear();
+        ::Unserialize(s, m_type);
+        if (!get_flags(flag_sameblock)) {
+            ::Unserialize(s, AmountDecompressor(m_amount));
+
+            if (get_flags(flag_height)) {
+                ::Unserialize(s, VARINT(m_height));
+            }
+            if (get_type() == type_full) {
+                ::Unserialize(s, m_script);
+            }
+        }
+    }
+    CAmount get_amount() const {
+        return m_amount;
+    }
+private:
+
+    value_type m_type = 0;
+    uint32_t m_height = 0;
+    CAmount m_amount = 0;
+    CScript m_script;
+};
 
 /** An outpoint - a combination of a transaction hash and an index n into its vout */
 class COutPoint
@@ -65,6 +160,7 @@ public:
     CScript scriptSig;
     uint32_t nSequence;
     CScriptWitness scriptWitness; //! Only serialized through CTransaction
+    CPrevOutType fullPrev; // Only serialized through CTransaction
 
     /* Setting nSequence to this value for every input in a transaction
      * disables nLockTime. */
@@ -121,6 +217,9 @@ public:
     {
         return !(a == b);
     }
+
+    uint256 GetPrevOutHash() const;
+    CScript GetPrevOutScript() const;
 
     std::string ToString() const;
 };
@@ -203,7 +302,7 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
     tx.vout.clear();
     /* Try to read the vin. In case the dummy is there, this will be read as an empty vector. */
     s >> tx.vin;
-    if (tx.vin.size() == 0 && fAllowWitness) {
+    if (tx.vin.size() == 0) {
         /* We read a dummy or an empty vin. */
         s >> flags;
         if (flags != 0) {
@@ -221,6 +320,12 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
             s >> tx.vin[i].scriptWitness.stack;
         }
     }
+    if (flags & 2) {
+        flags ^= 2;
+        for (auto& in : tx.vin) {
+            s >> in.fullPrev;
+        }
+    }
     if (flags) {
         /* Unknown flag in the serialization */
         throw std::ios_base::failure("Unknown transaction optional data");
@@ -231,6 +336,7 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
 template<typename Stream, typename TxType>
 inline void SerializeTransaction(const TxType& tx, Stream& s) {
     const bool fAllowWitness = !(s.GetVersion() & SERIALIZE_TRANSACTION_NO_WITNESS);
+    const bool fAllowPrevData = s.GetVersion() & SERIALIZE_TRANSACTION_WITH_PREVDATA;
 
     s << tx.nVersion;
     unsigned char flags = 0;
@@ -239,6 +345,11 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
         /* Check whether witnesses need to be serialized. */
         if (tx.HasWitness()) {
             flags |= 1;
+        }
+    }
+    if (fAllowPrevData) {
+        if (tx.HasPrevData()) {
+            flags |= 2;
         }
     }
     if (flags) {
@@ -252,6 +363,11 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
     if (flags & 1) {
         for (size_t i = 0; i < tx.vin.size(); i++) {
             s << tx.vin[i].scriptWitness.stack;
+        }
+    }
+    if (flags & 2) {
+        for (size_t i = 0; i < tx.vin.size(); i++) {
+            s << tx.vin[i].fullPrev;
         }
     }
     s << tx.nLockTime;
@@ -356,6 +472,11 @@ public:
         }
         return false;
     }
+
+    bool HasPrevData() const
+    {
+        return !vin.empty() && !IsCoinBase() && vin[0].fullPrev.get_type() != CPrevOutType::type_none;
+    }
 };
 
 /** A mutable version of CTransaction. */
@@ -404,6 +525,17 @@ struct CMutableTransaction
         }
         return false;
     }
+
+    bool IsCoinBase() const
+    {
+        return (vin.size() == 1 && vin[0].prevout.IsNull());
+    }
+
+    bool HasPrevData() const
+    {
+        return !vin.empty() && !IsCoinBase() && vin[0].fullPrev.get_type() != CPrevOutType::type_none;
+    }
+
 };
 
 typedef std::shared_ptr<const CTransaction> CTransactionRef;

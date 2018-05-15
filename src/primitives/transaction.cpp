@@ -9,9 +9,67 @@
 #include <tinyformat.h>
 #include <utilstrencodings.h>
 
+
 std::string COutPoint::ToString() const
 {
     return strprintf("COutPoint(%s, %u)", hash.ToString().substr(0,10), n);
+}
+
+CPrevOutType::CPrevOutType(CTxOut txout, uint32_t height, bool coinbase)
+{
+    Update(std::move(txout), height, coinbase);
+}
+
+std::string CPrevOutType::ToString() const
+{
+    return strprintf("nValue=%d.%08d. type=%d, flags=%d", get_amount() / COIN, get_amount() % COIN, get_type(), get_flags());
+}
+
+void CPrevOutType::Update(CTxOut txout, uint32_t height, bool coinbase)
+{
+    template_type type(type_full);
+    flag_type flags(flag_none);
+
+    CScript& pub(txout.scriptPubKey);
+
+    int witness_version = 0;
+    std::vector<unsigned char> prog;
+    if (pub.IsWitnessProgram(witness_version, prog)) {
+        if (pub.IsPayToWitnessPubkeyHash()) {
+            flags = flag_type(flags | CPrevOutType::flag_witness);
+            type = CPrevOutType::type_p2pkh;
+            pub.clear();
+        } else if (pub.IsPayToWitnessScriptHash()) {
+            flags = flag_type(flags | CPrevOutType::flag_witness | CPrevOutType::flag_height);
+            type = CPrevOutType::type_p2sh;
+            pub.clear();
+        }
+    } else {
+        if (pub.IsPayToPubkeyHash()) {
+            type = CPrevOutType::type_p2pkh;
+            pub.clear();
+        } else if (pub.IsPayToScriptHash()) {
+            type = CPrevOutType::type_p2sh;
+            flags = flag_type(flags | CPrevOutType::flag_height);
+            pub.clear();
+        }
+    }
+
+    if (coinbase) {
+        flags = flag_type(flags | CPrevOutType::flag_coinbase | CPrevOutType::flag_height);
+    }
+    if (type == type_full) {
+        flags = flag_type(flags | CPrevOutType::flag_height);
+    }
+    m_amount = txout.nValue;
+    m_type = type | flags;
+    m_script = std::move(pub);
+
+    if (flags & CPrevOutType::flag_height) {
+        m_height = height;
+    } else {
+        m_height = 0;
+    }
 }
 
 CTxIn::CTxIn(COutPoint prevoutIn, CScript scriptSigIn, uint32_t nSequenceIn)
@@ -41,6 +99,72 @@ std::string CTxIn::ToString() const
         str += strprintf(", nSequence=%u", nSequence);
     str += ")";
     return str;
+}
+
+CScript CTxIn::GetPrevOutScript() const
+{
+    CScript ret;
+    if (fullPrev.get_type() == CPrevOutType::type_full) {
+        return fullPrev.get_prev_script();
+    }
+
+    if (!scriptSig.IsPushOnly())
+        return ret;
+
+    if (fullPrev.get_flags(CPrevOutType::flag_witness)) {
+        switch(fullPrev.get_type()) {
+            case CPrevOutType::type_p2pkh:
+            {
+                const auto& prog = scriptWitness.stack.back();
+                uint160 scriptHash = Hash160(prog.begin(), prog.end());
+                ret = CScript() << OP_0 << ToByteVector(scriptHash);
+            }
+            break;
+            case CPrevOutType::type_p2sh:
+            {
+                const auto& prog = scriptWitness.stack.back();
+                uint256 scriptHash;
+                CSHA256().Write(prog.data(), prog.size()).Finalize(scriptHash.begin());
+                ret = CScript() << OP_0 << ToByteVector(scriptHash);
+            }
+            default: break;
+        }
+    } else {
+        switch(fullPrev.get_type()) {
+            case CPrevOutType::type_p2pkh:
+            {
+                opcodetype op;
+                std::vector<unsigned char> pubkey;
+                auto it = scriptSig.begin();
+                while (it != scriptSig.end()) {
+                    scriptSig.GetOp(it, op, pubkey);
+                }
+                if (!pubkey.empty()) {
+                    uint160 pubkeyHash = Hash160(pubkey);
+                    ret = CScript() << OP_DUP << OP_HASH160 << ToByteVector(pubkeyHash) << OP_EQUALVERIFY << OP_CHECKSIG;
+                }
+            }
+            break;
+            case CPrevOutType::type_p2sh:
+            {
+                opcodetype op;
+                std::vector<unsigned char> redeem;
+                auto it = scriptSig.begin();
+                while (it != scriptSig.end()) {
+                    scriptSig.GetOp(it, op, redeem);
+                }
+                uint160 scriptHash = Hash160(redeem);
+                ret = CScript() << OP_HASH160 << ToByteVector(scriptHash) << OP_EQUAL;
+            }
+            default: break;
+        }
+    }
+    return ret;
+}
+
+uint256 CTxIn::GetPrevOutHash() const
+{
+    return SerializeHash(0, prevout, fullPrev);
 }
 
 CTxOut::CTxOut(const CAmount& nValueIn, CScript scriptPubKeyIn)
