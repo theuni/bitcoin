@@ -6,6 +6,7 @@
 #ifndef BITCOIN_COMPRESSOR_H
 #define BITCOIN_COMPRESSOR_H
 
+#include <amount.h>
 #include <primitives/transaction.h>
 #include <script/script.h>
 #include <serialize.h>
@@ -91,20 +92,16 @@ private:
 public:
     explicit CTxOutCompressor(CTxOut &txoutIn) : txout(txoutIn) { }
 
-    ADD_SERIALIZE_METHODS;
+    template <typename Stream>
+    inline void Serialize(Stream& s) const {
+        ::Serialize(s, AmountCompressor(txout.nValue));
+        ::Serialize(s, CScriptCompressor(REF(txout.scriptPubKey)));
+    }
 
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
-        if (!ser_action.ForRead()) {
-            uint64_t nVal = CompressAmount(txout.nValue);
-            READWRITE(VARINT(nVal));
-        } else {
-            uint64_t nVal = 0;
-            READWRITE(VARINT(nVal));
-            txout.nValue = DecompressAmount(nVal);
-        }
-        CScriptCompressor cscript(REF(txout.scriptPubKey));
-        READWRITE(cscript);
+    template <typename Stream>
+    inline void Unserialize(Stream& s) {
+        ::Unserialize(s, AmountDecompressor(txout.nValue));
+        ::Unserialize(s, CScriptCompressor(REF(txout.scriptPubKey)));
     }
 };
 
