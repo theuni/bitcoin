@@ -144,6 +144,13 @@ public:
         ::Serialize(*this, obj);
         return (*this);
     }
+
+    template<typename... Args>
+    uint256 operator()(Args&&... args) && {
+        // Serialize to this stream
+        ::SerializeMany(*this, std::forward<Args>(args)...);
+        return GetHash();
+    }
 };
 
 /** Reads data from an underlying stream, while hashing the read data. */
@@ -182,12 +189,10 @@ public:
 };
 
 /** Compute the 256-bit hash of an object's serialization. */
-template<typename T>
-uint256 SerializeHash(const T& obj, int nType=SER_GETHASH, int nVersion=PROTOCOL_VERSION)
+template<typename... Args>
+uint256 SerializeHash(int nVersion, Args&&... args)
 {
-    CHashWriter ss(nType, nVersion);
-    ss << obj;
-    return ss.GetHash();
+    return CHashWriter(SER_GETHASH, nVersion)(std::forward<Args>(args)...);
 }
 
 unsigned int MurmurHash3(unsigned int nHashSeed, const std::vector<unsigned char>& vDataToHash);
