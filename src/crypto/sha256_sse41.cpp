@@ -1,3 +1,7 @@
+#if defined(HAVE_CONFIG_H)
+#include <config/bitcoin-config.h>
+#endif
+
 #ifdef ENABLE_SSE41
 
 #include <stdint.h>
