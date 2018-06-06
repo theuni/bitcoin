@@ -44,13 +44,19 @@ LIBBITCOIN_WALLET=libbitcoin_wallet.a
 endif
 
 LIBBITCOIN_CRYPTO= $(LIBBITCOIN_CRYPTO_BASE)
+if USE_ASM
 if ENABLE_SSE41
 LIBBITCOIN_CRYPTO_SSE41 = crypto/libbitcoin_crypto_sse41.a
 LIBBITCOIN_CRYPTO += $(LIBBITCOIN_CRYPTO_SSE41)
 endif
+if ENABLE_AVX
+LIBBITCOIN_CRYPTO_AVX = crypto/libbitcoin_crypto_avx.a
+LIBBITCOIN_CRYPTO += $(LIBBITCOIN_CRYPTO_AVX)
+endif
 if ENABLE_AVX2
 LIBBITCOIN_CRYPTO_AVX2 = crypto/libbitcoin_crypto_avx2.a
 LIBBITCOIN_CRYPTO += $(LIBBITCOIN_CRYPTO_AVX2)
+endif
 endif
 
 $(LIBSECP256K1): $(wildcard secp256k1/src/*) $(wildcard secp256k1/include/*)
@@ -306,9 +312,15 @@ crypto_libbitcoin_crypto_sse41_a_CXXFLAGS += $(SSE41_CXXFLAGS)
 crypto_libbitcoin_crypto_sse41_a_CPPFLAGS += -DSHA256_NAMESPACE=sha256_sse41
 crypto_libbitcoin_crypto_sse41_a_SOURCES =  crypto/sha256_generic.cpp
 crypto_libbitcoin_crypto_sse41_a_SOURCES += crypto/sha256_sse41.cpp
-if USE_ASM
 crypto_libbitcoin_crypto_sse41_a_SOURCES += crypto/sha256_sse4.cpp
-endif
+
+crypto_libbitcoin_crypto_avx_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+crypto_libbitcoin_crypto_avx_a_CPPFLAGS = $(AM_CPPFLAGS)
+crypto_libbitcoin_crypto_avx_a_CPPFLAGS += -DSHA256_NAMESPACE=sha256_avx
+crypto_libbitcoin_crypto_avx_a_CXXFLAGS += $(AVX_CXXFLAGS)
+crypto_libbitcoin_crypto_avx_a_SOURCES =  crypto/sha256_generic.cpp
+crypto_libbitcoin_crypto_avx_a_SOURCES += crypto/sha256_sse41.cpp
+crypto_libbitcoin_crypto_avx_a_SOURCES += crypto/sha256_sse4.cpp
 
 crypto_libbitcoin_crypto_avx2_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 crypto_libbitcoin_crypto_avx2_a_CPPFLAGS = $(AM_CPPFLAGS)
@@ -316,10 +328,9 @@ crypto_libbitcoin_crypto_avx2_a_CPPFLAGS += -DSHA256_NAMESPACE=sha256_avx2
 crypto_libbitcoin_crypto_avx2_a_CXXFLAGS += $(AVX2_CXXFLAGS)
 crypto_libbitcoin_crypto_avx2_a_SOURCES =  crypto/sha256_generic.cpp
 crypto_libbitcoin_crypto_avx2_a_SOURCES += crypto/sha256_sse41.cpp
-if USE_ASM
 crypto_libbitcoin_crypto_avx2_a_SOURCES += crypto/sha256_sse4.cpp
-endif
 crypto_libbitcoin_crypto_avx2_a_SOURCES += crypto/sha256_avx2.cpp
+
 # consensus: shared between all executables that validate any consensus rules.
 libbitcoin_consensus_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
 libbitcoin_consensus_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)

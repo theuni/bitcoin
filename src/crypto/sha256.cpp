@@ -24,21 +24,19 @@ void TransformD64(unsigned char* out, const unsigned char* in);
 
 namespace sha256_sse41
 {
-void Transform(uint32_t* s, const unsigned char* chunk, size_t blocks);
-#if defined(USE_ASM) && (defined(__x86_64__) || defined(__amd64__))
 void Transform_sse41(uint32_t* s, const unsigned char* chunk, size_t blocks);
-#endif
-void TransformD64(unsigned char* out, const unsigned char* in);
+void Transform_4way_sse41(unsigned char* out, const unsigned char* in);
+}
+
+namespace sha256_avx
+{
+void Transform_sse41(uint32_t* s, const unsigned char* chunk, size_t blocks);
 void Transform_4way_sse41(unsigned char* out, const unsigned char* in);
 }
 
 namespace sha256_avx2
 {
-void Transform(uint32_t* s, const unsigned char* chunk, size_t blocks);
-#if defined(USE_ASM) && (defined(__x86_64__) || defined(__amd64__))
 void Transform_sse41(uint32_t* s, const unsigned char* chunk, size_t blocks);
-#endif
-void TransformD64(unsigned char* out, const unsigned char* in);
 void Transform_4way_sse41(unsigned char* out, const unsigned char* in);
 void Transform_8way_avx2(unsigned char* out, const unsigned char* in);
 }
@@ -156,6 +154,14 @@ std::string SHA256AutoDetect()
             TransformD64 = TransformD64Wrapper<sha256_sse41::Transform_sse41>;
             TransformD64_4way = sha256_sse41::Transform_4way_sse41;
         ret = "sse4(1way+4way)";
+#if defined(ENABLE_AVX) && !defined(BUILD_BITCOIN_INTERNAL)
+        if ((ecx >> 28) & 1) {
+            Transform = sha256_avx::Transform_sse41;
+            TransformD64 = TransformD64Wrapper<sha256_avx::Transform_sse41>;
+            TransformD64_4way = sha256_avx::Transform_4way_sse41;
+            ret = "sse4(1way+4way)+avx";
+        }
+#endif
 #if defined(ENABLE_AVX2) && !defined(BUILD_BITCOIN_INTERNAL)
         cpuid(7, 0, eax, ebx, ecx, edx);
         if ((ebx >> 5) & 1) {
