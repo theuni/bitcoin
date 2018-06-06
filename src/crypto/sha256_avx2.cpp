@@ -1,9 +1,3 @@
-#if defined(HAVE_CONFIG_H)
-#include <config/bitcoin-config.h>
-#endif
-
-#ifdef ENABLE_AVX2
-
 #include <stdint.h>
 #if defined(_MSC_VER)
 #include <immintrin.h>
@@ -14,7 +8,11 @@
 #include "crypto/sha256.h"
 #include "crypto/common.h"
 
-namespace sha256d64_avx2 {
+#ifndef SHA256_NAMESPACE
+#define SHA256_NAMESPACE sha256_avx2
+#endif
+
+namespace SHA256_NAMESPACE {
 namespace {
 
 __m256i inline K(uint32_t x) { return _mm256_set1_epi32(x); }
@@ -77,7 +75,7 @@ void inline Write8(unsigned char* out, int offset, __m256i v) {
 
 }
 
-void Transform_8way(unsigned char* out, const unsigned char* in)
+void Transform_8way_avx2(unsigned char* out, const unsigned char* in)
 {
     // Transform 1
     __m256i a = K(0x6a09e667ul);
@@ -329,5 +327,3 @@ void Transform_8way(unsigned char* out, const unsigned char* in)
 }
 
 }
-
-#endif

@@ -1,9 +1,3 @@
-#if defined(HAVE_CONFIG_H)
-#include <config/bitcoin-config.h>
-#endif
-
-#ifdef ENABLE_SSE41
-
 #include <stdint.h>
 #if defined(_MSC_VER)
 #include <immintrin.h>
@@ -14,7 +8,11 @@
 #include "crypto/sha256.h"
 #include "crypto/common.h"
 
-namespace sha256d64_sse41 {
+#ifndef SHA256_NAMESPACE
+#define SHA256_NAMESPACE sha256_sse41
+#endif
+
+namespace SHA256_NAMESPACE {
 namespace {
 
 __m128i inline K(uint32_t x) { return _mm_set1_epi32(x); }
@@ -69,7 +67,7 @@ void inline Write4(unsigned char* out, int offset, __m128i v) {
 
 }
 
-void Transform_4way(unsigned char* out, const unsigned char* in)
+void Transform_4way_sse41(unsigned char* out, const unsigned char* in)
 {
     // Transform 1
     __m128i a = K(0x6a09e667ul);
@@ -321,5 +319,3 @@ void Transform_4way(unsigned char* out, const unsigned char* in)
 }
 
 }
-
-#endif

@@ -10,9 +10,12 @@
 
 #if defined(__x86_64__) || defined(__amd64__)
 
-namespace sha256_sse4
-{
-void Transform(uint32_t* s, const unsigned char* chunk, size_t blocks)
+#ifndef SHA256_NAMESPACE
+#define SHA256_NAMESPACE sha256_sse41
+#endif
+
+namespace SHA256_NAMESPACE {
+void Transform_sse41(uint32_t* s, const unsigned char* chunk, size_t blocks)
 {
     static const uint32_t K256 alignas(16) [] = {
         0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,

@@ -276,6 +276,7 @@ libbitcoin_wallet_a_SOURCES = \
 # crypto primitives library
 crypto_libbitcoin_crypto_base_a_CPPFLAGS = $(AM_CPPFLAGS)
 crypto_libbitcoin_crypto_base_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+crypto_libbitcoin_crypto_base_a_CPPFLAGS += -DSHA256_NAMESPACE=sha256_generic
 crypto_libbitcoin_crypto_base_a_SOURCES = \
   crypto/aes.cpp \
   crypto/aes.h \
@@ -291,10 +292,10 @@ crypto_libbitcoin_crypto_base_a_SOURCES = \
   crypto/sha1.cpp \
   crypto/sha1.h \
   crypto/sha256.cpp \
+  crypto/sha256_generic.cpp \
   crypto/sha256.h \
   crypto/sha512.cpp \
   crypto/sha512.h
-
 if USE_ASM
 crypto_libbitcoin_crypto_base_a_SOURCES += crypto/sha256_sse4.cpp
 endif
@@ -302,13 +303,23 @@ endif
 crypto_libbitcoin_crypto_sse41_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 crypto_libbitcoin_crypto_sse41_a_CPPFLAGS = $(AM_CPPFLAGS)
 crypto_libbitcoin_crypto_sse41_a_CXXFLAGS += $(SSE41_CXXFLAGS)
-crypto_libbitcoin_crypto_sse41_a_SOURCES = crypto/sha256_sse41.cpp
+crypto_libbitcoin_crypto_sse41_a_CPPFLAGS += -DSHA256_NAMESPACE=sha256_sse41
+crypto_libbitcoin_crypto_sse41_a_SOURCES =  crypto/sha256_generic.cpp
+crypto_libbitcoin_crypto_sse41_a_SOURCES += crypto/sha256_sse41.cpp
+if USE_ASM
+crypto_libbitcoin_crypto_sse41_a_SOURCES += crypto/sha256_sse4.cpp
+endif
 
 crypto_libbitcoin_crypto_avx2_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 crypto_libbitcoin_crypto_avx2_a_CPPFLAGS = $(AM_CPPFLAGS)
+crypto_libbitcoin_crypto_avx2_a_CPPFLAGS += -DSHA256_NAMESPACE=sha256_avx2
 crypto_libbitcoin_crypto_avx2_a_CXXFLAGS += $(AVX2_CXXFLAGS)
-crypto_libbitcoin_crypto_avx2_a_SOURCES = crypto/sha256_avx2.cpp
-
+crypto_libbitcoin_crypto_avx2_a_SOURCES =  crypto/sha256_generic.cpp
+crypto_libbitcoin_crypto_avx2_a_SOURCES += crypto/sha256_sse41.cpp
+if USE_ASM
+crypto_libbitcoin_crypto_avx2_a_SOURCES += crypto/sha256_sse4.cpp
+endif
+crypto_libbitcoin_crypto_avx2_a_SOURCES += crypto/sha256_avx2.cpp
 # consensus: shared between all executables that validate any consensus rules.
 libbitcoin_consensus_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
 libbitcoin_consensus_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
