@@ -1,3 +1,7 @@
+// Copyright (c) 2017-2018 The Bitcoin Core developers
+// Distributed under the MIT software license, see the accompanying
+// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
 #ifdef ENABLE_SSE41
 
 #include <stdint.h>
@@ -9,6 +13,230 @@
 
 #include <crypto/sha256.h>
 #include <crypto/common.h>
+
+namespace sha256_sse41 {
+
+/*
+* The implementation in this namespace is a conversion to intrinsics from an original
+* YASM implementation by Intel.
+*
+* Its original copyright text:
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Copyright (c) 2012, Intel Corporation
+;
+; All rights reserved.
+;
+; Redistribution and use in source and binary forms, with or without
+; modification, are permitted provided that the following conditions are
+; met:
+;
+; * Redistributions of source code must retain the above copyright
+;   notice, this list of conditions and the following disclaimer.
+;
+; * Redistributions in binary form must reproduce the above copyright
+;   notice, this list of conditions and the following disclaimer in the
+;   documentation and/or other materials provided with the
+;   distribution.
+;
+; * Neither the name of the Intel Corporation nor the names of its
+;   contributors may be used to endorse or promote products derived from
+;   this software without specific prior written permission.
+;
+;
+; THIS SOFTWARE IS PROVIDED BY INTEL CORPORATION "AS IS" AND ANY
+; EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+; IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+; PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL INTEL CORPORATION OR
+; CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+; EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+; PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+; PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+; LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+; NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+; SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+;
+; This code is described in an Intel White-Paper:
+; "Fast SHA-256 Implementations on Intel Architecture Processors"
+;
+; To find it, surf to http://www.intel.com/p/en_US/embedded
+; and search for that title.
+; The paper is expected to be released roughly at the end of April, 2012
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; This code schedules 1 blocks at a time, with 4 lanes per block
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+*/
+
+namespace {
+
+uint32_t inline __attribute__((always_inline)) Ror(uint32_t x, int val) { return ((x >> val) | (x << (32 - val))); }
+__m128i inline __attribute__((always_inline)) Palignr(__m128i x, __m128i y, int z) { return _mm_alignr_epi8(x, y, z); }
+__m128i inline __attribute__((always_inline)) Paddd(__m128i x, __m128i y) { return _mm_add_epi32(x, y); }
+__m128i inline __attribute__((always_inline)) Pslld(__m128i x, int val) { return _mm_slli_epi32(x, val); }
+__m128i inline __attribute__((always_inline)) Psrld(__m128i x, int val) { return _mm_srli_epi32(x, val); }
+__m128i inline __attribute__((always_inline)) Psrlq(__m128i x, int val) { return _mm_srli_epi64(x, val); }
+__m128i inline __attribute__((always_inline)) Por(__m128i x, __m128i y) { return _mm_or_si128(x, y); }
+__m128i inline __attribute__((always_inline)) Pxor(__m128i x, __m128i y) { return _mm_xor_si128(x, y); }
+__m128i inline __attribute__((always_inline)) Pshufd(__m128i x, int val) { return _mm_shuffle_epi32(x, val); }
+__m128i inline __attribute__((always_inline)) Pshufb(__m128i x, __m128i y) { return _mm_shuffle_epi8(x, y); }
+
+void inline __attribute__((always_inline)) Round(uint32_t& a, uint32_t& b, uint32_t& c, uint32_t& d, uint32_t& e, uint32_t& f, uint32_t& g, uint32_t& h, uint32_t w)
+{
+    uint32_t y0, y1, y2;
+    y0 = Ror(e, 25 - 11) ^ e;
+    y1 = Ror(a, 22 - 13) ^ a;
+    y2 = (f ^ g) & e;
+    y0 = Ror(y0, 11 - 6) ^ e;
+    y1 = Ror(y1, 13 - 2) ^ a;
+    y0 = Ror(y0, 6);
+    y2 = (y2 ^ g) + y0 + w;
+    y1 = Ror(y1, 2);
+    h += y2;
+    y0 = (a | c) & b;
+    d += h;
+    h += y1;
+    y0 |= (a & c);
+    h += y0;
+}
+
+void inline __attribute__((always_inline)) QuadRoundSched(uint32_t& a, uint32_t& b, uint32_t& c, uint32_t& d, uint32_t& e, uint32_t& f, uint32_t& g, uint32_t& h, __m128i& X0, __m128i X1, __m128i X2, __m128i X3, __m128i W)
+{
+    uint32_t Ws[4] alignas(__m128i);
+    __m128i XTMP0, XTMP1, XTMP2, XTMP3, XTMP4;
+    const __m128i SHUF_00BA = _mm_set_epi64x(0xFFFFFFFFFFFFFFFFULL, 0x0b0a090803020100ULL);
+    const __m128i SHUF_DC00 = _mm_set_epi64x(0x0b0a090803020100ULL, 0xFFFFFFFFFFFFFFFFULL);
+
+    W = Paddd(W, X0);
+    _mm_store_si128((__m128i*)Ws, W);
+
+    Round(a, b, c, d, e, f, g, h, Ws[0]);
+    XTMP0 = Palignr(X3, X2, 4);
+    XTMP0 = Paddd(XTMP0, X0);
+    XTMP3 = XTMP2 = XTMP1 = Palignr(X1, X0, 4);
+    XTMP2 = Psrld(XTMP2, 7);
+    XTMP1 = Por(Pslld(XTMP1, 32 - 7), XTMP2);
+
+    Round(h, a, b, c, d, e, f, g, Ws[1]);
+    XTMP2 = XTMP3;
+    XTMP4 = XTMP3;
+    XTMP3 = Pslld(XTMP3, 32 - 18);
+    XTMP2 = Psrld(XTMP2, 18);
+    XTMP1 = Pxor(XTMP1, XTMP3);
+    XTMP4 = Psrld(XTMP4, 3);
+    XTMP1 = Pxor(XTMP1, XTMP2);
+    XTMP1 = Pxor(XTMP1, XTMP4);
+    XTMP2 = Pshufd(X3, 0xFA);
+    XTMP0 = Paddd(XTMP0, XTMP1);
+
+    Round(g, h, a, b, c, d, e, f, Ws[2]);
+    XTMP3 = XTMP2;
+    XTMP4 = XTMP2;
+    XTMP2 = Psrlq(XTMP2, 17);
+    XTMP3 = Psrlq(XTMP3, 19);
+    XTMP4 = Psrld(XTMP4, 10);
+    XTMP2 = Pxor(XTMP2, XTMP3);
+    XTMP4 = Pxor(XTMP4, XTMP2);
+    XTMP4 = Pshufb(XTMP4, SHUF_00BA);
+    XTMP0 = Paddd(XTMP0, XTMP4);
+    XTMP2 = Pshufd(XTMP0, 0x50);
+
+    Round(f, g, h, a, b, c, d, e, Ws[3]);
+    XTMP3 = XTMP2;
+    X0 = XTMP2;
+    XTMP2 = Psrlq(XTMP2, 17);
+    XTMP3 = Psrlq(XTMP3, 19);
+    X0 = Psrld(X0, 10);
+    XTMP2 = Pxor(XTMP2, XTMP3);
+    X0 = Pxor(X0, XTMP2);
+    X0 = Pshufb(X0, SHUF_DC00);
+    X0 = Paddd(X0, XTMP0);
+}
+
+void inline __attribute__((always_inline)) QuadRound(uint32_t& a, uint32_t& b, uint32_t& c, uint32_t& d, uint32_t& e, uint32_t& f, uint32_t& g, uint32_t& h, __m128i X0, __m128i W)
+{
+    uint32_t Ws[32] alignas(__m128i);
+
+    X0 = Paddd(X0, W);
+    _mm_store_si128((__m128i*)Ws, X0);
+
+    Round(a, b, c, d, e, f, g, h, Ws[0]);
+    Round(h, a, b, c, d, e, f, g, Ws[1]);
+    Round(g, h, a, b, c, d, e, f, Ws[2]);
+    Round(f, g, h, a, b, c, d, e, Ws[3]);
+}
+
+__m128i inline __attribute__((always_inline)) KK(uint32_t a, uint32_t b, uint32_t c, uint32_t d)
+{
+    return _mm_set_epi32(d, c, b, a);
+}
+
+}
+
+void Transform(uint32_t* s, const unsigned char* chunk, size_t blocks)
+{
+    const unsigned char* end = chunk + blocks * 64;
+    static const __m128i BYTE_FLIP_MASK = _mm_set_epi64x(0x0c0d0e0f08090a0b, 0x0405060700010203);
+
+    static const __m128i TBL[16] = {
+        KK(0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5),
+        KK(0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5),
+        KK(0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3),
+        KK(0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174),
+        KK(0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc),
+        KK(0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da),
+        KK(0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7),
+        KK(0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967),
+        KK(0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13),
+        KK(0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85),
+        KK(0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3),
+        KK(0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070),
+        KK(0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5),
+        KK(0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3),
+        KK(0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208),
+        KK(0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2),
+    };
+
+    uint32_t a = s[0], b = s[1], c = s[2], d = s[3], e = s[4], f = s[5], g = s[6], h = s[7];
+
+    __m128i X0, X1, X2, X3;
+
+    while (chunk != end) {
+        X0 = _mm_shuffle_epi8(_mm_loadu_si128((const __m128i*)chunk), BYTE_FLIP_MASK);
+        X1 = _mm_shuffle_epi8(_mm_loadu_si128((const __m128i*)(chunk + 16)), BYTE_FLIP_MASK);
+        X2 = _mm_shuffle_epi8(_mm_loadu_si128((const __m128i*)(chunk + 32)), BYTE_FLIP_MASK);
+        X3 = _mm_shuffle_epi8(_mm_loadu_si128((const __m128i*)(chunk + 48)), BYTE_FLIP_MASK);
+
+        QuadRoundSched(a, b, c, d, e, f, g, h, X0, X1, X2, X3, TBL[0]);
+        QuadRoundSched(e, f, g, h, a, b, c, d, X1, X2, X3, X0, TBL[1]);
+        QuadRoundSched(a, b, c, d, e, f, g, h, X2, X3, X0, X1, TBL[2]);
+        QuadRoundSched(e, f, g, h, a, b, c, d, X3, X0, X1, X2, TBL[3]);
+        QuadRoundSched(a, b, c, d, e, f, g, h, X0, X1, X2, X3, TBL[4]);
+        QuadRoundSched(e, f, g, h, a, b, c, d, X1, X2, X3, X0, TBL[5]);
+        QuadRoundSched(a, b, c, d, e, f, g, h, X2, X3, X0, X1, TBL[6]);
+        QuadRoundSched(e, f, g, h, a, b, c, d, X3, X0, X1, X2, TBL[7]);
+        QuadRoundSched(a, b, c, d, e, f, g, h, X0, X1, X2, X3, TBL[8]);
+        QuadRoundSched(e, f, g, h, a, b, c, d, X1, X2, X3, X0, TBL[9]);
+        QuadRoundSched(a, b, c, d, e, f, g, h, X2, X3, X0, X1, TBL[10]);
+        QuadRoundSched(e, f, g, h, a, b, c, d, X3, X0, X1, X2, TBL[11]);
+        QuadRound(a, b, c, d, e, f, g, h, X0, TBL[12]);
+        QuadRound(e, f, g, h, a, b, c, d, X1, TBL[13]);
+        QuadRound(a, b, c, d, e, f, g, h, X2, TBL[14]);
+        QuadRound(e, f, g, h, a, b, c, d, X3, TBL[15]);
+
+        a += s[0]; s[0] = a;
+        b += s[1]; s[1] = b;
+        c += s[2]; s[2] = c;
+        d += s[3]; s[3] = d;
+        e += s[4]; s[4] = e;
+        f += s[5]; s[5] = f;
+        g += s[6]; s[6] = g;
+        h += s[7]; s[7] = h;
+
+        chunk += 64;
+    }
+}
+}
 
 namespace sha256d64_sse41 {
 namespace {
