@@ -71,15 +71,12 @@ namespace sha256_sse41 {
 namespace {
 
 uint32_t inline __attribute__((always_inline)) Ror(uint32_t x, int val) { return ((x >> val) | (x << (32 - val))); }
-__m128i inline __attribute__((always_inline)) Palignr(__m128i x, __m128i y, int z) { return _mm_alignr_epi8(x, y, z); }
 __m128i inline __attribute__((always_inline)) Paddd(__m128i x, __m128i y) { return _mm_add_epi32(x, y); }
 __m128i inline __attribute__((always_inline)) Pslld(__m128i x, int val) { return _mm_slli_epi32(x, val); }
 __m128i inline __attribute__((always_inline)) Psrld(__m128i x, int val) { return _mm_srli_epi32(x, val); }
 __m128i inline __attribute__((always_inline)) Psrlq(__m128i x, int val) { return _mm_srli_epi64(x, val); }
 __m128i inline __attribute__((always_inline)) Por(__m128i x, __m128i y) { return _mm_or_si128(x, y); }
 __m128i inline __attribute__((always_inline)) Pxor(__m128i x, __m128i y) { return _mm_xor_si128(x, y); }
-__m128i inline __attribute__((always_inline)) Pshufd(__m128i x, int val) { return _mm_shuffle_epi32(x, val); }
-__m128i inline __attribute__((always_inline)) Pshufb(__m128i x, __m128i y) { return _mm_shuffle_epi8(x, y); }
 
 void inline __attribute__((always_inline)) Round(uint32_t& a, uint32_t& b, uint32_t& c, uint32_t& d, uint32_t& e, uint32_t& f, uint32_t& g, uint32_t& h, uint32_t w)
 {
@@ -102,7 +99,7 @@ void inline __attribute__((always_inline)) Round(uint32_t& a, uint32_t& b, uint3
 
 void inline __attribute__((always_inline)) QuadRoundSched(uint32_t& a, uint32_t& b, uint32_t& c, uint32_t& d, uint32_t& e, uint32_t& f, uint32_t& g, uint32_t& h, __m128i& X0, __m128i X1, __m128i X2, __m128i X3, __m128i W)
 {
-    uint32_t Ws[4] alignas(__m128i);
+    alignas(__m128i) uint32_t Ws[4];
     __m128i XTMP0, XTMP1, XTMP2, XTMP3, XTMP4;
     const __m128i SHUF_00BA = _mm_set_epi64x(0xFFFFFFFFFFFFFFFFULL, 0x0b0a090803020100ULL);
     const __m128i SHUF_DC00 = _mm_set_epi64x(0x0b0a090803020100ULL, 0xFFFFFFFFFFFFFFFFULL);
@@ -111,9 +108,9 @@ void inline __attribute__((always_inline)) QuadRoundSched(uint32_t& a, uint32_t&
     _mm_store_si128((__m128i*)Ws, W);
 
     Round(a, b, c, d, e, f, g, h, Ws[0]);
-    XTMP0 = Palignr(X3, X2, 4);
+    XTMP0 = _mm_alignr_epi8(X3, X2, 4);
     XTMP0 = Paddd(XTMP0, X0);
-    XTMP3 = XTMP2 = XTMP1 = Palignr(X1, X0, 4);
+    XTMP3 = XTMP2 = XTMP1 = _mm_alignr_epi8(X1, X0, 4);
     XTMP2 = Psrld(XTMP2, 7);
     XTMP1 = Por(Pslld(XTMP1, 32 - 7), XTMP2);
 
@@ -126,7 +123,7 @@ void inline __attribute__((always_inline)) QuadRoundSched(uint32_t& a, uint32_t&
     XTMP4 = Psrld(XTMP4, 3);
     XTMP1 = Pxor(XTMP1, XTMP2);
     XTMP1 = Pxor(XTMP1, XTMP4);
-    XTMP2 = Pshufd(X3, 0xFA);
+    XTMP2 = _mm_shuffle_epi32(X3, 0xFA);
     XTMP0 = Paddd(XTMP0, XTMP1);
 
     Round(g, h, a, b, c, d, e, f, Ws[2]);
@@ -137,9 +134,9 @@ void inline __attribute__((always_inline)) QuadRoundSched(uint32_t& a, uint32_t&
     XTMP4 = Psrld(XTMP4, 10);
     XTMP2 = Pxor(XTMP2, XTMP3);
     XTMP4 = Pxor(XTMP4, XTMP2);
-    XTMP4 = Pshufb(XTMP4, SHUF_00BA);
+    XTMP4 = _mm_shuffle_epi8(XTMP4, SHUF_00BA);
     XTMP0 = Paddd(XTMP0, XTMP4);
-    XTMP2 = Pshufd(XTMP0, 0x50);
+    XTMP2 = _mm_shuffle_epi32(XTMP0, 0x50);
 
     Round(f, g, h, a, b, c, d, e, Ws[3]);
     XTMP3 = XTMP2;
@@ -149,13 +146,13 @@ void inline __attribute__((always_inline)) QuadRoundSched(uint32_t& a, uint32_t&
     X0 = Psrld(X0, 10);
     XTMP2 = Pxor(XTMP2, XTMP3);
     X0 = Pxor(X0, XTMP2);
-    X0 = Pshufb(X0, SHUF_DC00);
+    X0 = _mm_shuffle_epi8(X0, SHUF_DC00);
     X0 = Paddd(X0, XTMP0);
 }
 
 void inline __attribute__((always_inline)) QuadRound(uint32_t& a, uint32_t& b, uint32_t& c, uint32_t& d, uint32_t& e, uint32_t& f, uint32_t& g, uint32_t& h, __m128i X0, __m128i W)
 {
-    uint32_t Ws[32] alignas(__m128i);
+    alignas(__m128i) uint32_t Ws[32];
 
     X0 = Paddd(X0, W);
     _mm_store_si128((__m128i*)Ws, X0);
