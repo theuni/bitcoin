@@ -80,21 +80,10 @@ __m128i inline __attribute__((always_inline)) Pxor(__m128i x, __m128i y) { retur
 
 void inline __attribute__((always_inline)) Round(uint32_t& a, uint32_t& b, uint32_t& c, uint32_t& d, uint32_t& e, uint32_t& f, uint32_t& g, uint32_t& h, uint32_t w)
 {
-    uint32_t y0, y1, y2;
-    y0 = Ror(e, 25 - 11) ^ e;
-    y1 = Ror(a, 22 - 13) ^ a;
-    y2 = (f ^ g) & e;
-    y0 = Ror(y0, 11 - 6) ^ e;
-    y1 = Ror(y1, 13 - 2) ^ a;
-    y0 = Ror(y0, 6);
-    y2 = (y2 ^ g) + y0 + w;
-    y1 = Ror(y1, 2);
-    h += y2;
-    y0 = (a | c) & b;
-    d += h;
-    h += y1;
-    y0 |= (a & c);
-    h += y0;
+    uint32_t t1 = (Ror(e, 6) ^ Ror(e, 11) ^ Ror(e, 25)) + (((f ^ g) & e) ^ g) + w;
+    uint32_t t2 = (Ror(a, 2) ^ Ror(a, 13) ^ Ror(a, 22)) + (((a | c) & b) | (a & c));
+    d += t1;
+    h = t1 + t2;
 }
 
 void inline __attribute__((always_inline)) QuadRoundSched(uint32_t& a, uint32_t& b, uint32_t& c, uint32_t& d, uint32_t& e, uint32_t& f, uint32_t& g, uint32_t& h, __m128i& X0, __m128i X1, __m128i X2, __m128i X3, __m128i W)
