@@ -8,7 +8,7 @@ $(package)_dependencies=openssl zlib
 $(package)_linux_dependencies=freetype fontconfig libxcb libX11 xproto libXext
 $(package)_build_subdir=qtbase
 $(package)_qt_libs=corelib network widgets gui plugins testlib
-$(package)_patches=fix_qt_pkgconfig.patch mac-qmake.conf fix_configure_mac.patch fix_no_printer.patch linux-qmake.conf linux-qplatformdefs.h.patch
+$(package)_patches=fix_qt_pkgconfig.patch mac-qmake.conf fix_configure_mac.patch fix_no_printer.patch linux-qmake.conf linux-qplatformdefs.h
 
 $(package)_qttranslations_file_name=qttranslations-$($(package)_suffix)
 $(package)_qttranslations_sha256_hash=9822084f8e2d2939ba39f4af4c0c2320e45d5996762a9423f833055607604ed8
@@ -93,6 +93,7 @@ $(package)_config_opts_linux += -device bitcoin-linux-g++
 $(package)_config_opts_linux += -device-option TARGET_CC="$($(package)_cc)"
 $(package)_config_opts_linux += -device-option TARGET_CXX="$($(package)_cxx)"
 $(package)_config_opts_linux += -device-option TARGET_AR="$($(package)_ar)"
+$(package)_config_opts_linux += -device-option TARGET_RANLIB="$($(package)_ranlib)"
 $(package)_config_opts_linux += -device-option TARGET_NM="$($(package)_nm)"
 $(package)_config_opts_linux += -device-option TARGET_STRIP="$($(package)_strip)"
 $(package)_config_opts_linux += -device-option TARGET_CFLAGS="$($(package)_cflags) $($(package)_cppflags)"
@@ -136,7 +137,7 @@ define $(package)_preprocess_cmds
   cp -f $($(package)_patch_dir)/mac-qmake.conf qtbase/mkspecs/macx-clang-linux/qmake.conf && \
   mkdir -p qtbase/mkspecs/devices/bitcoin-linux-g++ && \
   cp -f $($(package)_patch_dir)/linux-qmake.conf qtbase/mkspecs/devices/bitcoin-linux-g++/qmake.conf && \
-  cp -f $($(package)_patch_dir)/linux-qplatformdefs.h.patch qtbase/mkspecs/devices/bitcoin-linux-g++/qplatformdefs.h && \
+  cp -f $($(package)_patch_dir)/linux-qplatformdefs.h qtbase/mkspecs/devices/bitcoin-linux-g++/qplatformdefs.h && \
   patch -p1 -i $($(package)_patch_dir)/fix_qt_pkgconfig.patch &&\
   patch -p1 -i $($(package)_patch_dir)/fix_configure_mac.patch &&\
   patch -p1 -i $($(package)_patch_dir)/fix_no_printer.patch &&\
