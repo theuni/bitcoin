@@ -1,0 +1,12 @@
+include minisketch/sources.mk
+
+if ENABLE_CLMUL
+LIBMINISKETCH_CLMUL = libminisketch_clmul.la
+endif
+lib_LTLIBRARIES += libminisketch.la
+noinst_LTLIBRARIES = $(LIBMINISKETCH_CLMUL)
+libminisketch_clmul_la_SOURCES = $(MINISKETCH_FIELD_CLMUL_SOURCES_INT)
+libminisketch_clmul_la_CXXFLAGS = $(AM_CXXFLAGS) $(CLMUL_CXXFLAGS)
+
+libminisketch_la_SOURCES = $(MINISKETCH_FIELD_GENERIC_SOURCES_INT) $(MINISKETCH_LIB_SOURCES_INT)
+libminisketch_la_LIBADD = $(LIBMINISKETCH_CLMUL)
