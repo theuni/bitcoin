@@ -467,11 +467,12 @@ if test "x$use_rust" = xyes; then
     AC_MSG_ERROR("Cargo required to enable experimental rust support.")
   fi
 
-  RUST_TARGET="${host}"
-  dnl Rust only knows the "unknown" vendor variants.
-  if test x${host_vendor} = xpc; then
-    RUST_TARGET="${host_cpu}-unknown-${host_os}"
-  fi
+  case $host in
+    ${host_cpu}-w64-mingw*) RUST_TARGET=${host_cpu}-pc-windows-gnu ;;
+    ${host_cpu}-pc-linux*) RUST_TARGET="${host_cpu}-unknown-${host_os}" ;;
+    ${host_cpu}-apple-darwin*) RUST_TARGET=${host_cpu}-apple-darwin ;;
+    *) RUST_TARGET="${host}" ;;
+  esac
 
   dnl TODO: create a rust test project and check host_alias as well as host.
   AC_DEFINE(ENABLE_RUSTY, [true], [Use Rusty])
@@ -504,6 +505,7 @@ case $host in
      AC_CHECK_LIB([shlwapi],      [main],, AC_MSG_ERROR(libshlwapi missing))
      AC_CHECK_LIB([iphlpapi],      [main],, AC_MSG_ERROR(libiphlpapi missing))
      AC_CHECK_LIB([crypt32],      [main],, AC_MSG_ERROR(libcrypt32 missing))
+     AC_CHECK_LIB([userenv],      [GetUserProfileDirectoryW],, AC_MSG_ERROR(libuserenv missing))
 
      # -static is interpreted by libtool, where it has a different meaning.
      # In libtool-speak, it's -all-static.
