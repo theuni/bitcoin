@@ -14,7 +14,7 @@ define $(package)_preprocess_cmds
 endef
 
 define $(package)_config_cmds
-  $($(package)_autoconf)
+  PKG_CONFIG="`which pkg-config` --static" $($(package)_autoconf)
 endef
 
 define $(package)_build_cmds
