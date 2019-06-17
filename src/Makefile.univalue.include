@@ -1,0 +1,11 @@
+include univalue/sources.mk
+
+if EMBEDDED_UNIVALUE
+LIBUNIVALUE = libunivalue.la
+noinst_LTLIBRARIES += $(LIBUNIVALUE)
+libunivalue_la_SOURCES = $(UNIVALUE_LIB_SOURCES_INT)
+libunivalue_la_CPPFLAGS = $(AM_CPPFLAGS) $(UNIVALUE_CFLAGS)
+else
+LIBUNIVALUE = $(UNIVALUE_LIBS)
+endif
+
