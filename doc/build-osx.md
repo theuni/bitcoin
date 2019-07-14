@@ -140,11 +140,11 @@ and its `libLTO.so` rather than those from `llvmgcc`, as it was originally done 
 
 To complicate things further, all builds must target an Apple SDK. These SDKs are free to
 download, but not redistributable. To obtain it, register for an Apple Developer Account,
-then download the [Xcode 7.3.1 dmg](https://developer.apple.com/devcenter/download.action?path=/Developer_Tools/Xcode_7.3.1/Xcode_7.3.1.dmg).
+then download the [Xcode 10.2.1 dmg](https://download.developer.apple.com/Developer_Tools/Xcode_10.2.1/Xcode_10.2.1.xip).
 
 This file is several gigabytes in size, but only a single directory inside is needed:
 ```
-Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk
+Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk
 ```
 
 Unfortunately, the usual Linux tools (7zip, hpmount, loopback mount) are incapable of
@@ -152,20 +152,20 @@ opening this file. To create a tarball suitable for Gitian input, there are two 
 
 Using macOS, you can mount the DMG, and then create it with:
 ```shell
-hdiutil attach Xcode_7.3.1.dmg
-tar -C /Volumes/Xcode/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/ -czf MacOSX10.11.sdk.tar.gz MacOSX10.11.sdk
+hdiutil attach Xcode_10.2.1.xip
+tar -C /Volumes/Xcode/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/ -czf MacOSX10.14.sdk.tar.gz MacOSX10.14.sdk
 ```
 
 Alternatively, you can use 7zip and SleuthKit to extract the files one by one. The script
 [`extract-osx-sdk.sh`](./../contrib/macdeploy/extract-osx-sdk.sh) automates this. First
 ensure the DMG file is in the current directory, and then run the script. You may wish to
-delete the `intermediate 5.hfs` file and `MacOSX10.11.sdk` (the directory) when you've
+delete the `intermediate 5.hfs` file and `MacOSX10.14.sdk` (the directory) when you've
 confirmed the extraction succeeded.
 
 ```shell
 apt-get install p7zip-full sleuthkit
 contrib/macdeploy/extract-osx-sdk.sh
-rm -rf 5.hfs MacOSX10.11.sdk
+rm -rf 5.hfs MacOSX10.14.sdk
 ```
 
 The Gitian descriptors build 2 sets of files: Linux tools, then Apple binaries which are
