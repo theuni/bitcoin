@@ -201,8 +201,8 @@ $($(1)_postprocessed): | $($(1)_staged)
 $($(1)_cached): | $($(1)_dependencies) $($(1)_postprocessed)
 	$(AT)echo Caching $(1)...
 	$(AT)cd $$($(1)_staging_dir)/$(host_prefix); find . | sort | tar --no-recursion -czf $$($(1)_staging_dir)/$$(@F) -T -
+	-$(AT)rm -rf $$(@D)
 	$(AT)mkdir -p $$(@D)
-	$(AT)rm -rf $$(@D) && mkdir -p $$(@D)
 	$(AT)mv $$($(1)_staging_dir)/$$(@F) $$(@)
 	$(AT)rm -rf $($(1)_staging_dir)
 $($(1)_cached_checksum): $($(1)_cached)
