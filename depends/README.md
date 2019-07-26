@@ -75,6 +75,7 @@ The following can be set when running make: make FOO=bar
     RAPIDCHECK: build rapidcheck (experimental, requires cmake)
     HOST_ID_SALT: Optional salt to use when generating host package ids
     BUILD_ID_SALT: Optional salt to use when generating build package ids
+    NO_CLEANUP_PREVIOUS: Don't delete previous versions of built packages
 
 If some packages are not built, for example `make NO_WALLET=1`, the appropriate
 options will be passed to bitcoin's configure. In this case, `--disable-wallet`.

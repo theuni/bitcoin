@@ -32,6 +32,13 @@ else
 release_type=release
 endif
 
+ifneq ($(NO_CLEANUP_PREVIOUS),)
+cleanup_previous=false
+else
+cleanup_previous=true
+endif
+
+
 base_build_dir=$(WORK_PATH)/build
 base_staging_dir=$(WORK_PATH)/staging
 base_download_dir=$(WORK_PATH)/download

@@ -201,7 +201,12 @@ $($(1)_postprocessed): | $($(1)_staged)
 $($(1)_cached): | $($(1)_dependencies) $($(1)_postprocessed)
 	$(AT)echo Caching $(1)...
 	$(AT)cd $$($(1)_staging_dir)/$(host_prefix); find . | sort | tar --no-recursion -czf $$($(1)_staging_dir)/$$(@F) -T -
+ifeq ($(cleanup_previous),true)
+	$(AT)echo Removing previous versions of $(1).
 	-$(AT)rm -rf $$(@D)
+else
+	$(AT)echo Keeping previous versions of $(1).
+endif
 	$(AT)mkdir -p $$(@D)
 	$(AT)mv $$($(1)_staging_dir)/$$(@F) $$(@)
 	$(AT)rm -rf $($(1)_staging_dir)
