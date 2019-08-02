@@ -38,10 +38,6 @@ define $(package)_extract_cmds
   INSTALLPREFIX=$($(package)_extract_dir)/installed_libtapi ./libtapi/install.sh && \
   mkdir -p toolchain/bin toolchain/lib/clang/6.0.1/include && \
   tar --no-same-owner --strip-components=1 -C toolchain -xf $($(package)_source_dir)/$($(package)_clang_file_name) && \
-  rm -f toolchain/lib/libc++abi.so* && \
-  echo "#!/bin/sh" > toolchain/bin/$(host)-dsymutil && \
-  echo "exit 0" >> toolchain/bin/$(host)-dsymutil && \
-  chmod +x toolchain/bin/$(host)-dsymutil && \
   tar --no-same-owner --strip-components=1 -xf $($(package)_source)
 endef
 
