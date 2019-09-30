@@ -37,6 +37,7 @@ LIBSECP256K1=secp256k1/libsecp256k1.la
 
 if ENABLE_RUSTY
 LIBBITCOIN_RUSTY = rusty/librusty.a
+LIBBITCOIN_RUSTY_BRIDGE = libbitcoin_rustybridge.a
 endif
 if ENABLE_ZMQ
 LIBBITCOIN_ZMQ=libbitcoin_zmq.a
@@ -77,6 +78,7 @@ EXTRA_LIBRARIES += \
   $(LIBBITCOIN_CLI) \
   $(LIBBITCOIN_WALLET) \
   $(LIBBITCOIN_WALLET_TOOL) \
+  $(LIBBITCOIN_RUSTY_BRIDGE) \
   $(LIBBITCOIN_ZMQ)
 
 lib_LTLIBRARIES = $(LIBBITCOINCONSENSUS)
@@ -258,6 +260,11 @@ obj/build.h: FORCE
 	  "$(abs_top_srcdir)"
 libbitcoin_util_a-clientversion.$(OBJEXT): obj/build.h
 
+# libbitcoin_rustybridge should not need headers other than Core's internal ones.
+libbitcoin_rustybridge_a_CPPFLAGS = $(AM_CPPFLAGS) -I$(builddir) $(LEVELDB_CPPFLAGS)
+libbitcoin_rustybridge_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+libbitcoin_rustybridge_a_SOURCES =
+libbitcoin_rustybridge_a_SOURCES += rusty/src/cpp_bridge.cpp
 # server: shared between bitcoind and bitcoin-qt
 # Contains code accessing mempool and chain state that is meant to be separated
 # from wallet and gui code (see node/README.md). Shared code should go in
@@ -670,11 +677,13 @@ CTAES_DIST += crypto/ctaes/test.c
 
 RUSTY_DIST =
 RUSTY_DIST += $(LIBBITCOIN_RUSTY_SRCS)
+RUSTY_DIST += rusty/src/bridge.rs
 
 BITCOIN_CORE_H += rusty/src/rust_bridge.h
 
 if ENABLE_RUSTY
 LIBBITCOIN_RUST_LIBS += $(LIBBITCOIN_RUSTY)
+LIBBITCOIN_RUST_LIBS += $(LIBBITCOIN_RUSTY_BRIDGE)
 
 $(LIBBITCOIN_RUSTY_SRCS): $(RUSTY_DIST)
 	touch $@
@@ -684,7 +693,8 @@ $(RUSTY_CHECK): $(LIBBITCOIN_RUSTY_SRCS)
 	$(RUSTC) --crate-name rusty_test $^ --test -C debuginfo=2 -C overflow-checks=on --out-dir $(@D) && $(@D)/rusty_test
 
 CLEANFILES += $(LIBBITCOIN_RUSTY)
-
+else
+RUSTY_DIST += rusty/src/cpp_bridge.cpp
 endif
 
 CLEANFILES += $(EXTRA_LIBRARIES)
