@@ -37,6 +37,7 @@ LIBSECP256K1=secp256k1/libsecp256k1.la
 
 if ENABLE_RUSTY
 LIBBITCOIN_RUSTY = rusty/out/release/librusty.a
+LIBBITCOIN_RUSTY_BRIDGE = libbitcoin_rustybridge.a
 endif
 if ENABLE_ZMQ
 LIBBITCOIN_ZMQ=libbitcoin_zmq.a
@@ -77,6 +78,7 @@ EXTRA_LIBRARIES += \
   $(LIBBITCOIN_CLI) \
   $(LIBBITCOIN_WALLET) \
   $(LIBBITCOIN_WALLET_TOOL) \
+  $(LIBBITCOIN_RUSTY_BRIDGE) \
   $(LIBBITCOIN_ZMQ)
 
 lib_LTLIBRARIES = $(LIBBITCOINCONSENSUS)
@@ -256,6 +258,11 @@ obj/build.h: FORCE
 	  "$(abs_top_srcdir)"
 libbitcoin_util_a-clientversion.$(OBJEXT): obj/build.h
 
+# libbitcoin_rustybridge should not need headers other than Core's internal ones.
+libbitcoin_rustybridge_a_CPPFLAGS = $(AM_CPPFLAGS) -I$(builddir) $(LEVELDB_CPPFLAGS)
+libbitcoin_rustybridge_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+libbitcoin_rustybridge_a_SOURCES =
+libbitcoin_rustybridge_a_SOURCES += rusty/src/cpp_bridge.cpp
 # server: shared between bitcoind and bitcoin-qt
 # Contains code accessing mempool and chain state that is meant to be separated
 # from wallet and gui code (see node/README.md). Shared code should go in
@@ -658,7 +665,7 @@ BITCOIN_CORE_H += rusty/src/rust_bridge.h
 
 if ENABLE_RUSTY
 LIBBITCOIN_RUST_LIBS += $(LIBBITCOIN_RUSTY)
-libbitcoin_server_a_SOURCES += rusty/src/cpp_bridge.cpp
+LIBBITCOIN_RUST_LIBS += $(LIBBITCOIN_RUSTY_BRIDGE)
 
 # TODO: Teach Cargo how to accept a target filename and upstream
 # See https://github.com/rust-lang/rust/issues/43749
