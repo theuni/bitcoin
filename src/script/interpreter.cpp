@@ -1254,9 +1254,22 @@ PrecomputedTransactionData::PrecomputedTransactionData(const T& txTo)
 {
     // Cache is calculated only for transactions with witness
     if (txTo.HasWitness()) {
+        m_outputs_hash = GetOutputsSHA256(txTo);
+        m_sequences_hash = GetSequenceSHA256(txTo);
+        bool skip_scriptSigs = std::find_if(txTo.vin.begin(), txTo.vin.end(),
+                [](const CTxIn& c) { return c.scriptSig != CScript(); }) == txTo.vin.end();
+        if (skip_scriptSigs) {
+            // 0 hash used to signal if we should skip scriptSigs
+            // when re-computing
+            m_scriptSigs_hash = uint256{};
+            m_standard_template_hash = GetStandardTemplateHashEmptyScript(txTo, m_outputs_hash, m_sequences_hash, 0);
+        } else {
+            m_scriptSigs_hash = GetScriptSigsSHA256(txTo);
+            m_standard_template_hash = GetStandardTemplateHashWithScript(txTo, m_outputs_hash, m_sequences_hash, m_scriptSigs_hash, 0);
+        }
+        hashOutputs = m_outputs_hash;
+        hashSequence = m_sequences_hash;
         hashPrevouts = GetPrevoutSHA256(txTo);
-        hashSequence = GetSequenceSHA256(txTo);
-        hashOutputs = GetOutputsSHA256(txTo);
         SHA256Uint256(hashPrevouts);
         SHA256Uint256(hashSequence);
         SHA256Uint256(hashOutputs);
@@ -1499,6 +1512,21 @@ bool GenericTransactionSignatureChecker<T>::CheckStandardTemplateHash(const std:
 {
     // Should already be checked before calling...
     assert(hash.size() == 32);
+    if (txdata && txdata->ready) {
+        // if nIn == 0, then we've already cached this and can directly check
+        if (nIn == 0) {
+            return std::equal(txdata->m_standard_template_hash.begin(), txdata->m_standard_template_hash.end(), hash.data());
+        } else {
+            // otherwise we still have *most* of the hash cached,
+            // so just re-compute the correct one and compare
+            assert(txTo != nullptr);
+            uint256 hash_tmpl = txdata->m_scriptSigs_hash.IsNull() ?
+                GetStandardTemplateHashEmptyScript(*txTo, txdata->m_outputs_hash, txdata->m_sequences_hash, nIn) :
+                GetStandardTemplateHashWithScript(*txTo, txdata->m_outputs_hash, txdata->m_sequences_hash,
+                        txdata->m_scriptSigs_hash, nIn);
+            return std::equal(hash_tmpl.begin(), hash_tmpl.end(), hash.data());
+        }
+    }
     assert(txTo != nullptr);
     uint256 hash_tmpl = GetStandardTemplateHash(*txTo, nIn);
     return std::equal(hash_tmpl.begin(), hash_tmpl.end(), hash.data());
