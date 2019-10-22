@@ -5,11 +5,11 @@ $(package)_file_name=$($(package)_version).tar.gz
 $(package)_sha256_hash=3e35907bf376269a844df08e03cbb43e345c88125374f2228e03724b5f9a2a04
 $(package)_build_subdir=cctools
 
-$(package)_clang_version=6.0.1
+$(package)_clang_version=9.0.0
 $(package)_clang_download_path=https://releases.llvm.org/$($(package)_clang_version)
-$(package)_clang_download_file=clang+llvm-$($(package)_clang_version)-x86_64-linux-gnu-ubuntu-16.04.tar.xz
-$(package)_clang_file_name=clang-llvm-$($(package)_clang_version)-x86_64-linux-gnu-ubuntu-16.04.tar.xz
-$(package)_clang_sha256_hash=7ea204ecd78c39154d72dfc0d4a79f7cce1b2264da2551bb2eef10e266d54d91
+$(package)_clang_download_file=clang+llvm-$($(package)_clang_version)-x86_64-linux-gnu-ubuntu-14.04.tar.xz
+$(package)_clang_file_name=clang-llvm-$($(package)_clang_version)-x86_64-linux-gnu-ubuntu-14.04.tar.xz
+$(package)_clang_sha256_hash=bea706c8f6992497d08488f44e77b8f0f87f5b275295b974aa8b194efba18cb8
 
 $(package)_libtapi_version=3efb201881e7a76a21e0554906cf306432539cef
 $(package)_libtapi_download_path=https://github.com/tpoechtrager/apple-libtapi/archive
@@ -34,9 +34,8 @@ define $(package)_extract_cmds
   $(build_SHA256SUM) -c $($(package)_extract_dir)/.$($(package)_file_name).hash && \
   mkdir -p libtapi && \
   tar --no-same-owner --strip-components=1 -C libtapi -xf $($(package)_source_dir)/$($(package)_libtapi_file_name) && \
-  mkdir -p toolchain/bin toolchain/lib/clang/6.0.1/include && \
+  mkdir -p toolchain/bin toolchain/lib/clang/$($(package)_clang_version)/include && \
   tar --no-same-owner --strip-components=1 -C toolchain -xf $($(package)_source_dir)/$($(package)_clang_file_name) && \
-  rm -f toolchain/lib/libc++abi.so* && \
   tar --no-same-owner --strip-components=1 -xf $($(package)_source)
 endef
 
@@ -72,8 +71,10 @@ define $(package)_stage_cmds
   cp bin/clang $($(package)_staging_prefix_dir)/bin/ &&\
   cp -P bin/clang++ $($(package)_staging_prefix_dir)/bin/ &&\
   cp lib/libLTO.so $($(package)_staging_prefix_dir)/lib/ && \
+  cp lib/libc++.so* $($(package)_staging_prefix_dir)/lib/ && \
+  cp lib/libc++abi.so* $($(package)_staging_prefix_dir)/lib/ && \
   cp -rf lib/clang/$($(package)_clang_version)/include/* $($(package)_staging_prefix_dir)/lib/clang/$($(package)_clang_version)/include/ && \
-  cp bin/llvm-dsymutil $($(package)_staging_prefix_dir)/bin/$(host)-dsymutil && \
+  cp bin/dsymutil $($(package)_staging_prefix_dir)/bin/$(host)-dsymutil && \
   if `test -d include/c++/`; then cp -rf include/c++/ $($(package)_staging_prefix_dir)/include/; fi && \
   if `test -d lib/c++/`; then cp -rf lib/c++/ $($(package)_staging_prefix_dir)/lib/; fi
 endef
