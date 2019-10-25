@@ -40,7 +40,8 @@ define $(package)_extract_cmds
 endef
 
 define $(package)_set_vars
-  $(package)_config_opts=--target=$(host) --disable-lto-support --with-libtapi=$($(package)_extract_dir)
+  $(package)_config_opts=--target=$(host) --with-libtapi=$($(package)_extract_dir)
+  $(package)_config_opts+=--with-llvm-config=$($(package)_extract_dir)/toolchain/bin/llvm-config
   $(package)_ldflags+=-Wl,-rpath=\\$$$$$$$$\$$$$$$$$ORIGIN/../lib
   $(package)_cc=$($(package)_extract_dir)/toolchain/bin/clang
   $(package)_cxx=$($(package)_extract_dir)/toolchain/bin/clang++
@@ -70,7 +71,7 @@ define $(package)_stage_cmds
   mkdir -p $($(package)_staging_prefix_dir)/bin $($(package)_staging_prefix_dir)/include && \
   cp bin/clang $($(package)_staging_prefix_dir)/bin/ &&\
   cp -P bin/clang++ $($(package)_staging_prefix_dir)/bin/ &&\
-  cp lib/libLTO.so $($(package)_staging_prefix_dir)/lib/ && \
+  cp lib/libLTO.so* $($(package)_staging_prefix_dir)/lib/ && \
   cp lib/libc++.so* $($(package)_staging_prefix_dir)/lib/ && \
   cp lib/libc++abi.so* $($(package)_staging_prefix_dir)/lib/ && \
   cp -rf lib/clang/$($(package)_clang_version)/include/* $($(package)_staging_prefix_dir)/lib/clang/$($(package)_clang_version)/include/ && \
