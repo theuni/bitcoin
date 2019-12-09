@@ -1,0 +1,12 @@
+diff -ruN cctools.old/ld64/src/ld/HeaderAndLoadCommands.hpp cctools/ld64/src/ld/HeaderAndLoadCommands.hpp
+--- cctools.old/ld64/src/ld/HeaderAndLoadCommands.hpp	2019-12-09 09:55:15.571431615 -0500
++++ cctools/ld64/src/ld/HeaderAndLoadCommands.hpp	2019-12-09 10:44:59.663686667 -0500
+@@ -675,6 +675,8 @@
+ 					bits |= MH_FORCE_FLAT;
+ 					break;
+ 			}
++			if ( _options.bindAtLoad() )
++				bits |= MH_BINDATLOAD;
+ 			if ( _state.hasWeakExternalSymbols || _writer.overridesWeakExternalSymbols )
+ 				bits |= MH_WEAK_DEFINES;
+ 			if ( _writer.usesWeakExternalSymbols || _state.hasWeakExternalSymbols )
