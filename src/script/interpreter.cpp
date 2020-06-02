@@ -460,8 +460,7 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, std::vector<Ext
                 case OP_NOP1: case OP_NOP4: case OP_NOP5:
                 case OP_NOP6: case OP_NOP7: case OP_NOP8: case OP_NOP9: case OP_NOP10:
                 {
-                    if (flags & SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_NOPS)
-                        return set_error(serror, SCRIPT_ERR_DISCOURAGE_UPGRADABLE_NOPS);
+                    extra.push_back({stack, opcode});
                 }
                 break;
 
@@ -1556,6 +1555,15 @@ static bool VerifyWitnessProgram(const CScriptWitness& witness, int witversion, 
         return false;
     }
 
+    for (const auto& item : extra) {
+        switch (item.m_opcode) {
+            default: {
+                if (flags & SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_NOPS)
+                    return set_error(serror, SCRIPT_ERR_DISCOURAGE_UPGRADABLE_NOPS);
+            }
+        }
+    }
+
     // Scripts inside witness implicitly require cleanstack behaviour
     if (stack.size() != 1)
         return set_error(serror, SCRIPT_ERR_CLEANSTACK);
@@ -1595,7 +1603,16 @@ bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const C
     if (CastToBool(stack.back()) == false)
         return set_error(serror, SCRIPT_ERR_EVAL_FALSE);
 
+    for (const auto& item : extra) {
+        switch (item.m_opcode) {
+            default: {
+                if (flags & SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_NOPS)
+                   return set_error(serror, SCRIPT_ERR_DISCOURAGE_UPGRADABLE_NOPS);
+            }
+        }
+    }
     extra.clear();
+
     // Bare witness programs
     int witnessversion;
     std::vector<unsigned char> witnessprogram;
@@ -1637,6 +1654,14 @@ bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const C
         if (!EvalScript(stack, extra, pubKey2, flags, checker, SigVersion::BASE, serror))
             // serror is set
             return false;
+        for (const auto& item : extra) {
+            switch (item.m_opcode) {
+                default: {
+                    if (flags & SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_NOPS)
+                        return set_error(serror, SCRIPT_ERR_DISCOURAGE_UPGRADABLE_NOPS);
+                }
+            }
+        }
         if (stack.empty())
             return set_error(serror, SCRIPT_ERR_EVAL_FALSE);
         if (!CastToBool(stack.back()))
