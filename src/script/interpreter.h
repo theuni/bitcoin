@@ -118,6 +118,10 @@ enum
     // support OP_CHECKTEMPLATEVERIFY for standard template
     //
     SCRIPT_VERIFY_STANDARD_TEMPLATE = (1U << 17),
+
+    // Making non-32byte template arguments non-standard
+    //
+    SCRIPT_VERIFY_DISCOURAGE_NONSTANDARD_TEMPLATE = (1U << 18),
 };
 
 bool CheckSignatureEncoding(const std::vector<unsigned char> &vchSig, unsigned int flags, ScriptError* serror);

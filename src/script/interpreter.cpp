@@ -1556,7 +1556,30 @@ static bool VerifyWitnessProgram(const CScriptWitness& witness, int witversion, 
     }
 
     for (const auto& item : extra) {
+        // EvalScript returns any unevaluated opcodes and a snapshot of the stack at that point.
+        // This means that the current interpreter never has to learn how to evaluate new opcodes.
+        // As a bonus, the new checks can be evaluated lazily or in parallel.
         switch (item.m_opcode) {
+            case OP_CHECKTEMPLATEVERIFY: {
+                if (flags & SCRIPT_VERIFY_STANDARD_TEMPLATE) {
+                    if (stack.size() < 1)
+                        return set_error(serror, SCRIPT_ERR_INVALID_CTV_STACK_OPERATION);
+
+                    // CTV evaluation has already begun now, as at this point a
+                    // rule has been added requiring the existence of at least
+                    // one stack element. Treating it as OP_NOP4 is no longer an option,
+                    // so skipping evaluation of a non-32byte stack element is a CTV decision
+                    // incompatible with other potential non-CTV OP_NOP4 uses.
+                    if (stack.back().size() == 32) {
+                        if (!checker.CheckStandardTemplateHash(stack.back())) {
+                            return set_error(serror, SCRIPT_ERR_TEMPLATE_MISMATCH);
+                        }
+                    } else if (flags & SCRIPT_VERIFY_DISCOURAGE_NONSTANDARD_TEMPLATE) {
+                        return set_error(serror, SCRIPT_ERR_DISCOURAGE_NONSTANDARD_TEMPLATE);
+                    }
+                }
+            }
+            break;
             default: {
                 if (flags & SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_NOPS)
                     return set_error(serror, SCRIPT_ERR_DISCOURAGE_UPGRADABLE_NOPS);
@@ -1604,10 +1627,33 @@ bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const C
         return set_error(serror, SCRIPT_ERR_EVAL_FALSE);
 
     for (const auto& item : extra) {
+        // EvalScript returns any unevaluated opcodes and a snapshot of the stack at that point.
+        // This means that the current interpreter never has to learn how to evaluate new opcodes.
+        // As a bonus, the new checks can be evaluated lazily or in parallel.
         switch (item.m_opcode) {
+            case OP_CHECKTEMPLATEVERIFY: {
+                if (flags & SCRIPT_VERIFY_STANDARD_TEMPLATE) {
+                    if (stack.size() < 1)
+                        return set_error(serror, SCRIPT_ERR_INVALID_CTV_STACK_OPERATION);
+
+                    // CTV evaluation has already begun now, as at this point a
+                    // rule has been added requiring the existence of at least
+                    // one stack element. Treating it as OP_NOP4 is no longer an option,
+                    // so skipping evaluation of a non-32byte stack element is a CTV decision
+                    // incompatible with other potential non-CTV OP_NOP4 uses.
+                    if (stack.back().size() == 32) {
+                        if (!checker.CheckStandardTemplateHash(stack.back())) {
+                            return set_error(serror, SCRIPT_ERR_TEMPLATE_MISMATCH);
+                        }
+                    } else if (flags & SCRIPT_VERIFY_DISCOURAGE_NONSTANDARD_TEMPLATE) {
+                        return set_error(serror, SCRIPT_ERR_DISCOURAGE_NONSTANDARD_TEMPLATE);
+                    }
+                }
+            }
+            break;
             default: {
                 if (flags & SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_NOPS)
-                   return set_error(serror, SCRIPT_ERR_DISCOURAGE_UPGRADABLE_NOPS);
+                    return set_error(serror, SCRIPT_ERR_DISCOURAGE_UPGRADABLE_NOPS);
             }
         }
     }
@@ -1656,6 +1702,29 @@ bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const C
             return false;
         for (const auto& item : extra) {
             switch (item.m_opcode) {
+                // EvalScript returns any unevaluated opcodes and a snapshot of the stack at that point.
+                // This means that the current interpreter never has to learn how to evaluate new opcodes.
+                // As a bonus, the new checks can be evaluated lazily or in parallel.
+                case OP_CHECKTEMPLATEVERIFY: {
+                    if (flags & SCRIPT_VERIFY_STANDARD_TEMPLATE) {
+                        if (stack.size() < 1)
+                            return set_error(serror, SCRIPT_ERR_INVALID_CTV_STACK_OPERATION);
+
+                        // CTV evaluation has already begun now, as at this point a
+                        // rule has been added requiring the existence of at least
+                        // one stack element. Treating it as OP_NOP4 is no longer an option,
+                        // so skipping evaluation of a non-32byte stack element is a CTV decision
+                        // incompatible with other potential non-CTV OP_NOP4 uses.
+                        if (stack.back().size() == 32) {
+                            if (!checker.CheckStandardTemplateHash(stack.back())) {
+                                return set_error(serror, SCRIPT_ERR_TEMPLATE_MISMATCH);
+                            }
+                        } else if (flags & SCRIPT_VERIFY_DISCOURAGE_NONSTANDARD_TEMPLATE) {
+                            return set_error(serror, SCRIPT_ERR_DISCOURAGE_NONSTANDARD_TEMPLATE);
+                        }
+                    }
+                }
+                break;
                 default: {
                     if (flags & SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_NOPS)
                         return set_error(serror, SCRIPT_ERR_DISCOURAGE_UPGRADABLE_NOPS);
