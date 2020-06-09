@@ -151,14 +151,9 @@ size_t static WitnessSigOps(int witversion, const std::vector<unsigned char>& wi
     return 0;
 }
 
-size_t static CountWitnessSigOps(const CScript& scriptSig, const CScript& scriptPubKey, const CScriptWitness* witness, unsigned int flags)
+size_t static CountWitnessSigOps(const CScript& scriptSig, const CScript& scriptPubKey, const CScriptWitness* witness)
 {
     static const CScriptWitness witnessEmpty;
-
-    if ((flags & SCRIPT_VERIFY_WITNESS) == 0) {
-        return 0;
-    }
-    assert((flags & SCRIPT_VERIFY_P2SH) != 0);
 
     int witnessversion;
     std::vector<unsigned char> witnessprogram;
@@ -198,7 +193,10 @@ int64_t GetTransactionSigOpCost(const CTransaction& tx, const CCoinsViewCache& i
         const Coin& coin = inputs.AccessCoin(tx.vin[i].prevout);
         assert(!coin.IsSpent());
         const CTxOut &prevout = coin.out;
-        nSigOps += CountWitnessSigOps(tx.vin[i].scriptSig, prevout.scriptPubKey, &tx.vin[i].scriptWitness, flags);
+        if ((flags & SCRIPT_VERIFY_WITNESS) != 0) {
+            assert((flags & SCRIPT_VERIFY_P2SH) != 0);
+            nSigOps += CountWitnessSigOps(tx.vin[i].scriptSig, prevout.scriptPubKey, &tx.vin[i].scriptWitness);
+        }
     }
     return nSigOps;
 }
