@@ -1683,17 +1683,6 @@ bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const C
 /*
     Temporary wrapper function
 */
-bool CheckSignatureEncoding(const std::vector<unsigned char> &vchSig, unsigned int flags, ScriptError* serror) {
-    ConsensusFlags consensus_flags;
-    PolicyFlags policy_flags;
-
-    std::tie(consensus_flags, policy_flags) = SplitConsensusAndPolicyFlags(flags);
-    return CheckSignatureEncoding(vchSig, consensus_flags, policy_flags, serror);
-}
-
-/*
-    Temporary wrapper function
-*/
 bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const CScriptWitness* witness, unsigned int flags, const BaseSignatureChecker& checker, ScriptError* serror)
 {
     ConsensusFlags consensus_flags;

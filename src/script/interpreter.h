@@ -27,7 +27,7 @@ enum
     SIGHASH_ANYONECANPAY = 0x80,
 };
 
-bool CheckSignatureEncoding(const std::vector<unsigned char> &vchSig, unsigned int flags, ScriptError* serror);
+bool CheckSignatureEncoding(const std::vector<unsigned char> &vchSig, ConsensusFlags consensus_flags, PolicyFlags policy_flags, ScriptError* serror);
 
 struct PrecomputedTransactionData
 {
