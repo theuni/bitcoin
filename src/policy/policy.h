@@ -77,6 +77,28 @@ static constexpr unsigned int STANDARD_NOT_MANDATORY_VERIFY_FLAGS = STANDARD_SCR
 static constexpr unsigned int STANDARD_LOCKTIME_VERIFY_FLAGS = LOCKTIME_VERIFY_SEQUENCE |
                                                                LOCKTIME_MEDIAN_TIME_PAST;
 
+
+static constexpr ConsensusFlags STANDARD_SCRIPT_CONSENSUS_VERIFY_FLAGS =    MANDATORY_SCRIPT_CONSENSUS_VERIFY_FLAGS |
+                                                                            ConsensusFlags::SCRIPT_VERIFY_WITNESS |
+                                                                            ConsensusFlags::SCRIPT_VERIFY_DERSIG |
+                                                                            ConsensusFlags::SCRIPT_VERIFY_CHECKLOCKTIMEVERIFY |
+                                                                            ConsensusFlags::SCRIPT_VERIFY_CHECKSEQUENCEVERIFY |
+                                                                            ConsensusFlags::SCRIPT_VERIFY_NULLDUMMY;
+
+static constexpr PolicyFlags STANDARD_SCRIPT_POLICY_VERIFY_FLAGS =  PolicyFlags::SCRIPT_VERIFY_STRICTENC |
+                                                                    PolicyFlags::SCRIPT_VERIFY_MINIMALDATA |
+                                                                    PolicyFlags::SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_NOPS |
+                                                                    PolicyFlags::SCRIPT_VERIFY_CLEANSTACK |
+                                                                    PolicyFlags::SCRIPT_VERIFY_MINIMALIF |
+                                                                    PolicyFlags::SCRIPT_VERIFY_NULLFAIL |
+                                                                    PolicyFlags::SCRIPT_VERIFY_LOW_S |
+                                                                    PolicyFlags::SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM |
+                                                                    PolicyFlags::SCRIPT_VERIFY_WITNESS_PUBKEYTYPE |
+                                                                    PolicyFlags::SCRIPT_VERIFY_CONST_SCRIPTCODE;
+
+
+static constexpr ConsensusFlags STANDARD_NOT_MANDATORY_CONSENSUS_VERIFY_FLAGS = without_flag(STANDARD_SCRIPT_CONSENSUS_VERIFY_FLAGS, MANDATORY_SCRIPT_CONSENSUS_VERIFY_FLAGS);
+
 CAmount GetDustThreshold(const CTxOut& txout, const CFeeRate& dustRelayFee);
 
 bool IsDust(const CTxOut& txout, const CFeeRate& dustRelayFee);

@@ -52,6 +52,7 @@ extern unsigned nMaxDatacarrierBytes;
  * details.
  */
 static const unsigned int MANDATORY_SCRIPT_VERIFY_FLAGS = SCRIPT_VERIFY_P2SH;
+static const ConsensusFlags MANDATORY_SCRIPT_CONSENSUS_VERIFY_FLAGS = ConsensusFlags::SCRIPT_VERIFY_P2SH;
 
 enum txnouttype
 {
