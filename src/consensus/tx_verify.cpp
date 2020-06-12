@@ -177,14 +177,14 @@ size_t static CountWitnessSigOps(const CScript& scriptSig, const CScript& script
     return 0;
 }
 
-int64_t GetTransactionSigOpCost(const CTransaction& tx, const CCoinsViewCache& inputs, int flags)
+int64_t GetTransactionSigOpCost(const CTransaction& tx, const CCoinsViewCache& inputs, ConsensusFlags consensus_flags)
 {
     int64_t nSigOps = GetLegacySigOpCount(tx) * WITNESS_SCALE_FACTOR;
 
     if (tx.IsCoinBase())
         return nSigOps;
 
-    if (flags & SCRIPT_VERIFY_P2SH) {
+    if (is_set(consensus_flags, ConsensusFlags::SCRIPT_VERIFY_P2SH)) {
         nSigOps += GetP2SHSigOpCount(tx, inputs) * WITNESS_SCALE_FACTOR;
     }
 
@@ -193,12 +193,23 @@ int64_t GetTransactionSigOpCost(const CTransaction& tx, const CCoinsViewCache& i
         const Coin& coin = inputs.AccessCoin(tx.vin[i].prevout);
         assert(!coin.IsSpent());
         const CTxOut &prevout = coin.out;
-        if ((flags & SCRIPT_VERIFY_WITNESS) != 0) {
-            assert((flags & SCRIPT_VERIFY_P2SH) != 0);
+        if (is_set(consensus_flags, ConsensusFlags::SCRIPT_VERIFY_WITNESS)) {
+            assert(is_set(consensus_flags, ConsensusFlags::SCRIPT_VERIFY_P2SH));
             nSigOps += CountWitnessSigOps(tx.vin[i].scriptSig, prevout.scriptPubKey, &tx.vin[i].scriptWitness);
         }
     }
     return nSigOps;
+}
+
+/*
+    Temporary wrapper function
+*/
+int64_t GetTransactionSigOpCost(const CTransaction& tx, const CCoinsViewCache& inputs, int flags)
+{
+    ConsensusFlags consensus_flags;
+    //policy flags are unused.
+    std::tie(consensus_flags, std::ignore) = SplitConsensusAndPolicyFlags(flags);
+    return GetTransactionSigOpCost(tx, inputs, consensus_flags);
 }
 
 bool Consensus::CheckTxInputs(const CTransaction& tx, TxValidationState& state, const CCoinsViewCache& inputs, int nSpendHeight, CAmount& txfee)
