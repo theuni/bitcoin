@@ -1241,7 +1241,7 @@ struct NodeEvictionCandidate
     int64_t nLastBlockTime;
     int64_t nLastTXTime;
     bool fRelevantServices;
-    bool fRelayTxes;
+    bool m_relay_txs;
     bool fBloomFilter;
     uint64_t nKeyedNetGroup;
     bool prefer_evict;

@@ -494,7 +494,7 @@ BOOST_AUTO_TEST_CASE(peer_eviction_test)
                         number_of_nodes, [number_of_nodes](NodeEvictionCandidate& candidate) {
                             candidate.nLastBlockTime = number_of_nodes - candidate.id;
                             if (candidate.id <= 7) {
-                                candidate.fRelayTxes = false;
+                                candidate.m_relay_txs = false;
                                 candidate.fRelevantServices = true;
                             }
                         },
@@ -513,7 +513,7 @@ BOOST_AUTO_TEST_CASE(peer_eviction_test)
                         number_of_nodes, [number_of_nodes](NodeEvictionCandidate& candidate) {
                             candidate.nLastBlockTime = number_of_nodes - candidate.id;
                             if (candidate.id <= 7) {
-                                candidate.fRelayTxes = false;
+                                candidate.m_relay_txs = false;
                                 candidate.fRelevantServices = true;
                             }
                         },
