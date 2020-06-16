@@ -1210,7 +1210,7 @@ void RPCConsole::updateDetailWidget()
         }
         ui->peerHeight->setText(QString::number(stats->nodeStateStats.m_starting_height));
         ui->peerPingWait->setText(GUIUtil::formatPingTime(stats->nodeStateStats.m_ping_wait));
-        ui->peerRelayTxes->setText(stats->nodeStateStats.fRelayTxes ? ts.yes : ts.no);
+        ui->peerRelayTxes->setText(stats->nodeStateStats.m_relay_txs ? ts.yes : ts.no);
     }
 
     ui->peersTabRightPanel->show();
