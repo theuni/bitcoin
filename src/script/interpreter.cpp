@@ -1197,9 +1197,6 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
 
 bool EvalConsensusScript(std::vector<std::vector<unsigned char> >& stack, const CScript& script, ConsensusFlags consensus_flags, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptError* serror)
 {
-    // Temporary
-    PolicyFlags policy_flags = PolicyFlags::SCRIPT_VERIFY_NONE;
-
     static const CScriptNum bnZero(0);
     static const CScriptNum bnOne(1);
     // static const CScriptNum bnFalse(0);
@@ -1219,7 +1216,7 @@ bool EvalConsensusScript(std::vector<std::vector<unsigned char> >& stack, const 
     if (script.size() > MAX_SCRIPT_SIZE)
         return set_error(serror, SCRIPT_ERR_SCRIPT_SIZE);
     int nOpCount = 0;
-    bool fRequireMinimal = is_set(policy_flags, PolicyFlags::SCRIPT_VERIFY_MINIMALDATA);
+    bool fRequireMinimal = false;
 
     try
     {
@@ -1255,10 +1252,6 @@ bool EvalConsensusScript(std::vector<std::vector<unsigned char> >& stack, const 
                 opcode == OP_LSHIFT ||
                 opcode == OP_RSHIFT)
                 return set_error(serror, SCRIPT_ERR_DISABLED_OPCODE); // Disabled opcodes (CVE-2010-5137).
-
-            // With SCRIPT_VERIFY_CONST_SCRIPTCODE, OP_CODESEPARATOR in non-segwit script is rejected even in an unexecuted branch
-            if (opcode == OP_CODESEPARATOR && sigversion == SigVersion::BASE && is_set(policy_flags, PolicyFlags::SCRIPT_VERIFY_CONST_SCRIPTCODE))
-                return set_error(serror, SCRIPT_ERR_OP_CODESEPARATOR);
 
             if (fExec && 0 <= opcode && opcode <= OP_PUSHDATA4) {
                 if (fRequireMinimal && !CheckMinimalPush(vchPushValue, opcode)) {
@@ -1380,8 +1373,6 @@ bool EvalConsensusScript(std::vector<std::vector<unsigned char> >& stack, const 
                 case OP_NOP1: case OP_NOP4: case OP_NOP5:
                 case OP_NOP6: case OP_NOP7: case OP_NOP8: case OP_NOP9: case OP_NOP10:
                 {
-                    if (is_set(policy_flags, PolicyFlags::SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_NOPS))
-                        return set_error(serror, SCRIPT_ERR_DISCOURAGE_UPGRADABLE_NOPS);
                 }
                 break;
 
@@ -1395,12 +1386,6 @@ bool EvalConsensusScript(std::vector<std::vector<unsigned char> >& stack, const 
                         if (stack.size() < 1)
                             return set_error(serror, SCRIPT_ERR_UNBALANCED_CONDITIONAL);
                         valtype& vch = stacktop(-1);
-                        if (sigversion == SigVersion::WITNESS_V0 && is_set(policy_flags, PolicyFlags::SCRIPT_VERIFY_MINIMALIF)) {
-                            if (vch.size() > 1)
-                                return set_error(serror, SCRIPT_ERR_MINIMALIF);
-                            if (vch.size() == 1 && vch[0] != 1)
-                                return set_error(serror, SCRIPT_ERR_MINIMALIF);
-                        }
                         fValue = CastToBool(vch);
                         if (opcode == OP_NOTIF)
                             fValue = !fValue;
@@ -1842,7 +1827,7 @@ bool EvalConsensusScript(std::vector<std::vector<unsigned char> >& stack, const 
                     valtype& vchPubKey = stacktop(-1);
 
                     bool fSuccess = true;
-                    if (!EvalChecksig(vchSig, vchPubKey, pbegincodehash, pend, consensus_flags, policy_flags, checker, sigversion, serror, fSuccess)) return false;
+                    if (!EvalConsensusChecksig(vchSig, vchPubKey, pbegincodehash, pend, consensus_flags, checker, sigversion, serror, fSuccess)) return false;
                     popstack(stack);
                     popstack(stack);
                     stack.push_back(fSuccess ? vchTrue : vchFalse);
@@ -1895,9 +1880,7 @@ bool EvalConsensusScript(std::vector<std::vector<unsigned char> >& stack, const 
                     {
                         valtype& vchSig = stacktop(-isig-k);
                         if (sigversion == SigVersion::BASE) {
-                            int found = FindAndDelete(scriptCode, CScript() << vchSig);
-                            if (found > 0 && is_set(policy_flags, PolicyFlags::SCRIPT_VERIFY_CONST_SCRIPTCODE))
-                                return set_error(serror, SCRIPT_ERR_SIG_FINDANDDELETE);
+                            FindAndDelete(scriptCode, CScript() << vchSig);
                         }
                     }
 
@@ -1910,7 +1893,7 @@ bool EvalConsensusScript(std::vector<std::vector<unsigned char> >& stack, const 
                         // Note how this makes the exact order of pubkey/signature evaluation
                         // distinguishable by CHECKMULTISIG NOT if the STRICTENC flag is set.
                         // See the script_(in)valid tests for details.
-                        if (!CheckSignatureEncoding(vchSig, consensus_flags, policy_flags, serror) || !CheckPubKeyEncoding(vchPubKey, policy_flags, sigversion, serror)) {
+                        if (!CheckConsensusSignatureEncoding(vchSig, consensus_flags, serror)) {
                             // serror is set
                             return false;
                         }
@@ -1935,8 +1918,6 @@ bool EvalConsensusScript(std::vector<std::vector<unsigned char> >& stack, const 
                     // Clean up stack of actual arguments
                     while (i-- > 1) {
                         // If the operation failed, we require that all signatures must be empty vector
-                        if (!fSuccess && is_set(policy_flags, PolicyFlags::SCRIPT_VERIFY_NULLFAIL) && !ikey2 && stacktop(-1).size())
-                            return set_error(serror, SCRIPT_ERR_SIG_NULLFAIL);
                         if (ikey2 > 0)
                             ikey2--;
                         popstack(stack);
