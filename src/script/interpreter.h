@@ -102,6 +102,7 @@ using MutableTransactionSignatureChecker = GenericTransactionSignatureChecker<CM
 
 bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& script, unsigned int flags, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptError* error = nullptr);
 bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& script, ConsensusFlags consensus_flags, PolicyFlags policy_flags, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptError* serror = nullptr);
+bool EvalConsensusScript(std::vector<std::vector<unsigned char> >& stack, const CScript& script, ConsensusFlags consensus_flags, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptError* serror = nullptr);
 bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const CScriptWitness* witness, unsigned int flags, const BaseSignatureChecker& checker, ScriptError* serror = nullptr);
 bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const CScriptWitness* witness, ConsensusFlags consensus_flags, PolicyFlags policy_flags, const BaseSignatureChecker& checker, ScriptError* serror = nullptr);
 bool VerifyConsensusScript(const CScript& scriptSig, const CScript& scriptPubKey, const CScriptWitness* witness, ConsensusFlags consensus_flags, const BaseSignatureChecker& checker, ScriptError* serror = nullptr);
