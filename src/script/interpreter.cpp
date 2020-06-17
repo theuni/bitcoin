@@ -2368,6 +2368,48 @@ static bool VerifyWitnessProgram(const CScriptWitness& witness, int witversion, 
     // There is intentionally no return statement here, to be able to use "control reaches end of non-void function" warnings to detect gaps in the logic above.
 }
 
+static bool VerifyConsensusWitnessProgram(const CScriptWitness& witness, int witversion, const std::vector<unsigned char>& program, ConsensusFlags consensus_flags, const BaseSignatureChecker& checker, ScriptError* serror)
+{
+    // Temporary
+    PolicyFlags policy_flags = PolicyFlags::SCRIPT_VERIFY_NONE;
+
+    CScript scriptPubKey;
+    Span<const valtype> stack = MakeSpan(witness.stack);
+
+    if (witversion == 0) {
+        if (program.size() == WITNESS_V0_SCRIPTHASH_SIZE) {
+            // Version 0 segregated witness program: SHA256(CScript) inside the program, CScript + inputs in witness
+            if (stack.size() == 0) {
+                return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_WITNESS_EMPTY);
+            }
+            const valtype& script_bytes = SpanPopBack(stack);
+            scriptPubKey = CScript(script_bytes.begin(), script_bytes.end());
+            uint256 hashScriptPubKey;
+            CSHA256().Write(&scriptPubKey[0], scriptPubKey.size()).Finalize(hashScriptPubKey.begin());
+            if (memcmp(hashScriptPubKey.begin(), program.data(), 32)) {
+                return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_MISMATCH);
+            }
+            return ExecuteWitnessScript(stack, scriptPubKey, consensus_flags, policy_flags, SigVersion::WITNESS_V0, checker, serror);
+        } else if (program.size() == WITNESS_V0_KEYHASH_SIZE) {
+            // Special case for pay-to-pubkeyhash; signature + pubkey in witness
+            if (stack.size() != 2) {
+                return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_MISMATCH); // 2 items in witness
+            }
+            scriptPubKey << OP_DUP << OP_HASH160 << program << OP_EQUALVERIFY << OP_CHECKSIG;
+            return ExecuteWitnessScript(stack, scriptPubKey, consensus_flags, policy_flags, SigVersion::WITNESS_V0, checker, serror);
+        } else {
+            return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_WRONG_LENGTH);
+        }
+    } else {
+        if (is_set(policy_flags, PolicyFlags::SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM)) {
+            return set_error(serror, SCRIPT_ERR_DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM);
+        }
+        // Higher version witness scripts return true for future softfork compatibility
+        return true;
+    }
+    // There is intentionally no return statement here, to be able to use "control reaches end of non-void function" warnings to detect gaps in the logic above.
+}
+
 bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const CScriptWitness* witness, ConsensusFlags consensus_flags, PolicyFlags policy_flags, const BaseSignatureChecker& checker, ScriptError* serror)
 {
     static const CScriptWitness emptyWitness;
