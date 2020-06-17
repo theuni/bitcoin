@@ -2587,9 +2587,6 @@ bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const C
 
 bool VerifyConsensusScript(const CScript& scriptSig, const CScript& scriptPubKey, const CScriptWitness* witness, ConsensusFlags consensus_flags, const BaseSignatureChecker& checker, ScriptError* serror)
 {
-    // Temporary
-    PolicyFlags policy_flags = PolicyFlags::SCRIPT_VERIFY_NONE;
-
     static const CScriptWitness emptyWitness;
     if (witness == nullptr) {
         witness = &emptyWitness;
@@ -2598,19 +2595,15 @@ bool VerifyConsensusScript(const CScript& scriptSig, const CScript& scriptPubKey
 
     set_error(serror, SCRIPT_ERR_UNKNOWN_ERROR);
 
-    if (is_set(policy_flags, PolicyFlags::SCRIPT_VERIFY_SIGPUSHONLY) && !scriptSig.IsPushOnly()) {
-        return set_error(serror, SCRIPT_ERR_SIG_PUSHONLY);
-    }
-
     // scriptSig and scriptPubKey must be evaluated sequentially on the same stack
     // rather than being simply concatenated (see CVE-2010-5141)
     std::vector<std::vector<unsigned char> > stack, stackCopy;
-    if (!EvalScript(stack, scriptSig, consensus_flags, policy_flags, checker, SigVersion::BASE, serror))
+    if (!EvalConsensusScript(stack, scriptSig, consensus_flags, checker, SigVersion::BASE, serror))
         // serror is set
         return false;
     if (is_set(consensus_flags, ConsensusFlags::SCRIPT_VERIFY_P2SH))
         stackCopy = stack;
-    if (!EvalScript(stack, scriptPubKey, consensus_flags, policy_flags, checker, SigVersion::BASE, serror))
+    if (!EvalConsensusScript(stack, scriptPubKey, consensus_flags, checker, SigVersion::BASE, serror))
         // serror is set
         return false;
     if (stack.empty())
@@ -2628,7 +2621,7 @@ bool VerifyConsensusScript(const CScript& scriptSig, const CScript& scriptPubKey
                 // The scriptSig must be _exactly_ CScript(), otherwise we reintroduce malleability.
                 return set_error(serror, SCRIPT_ERR_WITNESS_MALLEATED);
             }
-            if (!VerifyWitnessProgram(*witness, witnessversion, witnessprogram, consensus_flags, policy_flags, checker, serror)) {
+            if (!VerifyConsensusWitnessProgram(*witness, witnessversion, witnessprogram, consensus_flags, checker, serror)) {
                 return false;
             }
             // Bypass the cleanstack check at the end. The actual stack is obviously not clean
@@ -2656,7 +2649,7 @@ bool VerifyConsensusScript(const CScript& scriptSig, const CScript& scriptPubKey
         CScript pubKey2(pubKeySerialized.begin(), pubKeySerialized.end());
         popstack(stack);
 
-        if (!EvalScript(stack, pubKey2, consensus_flags, policy_flags, checker, SigVersion::BASE, serror))
+        if (!EvalConsensusScript(stack, pubKey2, consensus_flags, checker, SigVersion::BASE, serror))
             // serror is set
             return false;
         if (stack.empty())
@@ -2673,26 +2666,13 @@ bool VerifyConsensusScript(const CScript& scriptSig, const CScript& scriptPubKey
                     // reintroduce malleability.
                     return set_error(serror, SCRIPT_ERR_WITNESS_MALLEATED_P2SH);
                 }
-                if (!VerifyWitnessProgram(*witness, witnessversion, witnessprogram, consensus_flags, policy_flags, checker, serror)) {
+                if (!VerifyConsensusWitnessProgram(*witness, witnessversion, witnessprogram, consensus_flags, checker, serror)) {
                     return false;
                 }
                 // Bypass the cleanstack check at the end. The actual stack is obviously not clean
                 // for witness programs.
                 stack.resize(1);
             }
-        }
-    }
-
-    // The CLEANSTACK check is only performed after potential P2SH evaluation,
-    // as the non-P2SH evaluation of a P2SH script will obviously not result in
-    // a clean stack (the P2SH inputs remain). The same holds for witness evaluation.
-    if (is_set(policy_flags, PolicyFlags::SCRIPT_VERIFY_CLEANSTACK)) {
-        // Disallow CLEANSTACK without P2SH, as otherwise a switch CLEANSTACK->P2SH+CLEANSTACK
-        // would be possible, which is not a softfork (and P2SH should be one).
-        assert(is_set(consensus_flags, ConsensusFlags::SCRIPT_VERIFY_P2SH));
-        assert(is_set(consensus_flags, ConsensusFlags::SCRIPT_VERIFY_WITNESS));
-        if (stack.size() != 1) {
-            return set_error(serror, SCRIPT_ERR_CLEANSTACK);
         }
     }
 
