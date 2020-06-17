@@ -391,6 +391,38 @@ static bool EvalChecksig(const valtype& vchSig, const valtype& vchPubKey, CScrip
     return true;
 }
 
+/** Helper for OP_CHECKSIG and OP_CHECKSIGVERIFY
+ *
+ * A return value of false means the script fails entirely. When true is returned, the
+ * fSuccess variable indicates whether the signature check itself succeeded.
+ */
+static bool EvalConsensusChecksig(const valtype& vchSig, const valtype& vchPubKey, CScript::const_iterator pbegincodehash, CScript::const_iterator pend, ConsensusFlags consensus_flags, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptError* serror, bool& fSuccess)
+{
+    // Temporary
+    PolicyFlags policy_flags = PolicyFlags::SCRIPT_VERIFY_NONE;
+
+    // Subset of script starting at the most recent codeseparator
+    CScript scriptCode(pbegincodehash, pend);
+
+    // Drop the signature in pre-segwit scripts but not segwit scripts
+    if (sigversion == SigVersion::BASE) {
+        int found = FindAndDelete(scriptCode, CScript() << vchSig);
+        if (found > 0 && is_set(policy_flags, PolicyFlags::SCRIPT_VERIFY_CONST_SCRIPTCODE))
+            return set_error(serror, SCRIPT_ERR_SIG_FINDANDDELETE);
+    }
+
+    if (!CheckSignatureEncoding(vchSig, consensus_flags, policy_flags, serror) || !CheckPubKeyEncoding(vchPubKey, policy_flags, sigversion, serror)) {
+        //serror is set
+        return false;
+    }
+    fSuccess = checker.CheckSig(vchSig, vchPubKey, scriptCode, sigversion);
+
+    if (!fSuccess && is_set(policy_flags, PolicyFlags::SCRIPT_VERIFY_NULLFAIL) && vchSig.size())
+        return set_error(serror, SCRIPT_ERR_SIG_NULLFAIL);
+
+    return true;
+}
+
 bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& script, ConsensusFlags consensus_flags, PolicyFlags policy_flags, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptError* serror)
 {
     static const CScriptNum bnZero(0);
