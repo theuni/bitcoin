@@ -215,21 +215,13 @@ bool CheckSignatureEncoding(const std::vector<unsigned char> &vchSig, ConsensusF
 }
 
 bool CheckConsensusSignatureEncoding(const std::vector<unsigned char> &vchSig, ConsensusFlags consensus_flags, ScriptError* serror) {
-    // Temporary
-    PolicyFlags policy_flags = PolicyFlags::SCRIPT_VERIFY_NONE;
-
     // Empty signature. Not strictly DER encoded, but allowed to provide a
     // compact way to provide an invalid signature for use with CHECK(MULTI)SIG
     if (vchSig.size() == 0) {
         return true;
     }
-    if ((is_set(consensus_flags, ConsensusFlags::SCRIPT_VERIFY_DERSIG) || is_set(policy_flags, PolicyFlags::SCRIPT_VERIFY_LOW_S | PolicyFlags::SCRIPT_VERIFY_STRICTENC)) && !IsValidSignatureEncoding(vchSig)) {
+    if ((is_set(consensus_flags, ConsensusFlags::SCRIPT_VERIFY_DERSIG)) && !IsValidSignatureEncoding(vchSig)) {
         return set_error(serror, SCRIPT_ERR_SIG_DER);
-    } else if (is_set(policy_flags, PolicyFlags::SCRIPT_VERIFY_LOW_S) && !IsLowDERSignature(vchSig, serror)) {
-        // serror is set
-        return false;
-    } else if (is_set(policy_flags, PolicyFlags::SCRIPT_VERIFY_STRICTENC) && !IsDefinedHashtypeSignature(vchSig)) {
-        return set_error(serror, SCRIPT_ERR_SIG_HASHTYPE);
     }
     return true;
 }
