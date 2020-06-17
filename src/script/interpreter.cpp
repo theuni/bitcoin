@@ -390,27 +390,19 @@ static bool EvalChecksig(const valtype& vchSig, const valtype& vchPubKey, CScrip
  */
 static bool EvalConsensusChecksig(const valtype& vchSig, const valtype& vchPubKey, CScript::const_iterator pbegincodehash, CScript::const_iterator pend, ConsensusFlags consensus_flags, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptError* serror, bool& fSuccess)
 {
-    // Temporary
-    PolicyFlags policy_flags = PolicyFlags::SCRIPT_VERIFY_NONE;
-
     // Subset of script starting at the most recent codeseparator
     CScript scriptCode(pbegincodehash, pend);
 
     // Drop the signature in pre-segwit scripts but not segwit scripts
     if (sigversion == SigVersion::BASE) {
-        int found = FindAndDelete(scriptCode, CScript() << vchSig);
-        if (found > 0 && is_set(policy_flags, PolicyFlags::SCRIPT_VERIFY_CONST_SCRIPTCODE))
-            return set_error(serror, SCRIPT_ERR_SIG_FINDANDDELETE);
+        FindAndDelete(scriptCode, CScript() << vchSig);
     }
 
-    if (!CheckSignatureEncoding(vchSig, consensus_flags, policy_flags, serror) || !CheckPubKeyEncoding(vchPubKey, policy_flags, sigversion, serror)) {
+    if (!CheckConsensusSignatureEncoding(vchSig, consensus_flags, serror)) {
         //serror is set
         return false;
     }
     fSuccess = checker.CheckSig(vchSig, vchPubKey, scriptCode, sigversion);
-
-    if (!fSuccess && is_set(policy_flags, PolicyFlags::SCRIPT_VERIFY_NULLFAIL) && vchSig.size())
-        return set_error(serror, SCRIPT_ERR_SIG_NULLFAIL);
 
     return true;
 }
