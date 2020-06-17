@@ -197,7 +197,7 @@ std::unique_ptr<CBlockTreeDB> pblocktree;
 // See definition for documentation
 static void FindFilesToPruneManual(ChainstateManager& chainman, std::set<int>& setFilesToPrune, int nManualPruneHeight);
 static void FindFilesToPrune(ChainstateManager& chainman, std::set<int>& setFilesToPrune, uint64_t nPruneAfterHeight);
-bool CheckInputScripts(const CTransaction& tx, TxValidationState &state, const CCoinsViewCache &inputs, ConsensusFlags consensus_flags, PolicyFlags policy_flags, bool cacheSigStore, bool cacheFullScriptStore, PrecomputedTransactionData& txdata, std::vector<CScriptCheck> *pvChecks = nullptr);
+bool CheckInputScripts(const CTransaction& tx, TxValidationState &state, const CCoinsViewCache &inputs, ConsensusFlags consensus_flags, PolicyFlags policy_flags, ScriptInterpreter interpreter, bool cacheSigStore, bool cacheFullScriptStore, PrecomputedTransactionData& txdata, std::vector<CScriptCheck> *pvChecks = nullptr);
 static FILE* OpenUndoFile(const FlatFilePos &pos, bool fReadOnly = false);
 static FlatFileSeq BlockFileSeq();
 static FlatFileSeq UndoFileSeq();
@@ -439,7 +439,7 @@ static bool CheckInputsFromMempoolAndCache(const CTransaction& tx, TxValidationS
     }
 
     // Call CheckInputScripts() to cache signature and script validity against current tip consensus rules.
-    return CheckInputScripts(tx, state, view, consensus_flags, PolicyFlags::SCRIPT_VERIFY_NONE, /* cacheSigStore = */ true, /* cacheFullSciptStore = */ true, txdata);
+    return CheckInputScripts(tx, state, view, consensus_flags, PolicyFlags::SCRIPT_VERIFY_NONE, ScriptInterpreter::consensus_only, /* cacheSigStore = */ true, /* cacheFullSciptStore = */ true, txdata);
 }
 
 namespace {
@@ -925,13 +925,13 @@ bool MemPoolAccept::PolicyScriptChecks(ATMPArgs& args, Workspace& ws, Precompute
     constexpr PolicyFlags policy_flags = STANDARD_SCRIPT_POLICY_VERIFY_FLAGS;
     // Check input scripts and signatures.
     // This is done last to help prevent CPU exhaustion denial-of-service attacks.
-    if (!CheckInputScripts(tx, state, m_view, consensus_flags, policy_flags, true, false, txdata)) {
+    if (!CheckInputScripts(tx, state, m_view, consensus_flags, policy_flags, ScriptInterpreter::consensus_and_policy, true, false, txdata)) {
         // SCRIPT_VERIFY_CLEANSTACK requires SCRIPT_VERIFY_WITNESS, so we
         // need to turn both off, and compare against just turning off CLEANSTACK
         // to see if the failure is specifically due to witness validation.
         TxValidationState state_dummy; // Want reported failures to be from first CheckInputScripts
-        if (!tx.HasWitness() && CheckInputScripts(tx, state_dummy, m_view, without_flag(consensus_flags,ConsensusFlags::SCRIPT_VERIFY_WITNESS), without_flag(policy_flags, PolicyFlags::SCRIPT_VERIFY_CLEANSTACK), true, false, txdata) &&
-                !CheckInputScripts(tx, state_dummy, m_view, consensus_flags, without_flag(policy_flags, PolicyFlags::SCRIPT_VERIFY_CLEANSTACK), true, false, txdata)) {
+        if (!tx.HasWitness() && CheckInputScripts(tx, state_dummy, m_view, without_flag(consensus_flags,ConsensusFlags::SCRIPT_VERIFY_WITNESS), without_flag(policy_flags, PolicyFlags::SCRIPT_VERIFY_CLEANSTACK), ScriptInterpreter::consensus_and_policy, true, false, txdata) &&
+                !CheckInputScripts(tx, state_dummy, m_view, consensus_flags, without_flag(policy_flags, PolicyFlags::SCRIPT_VERIFY_CLEANSTACK), ScriptInterpreter::consensus_and_policy, true, false, txdata)) {
             // Only the witness is missing, so the transaction itself may be fine.
             state.Invalid(TxValidationResult::TX_WITNESS_MUTATED,
                     state.GetRejectReason(), state.GetDebugMessage());
@@ -1469,7 +1469,17 @@ void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, int nHeight)
 bool CScriptCheck::operator()() {
     const CScript &scriptSig = ptxTo->vin[nIn].scriptSig;
     const CScriptWitness *witness = &ptxTo->vin[nIn].scriptWitness;
-    return VerifyScript(scriptSig, m_tx_out.scriptPubKey, witness, consensus_flags, policy_flags, CachingTransactionSignatureChecker(ptxTo, nIn, m_tx_out.nValue, cacheStore, *txdata), &error);
+    bool ret = false;
+    switch (interpreter) {
+        case ScriptInterpreter::consensus_only:
+            ret = VerifyConsensusScript(scriptSig, m_tx_out.scriptPubKey, witness, consensus_flags, CachingTransactionSignatureChecker(ptxTo, nIn, m_tx_out.nValue, cacheStore, *txdata), &error);
+            break;
+        case ScriptInterpreter::consensus_and_policy:
+        default:
+            ret = VerifyScript(scriptSig, m_tx_out.scriptPubKey, witness, consensus_flags, policy_flags, CachingTransactionSignatureChecker(ptxTo, nIn, m_tx_out.nValue, cacheStore, *txdata), &error);
+            break;
+    }
+    return ret;
 }
 
 int GetSpendHeight(const CCoinsViewCache& inputs)
@@ -1518,7 +1528,7 @@ void InitScriptExecutionCache() {
  *
  * Non-static (and re-declared) in src/test/txvalidationcache_tests.cpp
  */
-bool CheckInputScripts(const CTransaction& tx, TxValidationState &state, const CCoinsViewCache &inputs, ConsensusFlags consensus_flags, PolicyFlags policy_flags, bool cacheSigStore, bool cacheFullScriptStore, PrecomputedTransactionData& txdata, std::vector<CScriptCheck> *pvChecks) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
+bool CheckInputScripts(const CTransaction& tx, TxValidationState &state, const CCoinsViewCache &inputs, ConsensusFlags consensus_flags, PolicyFlags policy_flags, ScriptInterpreter interpreter, bool cacheSigStore, bool cacheFullScriptStore, PrecomputedTransactionData& txdata, std::vector<CScriptCheck> *pvChecks) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
 {
     if (tx.IsCoinBase()) return true;
 
@@ -1533,7 +1543,7 @@ bool CheckInputScripts(const CTransaction& tx, TxValidationState &state, const C
     // transaction).
     uint256 hashCacheEntry;
     CSHA256 hasher = g_scriptExecutionCacheHasher;
-    hasher.Write(tx.GetWitnessHash().begin(), 32).Write((unsigned char*)&consensus_flags, sizeof(consensus_flags)).Write((unsigned char*)&policy_flags, sizeof(policy_flags)).Finalize(hashCacheEntry.begin());
+    hasher.Write(tx.GetWitnessHash().begin(), 32).Write((unsigned char*)&consensus_flags, sizeof(consensus_flags)).Write((unsigned char*)&policy_flags, sizeof(policy_flags)).Write((unsigned char*)&interpreter, sizeof(interpreter)).Finalize(hashCacheEntry.begin());
     AssertLockHeld(cs_main); //TODO: Remove this requirement by making CuckooCache not require external locks
     if (g_scriptExecutionCache.contains(hashCacheEntry, !cacheFullScriptStore)) {
         return true;
@@ -1555,7 +1565,7 @@ bool CheckInputScripts(const CTransaction& tx, TxValidationState &state, const C
         // spent being checked as a part of CScriptCheck.
 
         // Verify signature
-        CScriptCheck check(coin.out, tx, i, consensus_flags, policy_flags, cacheSigStore, &txdata);
+        CScriptCheck check(coin.out, tx, i, consensus_flags, policy_flags, cacheSigStore, &txdata, interpreter);
         if (pvChecks) {
             pvChecks->push_back(CScriptCheck());
             check.swap(pvChecks->back());
@@ -1570,7 +1580,7 @@ bool CheckInputScripts(const CTransaction& tx, TxValidationState &state, const C
                 // non-upgraded nodes by banning CONSENSUS-failing
                 // data providers.
                 CScriptCheck check2(coin.out, tx, i,
-                        MANDATORY_SCRIPT_CONSENSUS_VERIFY_FLAGS, PolicyFlags::SCRIPT_VERIFY_NONE, cacheSigStore, &txdata);
+                        MANDATORY_SCRIPT_CONSENSUS_VERIFY_FLAGS, PolicyFlags::SCRIPT_VERIFY_NONE, cacheSigStore, &txdata, interpreter);
                 if (check2())
                     return state.Invalid(TxValidationResult::TX_NOT_STANDARD, strprintf("non-mandatory-script-verify-flag (%s)", ScriptErrorString(check.GetScriptError())));
             }
@@ -1603,7 +1613,7 @@ bool CheckInputScripts(const CTransaction& tx, TxValidationState &state, const C
     ConsensusFlags consensus_flags;
     PolicyFlags policy_flags;
     std::tie(consensus_flags, policy_flags) = SplitConsensusAndPolicyFlags(flags);
-    return CheckInputScripts(tx, state, inputs, consensus_flags, policy_flags, cacheSigStore, cacheFullScriptStore, txdata, pvChecks);
+    return CheckInputScripts(tx, state, inputs, consensus_flags, policy_flags, ScriptInterpreter::consensus_and_policy, cacheSigStore, cacheFullScriptStore, txdata, pvChecks);
 }
 
 static bool UndoWriteToDisk(const CBlockUndo& blockundo, FlatFilePos& pos, const uint256& hashBlock, const CMessageHeader::MessageStartChars& messageStart)
@@ -2195,7 +2205,7 @@ bool CChainState::ConnectBlock(const CBlock& block, BlockValidationState& state,
             std::vector<CScriptCheck> vChecks;
             bool fCacheResults = fJustCheck; /* Don't cache results if we're actually connecting blocks (still consult the cache, though) */
             TxValidationState tx_state;
-            if (fScriptChecks && !CheckInputScripts(tx, tx_state, view, consensus_flags, PolicyFlags::SCRIPT_VERIFY_NONE, fCacheResults, fCacheResults, txsdata[i], g_parallel_script_checks ? &vChecks : nullptr)) {
+            if (fScriptChecks && !CheckInputScripts(tx, tx_state, view, consensus_flags, PolicyFlags::SCRIPT_VERIFY_NONE, ScriptInterpreter::consensus_only, fCacheResults, fCacheResults, txsdata[i], g_parallel_script_checks ? &vChecks : nullptr)) {
                 // Any transaction validation failure in ConnectBlock is a block consensus failure
                 state.Invalid(BlockValidationResult::BLOCK_CONSENSUS,
                               tx_state.GetRejectReason(), tx_state.GetDebugMessage());

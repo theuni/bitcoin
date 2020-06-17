@@ -240,6 +240,12 @@ bool CheckSequenceLocks(const CTxMemPool& pool, const CTransaction& tx, int flag
  * Closure representing one script verification
  * Note that this stores references to the spending transaction
  */
+
+enum class ScriptInterpreter {
+    consensus_and_policy,
+    consensus_only
+};
+
 class CScriptCheck
 {
 private:
@@ -251,6 +257,7 @@ private:
     bool cacheStore;
     ScriptError error;
     PrecomputedTransactionData *txdata;
+    ScriptInterpreter interpreter;
 
 public:
 
@@ -258,13 +265,13 @@ public:
     Temporary wrapper function
 */
     CScriptCheck(const CTxOut& outIn, const CTransaction& txToIn, unsigned int nInIn, unsigned int nFlagsIn, bool cacheIn, PrecomputedTransactionData* txdataIn) :
-        m_tx_out(outIn), ptxTo(&txToIn), nIn(nInIn), cacheStore(cacheIn), error(SCRIPT_ERR_UNKNOWN_ERROR), txdata(txdataIn) {
+        m_tx_out(outIn), ptxTo(&txToIn), nIn(nInIn), cacheStore(cacheIn), error(SCRIPT_ERR_UNKNOWN_ERROR), txdata(txdataIn), interpreter(ScriptInterpreter::consensus_and_policy) {
         std::tie(consensus_flags, policy_flags) = SplitConsensusAndPolicyFlags(nFlagsIn);
     }
 
-    CScriptCheck(): ptxTo(nullptr), nIn(0), consensus_flags(ConsensusFlags::SCRIPT_VERIFY_NONE), policy_flags(PolicyFlags::SCRIPT_VERIFY_NONE) ,cacheStore(false), error(SCRIPT_ERR_UNKNOWN_ERROR) {}
-    CScriptCheck(const CTxOut& outIn, const CTransaction& txToIn, unsigned int nInIn, ConsensusFlags consensus_flags_in, PolicyFlags policy_flags_in, bool cacheIn, PrecomputedTransactionData* txdataIn) :
-        m_tx_out(outIn), ptxTo(&txToIn), nIn(nInIn), consensus_flags(consensus_flags_in), policy_flags(policy_flags_in), cacheStore(cacheIn), error(SCRIPT_ERR_UNKNOWN_ERROR), txdata(txdataIn) { }
+    CScriptCheck(): ptxTo(nullptr), nIn(0), consensus_flags(ConsensusFlags::SCRIPT_VERIFY_NONE), policy_flags(PolicyFlags::SCRIPT_VERIFY_NONE) ,cacheStore(false), error(SCRIPT_ERR_UNKNOWN_ERROR), interpreter(ScriptInterpreter::consensus_and_policy) {}
+    CScriptCheck(const CTxOut& outIn, const CTransaction& txToIn, unsigned int nInIn, ConsensusFlags consensus_flags_in, PolicyFlags policy_flags_in, bool cacheIn, PrecomputedTransactionData* txdataIn, ScriptInterpreter interpreterIn) :
+        m_tx_out(outIn), ptxTo(&txToIn), nIn(nInIn), consensus_flags(consensus_flags_in), policy_flags(policy_flags_in), cacheStore(cacheIn), error(SCRIPT_ERR_UNKNOWN_ERROR), txdata(txdataIn), interpreter(interpreterIn) {}
 
     bool operator()();
 
@@ -277,6 +284,7 @@ public:
         std::swap(cacheStore, check.cacheStore);
         std::swap(error, check.error);
         std::swap(txdata, check.txdata);
+        std::swap(interpreter, check.interpreter);
     }
 
     ScriptError GetScriptError() const { return error; }
