@@ -28,6 +28,7 @@ enum
 };
 
 bool CheckSignatureEncoding(const std::vector<unsigned char> &vchSig, ConsensusFlags consensus_flags, PolicyFlags policy_flags, ScriptError* serror);
+bool CheckConsensusSignatureEncoding(const std::vector<unsigned char> &vchSig, ConsensusFlags consensus_flags, ScriptError* serror);
 
 struct PrecomputedTransactionData
 {
