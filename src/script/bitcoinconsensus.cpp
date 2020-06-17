@@ -76,6 +76,19 @@ static bool verify_flags(unsigned int flags)
     return (flags & ~(bitcoinconsensus_SCRIPT_FLAGS_VERIFY_ALL)) == 0;
 }
 
+static ConsensusFlags GetConsensusFlags(int flags) {
+
+    ConsensusFlags consensus_flags = ConsensusFlags::SCRIPT_VERIFY_NONE;
+    if (flags & bitcoinconsensus_SCRIPT_FLAGS_VERIFY_P2SH) consensus_flags |= ConsensusFlags::SCRIPT_VERIFY_P2SH;
+    if (flags & bitcoinconsensus_SCRIPT_FLAGS_VERIFY_DERSIG) consensus_flags |= ConsensusFlags::SCRIPT_VERIFY_DERSIG;
+    if (flags & bitcoinconsensus_SCRIPT_FLAGS_VERIFY_NULLDUMMY) consensus_flags |= ConsensusFlags::SCRIPT_VERIFY_NULLDUMMY;
+    if (flags & bitcoinconsensus_SCRIPT_FLAGS_VERIFY_CHECKLOCKTIMEVERIFY) consensus_flags |= ConsensusFlags::SCRIPT_VERIFY_CHECKLOCKTIMEVERIFY;
+    if (flags & bitcoinconsensus_SCRIPT_FLAGS_VERIFY_CHECKSEQUENCEVERIFY) consensus_flags |= ConsensusFlags::SCRIPT_VERIFY_CHECKSEQUENCEVERIFY;
+    if (flags & bitcoinconsensus_SCRIPT_FLAGS_VERIFY_WITNESS) consensus_flags |= ConsensusFlags::SCRIPT_VERIFY_WITNESS;
+
+    return consensus_flags;
+}
+
 static int verify_script(const unsigned char *scriptPubKey, unsigned int scriptPubKeyLen, CAmount amount,
                                     const unsigned char *txTo        , unsigned int txToLen,
                                     unsigned int nIn, unsigned int flags, bitcoinconsensus_error* err)
@@ -83,6 +96,7 @@ static int verify_script(const unsigned char *scriptPubKey, unsigned int scriptP
     if (!verify_flags(flags)) {
         return set_error(err, bitcoinconsensus_ERR_INVALID_FLAGS);
     }
+    ConsensusFlags consensus_flags = GetConsensusFlags(flags);
     try {
         TxInputStream stream(SER_NETWORK, PROTOCOL_VERSION, txTo, txToLen);
         CTransaction tx(deserialize, stream);
@@ -95,7 +109,7 @@ static int verify_script(const unsigned char *scriptPubKey, unsigned int scriptP
         set_error(err, bitcoinconsensus_ERR_OK);
 
         PrecomputedTransactionData txdata(tx);
-        return VerifyScript(tx.vin[nIn].scriptSig, CScript(scriptPubKey, scriptPubKey + scriptPubKeyLen), &tx.vin[nIn].scriptWitness, flags, TransactionSignatureChecker(&tx, nIn, amount, txdata), nullptr);
+        return VerifyScript(tx.vin[nIn].scriptSig, CScript(scriptPubKey, scriptPubKey + scriptPubKeyLen), &tx.vin[nIn].scriptWitness, consensus_flags, PolicyFlags::SCRIPT_VERIFY_NONE, TransactionSignatureChecker(&tx, nIn, amount, txdata), nullptr);
     } catch (const std::exception&) {
         return set_error(err, bitcoinconsensus_ERR_TX_DESERIALIZE); // Error deserializing
     }
