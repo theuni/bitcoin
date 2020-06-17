@@ -2355,9 +2355,6 @@ static bool ExecuteWitnessScript(const Span<const valtype>& stack_span, const CS
 
 static bool ExecuteConsensusWitnessScript(const Span<const valtype>& stack_span, const CScript& scriptPubKey, ConsensusFlags consensus_flags, SigVersion sigversion, const BaseSignatureChecker& checker, ScriptError* serror)
 {
-    // Temporary
-    PolicyFlags policy_flags = PolicyFlags::SCRIPT_VERIFY_NONE;
-
     std::vector<valtype> stack{stack_span.begin(), stack_span.end()};
 
     // Disallow stack item size > MAX_SCRIPT_ELEMENT_SIZE in witness stack
@@ -2366,7 +2363,7 @@ static bool ExecuteConsensusWitnessScript(const Span<const valtype>& stack_span,
     }
 
     // Run the script interpreter.
-    if (!EvalScript(stack, scriptPubKey, consensus_flags, policy_flags, checker, sigversion, serror)) return false;
+    if (!EvalConsensusScript(stack, scriptPubKey, consensus_flags, checker, sigversion, serror)) return false;
 
     // Scripts inside witness implicitly require cleanstack behaviour
     if (stack.size() != 1) return set_error(serror, SCRIPT_ERR_CLEANSTACK);
