@@ -2415,9 +2415,6 @@ static bool VerifyWitnessProgram(const CScriptWitness& witness, int witversion, 
 
 static bool VerifyConsensusWitnessProgram(const CScriptWitness& witness, int witversion, const std::vector<unsigned char>& program, ConsensusFlags consensus_flags, const BaseSignatureChecker& checker, ScriptError* serror)
 {
-    // Temporary
-    PolicyFlags policy_flags = PolicyFlags::SCRIPT_VERIFY_NONE;
-
     CScript scriptPubKey;
     Span<const valtype> stack = MakeSpan(witness.stack);
 
@@ -2434,21 +2431,18 @@ static bool VerifyConsensusWitnessProgram(const CScriptWitness& witness, int wit
             if (memcmp(hashScriptPubKey.begin(), program.data(), 32)) {
                 return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_MISMATCH);
             }
-            return ExecuteWitnessScript(stack, scriptPubKey, consensus_flags, policy_flags, SigVersion::WITNESS_V0, checker, serror);
+            return ExecuteConsensusWitnessScript(stack, scriptPubKey, consensus_flags, SigVersion::WITNESS_V0, checker, serror);
         } else if (program.size() == WITNESS_V0_KEYHASH_SIZE) {
             // Special case for pay-to-pubkeyhash; signature + pubkey in witness
             if (stack.size() != 2) {
                 return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_MISMATCH); // 2 items in witness
             }
             scriptPubKey << OP_DUP << OP_HASH160 << program << OP_EQUALVERIFY << OP_CHECKSIG;
-            return ExecuteWitnessScript(stack, scriptPubKey, consensus_flags, policy_flags, SigVersion::WITNESS_V0, checker, serror);
+            return ExecuteConsensusWitnessScript(stack, scriptPubKey, consensus_flags, SigVersion::WITNESS_V0, checker, serror);
         } else {
             return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_WRONG_LENGTH);
         }
     } else {
-        if (is_set(policy_flags, PolicyFlags::SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM)) {
-            return set_error(serror, SCRIPT_ERR_DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM);
-        }
         // Higher version witness scripts return true for future softfork compatibility
         return true;
     }
