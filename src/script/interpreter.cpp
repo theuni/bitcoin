@@ -371,7 +371,7 @@ static bool EvalChecksig(const valtype& vchSig, const valtype& vchPubKey, CScrip
     return true;
 }
 
-static bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& script, ConsensusFlags consensus_flags, PolicyFlags policy_flags, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptError* serror)
+bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& script, ConsensusFlags consensus_flags, PolicyFlags policy_flags, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptError* serror)
 {
     static const CScriptNum bnZero(0);
     static const CScriptNum bnOne(1);
