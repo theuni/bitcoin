@@ -18,6 +18,10 @@
 #define HAVE_BUILTIN_ADD_OVERFLOW
 #endif
 
+#ifdef NO_MAIN
+int main(int argc, char** argv) {return 0;}
+#endif
+
 namespace {
 template <typename T>
 void TestAdditionOverflow(FuzzedDataProvider& fuzzed_data_provider)
