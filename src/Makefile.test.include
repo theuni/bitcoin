@@ -145,6 +145,13 @@ else
 bin_PROGRAMS += test/test_bitcoin
 endif
 
+FUZZ_OBJECTS = \
+  $(am_test_fuzz_addr_info_deserialize_OBJECTS) \
+  $(am_test_fuzz_addition_overflow_OBJECTS) \
+  $(am_test_fuzz_addrdb_OBJECTS)
+
+fuzz_all: $(FUZZ_OBJECTS)
+
 TEST_SRCDIR = test
 TEST_BINARY=test/test_bitcoin$(EXEEXT)
 
@@ -303,7 +310,6 @@ if ENABLE_ZMQ
 test_test_bitcoin_LDADD += $(LIBBITCOIN_ZMQ) $(ZMQ_LIBS)
 endif
 
-if ENABLE_FUZZ
 
 test_fuzz_addition_overflow_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
 test_fuzz_addition_overflow_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
@@ -1115,7 +1121,6 @@ test_fuzz_uint256_deserialize_LDADD = $(FUZZ_SUITE_LD_COMMON)
 test_fuzz_uint256_deserialize_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
 test_fuzz_uint256_deserialize_SOURCES = test/fuzz/deserialize.cpp
 
-endif # ENABLE_FUZZ
 
 nodist_test_test_bitcoin_SOURCES = $(GENERATED_TEST_FILES)
 
