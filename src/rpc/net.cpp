@@ -210,7 +210,6 @@ static RPCHelpMan getpeerinfo()
         }
         obj.pushKV("services", strprintf("%016x", stats.nServices));
         obj.pushKV("servicesnames", GetServicesNames(stats.nServices));
-        obj.pushKV("relaytxes", stats.fRelayTxes);
         obj.pushKV("lastsend", stats.nLastSend);
         obj.pushKV("lastrecv", stats.nLastRecv);
         obj.pushKV("last_transaction", stats.nLastTXTime);
@@ -245,6 +244,8 @@ static RPCHelpMan getpeerinfo()
                 heights.push_back(height);
             }
             obj.pushKV("inflight", heights);
+            obj.pushKV("relaytxes", statestats.fRelayTxes);
+            obj.pushKV("minfeefilter", ValueFromAmount(statestats.minFeeFilter));
             obj.pushKV("addr_relay_enabled", statestats.m_addr_relay_enabled);
             obj.pushKV("addr_processed", statestats.m_addr_processed);
             obj.pushKV("addr_rate_limited", statestats.m_addr_rate_limited);
@@ -254,7 +255,6 @@ static RPCHelpMan getpeerinfo()
             permissions.push_back(permission);
         }
         obj.pushKV("permissions", permissions);
-        obj.pushKV("minfeefilter", ValueFromAmount(stats.minFeeFilter));
 
         UniValue sendPerMsgCmd(UniValue::VOBJ);
         for (const auto& i : stats.mapSendBytesPerMsgCmd) {
