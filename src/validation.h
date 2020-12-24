@@ -830,6 +830,7 @@ public:
     //! chainstate to avoid duplicating block metadata.
     node::BlockManager m_blockman GUARDED_BY(::cs_main);
 
+    CBlockIndex *pindexBestHeader = nullptr;
     /**
      * In order to efficiently track invalidity of headers, we keep the set of
      * blocks which we tried to connect and found to be invalid here (ie which
