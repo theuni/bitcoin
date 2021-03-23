@@ -12,6 +12,13 @@
 #include <string>
 #include <vector>
 
+enum class BaseBlobTag
+{
+    generic=0,
+    txid=1,
+    wtxid=2
+};
+
 /** Template base class for fixed-sized opaque blobs. */
 template<unsigned int BITS>
 class base_blob
@@ -110,25 +117,42 @@ public:
  * @note This type is called uint160 for historical reasons only. It is an opaque
  * blob of 160 bits and has no integer operations.
  */
-class uint160 : public base_blob<160> {
+template <BaseBlobTag Tag>
+class uint160_base : public base_blob<160> {
 public:
-    constexpr uint160() {}
-    explicit uint160(const std::vector<unsigned char>& vch) : base_blob<160>(vch) {}
+    static constexpr BaseBlobTag tag = Tag;
+    constexpr uint160_base() {}
+    explicit uint160_base(const std::vector<unsigned char>& vch) : base_blob<160>(vch) {}
 };
+using uint160 = uint160_base<BaseBlobTag::generic>;
 
 /** 256-bit opaque blob.
  * @note This type is called uint256 for historical reasons only. It is an
  * opaque blob of 256 bits and has no integer operations. Use arith_uint256 if
  * those are required.
  */
-class uint256 : public base_blob<256> {
+
+template <BaseBlobTag Tag>
+class uint256_base : public base_blob<256> {
 public:
-    constexpr uint256() {}
-    constexpr explicit uint256(uint8_t v) : base_blob<256>(v) {}
-    explicit uint256(const std::vector<unsigned char>& vch) : base_blob<256>(vch) {}
-    static const uint256 ZERO;
-    static const uint256 ONE;
+    static constexpr BaseBlobTag tag = Tag;
+
+    constexpr uint256_base() {}
+    constexpr explicit uint256_base(uint8_t v) : base_blob<256>(v) {}
+    explicit uint256_base(const std::vector<unsigned char>& vch) : base_blob<256>(vch) {}
+
+    template <BaseBlobTag RTag>
+    void assign(const uint256_base<RTag>& rhs) {
+        memcpy(base_blob<256>::data(), rhs.data(), rhs.size());
+    }
+
+    static const inline uint256_base ZERO{0};
+    static const inline uint256_base ONE{1};
 };
+
+using uint256 = uint256_base<BaseBlobTag::generic>;
+using uint256_txid = uint256_base<BaseBlobTag::txid>;
+using uint256_wtxid = uint256_base<BaseBlobTag::wtxid>;
 
 /* uint256 from const char *.
  * This is a separate function because the constructor uint256(const char*) can result
