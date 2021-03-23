@@ -6,12 +6,12 @@
 #define BITCOIN_BLOOM_H
 
 #include <serialize.h>
+#include <uint256.h>
 
 #include <vector>
 
 class COutPoint;
 class CTransaction;
-class uint256;
 
 //! 20,000 items with fp rate < 0.1% or 10,000 items and <0.0001%
 static const unsigned int MAX_BLOOM_FILTER_SIZE = 36000; // bytes

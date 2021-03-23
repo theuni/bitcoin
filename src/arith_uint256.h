@@ -12,7 +12,7 @@
 #include <stdint.h>
 #include <string>
 
-class uint256;
+#include <uint256.h>
 
 class uint_error : public std::runtime_error {
 public:

@@ -7,6 +7,7 @@
 
 #include <primitives/transaction.h> // For CTransactionRef
 #include <util/settings.h>          // For util::SettingsValue
+#include <uint256.h>
 
 #include <functional>
 #include <memory>
@@ -22,7 +23,6 @@ class CFeeRate;
 class CRPCCommand;
 class CScheduler;
 class Coin;
-class uint256;
 enum class MemPoolRemovalReason;
 enum class RBFTransactionState;
 struct bilingual_str;

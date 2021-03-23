@@ -11,6 +11,7 @@
 #include <wallet/db.h>
 #include <wallet/walletutil.h>
 #include <key.h>
+#include <uint256.h>
 
 #include <stdint.h>
 #include <string>
@@ -36,8 +37,6 @@ class CMasterKey;
 class CScript;
 class CWallet;
 class CWalletTx;
-class uint160;
-class uint256;
 
 /** Error statuses for the wallet database */
 enum class DBErrors

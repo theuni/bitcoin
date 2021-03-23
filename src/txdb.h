@@ -10,6 +10,7 @@
 #include <dbwrapper.h>
 #include <chain.h>
 #include <primitives/block.h>
+#include <uint256.h>
 
 #include <memory>
 #include <string>
@@ -18,7 +19,6 @@
 
 class CBlockIndex;
 class CCoinsViewDBCursor;
-class uint256;
 
 //! -dbcache default (MiB)
 static const int64_t nDefaultDbCache = 450;

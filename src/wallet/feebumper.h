@@ -6,10 +6,10 @@
 #define BITCOIN_WALLET_FEEBUMPER_H
 
 #include <primitives/transaction.h>
+#include <uint256.h>
 
 class CWallet;
 class CWalletTx;
-class uint256;
 class CCoinControl;
 enum class FeeEstimateMode;
 struct bilingual_str;

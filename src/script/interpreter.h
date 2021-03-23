@@ -9,6 +9,7 @@
 #include <script/script_error.h>
 #include <span.h>
 #include <primitives/transaction.h>
+#include <uint256.h>
 
 #include <vector>
 #include <stdint.h>
@@ -18,7 +19,6 @@ class XOnlyPubKey;
 class CScript;
 class CTransaction;
 class CTxOut;
-class uint256;
 
 /** Signature hash types/flags */
 enum

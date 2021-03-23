@@ -7,6 +7,7 @@
 
 #include <amount.h>
 #include <attributes.h>
+#include <uint256.h>
 
 #include <string>
 #include <vector>
@@ -16,7 +17,6 @@ class CBlockHeader;
 class CScript;
 class CTransaction;
 struct CMutableTransaction;
-class uint256;
 class UniValue;
 class CTxUndo;
 
