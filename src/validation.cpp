@@ -19,7 +19,6 @@
 #include <deploymentstatus.h>
 #include <flatfile.h>
 #include <hash.h>
-#include <index/blockfilterindex.h>
 #include <logging.h>
 #include <logging/timer.h>
 #include <node/blockstorage.h>
@@ -2224,12 +2223,9 @@ bool CChainState::FlushStateToDisk(
         CoinsCacheSizeState cache_state = GetCoinsCacheSizeState();
         LOCK(m_blockman.cs_LastBlockFile);
         if (fPruneMode && (m_blockman.m_check_for_pruning || nManualPruneHeight > 0) && !fReindex) {
-            // make sure we don't prune above the blockfilterindexes bestblocks
+            // make sure we don't prune above any of the prune blockers bestblocks
             // pruning is height-based
             int last_prune = m_chain.Height(); // last height we can prune
-            ForEachBlockFilterIndex([&](BlockFilterIndex& index) {
-               last_prune = std::max(1, std::min(last_prune, index.GetSummary().best_block_height));
-            });
 
             for (const auto& blocker : m_blockman.m_prune_blockers) {
                 const int blocker_height{blocker.second->nHeight - PRUNE_BLOCKER_BUFFER};
