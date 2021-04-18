@@ -171,6 +171,9 @@ public:
     }
 };
 
+//! Find the first block that is not pruned
+const CBlockIndex* GetFirstStoredBlock(const CBlockIndex* start_block);
+
 void CleanupBlockRevFiles();
 
 /** Open a block file (blk?????.dat) */
