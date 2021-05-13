@@ -59,6 +59,7 @@
 #include <numeric>
 #include <optional>
 #include <string>
+#include <unordered_map>
 
 #include <boost/algorithm/string/replace.hpp>
 
@@ -2229,6 +2230,15 @@ bool CChainState::FlushStateToDisk(
             ForEachBlockFilterIndex([&](BlockFilterIndex& index) {
                last_prune = std::max(1, std::min(last_prune, index.GetSummary().best_block_height));
             });
+
+            for (const auto& blocker : m_blockman.m_prune_blockers) {
+                const int blocker_height{blocker.second->nHeight - PRUNE_BLOCKER_BUFFER};
+                last_prune = std::max(1, std::min(last_prune, blocker_height));
+                if (last_prune == blocker_height) {
+                    LogPrint(BCLog::PRUNE, "%s limited pruning to height %d\n", blocker.first, blocker_height);
+                }
+            }
+
 
             if (nManualPruneHeight > 0) {
                 LOG_TIME_MILLIS_WITH_CATEGORY("find files to prune (manual)", BCLog::BENCH);

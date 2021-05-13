@@ -159,6 +159,16 @@ public:
     //! Returns last CBlockIndex* that is a checkpoint
     CBlockIndex* GetLastCheckpoint(const CCheckpointData& data) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
+    /**
+     * Map from external index name to most recent block the index can tolerate being pruned.
+     *
+     * @note Internally, only blocks at height (block->nHeight - PRUNE_BLOCKER_BUFFER) and
+     * below will be pruned, but callers should avoid assuming any particular buffer size.
+     */
+    std::unordered_map<std::string, const CBlockIndex*> m_prune_blockers GUARDED_BY(::cs_main);
+
+    void UpdatePruneBlocker(const std::string& name, const CBlockIndex* block) EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
+
     /** True if any block files have ever been pruned. */
     bool fHavePruned = false;
 

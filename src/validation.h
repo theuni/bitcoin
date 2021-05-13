@@ -35,6 +35,7 @@
 #include <stdint.h>
 #include <string>
 #include <thread>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -100,6 +101,8 @@ static const unsigned int DEFAULT_CHECKLEVEL = 3;
 // one 128MB block file + added 15% undo data = 147MB greater for a total of 545MB
 // Setting the target to >= 550 MiB will make it likely we can respect the target.
 static const uint64_t MIN_DISK_SPACE_FOR_BLOCK_FILES = 550 * 1024 * 1024;
+/** The number of blocks to keep below the deepest prune blocker. */
+static constexpr int PRUNE_BLOCKER_BUFFER{10};
 
 /** Current sync state passed to tip changed callbacks. */
 enum class SynchronizationState {
