@@ -59,6 +59,7 @@
 #include <numeric>
 #include <optional>
 #include <string>
+#include <unordered_map>
 
 #include <boost/algorithm/string/replace.hpp>
 
@@ -2229,6 +2230,15 @@ bool CChainState::FlushStateToDisk(
                last_prune = std::max(1, std::min(last_prune, index.GetSummary().best_block_height));
             });
 
+            for (const auto& blocker : m_blockman.m_prune_blockers) {
+                const int blocker_height{blocker.second->nHeight - PRUNE_BLOCKER_BUFFER};
+                last_prune = std::max(1, std::min(last_prune, blocker_height));
+                if (last_prune == blocker_height) {
+                    LogPrint(BCLog::PRUNE, "%s limited pruning to height %d\n", blocker.first, blocker_height);
+                }
+            }
+
+
             if (nManualPruneHeight > 0) {
                 LOG_TIME_MILLIS_WITH_CATEGORY("find files to prune (manual)", BCLog::BENCH);
 
@@ -3890,6 +3900,11 @@ void BlockManager::FindFilesToPrune(std::set<int>& setFilesToPrune, uint64_t nPr
            nPruneTarget/1024/1024, nCurrentUsage/1024/1024,
            ((int64_t)nPruneTarget - (int64_t)nCurrentUsage)/1024/1024,
            nLastBlockWeCanPrune, count);
+}
+
+void BlockManager::UpdatePruneBlocker(const std::string& name, const CBlockIndex* block) {
+    AssertLockHeld(::cs_main);
+    m_prune_blockers[name] = block;
 }
 
 CBlockIndex * BlockManager::InsertBlockIndex(const uint256& hash)
