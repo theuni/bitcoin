@@ -4,6 +4,7 @@
 
 #include <cuckoofilter.h>
 
+#include <compat/byteswap.h>
 #include <crypto/common.h>
 #include <crypto/siphash.h>
 #include <random.h>
@@ -216,6 +217,7 @@ RollingCuckooFilter::RollingCuckooFilter(const Params& params, bool deterministi
     m_gens(params.Generations()),
     m_max_entries(params.MaxEntries()),
     m_rng(deterministic),
+    m_single_hash((m_params.m_buckets << m_params.m_fpr_bits) >> (m_params.m_fpr_bits) == m_params.m_buckets),
     m_phi_k0(m_rng.rand64()), m_phi_k1(m_rng.rand64()), m_h1_k0(m_rng.rand64()), m_h1_k1(m_rng.rand64()),
     m_data(size_t{m_params.m_buckets} * m_bits_per_bucket)
 {
@@ -323,16 +325,18 @@ void RollingCuckooFilter::SaveBucket(uint32_t index, DecodedBucket&& bucket)
     m_data.WriteAndAdvance(m_params.m_gen_cbits, offset, Encode({a, b, c, d}, m_params.m_gen_cbits));
 }
 
-uint64_t RollingCuckooFilter::Fingerprint(Span<const unsigned char> data) const
+std::pair<uint32_t, uint64_t> RollingCuckooFilter::HashData(Span<const unsigned char> data) const
 {
-    uint64_t hash = CSipHasher(m_phi_k0, m_phi_k1).Write(data.data(), data.size()).Finalize();
-    return MapIntoRange(hash, 0xFFFFFFFFFFFFFFFF >> (64 - m_params.m_fpr_bits)) + 1U;
-}
-
-uint32_t RollingCuckooFilter::Index1(Span<const unsigned char> data) const
-{
-    uint64_t hash = CSipHasher(m_h1_k0, m_h1_k1).Write(data.data(), data.size()).Finalize();
-    return MapIntoRange(hash, m_params.m_buckets);
+    uint64_t hash1 = CSipHasher(m_phi_k0, m_phi_k1).Write(data.data(), data.size()).Finalize();
+    uint32_t index1 = MapIntoRange(hash1, m_params.m_buckets);
+    uint64_t hash2;
+    if (m_single_hash) {
+        hash2 = bswap_64(hash1) * 1337133713;
+    } else {
+        hash2 = CSipHasher(m_h1_k0, m_h1_k1).Write(data.data(), data.size()).Finalize();
+    }
+    uint64_t fpr = MapIntoRange(hash2, 0xFFFFFFFFFFFFFFFF >> (64 - m_params.m_fpr_bits)) + 1U;
+    return {index1, fpr};
 }
 
 uint32_t RollingCuckooFilter::OtherIndex(uint32_t index, uint64_t fpr) const
@@ -437,9 +441,8 @@ int RollingCuckooFilter::AddEntry(DecodedBucket& bucket, uint32_t index1, uint32
 
 bool RollingCuckooFilter::Check(Span<const unsigned char> data) const
 {
-    uint32_t index1 = Index1(data);
+    auto [index1, fpr] = HashData(data);
     m_data.Prefetch(uint64_t{index1} * m_bits_per_bucket);
-    uint64_t fpr = Fingerprint(data);
     uint32_t index2 = OtherIndex(index1, fpr);
     m_data.Prefetch(uint64_t{index2} * m_bits_per_bucket);
     if (Find(index1, fpr) != -1) return true;
@@ -449,6 +452,7 @@ bool RollingCuckooFilter::Check(Span<const unsigned char> data) const
 
 void RollingCuckooFilter::Insert(Span<const unsigned char> data)
 {
+    auto [index1, fpr] = HashData(data);
     uint64_t buckets_times_count = m_count_this_cycle * m_params.m_buckets;
 
     // Sweep entries. The condition is "swept_this_cycle < buckets * (count_this_cycle / max_entries)",
@@ -472,9 +476,6 @@ void RollingCuckooFilter::Insert(Span<const unsigned char> data)
     ++m_count_this_gen;
 
     int max_access = m_params.m_max_kicks;
-
-    uint64_t fpr = Fingerprint(data);
-    uint64_t index1 = Index1(data);
     --max_access;
     int fnd1 = Find(index1, fpr);
     if (fnd1 != -1) {
