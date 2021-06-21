@@ -171,6 +171,7 @@ RollingCuckooFilter::Params ChooseParams(uint32_t window, unsigned fpbits, doubl
         uint64_t max_used = params.MaxEntries();
         uint64_t table_size = std::ceil(std::max(64.0, max_used / std::min(alpha, max_used < 1024 ? 0.9 : 0.95)));
         uint64_t buckets = ((table_size + 2 * RollingCuckooFilter::BUCKET_SIZE - 1) >> (1 + RollingCuckooFilter::BUCKET_BITS)) << 1;
+        if (((buckets << params.m_fpr_bits) >> params.m_fpr_bits) != buckets) continue;
         if (buckets > 0x7FFFFFFF) continue;
         params.m_buckets = buckets;
         if (!have_ret || params.TableBits() < ret.TableBits()) {
@@ -217,8 +218,7 @@ RollingCuckooFilter::RollingCuckooFilter(const Params& params, bool deterministi
     m_gens(params.Generations()),
     m_max_entries(params.MaxEntries()),
     m_rng(deterministic),
-    m_single_hash((m_params.m_buckets << m_params.m_fpr_bits) >> (m_params.m_fpr_bits) == m_params.m_buckets),
-    m_phi_k0(m_rng.rand64()), m_phi_k1(m_rng.rand64()), m_h1_k0(m_rng.rand64()), m_h1_k1(m_rng.rand64()),
+    m_k0(m_rng.rand64()), m_k1(m_rng.rand64()),
     m_data(size_t{m_params.m_buckets} * m_bits_per_bucket)
 {
 /*
@@ -325,18 +325,9 @@ void RollingCuckooFilter::SaveBucket(uint32_t index, DecodedBucket&& bucket)
     m_data.WriteAndAdvance(m_params.m_gen_cbits, offset, Encode({a, b, c, d}, m_params.m_gen_cbits));
 }
 
-std::pair<uint32_t, uint64_t> RollingCuckooFilter::HashData(Span<const unsigned char> data) const
+uint64_t RollingCuckooFilter::HashData(Span<const unsigned char> data) const
 {
-    uint64_t hash1 = CSipHasher(m_phi_k0, m_phi_k1).Write(data.data(), data.size()).Finalize();
-    uint32_t index1 = MapIntoRange(hash1, m_params.m_buckets);
-    uint64_t hash2;
-    if (m_single_hash) {
-        hash2 = bswap_64(hash1) * 1337133713;
-    } else {
-        hash2 = CSipHasher(m_h1_k0, m_h1_k1).Write(data.data(), data.size()).Finalize();
-    }
-    uint64_t fpr = MapIntoRange(hash2, 0xFFFFFFFFFFFFFFFF >> (64 - m_params.m_fpr_bits)) + 1U;
-    return {index1, fpr};
+    return CSipHasher(m_k0, m_k1).Write(data.data(), data.size()).Finalize();
 }
 
 uint32_t RollingCuckooFilter::OtherIndex(uint32_t index, uint64_t fpr) const
@@ -441,8 +432,10 @@ int RollingCuckooFilter::AddEntry(DecodedBucket& bucket, uint32_t index1, uint32
 
 bool RollingCuckooFilter::Check(Span<const unsigned char> data) const
 {
-    auto [index1, fpr] = HashData(data);
+    uint64_t hash = HashData(data);
+    uint32_t index1 = MapUpdateIntoRange(hash, m_params.m_buckets);
     m_data.Prefetch(uint64_t{index1} * m_bits_per_bucket);
+    uint64_t fpr = MapIntoRange(hash, 0xFFFFFFFFFFFFFFFF >> (64 - m_params.m_fpr_bits)) + 1U;
     uint32_t index2 = OtherIndex(index1, fpr);
     m_data.Prefetch(uint64_t{index2} * m_bits_per_bucket);
     if (Find(index1, fpr) != -1) return true;
@@ -452,7 +445,10 @@ bool RollingCuckooFilter::Check(Span<const unsigned char> data) const
 
 void RollingCuckooFilter::Insert(Span<const unsigned char> data)
 {
-    auto [index1, fpr] = HashData(data);
+    uint64_t hash = HashData(data);
+    uint32_t index1 = MapUpdateIntoRange(hash, m_params.m_buckets);
+    uint64_t fpr = MapIntoRange(hash, 0xFFFFFFFFFFFFFFFF >> (64 - m_params.m_fpr_bits)) + 1U;
+
     uint64_t buckets_times_count = m_count_this_cycle * m_params.m_buckets;
 
     // Sweep entries. The condition is "swept_this_cycle < buckets * (count_this_cycle / max_entries)",

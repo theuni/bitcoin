@@ -15,7 +15,7 @@ template<bool TenFails, bool TenSuccess>
 static void RollingBloomBench(benchmark::Bench& bench)
 {
     CRollingBloomFilter filter(WINDOW, 0.000001);
-    std::vector<unsigned char> data(8);
+    std::vector<unsigned char> data(32);
     uint64_t num = 0;
     for (unsigned j = 0; j < WINDOW; ++j) {
         WriteLE64(data.data(), num++);
@@ -43,7 +43,7 @@ template<int AlphaPct, bool TenFails, bool TenSuccess>
 static void RollingCuckooBench(benchmark::Bench& bench)
 {
     RollingCuckooFilter filter(WINDOW, 20, 0.01 * AlphaPct, 20);
-    std::vector<unsigned char> data(8);
+    std::vector<unsigned char> data(32);
     uint64_t num = 0;
     for (unsigned j = 0; j < WINDOW; ++j) {
         WriteLE64(data.data(), num++);

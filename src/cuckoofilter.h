@@ -63,11 +63,8 @@ private:
     FastRandomContext m_rng;
 
     // Salts for the fingerprint and index hash functions.
-    const bool m_single_hash;
-    const uint64_t m_phi_k0;
-    const uint64_t m_phi_k1;
-    const uint64_t m_h1_k0;
-    const uint64_t m_h1_k1;
+    const uint64_t m_k0;
+    const uint64_t m_k1;
 
     //! The current generation number (in range 0..m_gen*2-1).
     uint32_t m_this_gen = 0;
@@ -118,8 +115,8 @@ private:
     //! Given the fingerprint of an item, and one of its index positions, find the other.
     uint32_t OtherIndex(uint32_t index, uint64_t fpr) const;
 
-    //! Compute the (first) index and fingerprint for data.
-    std::pair<uint32_t, uint64_t> HashData(Span<const unsigned char> data) const;
+    //! Compute the hash for data.
+    uint64_t HashData(Span<const unsigned char> data) const;
 
     //! Add (fpr,gen) to bucket if it has an empty entry; otherwise do nothing.
     bool AddEntryToBucket(DecodedBucket& bucket, uint64_t fpr, unsigned gen) const;

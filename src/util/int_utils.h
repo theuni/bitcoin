@@ -38,4 +38,34 @@ inline uint64_t MapIntoRange(uint64_t x, uint64_t n)
 #endif
 }
 
+// Variant of the above that updates the input hash to be left in a state that
+// contains the remaining entropy, so it can be fed against into one of these
+// functions.
+inline uint64_t MapUpdateIntoRange(uint64_t& x, uint64_t n)
+{
+    uint64_t mask = ~n & (n - 1);
+#ifdef __SIZEOF_INT128__
+    unsigned __int128 mul = static_cast<unsigned __int128>(x) * n;
+    uint64_t out = mul >> 64;
+    x = mul + (out & mask);
+    return out;
+#else
+    uint64_t x_hi = x >> 32;
+    uint64_t x_lo = x & 0xFFFFFFFF;
+    uint64_t n_hi = n >> 32;
+    uint64_t n_lo = n & 0xFFFFFFFF;
+
+    uint64_t ac = x_hi * n_hi;
+    uint64_t ad = x_hi * n_lo;
+    uint64_t bc = x_lo * n_hi;
+    uint64_t bd = x_lo * n_lo;
+
+    x = bd + (bc + ad) << 32;
+    uint64_t mid34 = (bd >> 32) + (bc & 0xFFFFFFFF) + (ad & 0xFFFFFFFF);
+    uint64_t upper64 = ac + (bc >> 32) + (ad >> 32) + (mid34 >> 32);
+    x += upper64 & mask;
+    return upper64;
+#endif
+}
+
 #endif // BITCOIN_UTIL_INT_UTILS_H

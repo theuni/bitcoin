@@ -12,14 +12,14 @@
 
 BOOST_FIXTURE_TEST_SUITE(cuckoofilter_tests, BasicTestingSetup)
 
-#define WINDOW 512
+#define WINDOW 7193
 #define RANGE ((WINDOW)*3)
 
 //#define Insert insert
 //#define Check contains
 
 BOOST_AUTO_TEST_CASE(cuckoofilter_test) {
-    RollingCuckooFilter rcf{WINDOW, 8, 0.95};
+    RollingCuckooFilter rcf{WINDOW, 10, 0.95};
 //    CRollingBloomFilter rcf{WINDOW, 0.000001};
 
     std::vector<bool> bitset(RANGE);
@@ -65,7 +65,7 @@ BOOST_AUTO_TEST_CASE(cuckoofilter_test) {
         }
     }
 
-    printf("FP: %lu/%lu = %g\n", (unsigned long)fps, (unsigned long)checks, (double)fps / checks);
+    printf("FP: %lu/%lu = 1/%g\n", (unsigned long)fps, (unsigned long)checks, (double)checks / fps);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
