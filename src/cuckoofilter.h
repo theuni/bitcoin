@@ -81,8 +81,10 @@ private:
     //! The actual bit-packed table.
     BitPack m_data;
 
+    using OverflowTable = std::map<std::pair<uint64_t, uint32_t>, std::pair<unsigned, bool>>;
     //! Overflow table ((fpr, min(bucket1, bucket2)) -> (gen, max(bucket1, bucket2) is next))
-    std::map<std::pair<uint64_t, uint32_t>, std::pair<unsigned, bool>> m_overflow;
+    OverflowTable m_overflow;
+    OverflowTable::iterator m_overflow_reinsert = m_overflow.end();
 
     size_t m_max_overflow = 0;
 

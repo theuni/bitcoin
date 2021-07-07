@@ -519,13 +519,13 @@ void RollingCuckooFilter::Insert(Span<const unsigned char> data)
     }
 
     while (max_access && !m_overflow.empty()) {
-        auto it = m_overflow.begin();
-        auto [key, value] = *it;
+        if (m_overflow_reinsert == m_overflow.end()) m_overflow_reinsert = m_overflow.begin();
+        auto [key, value] = *m_overflow_reinsert;
         auto [gen, max_is_next] = value;
         auto [fpr, index1] = key;
         uint32_t index2 = OtherIndex(index1, fpr);
         if (max_is_next) std::swap(index1, index2);
-        m_overflow.erase(it);
+        m_overflow_reinsert = m_overflow.erase(m_overflow_reinsert);
         if (IsActive(gen)) {
             DecodedBucket bucket = LoadBucket(index1);
             max_access = AddEntry(bucket, index1, index2, fpr, gen, max_access);
