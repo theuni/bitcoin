@@ -128,6 +128,7 @@ private:
     //! to be accessed before giving up. The return value is max_access-(number of accessed buckets).
     int AddEntry(DecodedBucket& bucket, uint32_t index1, uint32_t index2, uint64_t fpr, unsigned gen, int max_access);
 
+    bool DeleteEntryFromBucket(DecodedBucket& bucket, uint64_t fpr, unsigned gen) const;
 public:
     //! Construct a rolling cuckoo filter with the specified parameters.
     RollingCuckooFilter(const Params& param, bool deterministic);
@@ -140,6 +141,10 @@ public:
 
     //! Insert data.
     void Insert(Span<const unsigned char> data);
+
+    //! Delete data
+    //! This is potentially destructive if data was not previously inserted.
+    bool Delete(Span<const unsigned char> data);
 
     size_t MaxOverflow() const { return m_max_overflow; }
 };

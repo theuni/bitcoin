@@ -380,6 +380,17 @@ int RollingCuckooFilter::Find(uint32_t index, uint64_t fpr) const
     }
 }
 
+bool RollingCuckooFilter::DeleteEntryFromBucket(DecodedBucket& bucket, uint64_t fpr, unsigned gen) const
+{
+    for (unsigned pos = 0; pos < BUCKET_SIZE; ++pos) {
+        if (bucket.m_entries[pos].m_fpr == fpr && IsActive(bucket.m_entries[pos].m_gen)) {
+            bucket.m_entries[pos] = DecodedEntry{0, m_this_gen};
+            return true;
+        }
+    }
+    return false;
+}
+
 bool RollingCuckooFilter::AddEntryToBucket(DecodedBucket& bucket, uint64_t fpr, unsigned gen) const
 {
     assert(fpr != 0);
@@ -441,6 +452,29 @@ bool RollingCuckooFilter::Check(Span<const unsigned char> data) const
     if (Find(index1, fpr) != -1) return true;
     if (Find(index2, fpr) != -1) return true;
     return m_overflow.size() ? m_overflow.count({fpr, std::min(index1, index2)}) > 0 : 0;
+}
+
+bool RollingCuckooFilter::Delete(Span<const unsigned char> data)
+{
+    uint64_t hash = HashData(data);
+    uint32_t index1 = MapUpdateIntoRange(hash, m_params.m_buckets);
+    uint64_t fpr = MapIntoRange(hash, 0xFFFFFFFFFFFFFFFF >> (64 - m_params.m_fpr_bits)) + 1U;
+    uint32_t index2 = OtherIndex(index1, fpr);
+
+    // Remove from the overflow table first if present
+    if (m_overflow.erase({fpr, std::min(index1, index2)}) == 1) {
+        return true;
+    }
+
+    if (auto bucket1 = LoadBucket(index1); DeleteEntryFromBucket(bucket1, fpr, m_this_gen)) {
+        SaveBucket(index1, std::move(bucket1));
+        return true;
+    }
+    if (auto bucket2 = LoadBucket(index2); DeleteEntryFromBucket(bucket2, fpr, m_this_gen)) {
+        SaveBucket(index2, std::move(bucket2));
+        return true;
+    }
+    return false;
 }
 
 void RollingCuckooFilter::Insert(Span<const unsigned char> data)
