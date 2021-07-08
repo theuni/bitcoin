@@ -443,6 +443,70 @@ bool RollingCuckooFilter::Check(Span<const unsigned char> data) const
     return m_overflow.size() ? m_overflow.count({fpr, std::min(index1, index2)}) > 0 : 0;
 }
 
+bool RollingCuckooFilter::Delete(Span<const unsigned char> data)
+{
+    uint64_t hash = HashData(data);
+    uint32_t index1 = MapUpdateIntoRange(hash, m_params.m_buckets);
+    uint64_t fpr = MapIntoRange(hash, 0xFFFFFFFFFFFFFFFF >> (64 - m_params.m_fpr_bits)) + 1U;
+    uint32_t index2 = OtherIndex(index1, fpr);
+
+    // Remove from the overflow table first if present
+    if (m_overflow.erase({fpr, std::min(index1, index2)}) == 1) {
+        return true;
+    }
+
+    DecodedBucket bucket1 = LoadBucket(index1);
+    DecodedBucket bucket2 = LoadBucket(index2);
+    DecodedEntry* entry1 = nullptr;
+    DecodedEntry* entry2 = nullptr;
+    for (unsigned pos = 0; pos < BUCKET_SIZE; ++pos) {
+        if (bucket1.m_entries[pos].m_fpr == fpr && IsActive(bucket1.m_entries[pos].m_gen)) {
+            entry1 = &bucket1.m_entries[pos];
+            break;
+        }
+    }
+    for (unsigned pos = 0; pos < BUCKET_SIZE; ++pos) {
+        if (bucket2.m_entries[pos].m_fpr == fpr && IsActive(bucket2.m_entries[pos].m_gen)) {
+            entry2 = &bucket2.m_entries[pos];
+            break;
+        }
+    }
+
+    // If found in both, use generation as a tie-breaker
+    // Prefer to remove entries from the current generation because that allows
+    // for the counter for the current generation to be decremented.
+    // TODO: Does that even make sense? Revisit selection policy.
+    if (entry1 && entry2) {
+        if (entry1->m_gen == m_this_gen) {
+            entry2 = nullptr;
+        } else {
+            entry1 = nullptr;
+        }
+    }
+
+    bool del_cur_gen = false;
+    if (entry1) {
+        if (entry1->m_gen == m_this_gen) {
+            del_cur_gen = true;
+        }
+        *entry1 = DecodedEntry{0, m_this_gen};
+        SaveBucket(index1, std::move(bucket1));
+    } else if (entry2) {
+        if (entry2->m_gen == m_this_gen) {
+            del_cur_gen = true;
+        }
+        *entry2 = DecodedEntry{0, m_this_gen};
+        SaveBucket(index2, std::move(bucket2));
+    } else {
+        return false;
+    }
+    --m_count_this_cycle;
+    if (del_cur_gen) {
+        --m_count_this_gen;
+    }
+    return true;
+}
+
 void RollingCuckooFilter::Insert(Span<const unsigned char> data)
 {
     uint64_t hash = HashData(data);

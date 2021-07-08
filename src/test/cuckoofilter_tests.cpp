@@ -68,4 +68,23 @@ BOOST_AUTO_TEST_CASE(cuckoofilter_test) {
     printf("FP: %lu/%lu = 1/%g\n", (unsigned long)fps, (unsigned long)checks, (double)checks / fps);
 }
 
+BOOST_AUTO_TEST_CASE(cuckoofilter_test_delete) {
+    RollingCuckooFilter rcf{WINDOW, 10, 0.95, 0, true};
+    auto h1 = uint256S("0x12345678");
+    auto h2 = uint256S("0x23456789");
+    auto h3 = uint256S("0x34567890");
+    rcf.Insert(h1);
+    rcf.Insert(h2);
+    rcf.Insert(h3);
+    BOOST_CHECK(rcf.Check(h1));
+    BOOST_CHECK(rcf.Check(h2));
+    BOOST_CHECK(rcf.Check(h3));
+    rcf.Delete(h1);
+    rcf.Delete(h2);
+    BOOST_CHECK(!rcf.Check(h1));
+    BOOST_CHECK(!rcf.Check(h2));
+    rcf.Insert(h2);
+    BOOST_CHECK(rcf.Check(h2));
+    BOOST_CHECK(rcf.Check(h3));
+}
 BOOST_AUTO_TEST_SUITE_END()

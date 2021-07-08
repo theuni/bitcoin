@@ -141,6 +141,10 @@ public:
     //! Insert data.
     void Insert(Span<const unsigned char> data);
 
+    //! Delete data
+    //! This is potentially destructive if data was not previously inserted.
+    bool Delete(Span<const unsigned char> data);
+
     size_t MaxOverflow() const { return m_max_overflow; }
 };
 
