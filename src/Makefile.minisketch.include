@@ -35,11 +35,12 @@ endif
 EXTRA_LIBRARIES += $(MINISKETCH_LIBS)
 
 minisketch_libminisketch_clmul_a_SOURCES = $(MINISKETCH_FIELD_CLMUL_SOURCES_INT)
-minisketch_libminisketch_clmul_a_CXXFLAGS = $(AM_CXXFLAGS) $(CLMUL_CXXFLAGS)
+minisketch_libminisketch_clmul_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) $(CLMUL_CXXFLAGS)
 minisketch_libminisketch_clmul_a_CPPFLAGS = $(AM_CPPFLAGS) $(LIBMINISKETCH_CPPFLAGS)
 
 minisketch_libminisketch_a_SOURCES = $(MINISKETCH_FIELD_GENERIC_SOURCES_INT) $(MINISKETCH_LIB_SOURCES_INT)
 minisketch_libminisketch_a_CPPFLAGS = $(AM_CPPFLAGS) $(LIBMINISKETCH_CPPFLAGS)
+minisketch_libminisketch_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 
 if ENABLE_TESTS
 MINISKETCH_TEST = minisketch/test
@@ -48,7 +49,8 @@ noinst_PROGRAMS += $(MINISKETCH_TEST)
 
 minisketch_test_SOURCES = $(MINISKETCH_TEST_SOURCES_INT)
 minisketch_test_CPPFLAGS = $(AM_CPPFLAGS) $(LIBMINISKETCH_CPPFLAGS)
+minisketch_test_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 minisketch_test_LDADD = $(MINISKETCH_LIBS)
-minisketch_test_LDFLAGS = $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
+minisketch_test_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS) $(PTHREAD_FLAGS)
 
 endif
