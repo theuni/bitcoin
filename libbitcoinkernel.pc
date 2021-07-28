@@ -1,0 +1,10 @@
+prefix=/usr/local
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: Bitcoin Core kernel library
+Description: Kernel library for the Bitcoin consensus protocol.
+Version: 22.99.0
+Libs: -L${libdir} -lbitcoinkernel
+Cflags: -I${includedir}

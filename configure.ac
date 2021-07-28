@@ -1596,6 +1596,8 @@ AM_CONDITIONAL([BUILD_BITCOIN_LIBS], [test x$build_bitcoin_libs = xyes])
 if test x$build_bitcoin_libs = xyes; then
   AC_DEFINE(HAVE_CONSENSUS_LIB, 1, [Define this symbol if the consensus lib has been built])
   AC_CONFIG_FILES([libbitcoinconsensus.pc:libbitcoinconsensus.pc.in])
+  AC_DEFINE(HAVE_KERNEL_LIB, 1, [Define this symbol if the kernel lib has been built])
+  AC_CONFIG_FILES([libbitcoinkernel.pc:libbitcoinkernel.pc.in])
 fi
 AC_MSG_RESULT($build_bitcoin_libs)
 

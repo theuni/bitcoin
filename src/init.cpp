@@ -27,6 +27,7 @@
 #include <init/common.h>
 #include <interfaces/chain.h>
 #include <interfaces/node.h>
+#include <kernel/bitcoinkernel.h>
 #include <mapport.h>
 #include <miner.h>
 #include <net.h>
@@ -1067,6 +1068,7 @@ bool AppInitInterfaces(NodeContext& node)
 
 bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
 {
+
     const ArgsManager& args = *Assert(node.args);
     const CChainParams& chainparams = Params();
     // ********************************************************* Step 4a: application initialization
@@ -1350,6 +1352,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
         bilingual_str strLoadError;
 
         uiInterface.InitMessage(_("Loading block index…").translated);
+        HelloKernel();
 
         do {
             const int64_t load_block_index_start_time = GetTimeMillis();
