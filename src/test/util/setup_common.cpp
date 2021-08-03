@@ -13,10 +13,13 @@
 #include <crypto/sha256.h>
 #include <init.h>
 #include <interfaces/chain.h>
+#include <kernel/bitcoinkernel.h>
 #include <miner.h>
 #include <net.h>
 #include <net_processing.h>
 #include <noui.h>
+#include <node/blockstorage.h>
+#include <node/ui_interface.h>
 #include <policy/fees.h>
 #include <pow.h>
 #include <rpc/blockchain.h>
@@ -178,15 +181,20 @@ TestingSetup::TestingSetup(const std::string& chainName, const std::vector<const
     // instead of unit tests, but for now we need these here.
     RegisterAllCoreRPCCommands(tableRPC);
 
-    m_node.chainman->InitializeChainstate(m_node.mempool.get());
-    m_node.chainman->ActiveChainstate().InitCoinsDB(
-        /* cache_size_bytes */ 1 << 23, /* in_memory */ true, /* should_wipe */ false);
-    assert(!m_node.chainman->ActiveChainstate().CanFlushToDisk());
-    m_node.chainman->ActiveChainstate().InitCoinsCache(1 << 23);
-    assert(m_node.chainman->ActiveChainstate().CanFlushToDisk());
-    if (!m_node.chainman->ActiveChainstate().LoadGenesisBlock()) {
-        throw std::runtime_error("LoadGenesisBlock failed.");
-    }
+    int64_t nTxIndexCache;
+    int64_t filter_index_cache;
+    std::set<BlockFilterType> s {};
+    bool rv = ActivateChainstateSequence(fReindex,
+                                         uiInterface,
+                                         *m_node.chainman.get(),
+                                         Assert(m_node.mempool.get()),
+                                         fPruneMode,
+                                         chainparams,
+                                         m_args,
+                                         nTxIndexCache,
+                                         filter_index_cache,
+                                         s);
+    assert(rv);
 
     BlockValidationState state;
     if (!m_node.chainman->ActiveChainstate().ActivateBestChain(state)) {

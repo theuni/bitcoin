@@ -82,7 +82,7 @@ EXTRA_LIBRARIES += \
   $(LIBBITCOIN_WALLET_TOOL) \
   $(LIBBITCOIN_ZMQ)
 
-lib_LTLIBRARIES = $(LIBBITCOINCONSENSUS) $(LIBBITCOINKERNEL)
+lib_LTLIBRARIES = $(LIBBITCOINCONSENSUS) # $(LIBBITCOINKERNEL)
 
 bin_PROGRAMS =
 noinst_PROGRAMS =
@@ -781,8 +781,8 @@ libbitcoinkernel_la_SOURCES += compat/glibc_compat.cpp
 endif
 
 libbitcoinkernel_la_LDFLAGS = $(AM_LDFLAGS) -no-undefined $(RELDFLAGS)
-libbitcoinkernel_la_LIBADD = $(LIBSECP256K1)
-libbitcoinkernel_la_CPPFLAGS = $(AM_CPPFLAGS) -I$(builddir)/obj -I$(srcdir)/secp256k1/include -DBUILD_BITCOIN_INTERNAL
+libbitcoinkernel_la_LIBADD = $(LIBSECP256K1) leveldb/libleveldb.la # $(LIBLEVELDB)
+libbitcoinkernel_la_CPPFLAGS = $(AM_CPPFLAGS) -I$(builddir)/obj -I$(srcdir)/secp256k1/include -DBUILD_BITCOIN_INTERNAL $(LEVELDB_CPPFLAGS)
 libbitcoinkernel_la_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 
 endif
@@ -899,6 +899,8 @@ if EMBEDDED_LEVELDB
 include Makefile.crc32c.include
 include Makefile.leveldb.include
 endif
+
+lib_LTLIBRARIES += $(LIBBITCOINKERNEL)
 
 include Makefile.test_util.include
 include Makefile.test_fuzz.include
