@@ -12,7 +12,6 @@
 class CClientUIInterface;
 class ChainstateManager;
 class CChainParams;
-class ArgsManager;
 class CTxMemPool;
 enum class BlockFilterType : uint8_t;
 
