@@ -5,7 +5,6 @@
 
 #include <iostream>
 
-#include <blockfilter.h> // For BlockFilterType
 #include <chainparams.h> // For CChainParams
 #include <rpc/blockchain.h> // For RPCNotifyBlockChange
 #include <util/time.h> // For GetTimeMillis
@@ -25,7 +24,7 @@ bool ActivateChainstateSequence(std::atomic_bool& fReindex,
                                 CClientUIInterface& uiInterface,
                                 ChainstateManager& chainman,
                                 CTxMemPool* mempool,
-                                bool& fPruneMode,
+                                bool fPruneMode,
                                 const CChainParams& chainparams,
                                 bool fReindexChainState,
                                 int64_t nBlockTreeDBCache,

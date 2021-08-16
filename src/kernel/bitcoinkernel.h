@@ -8,7 +8,6 @@
 #include <sync.h> // For RecursiveMutex
 
 #include <atomic> // For std::atomic_bool
-#include <set> // For std::set
 
 class CClientUIInterface;
 class ChainstateManager;
@@ -25,7 +24,7 @@ bool ActivateChainstateSequence(std::atomic_bool& fReindex,
                                 CClientUIInterface& uiInterface,
                                 ChainstateManager& chainman,
                                 CTxMemPool* mempool,
-                                bool& fPruneMode,
+                                bool fPruneMode,
                                 const CChainParams& chainparams,
                                 bool fReindexChainState,
                                 int64_t nBlockTreeDBCache,
