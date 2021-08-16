@@ -71,4 +71,13 @@ void SetupServerArgs(ArgsManager& argsman);
 /** Returns licensing information (for -version) */
 std::string LicenseInfo();
 
+struct CacheSizes {
+    int64_t block_tree_db_cache_size;
+    int64_t coin_db_cache_size;
+    int64_t coin_cache_usage_size;
+    int64_t tx_index_cache_size;
+    int64_t filter_index_cache_size;
+};
+void CalculateCacheSizes(const ArgsManager& args, size_t n_indexes, CacheSizes* cache_sizes);
+
 #endif // BITCOIN_INIT_H

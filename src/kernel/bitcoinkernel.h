@@ -28,8 +28,9 @@ bool ActivateChainstateSequence(std::atomic_bool& fReindex,
                                 bool& fPruneMode,
                                 const CChainParams& chainparams,
                                 const ArgsManager& args,
-                                int64_t& nTxIndexCache,
-                                int64_t& filter_index_cache,
-                                std::set<BlockFilterType>& enabled_filter_types);
+                                bool fReindexChainState,
+                                int64_t nBlockTreeDBCache,
+                                int64_t nCoinDBCache,
+                                int64_t nCoinCacheUsage);
 
 #endif // BITCOIN_KERNEL_BITCOINKERNEL_H

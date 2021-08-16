@@ -28,44 +28,10 @@ bool ActivateChainstateSequence(std::atomic_bool& fReindex,
                                 bool& fPruneMode,
                                 const CChainParams& chainparams,
                                 const ArgsManager& args,
-                                int64_t& nTxIndexCache,
-                                int64_t& filter_index_cache,
-                                std::set<BlockFilterType>& enabled_filter_types) {
-    fReindex = args.GetBoolArg("-reindex", false);
-    bool fReindexChainState = args.GetBoolArg("-reindex-chainstate", false);
-
-    // cache size calculations
-    int64_t nTotalCache = (args.GetArg("-dbcache", nDefaultDbCache) << 20);
-    nTotalCache = std::max(nTotalCache, nMinDbCache << 20); // total cache cannot be less than nMinDbCache
-    nTotalCache = std::min(nTotalCache, nMaxDbCache << 20); // total cache cannot be greater than nMaxDbcache
-    int64_t nBlockTreeDBCache = std::min(nTotalCache / 8, nMaxBlockDBCache << 20);
-    nTotalCache -= nBlockTreeDBCache;
-    nTxIndexCache = std::min(nTotalCache / 8, args.GetBoolArg("-txindex", DEFAULT_TXINDEX) ? nMaxTxIndexCache << 20 : 0);
-    nTotalCache -= nTxIndexCache;
-    filter_index_cache = 0;
-    if (!enabled_filter_types.empty()) {
-        size_t n_indexes = enabled_filter_types.size();
-        int64_t max_cache = std::min(nTotalCache / 8, max_filter_index_cache << 20);
-        filter_index_cache = max_cache / n_indexes;
-        nTotalCache -= filter_index_cache * n_indexes;
-    }
-    int64_t nCoinDBCache = std::min(nTotalCache / 2, (nTotalCache / 4) + (1 << 23)); // use 25%-50% of the remainder for disk cache
-    nCoinDBCache = std::min(nCoinDBCache, nMaxCoinsDBCache << 20); // cap total coins db cache
-    nTotalCache -= nCoinDBCache;
-    int64_t nCoinCacheUsage = nTotalCache; // the rest goes to in-memory cache
-    int64_t nMempoolSizeMax = args.GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000;
-    LogPrintf("Cache configuration:\n");
-    LogPrintf("* Using %.1f MiB for block index database\n", nBlockTreeDBCache * (1.0 / 1024 / 1024));
-    if (args.GetBoolArg("-txindex", DEFAULT_TXINDEX)) {
-        LogPrintf("* Using %.1f MiB for transaction index database\n", nTxIndexCache * (1.0 / 1024 / 1024));
-    }
-    for (BlockFilterType filter_type : enabled_filter_types) {
-        LogPrintf("* Using %.1f MiB for %s block filter index database\n",
-                  filter_index_cache * (1.0 / 1024 / 1024), BlockFilterTypeName(filter_type));
-    }
-    LogPrintf("* Using %.1f MiB for chain state database\n", nCoinDBCache * (1.0 / 1024 / 1024));
-    LogPrintf("* Using %.1f MiB for in-memory UTXO set (plus up to %.1f MiB of unused mempool space)\n", nCoinCacheUsage * (1.0 / 1024 / 1024), nMempoolSizeMax * (1.0 / 1024 / 1024));
-
+                                bool fReindexChainState,
+                                int64_t nBlockTreeDBCache,
+                                int64_t nCoinDBCache,
+                                int64_t nCoinCacheUsage) {
     bool fLoaded = false;
     while (!fLoaded && !ShutdownRequested()) {
         const bool fReset = fReindex;

@@ -1066,6 +1066,33 @@ bool AppInitInterfaces(NodeContext& node)
     return true;
 }
 
+void CalculateCacheSizes(const ArgsManager& args, size_t n_indexes, CacheSizes* cache_sizes)
+{
+    int64_t nTotalCache = (args.GetArg("-dbcache", nDefaultDbCache) << 20);
+    nTotalCache = std::max(nTotalCache, nMinDbCache << 20); // total cache cannot be less than nMinDbCache
+    nTotalCache = std::min(nTotalCache, nMaxDbCache << 20); // total cache cannot be greater than nMaxDbcache
+    int64_t nBlockTreeDBCache = std::min(nTotalCache / 8, nMaxBlockDBCache << 20);
+    nTotalCache -= nBlockTreeDBCache;
+    int64_t nTxIndexCache = std::min(nTotalCache / 8, args.GetBoolArg("-txindex", DEFAULT_TXINDEX) ? nMaxTxIndexCache << 20 : 0);
+    nTotalCache -= nTxIndexCache;
+    int64_t filter_index_cache = 0;
+    if (n_indexes > 0) {
+        int64_t max_cache = std::min(nTotalCache / 8, max_filter_index_cache << 20);
+        filter_index_cache = max_cache / n_indexes;
+        nTotalCache -= filter_index_cache * n_indexes;
+    }
+    int64_t nCoinDBCache = std::min(nTotalCache / 2, (nTotalCache / 4) + (1 << 23)); // use 25%-50% of the remainder for disk cache
+    nCoinDBCache = std::min(nCoinDBCache, nMaxCoinsDBCache << 20); // cap total coins db cache
+    nTotalCache -= nCoinDBCache;
+    int64_t nCoinCacheUsage = nTotalCache; // the rest goes to in-memory cache
+
+    cache_sizes->block_tree_db_cache_size = nBlockTreeDBCache;
+    cache_sizes->coin_db_cache_size = nCoinDBCache;
+    cache_sizes->coin_cache_usage_size = nCoinCacheUsage;
+    cache_sizes->tx_index_cache_size = nTxIndexCache;
+    cache_sizes->filter_index_cache_size = filter_index_cache;
+}
+
 bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
 {
 
@@ -1307,9 +1334,25 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
 #endif
 
     // ********************************************************* Step 7: load block chain
+    fReindex = args.GetBoolArg("-reindex", false);
+    bool fReindexChainState = args.GetBoolArg("-reindex-chainstate", false);
 
-    int64_t nTxIndexCache;
-    int64_t filter_index_cache;
+
+    CacheSizes cache_sizes;
+    CalculateCacheSizes(args, g_enabled_filter_types.size(), &cache_sizes);
+    int64_t nMempoolSizeMax = args.GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000;
+    LogPrintf("Cache configuration:\n");
+    LogPrintf("* Using %.1f MiB for block index database\n", cache_sizes.block_tree_db_cache_size * (1.0 / 1024 / 1024));
+    if (args.GetBoolArg("-txindex", DEFAULT_TXINDEX)) {
+        LogPrintf("* Using %.1f MiB for transaction index database\n", cache_sizes.tx_index_cache_size * (1.0 / 1024 / 1024));
+    }
+    for (BlockFilterType filter_type : g_enabled_filter_types) {
+        LogPrintf("* Using %.1f MiB for %s block filter index database\n",
+                  cache_sizes.filter_index_cache_size * (1.0 / 1024 / 1024), BlockFilterTypeName(filter_type));
+    }
+    LogPrintf("* Using %.1f MiB for chain state database\n", cache_sizes.coin_db_cache_size * (1.0 / 1024 / 1024));
+    LogPrintf("* Using %.1f MiB for in-memory UTXO set (plus up to %.1f MiB of unused mempool space)\n", cache_sizes.coin_cache_usage_size * (1.0 / 1024 / 1024), nMempoolSizeMax * (1.0 / 1024 / 1024));
+
     bool rv = ActivateChainstateSequence(fReindex,
                                          uiInterface,
                                          chainman,
@@ -1317,12 +1360,16 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
                                          fPruneMode,
                                          chainparams,
                                          args,
-                                         nTxIndexCache,
-                                         filter_index_cache,
-                                         g_enabled_filter_types);
+                                         fReindexChainState,
+                                         cache_sizes.block_tree_db_cache_size,
+                                         cache_sizes.coin_db_cache_size,
+                                         cache_sizes.coin_cache_usage_size);
     if (!rv) {
         return rv;
     }
+
+    int64_t nTxIndexCache = cache_sizes.tx_index_cache_size;
+    int64_t filter_index_cache = cache_sizes.filter_index_cache_size;
 
     // As LoadBlockIndex can take several minutes, it's possible the user
     // requested to kill the GUI during the last operation. If so, exit.

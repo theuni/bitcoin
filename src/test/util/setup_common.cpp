@@ -181,9 +181,10 @@ TestingSetup::TestingSetup(const std::string& chainName, const std::vector<const
     // instead of unit tests, but for now we need these here.
     RegisterAllCoreRPCCommands(tableRPC);
 
-    int64_t nTxIndexCache;
-    int64_t filter_index_cache;
-    std::set<BlockFilterType> s {};
+    bool fReindexChainState = m_args.GetBoolArg("-reindex-chainstate", false);
+
+    CacheSizes cache_sizes;
+    CalculateCacheSizes(m_args, 0, &cache_sizes);
     bool rv = ActivateChainstateSequence(fReindex,
                                          uiInterface,
                                          *m_node.chainman.get(),
@@ -191,9 +192,10 @@ TestingSetup::TestingSetup(const std::string& chainName, const std::vector<const
                                          fPruneMode,
                                          chainparams,
                                          m_args,
-                                         nTxIndexCache,
-                                         filter_index_cache,
-                                         s);
+                                         fReindexChainState,
+                                         cache_sizes.block_tree_db_cache_size,
+                                         cache_sizes.coin_db_cache_size,
+                                         cache_sizes.coin_cache_usage_size);
     assert(rv);
 
     BlockValidationState state;
