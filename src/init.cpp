@@ -1210,16 +1210,13 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     int check_ratio = std::min<int>(std::max<int>(args.GetArg("-checkmempool", chainparams.DefaultConsistencyChecks() ? 1 : 0), 0), 1000000);
     node.mempool = std::make_unique<CTxMemPool>(node.fee_estimator.get(), check_ratio);
 
-    assert(!node.chainman);
-    node.chainman = std::make_unique<ChainstateManager>();
-    ChainstateManager& chainman = *node.chainman;
-
     fReindex = args.GetBoolArg("-reindex", false);
     bool fReindexChainState = args.GetBoolArg("-reindex-chainstate", false);
 
-
     CacheSizes cache_sizes;
     CalculateCacheSizes(args, g_enabled_filter_types.size(), &cache_sizes);
+    int64_t nTxIndexCache = cache_sizes.tx_index_cache_size;
+    int64_t filter_index_cache = cache_sizes.filter_index_cache_size;
     int64_t nMempoolSizeMax = args.GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000;
     LogPrintf("Cache configuration:\n");
     LogPrintf("* Using %.1f MiB for block index database\n", cache_sizes.block_tree_db_cache_size * (1.0 / 1024 / 1024));
@@ -1233,24 +1230,22 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     LogPrintf("* Using %.1f MiB for chain state database\n", cache_sizes.coin_db_cache_size * (1.0 / 1024 / 1024));
     LogPrintf("* Using %.1f MiB for in-memory UTXO set (plus up to %.1f MiB of unused mempool space)\n", cache_sizes.coin_cache_usage_size * (1.0 / 1024 / 1024), nMempoolSizeMax * (1.0 / 1024 / 1024));
 
-    bool rv = ActivateChainstateSequence(fReindex,
-                                         uiInterface,
-                                         chainman,
-                                         Assert(node.mempool.get()),
-                                         fPruneMode,
-                                         chainparams,
-                                         fReindexChainState,
-                                         cache_sizes.block_tree_db_cache_size,
-                                         cache_sizes.coin_db_cache_size,
-                                         cache_sizes.coin_cache_usage_size,
-                                         args.GetArg("-checkblocks", DEFAULT_CHECKBLOCKS),
-                                         args.GetArg("-checklevel", DEFAULT_CHECKLEVEL));
-    if (!rv) {
-        return rv;
+    assert(!node.chainman);
+    node.chainman = MakeFullyInitializedChainstateManager(fReindex,
+                                                          uiInterface,
+                                                          Assert(node.mempool.get()),
+                                                          fPruneMode,
+                                                          chainparams,
+                                                          fReindexChainState,
+                                                          cache_sizes.block_tree_db_cache_size,
+                                                          cache_sizes.coin_db_cache_size,
+                                                          cache_sizes.coin_cache_usage_size,
+                                                          args.GetArg("-checkblocks", DEFAULT_CHECKBLOCKS),
+                                                          args.GetArg("-checklevel", DEFAULT_CHECKLEVEL));
+    if (!node.chainman) {
+        return false;
     }
-
-    int64_t nTxIndexCache = cache_sizes.tx_index_cache_size;
-    int64_t filter_index_cache = cache_sizes.filter_index_cache_size;
+    ChainstateManager& chainman = *node.chainman;
 
     assert(!node.peerman);
     node.peerman = PeerManager::make(chainparams, *node.connman, *node.addrman, node.banman.get(),

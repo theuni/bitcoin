@@ -20,6 +20,36 @@ void HelloKernel() {
     std::cout << "Hello Kernel!";
 }
 
+std::unique_ptr<ChainstateManager> MakeFullyInitializedChainstateManager(std::atomic_bool& fReindex,
+                                                                         CClientUIInterface& uiInterface,
+                                                                         CTxMemPool* mempool,
+                                                                         bool fPruneMode,
+                                                                         const CChainParams& chainparams,
+                                                                         bool fReindexChainState,
+                                                                         int64_t nBlockTreeDBCache,
+                                                                         int64_t nCoinDBCache,
+                                                                         int64_t nCoinCacheUsage,
+                                                                         unsigned int check_blocks,
+                                                                         unsigned int check_level) {
+    auto chainman = std::make_unique<ChainstateManager>();
+    bool rv = ActivateChainstateSequence(fReindex,
+                                         uiInterface,
+                                         *chainman,
+                                         mempool,
+                                         fPruneMode,
+                                         chainparams,
+                                         fReindexChainState,
+                                         nBlockTreeDBCache,
+                                         nCoinDBCache,
+                                         nCoinCacheUsage,
+                                         check_blocks,
+                                         check_level);
+    if (!rv) {
+        chainman.reset();
+    }
+    return std::move(chainman);
+}
+
 bool ActivateChainstateSequence(std::atomic_bool& fReindex,
                                 CClientUIInterface& uiInterface,
                                 ChainstateManager& chainman,

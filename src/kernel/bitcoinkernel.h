@@ -20,6 +20,18 @@ extern RecursiveMutex cs_main;
 
 void HelloKernel();
 
+std::unique_ptr<ChainstateManager> MakeFullyInitializedChainstateManager(std::atomic_bool& fReindex,
+                                                                         CClientUIInterface& uiInterface,
+                                                                         CTxMemPool* mempool,
+                                                                         bool fPruneMode,
+                                                                         const CChainParams& chainparams,
+                                                                         bool fReindexChainState,
+                                                                         int64_t nBlockTreeDBCache,
+                                                                         int64_t nCoinDBCache,
+                                                                         int64_t nCoinCacheUsage,
+                                                                         unsigned int check_blocks,
+                                                                         unsigned int check_level);
+
 bool ActivateChainstateSequence(std::atomic_bool& fReindex,
                                 CClientUIInterface& uiInterface,
                                 ChainstateManager& chainman,
