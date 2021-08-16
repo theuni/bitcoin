@@ -1214,6 +1214,44 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     node.chainman = std::make_unique<ChainstateManager>();
     ChainstateManager& chainman = *node.chainman;
 
+    fReindex = args.GetBoolArg("-reindex", false);
+    bool fReindexChainState = args.GetBoolArg("-reindex-chainstate", false);
+
+
+    CacheSizes cache_sizes;
+    CalculateCacheSizes(args, g_enabled_filter_types.size(), &cache_sizes);
+    int64_t nMempoolSizeMax = args.GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000;
+    LogPrintf("Cache configuration:\n");
+    LogPrintf("* Using %.1f MiB for block index database\n", cache_sizes.block_tree_db_cache_size * (1.0 / 1024 / 1024));
+    if (args.GetBoolArg("-txindex", DEFAULT_TXINDEX)) {
+        LogPrintf("* Using %.1f MiB for transaction index database\n", cache_sizes.tx_index_cache_size * (1.0 / 1024 / 1024));
+    }
+    for (BlockFilterType filter_type : g_enabled_filter_types) {
+        LogPrintf("* Using %.1f MiB for %s block filter index database\n",
+                  cache_sizes.filter_index_cache_size * (1.0 / 1024 / 1024), BlockFilterTypeName(filter_type));
+    }
+    LogPrintf("* Using %.1f MiB for chain state database\n", cache_sizes.coin_db_cache_size * (1.0 / 1024 / 1024));
+    LogPrintf("* Using %.1f MiB for in-memory UTXO set (plus up to %.1f MiB of unused mempool space)\n", cache_sizes.coin_cache_usage_size * (1.0 / 1024 / 1024), nMempoolSizeMax * (1.0 / 1024 / 1024));
+
+    bool rv = ActivateChainstateSequence(fReindex,
+                                         uiInterface,
+                                         chainman,
+                                         Assert(node.mempool.get()),
+                                         fPruneMode,
+                                         chainparams,
+                                         fReindexChainState,
+                                         cache_sizes.block_tree_db_cache_size,
+                                         cache_sizes.coin_db_cache_size,
+                                         cache_sizes.coin_cache_usage_size,
+                                         args.GetArg("-checkblocks", DEFAULT_CHECKBLOCKS),
+                                         args.GetArg("-checklevel", DEFAULT_CHECKLEVEL));
+    if (!rv) {
+        return rv;
+    }
+
+    int64_t nTxIndexCache = cache_sizes.tx_index_cache_size;
+    int64_t filter_index_cache = cache_sizes.filter_index_cache_size;
+
     assert(!node.peerman);
     node.peerman = PeerManager::make(chainparams, *node.connman, *node.addrman, node.banman.get(),
                                      chainman, *node.mempool, ignores_incoming_txs);
@@ -1334,43 +1372,6 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
 #endif
 
     // ********************************************************* Step 7: load block chain
-    fReindex = args.GetBoolArg("-reindex", false);
-    bool fReindexChainState = args.GetBoolArg("-reindex-chainstate", false);
-
-
-    CacheSizes cache_sizes;
-    CalculateCacheSizes(args, g_enabled_filter_types.size(), &cache_sizes);
-    int64_t nMempoolSizeMax = args.GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000;
-    LogPrintf("Cache configuration:\n");
-    LogPrintf("* Using %.1f MiB for block index database\n", cache_sizes.block_tree_db_cache_size * (1.0 / 1024 / 1024));
-    if (args.GetBoolArg("-txindex", DEFAULT_TXINDEX)) {
-        LogPrintf("* Using %.1f MiB for transaction index database\n", cache_sizes.tx_index_cache_size * (1.0 / 1024 / 1024));
-    }
-    for (BlockFilterType filter_type : g_enabled_filter_types) {
-        LogPrintf("* Using %.1f MiB for %s block filter index database\n",
-                  cache_sizes.filter_index_cache_size * (1.0 / 1024 / 1024), BlockFilterTypeName(filter_type));
-    }
-    LogPrintf("* Using %.1f MiB for chain state database\n", cache_sizes.coin_db_cache_size * (1.0 / 1024 / 1024));
-    LogPrintf("* Using %.1f MiB for in-memory UTXO set (plus up to %.1f MiB of unused mempool space)\n", cache_sizes.coin_cache_usage_size * (1.0 / 1024 / 1024), nMempoolSizeMax * (1.0 / 1024 / 1024));
-
-    bool rv = ActivateChainstateSequence(fReindex,
-                                         uiInterface,
-                                         chainman,
-                                         Assert(node.mempool.get()),
-                                         fPruneMode,
-                                         chainparams,
-                                         fReindexChainState,
-                                         cache_sizes.block_tree_db_cache_size,
-                                         cache_sizes.coin_db_cache_size,
-                                         cache_sizes.coin_cache_usage_size,
-                                         args.GetArg("-checkblocks", DEFAULT_CHECKBLOCKS),
-                                         args.GetArg("-checklevel", DEFAULT_CHECKLEVEL));
-    if (!rv) {
-        return rv;
-    }
-
-    int64_t nTxIndexCache = cache_sizes.tx_index_cache_size;
-    int64_t filter_index_cache = cache_sizes.filter_index_cache_size;
 
     // As LoadBlockIndex can take several minutes, it's possible the user
     // requested to kill the GUI during the last operation. If so, exit.
