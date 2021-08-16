@@ -30,7 +30,8 @@ std::unique_ptr<ChainstateManager> MakeFullyInitializedChainstateManager(std::at
                                                                          int64_t nCoinDBCache,
                                                                          int64_t nCoinCacheUsage,
                                                                          unsigned int check_blocks,
-                                                                         unsigned int check_level) {
+                                                                         unsigned int check_level,
+                                                                         bool block_tree_db_in_memory) {
     auto chainman = std::make_unique<ChainstateManager>();
     bool rv = ActivateChainstateSequence(fReindex,
                                          uiInterface,
@@ -43,7 +44,8 @@ std::unique_ptr<ChainstateManager> MakeFullyInitializedChainstateManager(std::at
                                          nCoinDBCache,
                                          nCoinCacheUsage,
                                          check_blocks,
-                                         check_level);
+                                         check_level,
+                                         block_tree_db_in_memory);
     if (!rv) {
         chainman.reset();
     }
@@ -61,7 +63,8 @@ bool ActivateChainstateSequence(std::atomic_bool& fReindex,
                                 int64_t nCoinDBCache,
                                 int64_t nCoinCacheUsage,
                                 unsigned int check_blocks,
-                                unsigned int check_level) {
+                                unsigned int check_level,
+                                bool block_tree_db_in_memory) {
     bool fLoaded = false;
     while (!fLoaded && !ShutdownRequested()) {
         const bool fReset = fReindex;

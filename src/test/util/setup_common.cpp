@@ -196,7 +196,8 @@ TestingSetup::TestingSetup(const std::string& chainName, const std::vector<const
                                          cache_sizes.coin_db_cache_size,
                                          cache_sizes.coin_cache_usage_size,
                                          m_args.GetArg("-checkblocks", DEFAULT_CHECKBLOCKS),
-                                         m_args.GetArg("-checklevel", DEFAULT_CHECKLEVEL));
+                                         m_args.GetArg("-checklevel", DEFAULT_CHECKLEVEL),
+                                         true);
     assert(rv);
 
     BlockValidationState state;

@@ -1241,7 +1241,8 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
                                                           cache_sizes.coin_db_cache_size,
                                                           cache_sizes.coin_cache_usage_size,
                                                           args.GetArg("-checkblocks", DEFAULT_CHECKBLOCKS),
-                                                          args.GetArg("-checklevel", DEFAULT_CHECKLEVEL));
+                                                          args.GetArg("-checklevel", DEFAULT_CHECKLEVEL),
+                                                          false);
     if (!node.chainman) {
         return false;
     }

@@ -29,7 +29,8 @@ std::unique_ptr<ChainstateManager> MakeFullyInitializedChainstateManager(std::at
                                                                          int64_t nCoinDBCache,
                                                                          int64_t nCoinCacheUsage,
                                                                          unsigned int check_blocks,
-                                                                         unsigned int check_level);
+                                                                         unsigned int check_level,
+                                                                         bool block_tree_db_in_memory);
 
 bool ActivateChainstateSequence(std::atomic_bool& fReindex,
                                 CClientUIInterface& uiInterface,
@@ -42,6 +43,7 @@ bool ActivateChainstateSequence(std::atomic_bool& fReindex,
                                 int64_t nCoinDBCache,
                                 int64_t nCoinCacheUsage,
                                 unsigned int check_blocks,
-                                unsigned int check_level);
+                                unsigned int check_level,
+                                bool block_tree_db_in_memory);
 
 #endif // BITCOIN_KERNEL_BITCOINKERNEL_H
