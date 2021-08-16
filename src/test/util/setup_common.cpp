@@ -191,11 +191,12 @@ TestingSetup::TestingSetup(const std::string& chainName, const std::vector<const
                                          Assert(m_node.mempool.get()),
                                          fPruneMode,
                                          chainparams,
-                                         m_args,
                                          fReindexChainState,
                                          cache_sizes.block_tree_db_cache_size,
                                          cache_sizes.coin_db_cache_size,
-                                         cache_sizes.coin_cache_usage_size);
+                                         cache_sizes.coin_cache_usage_size,
+                                         m_args.GetArg("-checkblocks", DEFAULT_CHECKBLOCKS),
+                                         m_args.GetArg("-checklevel", DEFAULT_CHECKLEVEL));
     assert(rv);
 
     BlockValidationState state;

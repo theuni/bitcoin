@@ -27,11 +27,12 @@ bool ActivateChainstateSequence(std::atomic_bool& fReindex,
                                 CTxMemPool* mempool,
                                 bool& fPruneMode,
                                 const CChainParams& chainparams,
-                                const ArgsManager& args,
                                 bool fReindexChainState,
                                 int64_t nBlockTreeDBCache,
                                 int64_t nCoinDBCache,
-                                int64_t nCoinCacheUsage) {
+                                int64_t nCoinCacheUsage,
+                                unsigned int check_blocks,
+                                unsigned int check_level) {
     bool fLoaded = false;
     while (!fLoaded && !ShutdownRequested()) {
         const bool fReset = fReindex;
@@ -175,7 +176,7 @@ bool ActivateChainstateSequence(std::atomic_bool& fReindex,
                 for (CChainState* chainstate : chainman.GetAll()) {
                     if (!is_coinsview_empty(chainstate)) {
                         uiInterface.InitMessage(_("Verifying blocks…").translated);
-                        if (fHavePruned && args.GetArg("-checkblocks", DEFAULT_CHECKBLOCKS) > MIN_BLOCKS_TO_KEEP) {
+                        if (fHavePruned && check_blocks > MIN_BLOCKS_TO_KEEP) {
                             LogPrintf("Prune: pruned datadir may not have more than %d blocks; only checking available blocks\n",
                                 MIN_BLOCKS_TO_KEEP);
                         }
@@ -192,8 +193,8 @@ bool ActivateChainstateSequence(std::atomic_bool& fReindex,
 
                         if (!CVerifyDB().VerifyDB(
                                 *chainstate, chainparams, chainstate->CoinsDB(),
-                                args.GetArg("-checklevel", DEFAULT_CHECKLEVEL),
-                                args.GetArg("-checkblocks", DEFAULT_CHECKBLOCKS))) {
+                                check_level,
+                                check_blocks)) {
                             strLoadError = _("Corrupted block database detected");
                             failed_verification = true;
                             break;

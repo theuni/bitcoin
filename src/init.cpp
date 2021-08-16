@@ -1359,11 +1359,12 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
                                          Assert(node.mempool.get()),
                                          fPruneMode,
                                          chainparams,
-                                         args,
                                          fReindexChainState,
                                          cache_sizes.block_tree_db_cache_size,
                                          cache_sizes.coin_db_cache_size,
-                                         cache_sizes.coin_cache_usage_size);
+                                         cache_sizes.coin_cache_usage_size,
+                                         args.GetArg("-checkblocks", DEFAULT_CHECKBLOCKS),
+                                         args.GetArg("-checklevel", DEFAULT_CHECKLEVEL));
     if (!rv) {
         return rv;
     }
