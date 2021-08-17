@@ -1238,9 +1238,8 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
         bilingual_str strLoadError;
 
         uiInterface.InitMessage(_("Loading block index…").translated);
-        bool rv = ActivateChainstateSequence(std::ref(fLoaded),
-                                             std::ref(strLoadError),
-                                             fReset,
+        const int64_t load_block_index_start_time = GetTimeMillis();
+        auto rv = ActivateChainstateSequence(fReset,
                                              uiInterface,
                                              *node.chainman,
                                              Assert(node.mempool.get()),
@@ -1253,8 +1252,47 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
                                              args.GetArg("-checkblocks", DEFAULT_CHECKBLOCKS),
                                              args.GetArg("-checklevel", DEFAULT_CHECKLEVEL),
                                              false);
-        if (!rv) {
-            return false;
+        fLoaded = !rv.has_value();
+        if (fLoaded) {
+            LogPrintf(" block index %15dms\n", GetTimeMillis() - load_block_index_start_time);
+        } else {
+            switch (rv.value()) {
+            case ChainstateActivationError::ERROR_LOADING_BLOCK_DB:
+                strLoadError = _("Error loading block database");
+                break;
+            case ChainstateActivationError::ERROR_BAD_GENESIS_BLOCK:
+                return false;  // bail immediately!
+            case ChainstateActivationError::ERROR_PRUNED_NEEDS_REINDEX:
+                strLoadError = _("You need to rebuild the database using -reindex to go back to unpruned mode.  This will redownload the entire blockchain");
+                break;
+            case ChainstateActivationError::ERROR_LOAD_GENESIS_BLOCK_FAILED:
+                strLoadError = _("Error initializing block database");
+                break;
+            case ChainstateActivationError::ERROR_CHAINSTATE_UPGRADE_FAILED:
+                strLoadError = _("Error upgrading chainstate database");
+                break;
+            case ChainstateActivationError::ERROR_REPLAYBLOCKS_FAILED:
+                strLoadError = _("Unable to replay blocks. You will need to rebuild the database using -reindex-chainstate.");
+                break;
+            case ChainstateActivationError::ERROR_LOADCHAINTIP_FAILED:
+                strLoadError = _("Error initializing block database");
+                break;
+            case ChainstateActivationError::ERROR_GENERIC_BLOCKDB_OPEN_FAILED:
+                strLoadError = _("Error opening block database");
+                break;
+            case ChainstateActivationError::ERROR_BLOCKS_WITNESS_INSUFFICIENTLY_VALIDATED:
+                strLoadError = strprintf(_("Witness data for blocks after height %d requires validation. Please restart with -reindex."),
+                                         chainparams.GetConsensus().SegwitHeight);
+                break;
+            case ChainstateActivationError::ERROR_BLOCK_FROM_FUTURE:
+                strLoadError = _("The block database contains a block which appears to be from the future. "
+                                 "This may be due to your computer's date and time being set incorrectly. "
+                                 "Only rebuild the block database if you are sure that your computer's date and time are correct");
+                break;
+            case ChainstateActivationError::ERROR_CORRUPTED_BLOCK_DB:
+                strLoadError = _("Corrupted block database detected");
+                break;
+            }
         }
         if (!fLoaded && !ShutdownRequested()) {
             // first suggest a reindex

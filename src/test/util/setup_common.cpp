@@ -186,11 +186,7 @@ TestingSetup::TestingSetup(const std::string& chainName, const std::vector<const
     CacheSizes cache_sizes;
     CalculateCacheSizes(m_args, 0, &cache_sizes);
 
-    bool fLoaded = false;
-    bilingual_str strLoadError;
-    bool rv = ActivateChainstateSequence(std::ref(fLoaded),
-                                         std::ref(strLoadError),
-                                         fReindex.load(),
+    auto rv = ActivateChainstateSequence(fReindex.load(),
                                          uiInterface,
                                          *m_node.chainman.get(),
                                          Assert(m_node.mempool.get()),
@@ -203,7 +199,7 @@ TestingSetup::TestingSetup(const std::string& chainName, const std::vector<const
                                          m_args.GetArg("-checkblocks", DEFAULT_CHECKBLOCKS),
                                          m_args.GetArg("-checklevel", DEFAULT_CHECKLEVEL),
                                          true);
-    assert(rv && fLoaded);
+    assert(!rv);
 
     BlockValidationState state;
     if (!m_node.chainman->ActiveChainstate().ActivateBestChain(state)) {
