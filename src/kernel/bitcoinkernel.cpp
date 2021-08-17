@@ -75,6 +75,9 @@ bool ActivateChainstateSequence(std::atomic_bool& fReindex,
 
         uiInterface.InitMessage(_("Loading block index…").translated);
 
+        // Thought of the day: what if we add initialize functions to all of
+        // BlockManager, Chainstate, ChainstateManager?
+
         do {
             const int64_t load_block_index_start_time = GetTimeMillis();
             try {
