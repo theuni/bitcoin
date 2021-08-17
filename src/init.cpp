@@ -1231,20 +1231,49 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     LogPrintf("* Using %.1f MiB for in-memory UTXO set (plus up to %.1f MiB of unused mempool space)\n", cache_sizes.coin_cache_usage_size * (1.0 / 1024 / 1024), nMempoolSizeMax * (1.0 / 1024 / 1024));
 
     assert(!node.chainman);
-    node.chainman = MakeFullyInitializedChainstateManager(fReindex,
-                                                          uiInterface,
-                                                          Assert(node.mempool.get()),
-                                                          fPruneMode,
-                                                          chainparams,
-                                                          fReindexChainState,
-                                                          cache_sizes.block_tree_db_cache_size,
-                                                          cache_sizes.coin_db_cache_size,
-                                                          cache_sizes.coin_cache_usage_size,
-                                                          args.GetArg("-checkblocks", DEFAULT_CHECKBLOCKS),
-                                                          args.GetArg("-checklevel", DEFAULT_CHECKLEVEL),
-                                                          false);
-    if (!node.chainman) {
-        return false;
+    node.chainman = std::make_unique<ChainstateManager>();
+    bool fLoaded = false;
+    while (!fLoaded && !ShutdownRequested()) {
+        const bool fReset = fReindex;
+        bilingual_str strLoadError;
+
+        uiInterface.InitMessage(_("Loading block index…").translated);
+        bool rv = ActivateChainstateSequence(std::ref(fLoaded),
+                                             std::ref(strLoadError),
+                                             fReset,
+                                             uiInterface,
+                                             *node.chainman,
+                                             Assert(node.mempool.get()),
+                                             fPruneMode,
+                                             chainparams,
+                                             fReindexChainState,
+                                             cache_sizes.block_tree_db_cache_size,
+                                             cache_sizes.coin_db_cache_size,
+                                             cache_sizes.coin_cache_usage_size,
+                                             args.GetArg("-checkblocks", DEFAULT_CHECKBLOCKS),
+                                             args.GetArg("-checklevel", DEFAULT_CHECKLEVEL),
+                                             false);
+        if (!rv) {
+            return false;
+        }
+        if (!fLoaded && !ShutdownRequested()) {
+            // first suggest a reindex
+            if (!fReset) {
+                bool fRet = uiInterface.ThreadSafeQuestion(
+                    strLoadError + Untranslated(".\n\n") + _("Do you want to rebuild the block database now?"),
+                    strLoadError.original + ".\nPlease restart with -reindex or -reindex-chainstate to recover.",
+                    "", CClientUIInterface::MSG_ERROR | CClientUIInterface::BTN_ABORT);
+                if (fRet) {
+                    fReindex = true;
+                    AbortShutdown();
+                } else {
+                    LogPrintf("Aborted block database rebuild. Exiting.\n");
+                    return false;
+                }
+            } else {
+                return InitError(strLoadError);
+            }
+        }
     }
     ChainstateManager& chainman = *node.chainman;
 
