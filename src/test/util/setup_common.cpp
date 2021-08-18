@@ -27,6 +27,7 @@
 #include <rpc/server.h>
 #include <scheduler.h>
 #include <script/sigcache.h>
+#include <shutdown.h> // For shutdown_requested
 #include <streams.h>
 #include <txdb.h>
 #include <util/strencodings.h>
@@ -197,7 +198,9 @@ TestingSetup::TestingSetup(const std::string& chainName, const std::vector<const
                                          cache_sizes.coin_cache_usage_size,
                                          m_args.GetArg("-checkblocks", DEFAULT_CHECKBLOCKS),
                                          m_args.GetArg("-checklevel", DEFAULT_CHECKLEVEL),
-                                         true);
+                                         true,
+                                         GetAdjustedTime,
+                                         ShutdownRequested);
     assert(!rv);
 
     BlockValidationState state;

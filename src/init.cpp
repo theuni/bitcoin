@@ -1253,6 +1253,8 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
                                             args.GetArg("-checkblocks", DEFAULT_CHECKBLOCKS),
                                             args.GetArg("-checklevel", DEFAULT_CHECKLEVEL),
                                             false,
+                                            GetAdjustedTime,
+                                            ShutdownRequested,
                                             []() {
                                                 uiInterface.ThreadSafeMessageBox(
                                                     _("Error reading from database, shutting down."),

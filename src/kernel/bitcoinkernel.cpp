@@ -6,10 +6,7 @@
 #include <iostream>
 
 #include <chainparams.h> // For CChainParams
-#include <rpc/blockchain.h> // For RPCNotifyBlockChange
 #include <node/blockstorage.h> // For CleanupBlockRevFiles, fHavePruned
-#include <shutdown.h> // For ShutdownRequested
-#include <timedata.h> // For GetAdjustedTime
 #include <validation.h> // For a lot of things
 
 void HelloKernel() {
@@ -73,6 +70,8 @@ std::optional<ChainstateActivationError> ActivateChainstateSequence(bool fReset,
                                                                     unsigned int check_blocks,
                                                                     unsigned int check_level,
                                                                     bool block_tree_db_in_memory,
+                                                                    std::function<int64_t()> get_adjusted_time,
+                                                                    std::function<bool()> shutdown_requested,
                                                                     std::optional<std::function<void()>> coins_error_cb,
                                                                     std::function<void()> verifying_blocks_cb) {
     auto is_coinsview_empty = [&](CChainState* chainstate) EXCLUSIVE_LOCKS_REQUIRED(::cs_main) {
@@ -103,14 +102,14 @@ std::optional<ChainstateActivationError> ActivateChainstateSequence(bool fReset,
                 CleanupBlockRevFiles();
         }
 
-        if (ShutdownRequested()) return std::nullopt;
+        if (shutdown_requested()) return std::nullopt;
 
         // LoadBlockIndex will load fHavePruned if we've ever removed a
         // block file from disk.
         // Note that it also sets fReindex based on the disk flag!
         // From here on out fReindex and fReset mean something different!
         if (!chainman.LoadBlockIndex()) {
-            if (ShutdownRequested()) return std::nullopt;
+            if (shutdown_requested()) return std::nullopt;
             return ChainstateActivationError::ERROR_LOADING_BLOCK_DB;
         }
 
@@ -194,7 +193,7 @@ std::optional<ChainstateActivationError> ActivateChainstateSequence(bool fReset,
                 verifying_blocks_cb();
 
                 const CBlockIndex* tip = chainstate->m_chain.Tip();
-                if (tip && tip->nTime > GetAdjustedTime() + 2 * 60 * 60) {
+                if (tip && tip->nTime > get_adjusted_time() + 2 * 60 * 60) {
                     return ChainstateActivationError::ERROR_BLOCK_FROM_FUTURE;
                 }
 
