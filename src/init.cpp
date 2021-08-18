@@ -1239,26 +1239,32 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
 
         uiInterface.InitMessage(_("Loading block index…").translated);
         const int64_t load_block_index_start_time = GetTimeMillis();
-        auto rv = ActivateChainstateSequence(fReset,
-                                             *node.chainman,
-                                             Assert(node.mempool.get()),
-                                             fPruneMode,
-                                             chainparams,
-                                             fReindexChainState,
-                                             cache_sizes.block_tree_db_cache_size,
-                                             cache_sizes.coin_db_cache_size,
-                                             cache_sizes.coin_cache_usage_size,
-                                             args.GetArg("-checkblocks", DEFAULT_CHECKBLOCKS),
-                                             args.GetArg("-checklevel", DEFAULT_CHECKLEVEL),
-                                             false,
-                                             []() {
-                                                 uiInterface.ThreadSafeMessageBox(
-                                                     _("Error reading from database, shutting down."),
-                                                     "", CClientUIInterface::MSG_ERROR);
-                                             },
-                                             []() {
-                                                 uiInterface.InitMessage(_("Verifying blocks…").translated);
-                                             });
+        std::optional<ChainstateActivationError> rv;
+        try {
+            rv = ActivateChainstateSequence(fReset,
+                                            *node.chainman,
+                                            Assert(node.mempool.get()),
+                                            fPruneMode,
+                                            chainparams,
+                                            fReindexChainState,
+                                            cache_sizes.block_tree_db_cache_size,
+                                            cache_sizes.coin_db_cache_size,
+                                            cache_sizes.coin_cache_usage_size,
+                                            args.GetArg("-checkblocks", DEFAULT_CHECKBLOCKS),
+                                            args.GetArg("-checklevel", DEFAULT_CHECKLEVEL),
+                                            false,
+                                            []() {
+                                                uiInterface.ThreadSafeMessageBox(
+                                                    _("Error reading from database, shutting down."),
+                                                    "", CClientUIInterface::MSG_ERROR);
+                                            },
+                                            []() {
+                                                uiInterface.InitMessage(_("Verifying blocks…").translated);
+                                            });
+        } catch (const std::exception& e) {
+            LogPrintf("%s\n", e.what()); // XXX
+            rv = ChainstateActivationError::ERROR_GENERIC_BLOCKDB_OPEN_FAILED;
+        }
         fLoaded = !rv.has_value();
         if (fLoaded) {
             LogPrintf(" block index %15dms\n", GetTimeMillis() - load_block_index_start_time);

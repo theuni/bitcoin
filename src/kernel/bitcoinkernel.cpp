@@ -82,7 +82,7 @@ std::optional<ChainstateActivationError> ActivateChainstateSequence(bool fReset,
     // Thought of the day: what if we add initialize functions to all of
     // BlockManager, Chainstate, ChainstateManager?
 
-    try {
+    {
         LOCK(cs_main);
         chainman.InitializeChainstate(mempool);
         chainman.m_total_coinstip_cache = nCoinCacheUsage;
@@ -173,9 +173,6 @@ std::optional<ChainstateActivationError> ActivateChainstateSequence(bool fReset,
                 assert(chainstate->m_chain.Tip() != nullptr);
             }
         }
-    } catch (const std::exception& e) {
-        LogPrintf("%s\n", e.what()); // XXX
-        return ChainstateActivationError::ERROR_GENERIC_BLOCKDB_OPEN_FAILED;
     }
 
     if (!fReset) {
@@ -189,7 +186,7 @@ std::optional<ChainstateActivationError> ActivateChainstateSequence(bool fReset,
 
     // bool failed_verification = false;
 
-    try {
+    {
         LOCK(cs_main);
 
         for (CChainState* chainstate : chainman.GetAll()) {
@@ -210,9 +207,6 @@ std::optional<ChainstateActivationError> ActivateChainstateSequence(bool fReset,
                 }
             }
         }
-    } catch (const std::exception& e) {
-        LogPrintf("%s\n", e.what()); // XXX
-        return ChainstateActivationError::ERROR_GENERIC_BLOCKDB_OPEN_FAILED;
     }
 
     return std::nullopt;
