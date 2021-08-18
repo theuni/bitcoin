@@ -199,10 +199,6 @@ std::optional<ChainstateActivationError> ActivateChainstateSequence(bool fReset,
         for (CChainState* chainstate : chainman.GetAll()) {
             if (!is_coinsview_empty(chainstate)) {
                 uiInterface.InitMessage(_("Verifying blocks…").translated);
-                if (fHavePruned && check_blocks > MIN_BLOCKS_TO_KEEP) {
-                    LogPrintf("Prune: pruned datadir may not have more than %d blocks; only checking available blocks\n",
-                              MIN_BLOCKS_TO_KEEP); // XXX
-                }
 
                 const CBlockIndex* tip = chainstate->m_chain.Tip();
                 RPCNotifyBlockChange(tip);
