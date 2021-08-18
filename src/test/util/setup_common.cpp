@@ -187,7 +187,6 @@ TestingSetup::TestingSetup(const std::string& chainName, const std::vector<const
     CalculateCacheSizes(m_args, 0, &cache_sizes);
 
     auto rv = ActivateChainstateSequence(fReindex.load(),
-                                         uiInterface,
                                          *m_node.chainman.get(),
                                          Assert(m_node.mempool.get()),
                                          fPruneMode,

@@ -1240,7 +1240,6 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
         uiInterface.InitMessage(_("Loading block index…").translated);
         const int64_t load_block_index_start_time = GetTimeMillis();
         auto rv = ActivateChainstateSequence(fReset,
-                                             uiInterface,
                                              *node.chainman,
                                              Assert(node.mempool.get()),
                                              fPruneMode,
@@ -1251,7 +1250,15 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
                                              cache_sizes.coin_cache_usage_size,
                                              args.GetArg("-checkblocks", DEFAULT_CHECKBLOCKS),
                                              args.GetArg("-checklevel", DEFAULT_CHECKLEVEL),
-                                             false);
+                                             false,
+                                             []() {
+                                                 uiInterface.ThreadSafeMessageBox(
+                                                     _("Error reading from database, shutting down."),
+                                                     "", CClientUIInterface::MSG_ERROR);
+                                             },
+                                             []() {
+                                                 uiInterface.InitMessage(_("Verifying blocks…").translated);
+                                             });
         fLoaded = !rv.has_value();
         if (fLoaded) {
             LogPrintf(" block index %15dms\n", GetTimeMillis() - load_block_index_start_time);

@@ -7,15 +7,12 @@
 
 #include <sync.h> // For RecursiveMutex
 
-#include <atomic> // For std::atomic_bool
 #include <optional>
+#include <functional>
 
-class CClientUIInterface;
 class ChainstateManager;
 class CChainParams;
 class CTxMemPool;
-struct bilingual_str;
-enum class BlockFilterType : uint8_t;
 
 extern RecursiveMutex cs_main;
 
@@ -50,7 +47,6 @@ enum class ChainstateActivationError {
 //                                                                          bool block_tree_db_in_memory);
 
 std::optional<ChainstateActivationError> ActivateChainstateSequence(bool fReset,
-                                                                    CClientUIInterface& uiInterface,
                                                                     ChainstateManager& chainman,
                                                                     CTxMemPool* mempool,
                                                                     bool fPruneMode,
@@ -61,6 +57,8 @@ std::optional<ChainstateActivationError> ActivateChainstateSequence(bool fReset,
                                                                     int64_t nCoinCacheUsage,
                                                                     unsigned int check_blocks,
                                                                     unsigned int check_level,
-                                                                    bool block_tree_db_in_memory);
+                                                                    bool block_tree_db_in_memory,
+                                                                    std::optional<std::function<void()>> coins_error_cb = std::nullopt,
+                                                                    std::function<void()> verifying_blocks_cb = [](){});
 
 #endif // BITCOIN_KERNEL_BITCOINKERNEL_H
