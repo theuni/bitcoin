@@ -3835,6 +3835,7 @@ bool CChainState::LoadChainTip()
     PruneBlockIndexCandidates();
 
     tip = m_chain.Tip();
+    uiInterface.NotifyBlockTip(GetSynchronizationState(IsInitialBlockDownload()), tip);
     LogPrintf("Loaded best chain: hashBestChain=%s height=%d date=%s progress=%f\n",
               tip->GetBlockHash().ToString(),
               m_chain.Height(),

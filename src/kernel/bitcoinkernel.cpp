@@ -194,7 +194,6 @@ std::optional<ChainstateActivationError> ActivateChainstateSequence(bool fReset,
                 verifying_blocks_cb();
 
                 const CBlockIndex* tip = chainstate->m_chain.Tip();
-                RPCNotifyBlockChange(tip);
                 if (tip && tip->nTime > GetAdjustedTime() + 2 * 60 * 60) {
                     return ChainstateActivationError::ERROR_BLOCK_FROM_FUTURE;
                 }
