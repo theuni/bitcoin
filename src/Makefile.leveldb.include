@@ -3,7 +3,7 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 
-noinst_LTLIBRARIES = leveldb/libleveldb.la leveldb/libmemenv.la
+noinst_LTLIBRARIES += leveldb/libleveldb.la leveldb/libmemenv.la
 
 LIBLEVELDB_INT = leveldb/libleveldb.a
 LIBMEMENV_INT  = leveldb/libmemenv.a

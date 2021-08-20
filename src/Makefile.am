@@ -574,7 +574,73 @@ libbitcoin_common_a_SOURCES = \
 libbitcoin_kernel_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
 libbitcoin_kernel_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_kernel_a_SOURCES = \
-  kernel/bitcoinkernel.cpp
+  kernel/bitcoinkernel.cpp \
+  validation.cpp \
+  coins.cpp \
+  pubkey.cpp \
+  blockfilter.cpp \
+  netaddress.cpp \
+  threadinterrupt.cpp \
+  util/system.cpp \
+  util/strencodings.cpp \
+  util/hasher.cpp \
+  util/bytevectorhash.cpp \
+  util/getuniquepath.cpp \
+  util/settings.cpp \
+  util/tokenpipe.cpp \
+  util/moneystr.cpp \
+  util/thread.cpp \
+  util/serfloat.cpp \
+  util/asmap.cpp \
+  util/threadnames.cpp \
+  util/time.cpp \
+  fs.cpp \
+  arith_uint256.cpp \
+  uint256.cpp \
+  random.cpp \
+  scheduler.cpp \
+  txmempool.cpp \
+  logging.cpp \
+  chainparams.cpp \
+  warnings.cpp \
+  chain.cpp \
+  policy/feerate.cpp \
+  policy/policy.cpp \
+  policy/fees.cpp \
+  policy/packages.cpp \
+  policy/settings.cpp \
+  txdb.cpp \
+  chainparamsbase.cpp \
+  randomenv.cpp \
+  versionbits.cpp \
+  support/lockedpool.cpp \
+  validationinterface.cpp \
+  consensus/tx_verify.cpp \
+  consensus/tx_check.cpp \
+  consensus/merkle.cpp \
+  primitives/transaction.cpp \
+  primitives/block.cpp \
+  index/coinstatsindex.cpp \
+  index/blockfilterindex.cpp \
+  index/base.cpp \
+  deploymentinfo.cpp \
+  deploymentstatus.cpp \
+  dbwrapper.cpp \
+  hash.cpp \
+  signet.cpp \
+  shutdown.cpp \
+  flatfile.cpp \
+  timedata.cpp \
+  compressor.cpp \
+  script/script.cpp \
+  script/script_error.cpp \
+  script/standard.cpp \
+  script/interpreter.cpp \
+  script/sigcache.cpp \
+  pow.cpp \
+  node/blockstorage.cpp \
+  node/coinstats.cpp \
+  node/ui_interface.cpp
 
 # util: shared between all executables.
 # This library *must* be included to make sure that the glibc
@@ -781,8 +847,8 @@ libbitcoinkernel_la_SOURCES += compat/glibc_compat.cpp
 endif
 
 libbitcoinkernel_la_LDFLAGS = $(AM_LDFLAGS) -no-undefined $(RELDFLAGS)
-libbitcoinkernel_la_LIBADD = $(LIBSECP256K1) leveldb/libleveldb.la # $(LIBLEVELDB)
-libbitcoinkernel_la_CPPFLAGS = $(AM_CPPFLAGS) -I$(builddir)/obj -I$(srcdir)/secp256k1/include -DBUILD_BITCOIN_INTERNAL $(LEVELDB_CPPFLAGS)
+libbitcoinkernel_la_LIBADD = $(LIBSECP256K1) leveldb/libleveldb.la leveldb/libmemenv.la $(LIBUNIVALUE) crc32c/libcrc32c.la crc32c/libcrc32c_sse42.la $(BOOST_LIBS) # $(BOOST_SYSTEM_LIB) $(BOOST_FILESYSTEM_LIB) # $(BOOST_FILESYSTEM_LIB) # $(LIBLEVELDB)
+libbitcoinkernel_la_CPPFLAGS = $(AM_CPPFLAGS) -I$(builddir)/obj -I$(srcdir)/secp256k1/include -DBUILD_BITCOIN_INTERNAL $(BOOST_CPPFLAGS) $(LEVELDB_CPPFLAGS) $(UNIVALUE_CFLAGS)
 libbitcoinkernel_la_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 
 endif
