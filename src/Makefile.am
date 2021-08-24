@@ -829,7 +829,7 @@ if GLIBC_BACK_COMPAT
   libbitcoinconsensus_la_SOURCES += compat/glibc_compat.cpp
 endif
 
-libbitcoinconsensus_la_LDFLAGS = $(AM_LDFLAGS) -no-undefined $(RELDFLAGS)
+libbitcoinconsensus_la_LDFLAGS = $(AM_LDFLAGS) -no-undefined -Wl,--no-allow-shlib-undefined -Wl,--no-undefined $(RELDFLAGS)
 libbitcoinconsensus_la_LIBADD = $(LIBSECP256K1)
 libbitcoinconsensus_la_CPPFLAGS = $(AM_CPPFLAGS) -I$(builddir)/obj -I$(srcdir)/secp256k1/include -DBUILD_BITCOIN_INTERNAL
 libbitcoinconsensus_la_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
@@ -846,7 +846,7 @@ if GLIBC_BACK_COMPAT
 libbitcoinkernel_la_SOURCES += compat/glibc_compat.cpp
 endif
 
-libbitcoinkernel_la_LDFLAGS = $(AM_LDFLAGS) -no-undefined $(RELDFLAGS)
+libbitcoinkernel_la_LDFLAGS = $(AM_LDFLAGS) -no-undefined -Wl,--no-allow-shlib-undefined -Wl,--no-undefined $(RELDFLAGS) $(PTHREAD_FLAGS)
 libbitcoinkernel_la_LIBADD = $(LIBSECP256K1) leveldb/libleveldb.la leveldb/libmemenv.la $(LIBUNIVALUE) crc32c/libcrc32c.la crc32c/libcrc32c_sse42.la $(BOOST_LIBS) # $(BOOST_SYSTEM_LIB) $(BOOST_FILESYSTEM_LIB) # $(BOOST_FILESYSTEM_LIB) # $(LIBLEVELDB)
 libbitcoinkernel_la_CPPFLAGS = $(AM_CPPFLAGS) -I$(builddir)/obj -I$(srcdir)/secp256k1/include -DBUILD_BITCOIN_INTERNAL $(BOOST_CPPFLAGS) $(LEVELDB_CPPFLAGS) $(UNIVALUE_CFLAGS)
 libbitcoinkernel_la_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
