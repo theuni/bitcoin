@@ -30,6 +30,7 @@
 #include <shutdown.h> // For shutdown_requested
 #include <streams.h>
 #include <txdb.h>
+#include <util/init.h>
 #include <util/strencodings.h>
 #include <util/string.h>
 #include <util/thread.h>

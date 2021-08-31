@@ -254,6 +254,7 @@ BITCOIN_CORE_H = \
   util/golombrice.h \
   util/hash_type.h \
   util/hasher.h \
+  util/init.h \
   util/macros.h \
   util/message.h \
   util/moneystr.h \
@@ -376,6 +377,7 @@ libbitcoin_server_a_SOURCES = \
   txmempool.cpp \
   txorphanage.cpp \
   txrequest.cpp \
+  util/init.cpp \
   validation.cpp \
   validationinterface.cpp \
   versionbits.cpp \
