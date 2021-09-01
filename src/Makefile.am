@@ -115,6 +115,10 @@ if BUILD_BITCOIN_UTIL
   bin_PROGRAMS += bitcoin-util
 endif
 
+if BUILD_BITCOIN_CHAINSTATE
+  bin_PROGRAMS += bitcoin-chainstate
+endif
+
 .PHONY: FORCE check-symbols check-security
 # bitcoin core #
 BITCOIN_CORE_H = \
@@ -573,12 +577,15 @@ libbitcoin_common_a_SOURCES = \
   $(BITCOIN_CORE_H)
 
 # kernel
+# util/init.cpp for CacheSizes stuff
+# core_read.cpp for DecodeHexBlk stuff
 libbitcoin_kernel_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
 libbitcoin_kernel_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_kernel_a_SOURCES = \
   kernel/bitcoinkernel.cpp \
   validation.cpp \
   coins.cpp \
+  core_read.cpp \
   pubkey.cpp \
   blockfilter.cpp \
   netaddress.cpp \
@@ -596,6 +603,7 @@ libbitcoin_kernel_a_SOURCES = \
   util/asmap.cpp \
   util/threadnames.cpp \
   util/time.cpp \
+  util/init.cpp \
   fs.cpp \
   arith_uint256.cpp \
   uint256.cpp \
@@ -820,6 +828,16 @@ bitcoin_util_LDADD = \
   $(LIBSECP256K1)
 
 bitcoin_util_LDADD += $(BOOST_LIBS)
+#
+
+# bitcoin-chainstate binary #
+bitcoin_chainstate_SOURCES = bitcoin-chainstate.cpp sync.cpp key.cpp
+bitcoin_chainstate_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
+bitcoin_chainstate_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+bitcoin_chainstate_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS) $(PTHREAD_FLAGS)
+
+bitcoin_chainstate_LDADD = \
+  $(LIBBITCOINKERNEL)
 #
 
 # bitcoinconsensus library #
