@@ -35,20 +35,7 @@ enum class ChainstateActivationError {
 };
 // ERROR_BLOCKS_WITNESS_INSUFFICIENTLY_VALIDATED, needs int
 
-// std::unique_ptr<ChainstateManager> MakeFullyInitializedChainstateManager(std::atomic_bool& fReindex,
-//                                                                          CClientUIInterface& uiInterface,
-//                                                                          CTxMemPool* mempool,
-//                                                                          bool fPruneMode,
-//                                                                          const CChainParams& chainparams,
-//                                                                          bool fReindexChainState,
-//                                                                          int64_t nBlockTreeDBCache,
-//                                                                          int64_t nCoinDBCache,
-//                                                                          int64_t nCoinCacheUsage,
-//                                                                          unsigned int check_blocks,
-//                                                                          unsigned int check_level,
-//                                                                          bool block_tree_db_in_memory);
 void InitCaches();
-// void InitSequence(NodeContext& node, int num_script_check_threads);
 void StartScriptThreads(int total_script_threads);
 std::unique_ptr<CScheduler> StartScheduler();
 void StartMainSignals(CScheduler& scheduler);

@@ -20,49 +20,6 @@ void HelloKernel() {
     std::cout << "Hello Kernel!";
 }
 
-// template <typename ... Args>
-// std::unique_ptr<ChainstateManager> MakeFullyInitializedChainstateManager(Args&& ... args){
-//     auto chainman = std::make_unique<ChainstateManager>();
-//     bool rv = ActivateChainstateSequence(*chainman, std::forward<Args>(args) ...);
-//     if (!rv) {
-//         chainman.reset();
-//     }
-//     return std::move(chainman);
-// }
-
-
-// std::unique_ptr<ChainstateManager> MakeFullyInitializedChainstateManager(std::atomic_bool& fReindex,
-//                                                                          CClientUIInterface& uiInterface,
-//                                                                          CTxMemPool* mempool,
-//                                                                          bool fPruneMode,
-//                                                                          const CChainParams& chainparams,
-//                                                                          bool fReindexChainState,
-//                                                                          int64_t nBlockTreeDBCache,
-//                                                                          int64_t nCoinDBCache,
-//                                                                          int64_t nCoinCacheUsage,
-//                                                                          unsigned int check_blocks,
-//                                                                          unsigned int check_level,
-//                                                                          bool block_tree_db_in_memory) {
-//     auto chainman = std::make_unique<ChainstateManager>();
-//     bool rv = ActivateChainstateSequence(fReindex,
-//                                          uiInterface,
-//                                          *chainman,
-//                                          mempool,
-//                                          fPruneMode,
-//                                          chainparams,
-//                                          fReindexChainState,
-//                                          nBlockTreeDBCache,
-//                                          nCoinDBCache,
-//                                          nCoinCacheUsage,
-//                                          check_blocks,
-//                                          check_level,
-//                                          block_tree_db_in_memory);
-//     if (!rv) {
-//         chainman.reset();
-//     }
-//     return std::move(chainman);
-// }
-
 void InitCaches() {
     // Initialize signatureCache for
     // #1  0x000055555558a2d3 in base_blob<256u>::Compare (this=0x0, other=...) at ./uint256.h:44
