@@ -144,16 +144,14 @@ int main() {
         }
     }
 
-    ECC_Stop();
-
-    // scheduler.stop();
-    std::cerr << "schfore" << std::endl;
-    // scheduler.stop();
-    scheduler_ptr->stop();
-    std::cerr << "schaft" << std::endl;
+    // After everything has been shut down, but before things get flushed, stop the
+    // CScheduler/checkqueue, scheduler and load block thread.
+    scheduler.stop();
     if (chainman.m_load_block.joinable()) chainman.m_load_block.join();
     StopScriptCheckWorkerThreads();
 
     GetMainSignals().FlushBackgroundCallbacks();
     GetMainSignals().UnregisterBackgroundSignalScheduler();
+
+    init::UnsetGlobals();
 }
