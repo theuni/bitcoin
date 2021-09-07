@@ -134,7 +134,8 @@ void StartScriptThreads(int total_script_threads) {
 
 std::unique_ptr<CScheduler> StartScheduler() {
     std::unique_ptr<CScheduler> scheduler = std::make_unique<CScheduler>();
-    scheduler->m_service_thread = std::thread(util::TraceThread, "scheduler", [&] { scheduler->serviceQueue(); });
+    CScheduler* scheduler_ptr = scheduler.get(); // We cannot capture &scheduler since it'll be moved by the end of this function
+    scheduler_ptr->m_service_thread = std::thread(util::TraceThread, "scheduler", [scheduler_ptr] { scheduler_ptr->serviceQueue(); });
     return std::move(scheduler);
 }
 
