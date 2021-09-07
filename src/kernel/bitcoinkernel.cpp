@@ -8,6 +8,12 @@
 #include <chainparams.h> // For CChainParams
 #include <node/blockstorage.h> // For CleanupBlockRevFiles, fHavePruned
 #include <validation.h> // For a lot of things
+#include <validationinterface.h> // For GetMainSignals
+#include <node/context.h> // For NodeContext
+#include <script/sigcache.h> // For InitSignatureCache
+#include <scheduler.h> // For CScheduler
+#include <util/thread.h> // For util::TraceThread
+#include <init/common.h> // for init::SetGlobals()
 
 void HelloKernel() {
     LOCK(::cs_main);
@@ -55,6 +61,109 @@ void HelloKernel() {
 //         chainman.reset();
 //     }
 //     return std::move(chainman);
+// }
+
+void InitCaches() {
+    // Initialize signatureCache for
+    // #1  0x000055555558a2d3 in base_blob<256u>::Compare (this=0x0, other=...) at ./uint256.h:44
+    // #2  0x00007ffff79e1c0e in operator== (a=..., b=...) at ./uint256.h:46
+    // #3  0x00007ffff79dffd8 in CuckooCache::cache<uint256, SignatureCacheHasher>::contains (
+    //     this=0x7ffff7fc3238 <(anonymous namespace)::signatureCache+208>, e=..., erase=true) at ./cuckoocache.h:473
+    // #4  0x00007ffff7ca2c83 in (anonymous namespace)::CSignatureCache::Get (
+    //     this=0x7ffff7fc3168 <(anonymous namespace)::signatureCache>, entry=..., erase=true) at script/sigcache.cpp:70
+    // #5  0x00007ffff7ca2a3d in CachingTransactionSignatureChecker::VerifyECDSASignature (this=0x7fffffffaeb0,
+    //     vchSig=std::vector of length 72, capacity 73 = {...}, pubkey=..., sighash=...) at script/sigcache.cpp:109
+    // #6  0x00007ffff7c9c68c in GenericTransactionSignatureChecker<CTransaction>::CheckECDSASignature (this=0x7fffffffaeb0,
+    //     vchSigIn=std::vector of length 73, capacity 73 = {...}, vchPubKey=std::vector of length 65, capacity 65 = {...},
+    //     scriptCode=..., sigversion=SigVersion::BASE) at script/interpreter.cpp:1688
+    // #7  0x00007ffff7c987fd in EvalChecksigPreTapscript (vchSig=std::vector of length 73, capacity 73 = {...},
+    //     vchPubKey=std::vector of length 65, capacity 65 = {...}, pbegincodehash=..., pend=..., flags=2053, checker=...,
+    //     sigversion=SigVersion::BASE, serror=0x7fffffffb224, fSuccess=@0x7fffffffa527: true) at script/interpreter.cpp:363
+    // #8  0x00007ffff7c95917 in EvalChecksig (sig=std::vector of length 73, capacity 73 = {...},
+    //     pubkey=std::vector of length 65, capacity 65 = {...}, pbegincodehash=..., pend=..., execdata=..., flags=2053, checker=...,
+    //     sigversion=SigVersion::BASE, serror=0x7fffffffb224, success=@0x7fffffffa527: true) at script/interpreter.cpp:421
+    // #9  0x00007ffff7c940e9 in EvalScript (stack=std::vector of length 2, capacity 4 = {...}, script=..., flags=2053, checker=...,
+    //     sigversion=SigVersion::BASE, execdata=..., serror=0x7fffffffb224) at script/interpreter.cpp:1094
+    // #10 0x00007ffff7c95b6b in EvalScript (stack=std::vector of length 2, capacity 4 = {...}, script=..., flags=2053, checker=...,
+    //     sigversion=SigVersion::BASE, serror=0x7fffffffb224) at script/interpreter.cpp:1264
+    // #11 0x00007ffff7c969d9 in VerifyScript (scriptSig=..., scriptPubKey=..., witness=0x55555e227550, flags=2053, checker=...,
+    //     serror=0x7fffffffb224) at script/interpreter.cpp:1991
+    // #12 0x00007ffff79a6599 in CScriptCheck::operator() (this=0x7fffffffb1e8) at validation.cpp:1345
+    // #13 0x00007ffff79a72af in CheckInputScripts (tx=..., state=..., inputs=..., flags=2053, cacheSigStore=false,
+    //     cacheFullScriptStore=false, txdata=..., pvChecks=0x0) at validation.cpp:1445
+    // #14 0x00007ffff79aa1f1 in CChainState::ConnectBlock (this=0x5555555eee80, block=..., state=..., pindex=0x55555a674fd0, view=...,
+    //     fJustCheck=false) at validation.cpp:1927
+    // #15 0x00007ffff79b3872 in CChainState::ConnectTip (this=0x5555555eee80, state=..., pindexNew=0x55555a674fd0,
+    //     pblock=std::shared_ptr<const CBlock> (empty) = {...}, connectTrace=..., disconnectpool=...) at validation.cpp:2370
+    // #16 0x00007ffff79b572b in CChainState::ActivateBestChainStep (this=0x5555555eee80, state=..., pindexMostWork=0x555555d48480,
+    //     pblock=std::shared_ptr<const CBlock> (empty) = {...}, fInvalidFound=@0x7fffffffcf97: false, connectTrace=...)
+    //     at validation.cpp:2530
+    // #17 0x00007ffff79b5eaf in CChainState::ActivateBestChain (this=0x5555555eee80, state=..., pblock=warning: RTTI symbol not found for class 'std::_Sp_counted_ptr_inplace<CBlock, std::allocator<CBlock>, (__gnu_cxx::_Lock_policy)2>'
+    // warning: RTTI symbol not found for class 'std::_Sp_counted_ptr_inplace<CBlock, std::allocator<CBlock>, (__gnu_cxx::_Lock_policy)2>'
+    //
+    // std::shared_ptr<const CBlock> (use count 3, weak count 0) = {...}) at validation.cpp:2655
+    // #18 0x00007ffff79bf0c5 in ChainstateManager::ProcessNewBlock (this=0x7fffffffd548, chainparams=..., block=warning: RTTI symbol not found for class 'std::_Sp_counted_ptr_inplace<CBlock, std::allocator<CBlock>, (__gnu_cxx::_Lock_policy)2>'
+    // warning: RTTI symbol not found for class 'std::_Sp_counted_ptr_inplace<CBlock, std::allocator<CBlock>, (__gnu_cxx::_Lock_policy)2>'
+    //
+    // std::shared_ptr<const CBlock> (use count 3, weak count 0) = {...}, force_processing=true, new_block=0x7fffffffd4cf)
+    //     at validation.cpp:3499
+    InitSignatureCache();
+    // Initialize g_scriptExecutionCache for
+    // CheckInputScripts <- ConnectBlock <- ConnectTip <- ActivateBestChainStep <- ActivateBestChain <- ProcessNewBlock
+    InitScriptExecutionCache();
+}
+
+void StartScriptThreads(int total_script_threads) {
+    if (total_script_threads <= 0) {
+        // -par=0 means autodetect (number of cores - 1 script threads)
+        // -par=-n means "leave n cores free" (number of cores - n - 1 script threads)
+        total_script_threads += GetNumCores();
+    }
+
+    // Subtract 1 because the main thread counts towards the par threads
+    auto script_threads_to_start = std::max(total_script_threads - 1, 0);
+
+    // Number of script-checking threads <= MAX_SCRIPTCHECK_THREADS
+    script_threads_to_start = std::min(script_threads_to_start, MAX_SCRIPTCHECK_THREADS);
+
+    if (script_threads_to_start >= 1) {
+        g_parallel_script_checks = true;
+        StartScriptCheckWorkerThreads(script_threads_to_start);
+    }
+}
+
+std::unique_ptr<CScheduler> StartScheduler() {
+    std::unique_ptr<CScheduler> scheduler = std::make_unique<CScheduler>();
+    scheduler->m_service_thread = std::thread(util::TraceThread, "scheduler", [&] { scheduler->serviceQueue(); });
+    return std::move(scheduler);
+}
+
+void StartMainSignals(CScheduler& scheduler) {
+    GetMainSignals().RegisterBackgroundSignalScheduler(scheduler);
+}
+
+void InitGlobals() {
+    init::SetGlobals();
+}
+
+// Implicitly relies on RNGState
+// Needs that data_dir is writable
+// IDEA: document assumptions in comments for error codes
+//
+// data_dir, chain_name?
+// assert(fs::is_directory(data_dir)); // CheckDataDirOption
+// SelectParams(chain_name);
+// const CChainParams& chainparams = Params();
+// init::SetGlobals();
+// void InitSequence(NodeContext& node, int num_script_check_threads) {
+//     StartScriptThreads(num_script_check_threads);
+//     LogPrintf("Script verification uses %d additional threads\n", num_script_check_threads);
+//     StartSchedulerAndMainSignals(node);
+
+//     // Gather some entropy once per minute. //XXX is this our responsibility?
+//     node.scheduler->scheduleEvery([]{
+//         RandAddPeriodic();
+//     }, std::chrono::minutes{1});
 // }
 
 // rv = false -> bail immediately, do nothing else

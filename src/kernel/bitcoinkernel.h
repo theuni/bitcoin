@@ -13,6 +13,8 @@
 class ChainstateManager;
 class CChainParams;
 class CTxMemPool;
+struct NodeContext;
+class CScheduler;
 
 extern RecursiveMutex cs_main;
 
@@ -45,6 +47,12 @@ enum class ChainstateActivationError {
 //                                                                          unsigned int check_blocks,
 //                                                                          unsigned int check_level,
 //                                                                          bool block_tree_db_in_memory);
+void InitCaches();
+// void InitSequence(NodeContext& node, int num_script_check_threads);
+void StartScriptThreads(int total_script_threads);
+std::unique_ptr<CScheduler> StartScheduler();
+void StartMainSignals(CScheduler& scheduler);
+void InitGlobals();
 
 std::optional<ChainstateActivationError> ActivateChainstateSequence(bool fReset,
                                                                     ChainstateManager& chainman,

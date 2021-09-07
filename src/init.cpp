@@ -1093,40 +1093,15 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
                   args.GetArg("-datadir", ""), fs::current_path().string());
     }
 
-    InitSignatureCache();
-    InitScriptExecutionCache();
+    InitCaches();
 
-    int script_threads = args.GetArg("-par", DEFAULT_SCRIPTCHECK_THREADS);
-    if (script_threads <= 0) {
-        // -par=0 means autodetect (number of cores - 1 script threads)
-        // -par=-n means "leave n cores free" (number of cores - n - 1 script threads)
-        script_threads += GetNumCores();
-    }
+    int num_script_check_threads = args.GetArg("-par", DEFAULT_SCRIPTCHECK_THREADS);
+    StartScriptThreads(num_script_check_threads);
+    LogPrintf("Script verification uses %d additional threads\n", num_script_check_threads);
 
-    // Subtract 1 because the main thread counts towards the par threads
-    script_threads = std::max(script_threads - 1, 0);
-
-    // Number of script-checking threads <= MAX_SCRIPTCHECK_THREADS
-    script_threads = std::min(script_threads, MAX_SCRIPTCHECK_THREADS);
-
-    LogPrintf("Script verification uses %d additional threads\n", script_threads);
-    if (script_threads >= 1) {
-        g_parallel_script_checks = true;
-        StartScriptCheckWorkerThreads(script_threads);
-    }
-
-    assert(!node.scheduler);
-    node.scheduler = std::make_unique<CScheduler>();
-
-    // Start the lightweight task scheduler thread
-    node.scheduler->m_service_thread = std::thread(util::TraceThread, "scheduler", [&] { node.scheduler->serviceQueue(); });
-
-    // Gather some entropy once per minute.
-    node.scheduler->scheduleEvery([]{
-        RandAddPeriodic();
-    }, std::chrono::minutes{1});
-
-    GetMainSignals().RegisterBackgroundSignalScheduler(*node.scheduler);
+    node.scheduler = StartScheduler();
+    CScheduler& scheduler = *node.scheduler;
+    StartMainSignals(scheduler);
 
     /* Register RPC commands regardless of -server setting so they will be
      * available in the GUI RPC console even if external calls are disabled.

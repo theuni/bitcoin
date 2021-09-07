@@ -116,8 +116,7 @@ BasicTestingSetup::BasicTestingSetup(const std::string& chainName, const std::ve
     ECC_Start();
     SetupEnvironment();
     SetupNetworking();
-    InitSignatureCache();
-    InitScriptExecutionCache();
+    InitCaches();
     m_node.chain = interfaces::MakeChain(m_node);
     g_wallet_init_interface.Construct(m_node);
     fCheckBlockIndex = true;
@@ -140,11 +139,11 @@ BasicTestingSetup::~BasicTestingSetup()
 ChainTestingSetup::ChainTestingSetup(const std::string& chainName, const std::vector<const char*>& extra_args)
     : BasicTestingSetup(chainName, extra_args)
 {
-    // We have to run a scheduler thread to prevent ActivateBestChain
-    // from blocking due to queue overrun.
-    m_node.scheduler = std::make_unique<CScheduler>();
-    m_node.scheduler->m_service_thread = std::thread(util::TraceThread, "scheduler", [&] { m_node.scheduler->serviceQueue(); });
-    GetMainSignals().RegisterBackgroundSignalScheduler(*m_node.scheduler);
+    StartScriptThreads(3);
+
+    m_node.scheduler = StartScheduler();
+    CScheduler& scheduler = *m_node.scheduler;
+    StartMainSignals(scheduler);
 
     m_node.fee_estimator = std::make_unique<CBlockPolicyEstimator>();
     m_node.mempool = std::make_unique<CTxMemPool>(m_node.fee_estimator.get(), 1);
@@ -152,10 +151,6 @@ ChainTestingSetup::ChainTestingSetup(const std::string& chainName, const std::ve
     m_node.chainman = std::make_unique<ChainstateManager>();
     m_node.chainman->m_blockman.m_block_tree_db = std::make_unique<CBlockTreeDB>(1 << 20, true);
 
-    // Start script-checking threads. Set g_parallel_script_checks to true so they are used.
-    constexpr int script_check_threads = 2;
-    StartScriptCheckWorkerThreads(script_check_threads);
-    g_parallel_script_checks = true;
 }
 
 ChainTestingSetup::~ChainTestingSetup()
