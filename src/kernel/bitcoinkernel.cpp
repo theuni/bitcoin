@@ -280,3 +280,59 @@ std::optional<ChainstateActivationError> ActivateChainstateSequence(bool fReset,
 
     return std::nullopt;
 }
+
+class ChainContextStepZeroImpl : public ChainContextStepZero  {
+public:
+    ChainContextStepZeroImpl(const std::string& network) {
+        SelectParams(network);
+        InitGlobals();
+        InitCaches();
+    }
+    const CChainParams& GetChainParams() {
+        return Params();
+    }
+
+    ~ChainContextStepZeroImpl() {
+        std::cerr << "Undoing StepZero..." << std::endl;
+        init::UnsetGlobals();
+    }
+};
+
+std::unique_ptr<ChainContextStepZero> StepZero(const std::string& network) {
+    return std::make_unique<ChainContextStepZeroImpl>(network);
+}
+
+// class ChainContextStepOneImpl :  public ChainContextStepZeroImpl, public ChainContextStepOne {
+class ChainContextStepOneImpl : public ChainContextStepOne {
+public:
+    ChainContextStepOneImpl(std::unique_ptr<ChainContextStepZero> last_step, int num_script_check_threads)
+        : m_last_step(std::move(last_step))
+    {
+        StartScriptThreads(num_script_check_threads);
+        m_scheduler = StartScheduler();
+        StartMainSignals(*m_scheduler);
+    }
+
+    CScheduler& GetScheduler() {
+        return *m_scheduler;
+    }
+
+    ChainContextStepZero* GetPrevStep() {
+        return m_last_step.get();
+    }
+
+    ~ChainContextStepOneImpl() {
+        std::cerr << "Undoing StepOne..." << std::endl;
+        m_scheduler->stop();
+        StopScriptCheckWorkerThreads();
+        GetMainSignals().FlushBackgroundCallbacks();
+        GetMainSignals().UnregisterBackgroundSignalScheduler();
+    }
+private:
+    std::unique_ptr<CScheduler> m_scheduler;
+    std::unique_ptr<ChainContextStepZero> m_last_step;
+};
+
+std::unique_ptr<ChainContextStepOne> StepOne(std::unique_ptr<ChainContextStepZero> last_step, int num_script_check_threads) {
+    return std::make_unique<ChainContextStepOneImpl>(std::move(last_step), num_script_check_threads);
+}

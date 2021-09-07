@@ -14,6 +14,7 @@
 #include <util/thread.h> // for TraceThread
 #include <scheduler.h> // for CScheduler
 #include <key.h> // for ECC_{Start,Stop}
+#include <init/common.h> // for ECC_{Start,Stop}
 
 const extern std::function<std::string(const char*)> G_TRANSLATION_FUN = nullptr;
 
@@ -38,19 +39,22 @@ protected:
 int main() {
     // gArgs initialized statically
 
-    SelectParams(CBaseChainParams::MAIN);
-    const CChainParams& chainparams = Params();
+    // SelectParams(CBaseChainParams::MAIN);
+    // const CChainParams& chainparams = Params();
 
-    InitGlobals();
-    InitCaches();
+    // InitGlobals();
+    // InitCaches();
+    auto zero = StepZero(CBaseChainParams::MAIN);
+    auto& chainparams = zero->GetChainParams();
 
-    int num_script_check_threads = 1;
-    StartScriptThreads(num_script_check_threads);
-    LogPrintf("Script verification uses %d additional threads\n", num_script_check_threads);
+    // int num_script_check_threads = 1;
+    // StartScriptThreads(num_script_check_threads);
+    // LogPrintf("Script verification uses %d additional threads\n", num_script_check_threads);
 
-    std::unique_ptr<CScheduler> scheduler_ptr = StartScheduler();
-    CScheduler& scheduler = *scheduler_ptr;
-    StartMainSignals(scheduler);
+    // std::unique_ptr<CScheduler> scheduler_ptr = StartScheduler();
+    // CScheduler& scheduler = *scheduler_ptr;
+    // StartMainSignals(scheduler);
+    auto one = StepOne(std::move(zero), 1);
 
     CacheSizes cache_sizes;
     CalculateCacheSizes(gArgs, 0, &cache_sizes);
@@ -146,12 +150,10 @@ int main() {
 
     // After everything has been shut down, but before things get flushed, stop the
     // CScheduler/checkqueue, scheduler and load block thread.
-    scheduler.stop();
-    if (chainman.m_load_block.joinable()) chainman.m_load_block.join();
-    StopScriptCheckWorkerThreads();
+    // scheduler.stop();
+    // if (chainman.m_load_block.joinable()) chainman.m_load_block.join();
+    // StopScriptCheckWorkerThreads();
 
-    GetMainSignals().FlushBackgroundCallbacks();
-    GetMainSignals().UnregisterBackgroundSignalScheduler();
-
-    init::UnsetGlobals();
+    // GetMainSignals().FlushBackgroundCallbacks();
+    // GetMainSignals().UnregisterBackgroundSignalScheduler();
 }

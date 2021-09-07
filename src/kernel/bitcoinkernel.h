@@ -35,6 +35,27 @@ enum class ChainstateActivationError {
 };
 // ERROR_BLOCKS_WITNESS_INSUFFICIENTLY_VALIDATED, needs int
 
+
+class ChainContextStepZero {
+public:
+    virtual const CChainParams& GetChainParams() = 0;
+    virtual ~ChainContextStepZero() = default;
+};
+
+std::unique_ptr<ChainContextStepZero> StepZero(const std::string& network);
+
+class ChainContextStepOne : public ChainContextStepZero {
+public:
+    virtual CScheduler& GetScheduler() = 0;
+    const CChainParams& GetChainParams() override {
+        return GetPrevStep()->GetChainParams();
+    }
+private:
+    virtual ChainContextStepZero* GetPrevStep() = 0;
+};
+
+std::unique_ptr<ChainContextStepOne> StepOne(std::unique_ptr<ChainContextStepZero> last_step, int num_script_check_threads);
+
 void InitCaches();
 void StartScriptThreads(int total_script_threads);
 std::unique_ptr<CScheduler> StartScheduler();

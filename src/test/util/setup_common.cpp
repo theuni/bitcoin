@@ -42,6 +42,7 @@
 #include <validation.h>
 #include <validationinterface.h>
 #include <walletinitinterface.h>
+#include <init/common.h>
 
 #include <functional>
 
