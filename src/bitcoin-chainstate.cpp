@@ -1,20 +1,25 @@
 #include <iostream> // for cout and shit
 #include <functional> // for std::function
 
-#include <util/init.h> // for CacheSizes + CalculateCacheSizes
+// #include <util/init.h> // for CacheSizes + CalculateCacheSizes
 #include <kernel/bitcoinkernel.h> // for ActivateChainstateSequence
 #include <validation.h> // for ChainstateManager
 #include <validationinterface.h> // for CValidationInterface
-#include <core_io.h> // for DecodeHexBlk
+// #include <core_io.h> // for DecodeHexBlk
 #include <chainparams.h> // for Params()
-#include <node/blockstorage.h> // for fReindex, fPruneMode
-#include <timedata.h> // for GetAdjustedTime
-#include <shutdown.h> // for ShutdownRequested
-#include <util/system.h> // for ArgsManager
-#include <util/thread.h> // for TraceThread
-#include <scheduler.h> // for CScheduler
-#include <key.h> // for ECC_{Start,Stop}
-#include <init/common.h> // for ECC_{Start,Stop}
+// #include <node/blockstorage.h> // for fReindex, fPruneMode
+// #include <timedata.h> // for GetAdjustedTime
+// #include <shutdown.h> // for ShutdownRequested
+// #include <util/system.h> // for ArgsManager
+// #include <util/thread.h> // for TraceThread
+// #include <scheduler.h> // for CScheduler
+// #include <key.h> // for ECC_{Start,Stop}
+// #include <init/common.h> // for ECC_{Start,Stop}
+
+// struct CacheSizes;
+// void CalculateCacheSizes(const ArgsManager& args, size_t n_indexes, CacheSizes* cache_sizes);
+bool DecodeHexBlk(CBlock&, const std::string& strHexBlk);
+int64_t GetAdjustedTime();
 
 const extern std::function<std::string(const char*)> G_TRANSLATION_FUN = nullptr;
 
@@ -44,7 +49,7 @@ int main() {
 
     // InitGlobals();
     // InitCaches();
-    auto zero = StepZero(CBaseChainParams::MAIN);
+    auto zero = StepZero("main");
     auto& chainparams = zero->GetChainParams();
 
     // int num_script_check_threads = 1;
@@ -56,25 +61,21 @@ int main() {
     // StartMainSignals(scheduler);
     auto one = StepOne(std::move(zero), 1);
 
-    CacheSizes cache_sizes;
-    CalculateCacheSizes(gArgs, 0, &cache_sizes);
-
     ChainstateManager chainman = ChainstateManager{};
 
-    auto rv = ActivateChainstateSequence(fReindex.load(),
+    auto rv = ActivateChainstateSequence(false,
                                          chainman,
                                          nullptr,
-                                         fPruneMode,
+                                         false,
                                          chainparams,
                                          false,
-                                         cache_sizes.block_tree_db_cache_size,
-                                         cache_sizes.coin_db_cache_size,
-                                         cache_sizes.coin_cache_usage_size,
-                                         DEFAULT_CHECKBLOCKS,
-                                         DEFAULT_CHECKLEVEL,
+                                         2 << 20,
+                                         2 << 22,
+                                         (450 << 20) - (2 << 20) - (2 << 22),
+                                         6 /*DEFAULT_CHECKBLOCKS*/,
+                                         3 /*DEFAULT_CHECKLEVEL*/,
                                          true,
-                                         GetAdjustedTime,
-                                         ShutdownRequested);
+                                         GetAdjustedTime);
     if (rv) {
         std::cerr << "Failed to load Chain state from your datadir." << std::endl;
         return 1;
