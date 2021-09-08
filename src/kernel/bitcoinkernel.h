@@ -10,8 +10,9 @@
 #include <optional>
 #include <functional>
 
+class CChainState;
 class ChainstateManager;
-class CChainParams;
+class KernelCChainParams;
 class CTxMemPool;
 struct NodeContext;
 class CScheduler;
@@ -38,7 +39,7 @@ enum class ChainstateActivationError {
 
 class ChainContextStepZero {
 public:
-    virtual const CChainParams& GetChainParams() = 0;
+    virtual const KernelCChainParams& GetChainParams() = 0;
     virtual ~ChainContextStepZero() = default;
 };
 
@@ -47,7 +48,7 @@ std::unique_ptr<ChainContextStepZero> StepZero(const std::string& network);
 class ChainContextStepOne : public ChainContextStepZero {
 public:
     virtual CScheduler& GetScheduler() = 0;
-    const CChainParams& GetChainParams() override {
+    const KernelCChainParams& GetChainParams() override {
         return GetPrevStep()->GetChainParams();
     }
 private:
@@ -66,7 +67,7 @@ std::optional<ChainstateActivationError> ActivateChainstateSequence(bool fReset,
                                                                     ChainstateManager& chainman,
                                                                     CTxMemPool* mempool,
                                                                     bool fPruneMode,
-                                                                    const CChainParams& chainparams,
+                                                                    const KernelCChainParams& chainparams,
                                                                     bool fReindexChainState,
                                                                     int64_t nBlockTreeDBCache,
                                                                     int64_t nCoinDBCache,

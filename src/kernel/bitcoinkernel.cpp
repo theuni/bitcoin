@@ -5,7 +5,7 @@
 
 #include <iostream>
 
-#include <chainparams.h> // For CChainParams
+#include <kernel/chainparams.h> // For CChainParams
 #include <node/blockstorage.h> // For CleanupBlockRevFiles, fHavePruned
 #include <validation.h> // For a lot of things
 #include <validationinterface.h> // For GetMainSignals
@@ -14,6 +14,7 @@
 #include <scheduler.h> // For CScheduler
 #include <util/thread.h> // For util::TraceThread
 #include <init/common.h> // for init::SetGlobals()
+#include <kernel/validation.h> // For CChainParams
 
 void HelloKernel() {
     LOCK(::cs_main);
@@ -133,7 +134,7 @@ std::optional<ChainstateActivationError> ActivateChainstateSequence(bool fReset,
                                                                     ChainstateManager& chainman,
                                                                     CTxMemPool* mempool,
                                                                     bool fPruneMode,
-                                                                    const CChainParams& chainparams,
+                                                                    const KernelCChainParams& chainparams,
                                                                     bool fReindexChainState,
                                                                     int64_t nBlockTreeDBCache,
                                                                     int64_t nCoinDBCache,
@@ -269,7 +270,7 @@ std::optional<ChainstateActivationError> ActivateChainstateSequence(bool fReset,
                 }
 
                 if (!CVerifyDB().VerifyDB(
-                        *chainstate, chainparams, chainstate->CoinsDB(),
+                         *chainstate, chainparams.GetConsensus(), chainstate->CoinsDB(),
                         check_level,
                         check_blocks)) {
                     return ChainstateActivationError::ERROR_CORRUPTED_BLOCK_DB;
@@ -288,8 +289,9 @@ public:
         InitGlobals();
         InitCaches();
     }
-    const CChainParams& GetChainParams() {
-        return Params();
+    const KernelCChainParams& GetChainParams() {
+        return *((KernelCChainParams const *)std::addressof(Params()));
+        // return static_cast<const KernelCChainParams&>(Params());
     }
 
     ~ChainContextStepZeroImpl() {

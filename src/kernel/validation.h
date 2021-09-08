@@ -16,6 +16,7 @@ class CChainParams;
 struct CCheckpointData;
 class ConnectTrace;
 struct DisconnectedBlockTransactions;
+class KernelCChainParams;
 
 class CChainState;
 class ChainstateManager;
@@ -128,7 +129,7 @@ public:
     bool AcceptBlockHeader(
         const CBlockHeader& block,
         BlockValidationState& state,
-        const CChainParams& chainparams,
+        const KernelCChainParams& chainparams,
         CBlockIndex** ppindex) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
     CBlockIndex* LookupBlockIndex(const uint256& hash) const EXCLUSIVE_LOCKS_REQUIRED(cs_main);
@@ -212,7 +213,6 @@ enum class FlushStateMode {
 };
 }
 
-
 /**
  * CChainState stores and provides an API to update our local knowledge of the
  * current best chain.
@@ -264,14 +264,12 @@ protected:
 
     //! Manages the UTXO set, which is a reflection of the contents of `m_chain`.
     std::unique_ptr<CoinsViews> m_coins_views;
-
 public:
     //! Reference to a BlockManager instance which itself is shared across all
     //! CChainState instances.
     BlockManager& m_blockman;
 
-    explicit CChainState(
-        CTxMemPool* mempool,
+    explicit CChainState(CTxMemPool* mempool,
         BlockManager& blockman,
         std::optional<uint256> from_snapshot_blockhash = std::nullopt);
 
@@ -293,9 +291,7 @@ public:
 
     //! @returns whether or not the CoinsViews object has been fully initialized and we can
     //!          safely flush this object to disk.
-    bool CanFlushToDisk() const EXCLUSIVE_LOCKS_REQUIRED(cs_main) {
-        return m_coins_views && m_coins_views->m_cacheview;
-    }
+    bool CanFlushToDisk() const EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
     //! The current chain of blockheaders we consult and build on.
     //! @see CChain, CBlockIndex.
@@ -316,27 +312,17 @@ public:
     std::set<CBlockIndex*, CBlockIndexWorkComparator> setBlockIndexCandidates;
 
     //! @returns A reference to the in-memory cache of the UTXO set.
-    CCoinsViewCache& CoinsTip() EXCLUSIVE_LOCKS_REQUIRED(cs_main)
-    {
-        assert(m_coins_views->m_cacheview);
-        return *m_coins_views->m_cacheview.get();
-    }
+    CCoinsViewCache& CoinsTip() EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
     //! @returns A reference to the on-disk UTXO set database.
-    CCoinsViewDB& CoinsDB() EXCLUSIVE_LOCKS_REQUIRED(cs_main)
-    {
-        return m_coins_views->m_dbview;
-    }
+    CCoinsViewDB& CoinsDB() EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
     //! @returns A reference to a wrapped view of the in-memory UTXO set that
     //!     handles disk read errors gracefully.
-    CCoinsViewErrorCatcher& CoinsErrorCatcher() EXCLUSIVE_LOCKS_REQUIRED(cs_main)
-    {
-        return m_coins_views->m_catcherview;
-    }
+    CCoinsViewErrorCatcher& CoinsErrorCatcher() EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
     //! Destructs all objects related to accessing the UTXO set.
-    void ResetCoinsViews() { m_coins_views.reset(); }
+    void ResetCoinsViews();
 
     //! The cache size of the on-disk coins view.
     size_t m_coinsdb_cache_size_bytes{0};
@@ -454,7 +440,7 @@ public:
 
     std::string ToString() EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
 
-private:
+protected:
     bool ActivateBestChainStep(BlockValidationState& state, CBlockIndex* pindexMostWork, const std::shared_ptr<const CBlock>& pblock, bool& fInvalidFound, ConnectTrace& connectTrace) EXCLUSIVE_LOCKS_REQUIRED(cs_main, m_mempool->cs);
     bool ConnectTip(BlockValidationState& state, CBlockIndex* pindexNew, const std::shared_ptr<const CBlock>& pblock, ConnectTrace& connectTrace, DisconnectedBlockTransactions& disconnectpool) EXCLUSIVE_LOCKS_REQUIRED(cs_main, m_mempool->cs);
 
@@ -629,14 +615,26 @@ public:
 
     //! The most-work chain.
     CChainState& ActiveChainstate() const;
-    CChain& ActiveChain() const { return ActiveChainstate().m_chain; }
+    CChain& ActiveChain() const;
+    // int ChainstateManager::ActiveHeight() const { return ActiveChain().Height(); }
+    // CBlockIndex* ChainstateManager::ActiveTip() const { return ActiveChain().Tip(); }
+
+    // BlockMap& ChainstateManager::BlockIndex()
+    // {
+    //     return m_blockman.m_block_index;
+    // }
     int ActiveHeight() const { return ActiveChain().Height(); }
     CBlockIndex* ActiveTip() const { return ActiveChain().Tip(); }
 
-    BlockMap& BlockIndex() EXCLUSIVE_LOCKS_REQUIRED(::cs_main)
+    BlockMap& BlockIndex()
     {
         return m_blockman.m_block_index;
     }
+
+    // int ActiveHeight() const;
+    // CBlockIndex* ActiveTip() const;
+
+    // BlockMap& BlockIndex();
 
     //! @returns true if a snapshot-based chainstate is in use. Also implies
     //!          that a background validation chainstate is also in use.
@@ -657,7 +655,7 @@ public:
     //! background validation has completed, this is the snapshot chain.
     CChainState& ValidatedChainstate() const;
 
-    CChain& ValidatedChain() const { return ValidatedChainstate().m_chain; }
+    CChain& ValidatedChain() const;
     CBlockIndex* ValidatedTip() const { return ValidatedChain().Tip(); }
 
     /**
@@ -679,7 +677,7 @@ public:
      * @param[out]  new_block A boolean which is set to indicate if the block was first received via this call
      * @returns     If the block was processed, independently of block validity
      */
-    bool ProcessNewBlock(const CChainParams& chainparams, const std::shared_ptr<const CBlock>& block, bool force_processing, bool* new_block) LOCKS_EXCLUDED(cs_main);
+    bool ProcessNewBlock(const KernelCChainParams& chainparams, const std::shared_ptr<const CBlock>& block, bool force_processing, bool* new_block) LOCKS_EXCLUDED(cs_main);
 
     /**
      * Process incoming block headers.
@@ -692,7 +690,7 @@ public:
      * @param[in]  chainparams The params for the chain we want to connect to
      * @param[out] ppindex If set, the pointer will be set to point to the last new block index object for the given headers
      */
-    bool ProcessNewBlockHeaders(const std::vector<CBlockHeader>& block, BlockValidationState& state, const CChainParams& chainparams, const CBlockIndex** ppindex = nullptr) LOCKS_EXCLUDED(cs_main);
+    bool ProcessNewBlockHeaders(const std::vector<CBlockHeader>& block, BlockValidationState& state, const KernelCChainParams& chainparams, const CBlockIndex** ppindex = nullptr) LOCKS_EXCLUDED(cs_main);
 
     //! Load the block tree and coins database from disk, initializing state if we're running with -reindex
     bool LoadBlockIndex() EXCLUSIVE_LOCKS_REQUIRED(cs_main);

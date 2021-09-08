@@ -347,7 +347,7 @@ void CChainState::MaybeUpdateMempoolForReorg(
         // ignore validation errors in resurrected transactions
         if (!fAddToMempool || (*it)->IsCoinBase() ||
             AcceptToMemoryPool(
-                *this, *m_mempool, *it, true /* bypass_limits */).m_result_type !=
+                *static_cast<CChainState*>(this), *m_mempool, *it, true /* bypass_limits */).m_result_type !=
                     MempoolAcceptResult::ResultType::VALID) {
             // If the transaction doesn't make it in to the mempool, remove any
             // transactions that depend on it (which would now be orphans).
@@ -3138,7 +3138,7 @@ CBlockIndex* BlockManager::GetLastCheckpoint(const CCheckpointData& data)
  *  in ConnectBlock().
  *  Note that -reindex-chainstate skips the validation that happens here!
  */
-static bool ContextualCheckBlockHeader(const CBlockHeader& block, BlockValidationState& state, BlockManager& blockman, const CChainParams& params, const CBlockIndex* pindexPrev, int64_t nAdjustedTime) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
+static bool ContextualCheckBlockHeader(const CBlockHeader& block, BlockValidationState& state, BlockManager& blockman, const KernelCChainParams& params, const CBlockIndex* pindexPrev, int64_t nAdjustedTime) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
 {
     assert(pindexPrev != nullptr);
     const int nHeight = pindexPrev->nHeight + 1;
@@ -3267,7 +3267,7 @@ static bool ContextualCheckBlock(const CBlock& block, BlockValidationState& stat
     return true;
 }
 
-bool BlockManager::AcceptBlockHeader(const CBlockHeader& block, BlockValidationState& state, const CChainParams& chainparams, CBlockIndex** ppindex)
+bool BlockManager::AcceptBlockHeader(const CBlockHeader& block, BlockValidationState& state, const KernelCChainParams& chainparams, CBlockIndex** ppindex)
 {
     AssertLockHeld(cs_main);
     // Check for duplicate
@@ -3354,7 +3354,7 @@ bool BlockManager::AcceptBlockHeader(const CBlockHeader& block, BlockValidationS
 }
 
 // Exposed wrapper for AcceptBlockHeader
-bool ChainstateManager::ProcessNewBlockHeaders(const std::vector<CBlockHeader>& headers, BlockValidationState& state, const CChainParams& chainparams, const CBlockIndex** ppindex)
+bool ChainstateManager::ProcessNewBlockHeaders(const std::vector<CBlockHeader>& headers, BlockValidationState& state, const KernelCChainParams& chainparams, const CBlockIndex** ppindex)
 {
     AssertLockNotHeld(cs_main);
     {
@@ -3464,7 +3464,7 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, Block
     return true;
 }
 
-bool ChainstateManager::ProcessNewBlock(const CChainParams& chainparams, const std::shared_ptr<const CBlock>& block, bool force_processing, bool* new_block)
+bool ChainstateManager::ProcessNewBlock(const KernelCChainParams& chainparams, const std::shared_ptr<const CBlock>& block, bool force_processing, bool* new_block)
 {
     AssertLockNotHeld(cs_main);
 
@@ -3856,7 +3856,7 @@ CVerifyDB::~CVerifyDB()
 
 bool CVerifyDB::VerifyDB(
     CChainState& chainstate,
-    const CChainParams& chainparams,
+    const Consensus::Params& consensus_params,
     CCoinsView& coinsview,
     int nCheckLevel, int nCheckDepth)
 {
@@ -3898,10 +3898,10 @@ bool CVerifyDB::VerifyDB(
         }
         CBlock block;
         // check level 0: read from disk
-        if (!ReadBlockFromDisk(block, pindex, chainparams.GetConsensus()))
+        if (!ReadBlockFromDisk(block, pindex, consensus_params))
             return error("VerifyDB(): *** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
         // check level 1: verify block validity
-        if (nCheckLevel >= 1 && !CheckBlock(block, state, chainparams.GetConsensus()))
+        if (nCheckLevel >= 1 && !CheckBlock(block, state, consensus_params))
             return error("%s: *** found bad block at %d, hash=%s (%s)\n", __func__,
                          pindex->nHeight, pindex->GetBlockHash().ToString(), state.ToString());
         // check level 2: verify undo validity
@@ -3949,7 +3949,7 @@ bool CVerifyDB::VerifyDB(
             uiInterface.ShowProgress(_("Verifying blocks…").translated, percentageDone, false);
             pindex = chainstate.m_chain.Next(pindex);
             CBlock block;
-            if (!ReadBlockFromDisk(block, pindex, chainparams.GetConsensus()))
+            if (!ReadBlockFromDisk(block, pindex, consensus_params))
                 return error("VerifyDB(): *** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
             if (!chainstate.ConnectBlock(block, state, pindex, coins)) {
                 return error("VerifyDB(): *** found unconnectable block at %d, hash=%s (%s)", pindex->nHeight, pindex->GetBlockHash().ToString(), state.ToString());
@@ -4484,6 +4484,28 @@ bool CChainState::ResizeCoinsCaches(size_t coinstip_size, size_t coinsdb_size)
     }
     return ret;
 }
+
+
+bool CChainState::CanFlushToDisk() const {
+    return m_coins_views && m_coins_views->m_cacheview;
+}
+
+CCoinsViewCache& CChainState::CoinsTip()
+{
+    assert(m_coins_views->m_cacheview);
+    return *m_coins_views->m_cacheview.get();
+}
+
+CCoinsViewDB& CChainState::CoinsDB()
+{
+    return m_coins_views->m_dbview;
+}
+CCoinsViewErrorCatcher& CChainState::CoinsErrorCatcher()
+{
+    return m_coins_views->m_catcherview;
+}
+//! Destructs all objects related to accessing the UTXO set.
+void CChainState::ResetCoinsViews() { m_coins_views.reset(); }
 
 static const uint64_t MEMPOOL_DUMP_VERSION = 1;
 
@@ -5059,3 +5081,6 @@ ChainstateManager::~ChainstateManager() {
     UnloadBlockIndex(/* mempool */ nullptr, *this);
     Reset();
 }
+
+CChain& ChainstateManager::ActiveChain() const { return ActiveChainstate().m_chain; }
+CChain& ChainstateManager::ValidatedChain() const { return ValidatedChainstate().m_chain; }

@@ -45,6 +45,7 @@
 class BlockValidationState;
 class CBlockIndex;
 class CBlockUndo;
+class CChainParams;
 class CInv;
 class CConnman;
 class CScriptCheck;
@@ -340,7 +341,7 @@ public:
     ~CVerifyDB();
     bool VerifyDB(
         CChainState& chainstate,
-        const CChainParams& chainparams,
+        const Consensus::Params& consensus_params,
         CCoinsView& coinsview,
         int nCheckLevel,
         int nCheckDepth) EXCLUSIVE_LOCKS_REQUIRED(cs_main);

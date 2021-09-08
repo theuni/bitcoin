@@ -7,9 +7,7 @@
 
 #include <chainparamsbase.h>
 #include <consensus/params.h>
-#include <netaddress.h>
 #include <primitives/block.h>
-#include <protocol.h>
 #include <util/hash_type.h>
 
 #include <memory>
@@ -61,11 +59,13 @@ struct ChainTxData {
     double dTxRate;   //!< estimated number of transactions per second after that timestamp
 };
 
+class CChainParams;
+
 /**
  * CChainParams defines various tweakable parameters of a given instance of the
  * Bitcoin system.
  */
-class CChainParams
+class KernelCChainParams
 {
 public:
     enum Base58Type {
@@ -79,17 +79,6 @@ public:
     };
 
     const Consensus::Params& GetConsensus() const { return consensus; }
-    const CMessageHeader::MessageStartChars& MessageStart() const { return pchMessageStart; }
-    uint16_t GetDefaultPort() const { return nDefaultPort; }
-    uint16_t GetDefaultPort(Network net) const
-    {
-        return net == NET_I2P ? I2P_SAM31_PORT : GetDefaultPort();
-    }
-    uint16_t GetDefaultPort(const std::string& addr) const
-    {
-        CNetAddr a;
-        return a.SetSpecial(addr) ? GetDefaultPort(a.GetNetwork()) : GetDefaultPort();
-    }
 
     const CBlock& GenesisBlock() const { return genesis; }
     /** Default value for -checkmempool and -checkblockindex argument */
@@ -122,11 +111,9 @@ public:
 
     const ChainTxData& TxData() const { return chainTxData; }
 protected:
-    CChainParams() {}
+    KernelCChainParams() {}
 
     Consensus::Params consensus;
-    CMessageHeader::MessageStartChars pchMessageStart;
-    uint16_t nDefaultPort;
     uint64_t nPruneAfterHeight;
     uint64_t m_assumed_blockchain_size;
     uint64_t m_assumed_chain_state_size;
