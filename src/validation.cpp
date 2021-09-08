@@ -5053,3 +5053,9 @@ void ChainstateManager::MaybeRebalanceCaches()
         }
     }
 }
+
+ChainstateManager::~ChainstateManager() {
+    LOCK(::cs_main);
+    UnloadBlockIndex(/* mempool */ nullptr, *this);
+    Reset();
+}
