@@ -141,7 +141,7 @@ std::optional<ChainstateActivationError> ActivateChainstateSequence(bool fReset,
                                                                     unsigned int check_blocks,
                                                                     unsigned int check_level,
                                                                     bool block_tree_db_in_memory,
-                                                                    std::function<int64_t()> get_adjusted_time,
+                                                                    std::function<int64_t()> get_time,
                                                                     std::function<bool()> shutdown_requested,
                                                                     std::optional<std::function<void()>> coins_error_cb,
                                                                     std::function<void()> verifying_blocks_cb) {
@@ -264,7 +264,7 @@ std::optional<ChainstateActivationError> ActivateChainstateSequence(bool fReset,
                 verifying_blocks_cb();
 
                 const CBlockIndex* tip = chainstate->m_chain.Tip();
-                if (tip && tip->nTime > get_adjusted_time() + 2 * 60 * 60) {
+                if (tip && tip->nTime > get_time() + 2 * 60 * 60) {
                     return ChainstateActivationError::ERROR_BLOCK_FROM_FUTURE;
                 }
 
