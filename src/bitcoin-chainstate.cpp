@@ -4,7 +4,7 @@
 // #include <util/init.h> // for CacheSizes + CalculateCacheSizes
 #include <kernel/bitcoinkernel.h> // for ActivateChainstateSequence
 #include <kernel/validation.h> // for ChainstateManager
-#include <validationinterface.h> // for CValidationInterface
+#include <kernel/validationinterface.h> // for CValidationInterface
 // #include <core_io.h> // for DecodeHexBlk
 #include <chainparams.h> // for Params()
 // #include <node/blockstorage.h> // for fReindex, fPruneMode
