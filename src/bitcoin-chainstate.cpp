@@ -6,7 +6,7 @@
 #include <kernel/validation.h> // for ChainstateManager
 #include <kernel/validationinterface.h> // for CValidationInterface
 // #include <core_io.h> // for DecodeHexBlk
-#include <chainparams.h> // for Params()
+#include <kernel/chainparams.h> // for Params()
 // #include <node/blockstorage.h> // for fReindex, fPruneMode
 // #include <timedata.h> // for GetAdjustedTime
 // #include <shutdown.h> // for ShutdownRequested
