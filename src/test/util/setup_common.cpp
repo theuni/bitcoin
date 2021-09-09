@@ -13,7 +13,6 @@
 #include <crypto/sha256.h>
 #include <init.h>
 #include <interfaces/chain.h>
-#include <kernel/bitcoinkernel.h>
 #include <miner.h>
 #include <net.h>
 #include <net_processing.h>
@@ -107,16 +106,14 @@ BasicTestingSetup::BasicTestingSetup(const std::string& chainName, const std::ve
         assert(success);
         assert(error.empty());
     }
-    SelectParams(chainName);
+    step_zero = StepZero(chainName);
     SeedInsecureRand();
     if (G_TEST_LOG_FUN) LogInstance().PushBackCallback(G_TEST_LOG_FUN);
     InitLogging(*m_node.args);
     AppInitParameterInteraction(*m_node.args);
     LogInstance().StartLogging();
-    InitGlobals();
     SetupEnvironment();
     SetupNetworking();
-    InitCaches();
     m_node.chain = interfaces::MakeChain(m_node);
     g_wallet_init_interface.Construct(m_node);
     fCheckBlockIndex = true;
@@ -133,17 +130,12 @@ BasicTestingSetup::~BasicTestingSetup()
     LogInstance().DisconnectTestLogger();
     fs::remove_all(m_path_root);
     gArgs.ClearArgs();
-    init::UnsetGlobals();
 }
 
 ChainTestingSetup::ChainTestingSetup(const std::string& chainName, const std::vector<const char*>& extra_args)
     : BasicTestingSetup(chainName, extra_args)
 {
-    StartScriptThreads(3);
-
-    m_node.scheduler = StartScheduler();
-    CScheduler& scheduler = *m_node.scheduler;
-    StartMainSignals(scheduler);
+    step_one = StepOne(std::move(step_zero), 3);
 
     m_node.fee_estimator = std::make_unique<CBlockPolicyEstimator>();
     m_node.mempool = std::make_unique<CTxMemPool>(m_node.fee_estimator.get(), 1);
@@ -155,10 +147,7 @@ ChainTestingSetup::ChainTestingSetup(const std::string& chainName, const std::ve
 
 ChainTestingSetup::~ChainTestingSetup()
 {
-    if (m_node.scheduler) m_node.scheduler->stop();
-    StopScriptCheckWorkerThreads();
-    GetMainSignals().FlushBackgroundCallbacks();
-    GetMainSignals().UnregisterBackgroundSignalScheduler();
+    step_one.reset();
     m_node.connman.reset();
     m_node.banman.reset();
     m_node.addrman.reset();

@@ -8,6 +8,7 @@
 #include <chainparamsbase.h>
 #include <fs.h>
 #include <key.h>
+#include <kernel/bitcoinkernel.h>
 #include <util/system.h>
 #include <node/context.h>
 #include <pubkey.h>
@@ -75,6 +76,7 @@ static constexpr CAmount CENT{1000000};
  */
 struct BasicTestingSetup {
     NodeContext m_node;
+    std::unique_ptr<ChainContextStepZero> step_zero;
 
     explicit BasicTestingSetup(const std::string& chainName = CBaseChainParams::MAIN, const std::vector<const char*>& extra_args = {});
     ~BasicTestingSetup();
@@ -88,6 +90,7 @@ struct BasicTestingSetup {
  * initialization behaviour.
  */
 struct ChainTestingSetup : public BasicTestingSetup {
+    std::unique_ptr<ChainContextStepOne> step_one;
 
     explicit ChainTestingSetup(const std::string& chainName = CBaseChainParams::MAIN, const std::vector<const char*>& extra_args = {});
     ~ChainTestingSetup();
