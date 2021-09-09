@@ -56,6 +56,49 @@ struct PrecomputedTransactionData;
 struct LockPoints;
 struct AssumeutxoData;
 
+class CChainState : public KernelCChainState
+{
+public:
+    explicit CChainState(CTxMemPool* mempool,
+                         BlockManager& blockman,
+                         std::optional<uint256> from_snapshot_blockhash = std::nullopt);
+
+    using KernelCChainState::GetCoinsCacheSizeState;
+    CoinsCacheSizeState GetCoinsCacheSizeState(size_t max_coins_cache_size_bytes,
+                                               size_t max_mempool_size_bytes) override EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
+
+    bool DisconnectTip(BlockValidationState& state, DisconnectedBlockTransactions* disconnectpool) override EXCLUSIVE_LOCKS_REQUIRED(cs_main, MempoolMutex());
+
+    void LoadMempool(const ArgsManager& args) override;
+private:
+    //! Optional mempool that is kept in sync with the chain.
+    //! Only the active chainstate has a mempool.
+    CTxMemPool* m_mempool{nullptr};
+protected:
+
+    const CChainParams& GetParams() const override {
+        return m_params;
+    }
+
+    const CChainParams& m_params;
+
+    CTxMemPool* Mempool() const override {
+        return m_mempool;
+    }
+
+    RecursiveMutex* MempoolMutex() const LOCK_RETURNED(m_mempool->GetMutex());
+
+    bool ActivateBestChainStep(BlockValidationState& state, CBlockIndex* pindexMostWork, const std::shared_ptr<const CBlock>& pblock, bool& fInvalidFound, ConnectTrace& connectTrace) override EXCLUSIVE_LOCKS_REQUIRED(cs_main, MempoolMutex());
+
+    void MaybeUpdateMempoolForReorg(DisconnectedBlockTransactions& disconnectpool,
+                                    bool fAddToMempool) override EXCLUSIVE_LOCKS_REQUIRED(cs_main, MempoolMutex());
+
+    bool ConnectTip(BlockValidationState& state, CBlockIndex* pindexNew, const std::shared_ptr<const CBlock>& pblock, ConnectTrace& connectTrace, DisconnectedBlockTransactions& disconnectpool) override EXCLUSIVE_LOCKS_REQUIRED(cs_main, MempoolMutex());
+
+    /** Check warning conditions and do some notifications on new chain tip set. */
+    void UpdateTip(const CBlockIndex* pindexNew) override EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
+};
+
 /** Default for -minrelaytxfee, minimum relay fee for transactions */
 static const unsigned int DEFAULT_MIN_RELAY_TX_FEE = 1000;
 /** Default for -limitancestorcount, max number of in-mempool ancestors */
