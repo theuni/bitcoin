@@ -12,6 +12,7 @@
 #include <consensus/validation.h> // for BlockValidationState
 #include <kernel/txmempool.h>
 
+class ArgsManager;
 class CBlockTreeDB;
 class CChainParams;
 struct CCheckpointData;

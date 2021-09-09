@@ -1,6 +1,7 @@
 #include <util/init.h>
 
 #include <txdb.h>
+#include <util/system.h>
 #include <validation.h>
 
 void CalculateCacheSizes(const ArgsManager& args, size_t n_indexes, CacheSizes* cache_sizes)

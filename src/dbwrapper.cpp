@@ -12,6 +12,7 @@
 #include <leveldb/filter_policy.h>
 #include <memenv.h>
 #include <stdint.h>
+#include <util/system.h>
 #include <algorithm>
 
 class CBitcoinLevelDBLogger : public leveldb::Logger {

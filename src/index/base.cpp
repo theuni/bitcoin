@@ -8,7 +8,9 @@
 #include <node/ui_interface.h>
 #include <shutdown.h>
 #include <tinyformat.h>
+#include <util/system.h>
 #include <util/thread.h>
+#include <util/time.h>
 #include <util/translation.h>
 #include <validation.h> // For g_chainman
 #include <warnings.h>

@@ -12,6 +12,7 @@
 #include <node/context.h> // For NodeContext
 #include <script/sigcache.h> // For InitSignatureCache
 #include <scheduler.h> // For CScheduler
+#include <util/system.h> // For GetNumCores
 #include <util/thread.h> // For util::TraceThread
 #include <init/common.h> // for init::SetGlobals()
 #include <kernel/validation.h> // For CChainParams

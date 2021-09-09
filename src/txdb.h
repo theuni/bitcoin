@@ -10,6 +10,7 @@
 #include <dbwrapper.h>
 #include <chain.h>
 #include <primitives/block.h>
+#include <sync.h>
 
 #include <memory>
 #include <string>
