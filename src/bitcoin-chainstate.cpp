@@ -61,7 +61,8 @@ int main() {
     // StartMainSignals(scheduler);
     auto one = StepOne(std::move(zero), 1);
 
-    ChainstateManager chainman = ChainstateManager{};
+    auto chainman_ptr = MakeChainstateManager();
+    KernelChainstateManager& chainman = *chainman_ptr;
 
     auto rv = ActivateChainstateSequence(false,
                                          chainman,

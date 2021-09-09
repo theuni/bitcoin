@@ -109,6 +109,10 @@ void InitGlobals() {
     init::SetGlobals();
 }
 
+std::unique_ptr<KernelChainstateManager> MakeChainstateManager() {
+    return std::make_unique<ChainstateManager>();
+}
+
 // Implicitly relies on RNGState
 // Needs that data_dir is writable
 // IDEA: document assumptions in comments for error codes
@@ -131,7 +135,7 @@ void InitGlobals() {
 
 // rv = false -> bail immediately, do nothing else
 std::optional<ChainstateActivationError> ActivateChainstateSequence(bool fReset,
-                                                                    ChainstateManager& chainman,
+                                                                    KernelChainstateManager& chainman,
                                                                     CTxMemPool* mempool,
                                                                     bool fPruneMode,
                                                                     const KernelCChainParams& chainparams,

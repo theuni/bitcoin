@@ -11,7 +11,7 @@
 #include <functional>
 
 class CChainState;
-class ChainstateManager;
+class KernelChainstateManager;
 class KernelCChainParams;
 class CTxMemPool;
 struct NodeContext;
@@ -62,9 +62,10 @@ void StartScriptThreads(int total_script_threads);
 std::unique_ptr<CScheduler> StartScheduler();
 void StartMainSignals(CScheduler& scheduler);
 void InitGlobals();
+std::unique_ptr<KernelChainstateManager> MakeChainstateManager();
 
 std::optional<ChainstateActivationError> ActivateChainstateSequence(bool fReset,
-                                                                    ChainstateManager& chainman,
+                                                                    KernelChainstateManager& chainman,
                                                                     CTxMemPool* mempool,
                                                                     bool fPruneMode,
                                                                     const KernelCChainParams& chainparams,

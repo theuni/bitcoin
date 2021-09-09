@@ -587,6 +587,7 @@ libbitcoin_kernel_a_SOURCES = \
   init/common.cpp \
   compat/glibcxx_sanity.cpp \
   kernel/bitcoinkernel.cpp \
+  kernel/validation.h \
   clientversion.cpp \
   validation.cpp \
   coins.cpp \

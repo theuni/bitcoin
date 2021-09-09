@@ -86,7 +86,9 @@ protected:
         return m_mempool;
     }
 
-    RecursiveMutex* MempoolMutex() const LOCK_RETURNED(m_mempool->GetMutex());
+    RecursiveMutex* MempoolMutex() const LOCK_RETURNED(m_mempool->GetMutex()) {
+        return KernelCChainState::MempoolMutex();
+    }
 
     bool ActivateBestChainStep(BlockValidationState& state, CBlockIndex* pindexMostWork, const std::shared_ptr<const CBlock>& pblock, bool& fInvalidFound, ConnectTrace& connectTrace) override EXCLUSIVE_LOCKS_REQUIRED(cs_main, MempoolMutex());
 
@@ -97,6 +99,74 @@ protected:
 
     /** Check warning conditions and do some notifications on new chain tip set. */
     void UpdateTip(const CBlockIndex* pindexNew) override EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
+};
+
+class ChainstateManager : public KernelChainstateManager {
+private:
+    //! The chainstate used under normal operation (i.e. "regular" IBD) or, if
+    //! a snapshot is in use, for background validation.
+    //!
+    //! Its contents (including on-disk data) will be deleted *upon shutdown*
+    //! after background validation of the snapshot has completed. We do not
+    //! free the chainstate contents immediately after it finishes validation
+    //! to cautiously avoid a case where some other part of the system is still
+    //! using this pointer (e.g. net_processing).
+    //!
+    //! Once this pointer is set to a corresponding chainstate, it will not
+    //! be reset until init.cpp:Shutdown().
+    //!
+    //! This is especially important when, e.g., calling ActivateBestChain()
+    //! on all chainstates because we are not able to hold ::cs_main going into
+    //! that call.
+    std::unique_ptr<CChainState> m_ibd_chainstate GUARDED_BY(::cs_main);
+
+    //! A chainstate initialized on the basis of a UTXO snapshot. If this is
+    //! non-null, it is always our active chainstate.
+    //!
+    //! Once this pointer is set to a corresponding chainstate, it will not
+    //! be reset until init.cpp:Shutdown().
+    //!
+    //! This is especially important when, e.g., calling ActivateBestChain()
+    //! on all chainstates because we are not able to hold ::cs_main going into
+    //! that call.
+    std::unique_ptr<CChainState> m_snapshot_chainstate GUARDED_BY(::cs_main);
+
+    //! Points to either the ibd or snapshot chainstate; indicates our
+    //! most-work chain.
+    //!
+    //! Once this pointer is set to a corresponding chainstate, it will not
+    //! be reset until init.cpp:Shutdown().
+    //!
+    //! This is especially important when, e.g., calling ActivateBestChain()
+    //! on all chainstates because we are not able to hold ::cs_main going into
+    //! that call.
+    CChainState* m_active_chainstate GUARDED_BY(::cs_main) {nullptr};
+public:
+    CChainState& InitializeChainstate(CTxMemPool* mempool,
+                                      const std::optional<uint256>& snapshot_blockhash = std::nullopt)
+        EXCLUSIVE_LOCKS_REQUIRED(::cs_main) override;
+
+    std::vector<CChainState*> GetAll() override;
+
+    void Reset() override;
+
+    CChainState& ActiveChainstate() const override;
+    CChainState& ValidatedChainstate() const override;
+
+    [[nodiscard]] bool ActivateSnapshot(CAutoFile& coins_file, const SnapshotMetadata& metadata, bool in_memory) override;
+
+    ~ChainstateManager();
+protected:
+    CChainState* GetIBDChainState() const override EXCLUSIVE_LOCKS_REQUIRED(::cs_main) {
+        return m_ibd_chainstate.get();
+    }
+    CChainState* GetSnapshotChainState() const override EXCLUSIVE_LOCKS_REQUIRED(::cs_main) {
+        return m_snapshot_chainstate.get();
+    }
+    CChainState* GetActiveChainState() const override EXCLUSIVE_LOCKS_REQUIRED(::cs_main) {
+        return m_active_chainstate;
+    }
+
 };
 
 /** Default for -minrelaytxfee, minimum relay fee for transactions */
@@ -175,7 +245,7 @@ extern CBlockIndex *pindexBestHeader;
 extern const std::vector<std::string> CHECKLEVEL_DOC;
 
 /** Unload database information */
-void UnloadBlockIndex(CTxMemPool* mempool, ChainstateManager& chainman);
+void UnloadBlockIndex(CTxMemPool* mempool, KernelChainstateManager& chainman);
 /** Run instances of script checking worker threads */
 void StartScriptCheckWorkerThreads(int threads_num);
 /** Stop all of the script checking worker threads */

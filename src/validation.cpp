@@ -3353,7 +3353,7 @@ bool BlockManager::AcceptBlockHeader(const CBlockHeader& block, BlockValidationS
 }
 
 // Exposed wrapper for AcceptBlockHeader
-bool ChainstateManager::ProcessNewBlockHeaders(const std::vector<CBlockHeader>& headers, BlockValidationState& state, const KernelCChainParams& chainparams, const CBlockIndex** ppindex)
+bool KernelChainstateManager::ProcessNewBlockHeaders(const std::vector<CBlockHeader>& headers, BlockValidationState& state, const KernelCChainParams& chainparams, const CBlockIndex** ppindex)
 {
     AssertLockNotHeld(cs_main);
     {
@@ -3463,7 +3463,7 @@ bool KernelCChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock,
     return true;
 }
 
-bool ChainstateManager::ProcessNewBlock(const KernelCChainParams& chainparams, const std::shared_ptr<const CBlock>& block, bool force_processing, bool* new_block)
+bool KernelChainstateManager::ProcessNewBlock(const KernelCChainParams& chainparams, const std::shared_ptr<const CBlock>& block, bool force_processing, bool* new_block)
 {
     AssertLockNotHeld(cs_main);
 
@@ -4077,7 +4077,7 @@ void KernelCChainState::UnloadBlockIndex() {
 // May NOT be used after any connections are up as much
 // of the peer-processing logic assumes a consistent
 // block index state
-void UnloadBlockIndex(CTxMemPool* mempool, ChainstateManager& chainman)
+void UnloadBlockIndex(CTxMemPool* mempool, KernelChainstateManager& chainman)
 {
     LOCK(cs_main);
     chainman.Unload();
@@ -4095,7 +4095,7 @@ void UnloadBlockIndex(CTxMemPool* mempool, ChainstateManager& chainman)
     fHavePruned = false;
 }
 
-bool ChainstateManager::LoadBlockIndex()
+bool KernelChainstateManager::LoadBlockIndex()
 {
     AssertLockHeld(cs_main);
     // Load block index from databases
@@ -4672,12 +4672,12 @@ double GuessVerificationProgress(const ChainTxData& data, const CBlockIndex *pin
     return std::min<double>(pindex->nChainTx / fTxTotal, 1.0);
 }
 
-std::optional<uint256> ChainstateManager::SnapshotBlockhash() const
+std::optional<uint256> KernelChainstateManager::SnapshotBlockhash() const
 {
     LOCK(::cs_main);
-    if (m_active_chainstate && m_active_chainstate->m_from_snapshot_blockhash) {
+    if (GetActiveChainState() && GetActiveChainState()->m_from_snapshot_blockhash) {
         // If a snapshot chainstate exists, it will always be our active.
-        return m_active_chainstate->m_from_snapshot_blockhash;
+        return GetActiveChainState()->m_from_snapshot_blockhash;
     }
     return std::nullopt;
 }
@@ -4687,12 +4687,12 @@ std::vector<CChainState*> ChainstateManager::GetAll()
     LOCK(::cs_main);
     std::vector<CChainState*> out;
 
-    if (!IsSnapshotValidated() && m_ibd_chainstate) {
-        out.push_back(m_ibd_chainstate.get());
+    if (!IsSnapshotValidated() && GetIBDChainState()) {
+        out.push_back(GetIBDChainState());
     }
 
-    if (m_snapshot_chainstate) {
-        out.push_back(m_snapshot_chainstate.get());
+    if (GetSnapshotChainState()) {
+        out.push_back(GetSnapshotChainState());
     }
 
     return out;
@@ -4711,7 +4711,7 @@ CChainState& ChainstateManager::InitializeChainstate(
     to_modify.reset(new CChainState(mempool, m_blockman, snapshot_blockhash));
 
     // Snapshot chainstates and initial IBD chaintates always become active.
-    if (is_snapshot || (!is_snapshot && !m_active_chainstate)) {
+    if (is_snapshot || (!is_snapshot && !GetActiveChainState())) {
         LogPrintf("Switching active chainstate to %s\n", to_modify->ToString());
         m_active_chainstate = to_modify.get();
     } else {
@@ -4799,23 +4799,23 @@ bool ChainstateManager::ActivateSnapshot(
 
     {
         LOCK(::cs_main);
-        assert(!m_snapshot_chainstate);
+        assert(!GetSnapshotChainState());
         m_snapshot_chainstate.swap(snapshot_chainstate);
-        const bool chaintip_loaded = m_snapshot_chainstate->LoadChainTip();
+        const bool chaintip_loaded = GetSnapshotChainState()->LoadChainTip();
         assert(chaintip_loaded);
 
-        m_active_chainstate = m_snapshot_chainstate.get();
+        m_active_chainstate = GetSnapshotChainState();
 
         LogPrintf("[snapshot] successfully activated snapshot %s\n", base_blockhash.ToString());
         LogPrintf("[snapshot] (%.2f MB)\n",
-            m_snapshot_chainstate->CoinsTip().DynamicMemoryUsage() / (1000 * 1000));
+            GetSnapshotChainState()->CoinsTip().DynamicMemoryUsage() / (1000 * 1000));
 
         this->MaybeRebalanceCaches();
     }
     return true;
 }
 
-bool ChainstateManager::PopulateAndValidateSnapshot(
+bool KernelChainstateManager::PopulateAndValidateSnapshot(
     CChainState& snapshot_chainstate,
     CAutoFile& coins_file,
     const SnapshotMetadata& metadata)
@@ -5000,33 +5000,33 @@ bool ChainstateManager::PopulateAndValidateSnapshot(
 CChainState& ChainstateManager::ActiveChainstate() const
 {
     LOCK(::cs_main);
-    assert(m_active_chainstate);
-    return *m_active_chainstate;
+    assert(GetActiveChainState());
+    return *(GetActiveChainState());
 }
 
-bool ChainstateManager::IsSnapshotActive() const
+bool KernelChainstateManager::IsSnapshotActive() const
 {
     LOCK(::cs_main);
-    return m_snapshot_chainstate && m_active_chainstate == m_snapshot_chainstate.get();
+    return GetSnapshotChainState() && (GetActiveChainState() == GetSnapshotChainState());
 }
 
 CChainState& ChainstateManager::ValidatedChainstate() const
 {
     LOCK(::cs_main);
-    if (m_snapshot_chainstate && IsSnapshotValidated()) {
-        return *m_snapshot_chainstate.get();
+    if (GetSnapshotChainState() && IsSnapshotValidated()) {
+        return *GetSnapshotChainState();
     }
-    assert(m_ibd_chainstate);
-    return *m_ibd_chainstate.get();
+    assert(GetIBDChainState());
+    return *GetIBDChainState();
 }
 
-bool ChainstateManager::IsBackgroundIBD(CChainState* chainstate) const
+bool KernelChainstateManager::IsBackgroundIBD(KernelCChainState* chainstate) const
 {
     LOCK(::cs_main);
-    return (m_snapshot_chainstate && chainstate == m_ibd_chainstate.get());
+    return (GetSnapshotChainState() && chainstate == GetIBDChainState());
 }
 
-void ChainstateManager::Unload()
+void KernelChainstateManager::Unload()
 {
     for (CChainState* chainstate : this->GetAll()) {
         chainstate->m_chain.SetTip(nullptr);
@@ -5045,31 +5045,31 @@ void ChainstateManager::Reset()
     m_snapshot_validated = false;
 }
 
-void ChainstateManager::MaybeRebalanceCaches()
+void KernelChainstateManager::MaybeRebalanceCaches()
 {
-    if (m_ibd_chainstate && !m_snapshot_chainstate) {
+    if (GetIBDChainState() && !GetSnapshotChainState()) {
         LogPrintf("[snapshot] allocating all cache to the IBD chainstate\n");
         // Allocate everything to the IBD chainstate.
-        m_ibd_chainstate->ResizeCoinsCaches(m_total_coinstip_cache, m_total_coinsdb_cache);
+        GetIBDChainState()->ResizeCoinsCaches(m_total_coinstip_cache, m_total_coinsdb_cache);
     }
-    else if (m_snapshot_chainstate && !m_ibd_chainstate) {
+    else if (GetSnapshotChainState() && !GetIBDChainState()) {
         LogPrintf("[snapshot] allocating all cache to the snapshot chainstate\n");
         // Allocate everything to the snapshot chainstate.
-        m_snapshot_chainstate->ResizeCoinsCaches(m_total_coinstip_cache, m_total_coinsdb_cache);
+        GetSnapshotChainState()->ResizeCoinsCaches(m_total_coinstip_cache, m_total_coinsdb_cache);
     }
-    else if (m_ibd_chainstate && m_snapshot_chainstate) {
+    else if (GetIBDChainState() && GetSnapshotChainState()) {
         // If both chainstates exist, determine who needs more cache based on IBD status.
         //
         // Note: shrink caches first so that we don't inadvertently overwhelm available memory.
-        if (m_snapshot_chainstate->IsInitialBlockDownload()) {
-            m_ibd_chainstate->ResizeCoinsCaches(
+        if (GetSnapshotChainState()->IsInitialBlockDownload()) {
+            GetIBDChainState()->ResizeCoinsCaches(
                 m_total_coinstip_cache * 0.05, m_total_coinsdb_cache * 0.05);
-            m_snapshot_chainstate->ResizeCoinsCaches(
+            GetSnapshotChainState()->ResizeCoinsCaches(
                 m_total_coinstip_cache * 0.95, m_total_coinsdb_cache * 0.95);
         } else {
-            m_snapshot_chainstate->ResizeCoinsCaches(
+            GetSnapshotChainState()->ResizeCoinsCaches(
                 m_total_coinstip_cache * 0.05, m_total_coinsdb_cache * 0.05);
-            m_ibd_chainstate->ResizeCoinsCaches(
+            GetIBDChainState()->ResizeCoinsCaches(
                 m_total_coinstip_cache * 0.95, m_total_coinsdb_cache * 0.95);
         }
     }
@@ -5081,5 +5081,5 @@ ChainstateManager::~ChainstateManager() {
     Reset();
 }
 
-CChain& ChainstateManager::ActiveChain() const { return ActiveChainstate().m_chain; }
-CChain& ChainstateManager::ValidatedChain() const { return ValidatedChainstate().m_chain; }
+CChain& KernelChainstateManager::ActiveChain() const { return ActiveChainstate().m_chain; }
+CChain& KernelChainstateManager::ValidatedChain() const { return ValidatedChainstate().m_chain; }

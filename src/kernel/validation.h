@@ -517,59 +517,25 @@ protected:
  *   have been downloaded and validated (via background validation), otherwise
  *   it will be the IBD chainstate.
  */
-class ChainstateManager
+class KernelChainstateManager
 {
-private:
-    //! The chainstate used under normal operation (i.e. "regular" IBD) or, if
-    //! a snapshot is in use, for background validation.
-    //!
-    //! Its contents (including on-disk data) will be deleted *upon shutdown*
-    //! after background validation of the snapshot has completed. We do not
-    //! free the chainstate contents immediately after it finishes validation
-    //! to cautiously avoid a case where some other part of the system is still
-    //! using this pointer (e.g. net_processing).
-    //!
-    //! Once this pointer is set to a corresponding chainstate, it will not
-    //! be reset until init.cpp:Shutdown().
-    //!
-    //! This is especially important when, e.g., calling ActivateBestChain()
-    //! on all chainstates because we are not able to hold ::cs_main going into
-    //! that call.
-    std::unique_ptr<CChainState> m_ibd_chainstate GUARDED_BY(::cs_main);
-
-    //! A chainstate initialized on the basis of a UTXO snapshot. If this is
-    //! non-null, it is always our active chainstate.
-    //!
-    //! Once this pointer is set to a corresponding chainstate, it will not
-    //! be reset until init.cpp:Shutdown().
-    //!
-    //! This is especially important when, e.g., calling ActivateBestChain()
-    //! on all chainstates because we are not able to hold ::cs_main going into
-    //! that call.
-    std::unique_ptr<CChainState> m_snapshot_chainstate GUARDED_BY(::cs_main);
-
-    //! Points to either the ibd or snapshot chainstate; indicates our
-    //! most-work chain.
-    //!
-    //! Once this pointer is set to a corresponding chainstate, it will not
-    //! be reset until init.cpp:Shutdown().
-    //!
-    //! This is especially important when, e.g., calling ActivateBestChain()
-    //! on all chainstates because we are not able to hold ::cs_main going into
-    //! that call.
-    CChainState* m_active_chainstate GUARDED_BY(::cs_main) {nullptr};
-
-    //! If true, the assumed-valid chainstate has been fully validated
-    //! by the background validation chainstate.
-    bool m_snapshot_validated{false};
-
+protected:
     //! Internal helper for ActivateSnapshot().
     [[nodiscard]] bool PopulateAndValidateSnapshot(
         CChainState& snapshot_chainstate,
         CAutoFile& coins_file,
         const SnapshotMetadata& metadata);
 
+    //! If true, the assumed-valid chainstate has been fully validated
+    //! by the background validation chainstate.
+    bool m_snapshot_validated{false};
+
+    virtual KernelCChainState* GetIBDChainState() const = 0;
+    virtual KernelCChainState* GetSnapshotChainState() const = 0;
+    virtual KernelCChainState* GetActiveChainState() const = 0;
+
 public:
+
     std::thread m_load_block;
     //! A single BlockManager instance is shared across each constructed
     //! chainstate to avoid duplicating block metadata.
@@ -590,13 +556,13 @@ public:
     //                                  constructor
     //! @param[in] snapshot_blockhash   If given, signify that this chainstate
     //!                                 is based on a snapshot.
-    CChainState& InitializeChainstate(
+    virtual CChainState& InitializeChainstate(
         CTxMemPool* mempool,
         const std::optional<uint256>& snapshot_blockhash = std::nullopt)
-        EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
+        EXCLUSIVE_LOCKS_REQUIRED(::cs_main) = 0;
 
     //! Get all chainstates currently being used.
-    std::vector<CChainState*> GetAll();
+    virtual std::vector<CChainState*> GetAll() = 0;
 
     //! Construct and activate a Chainstate on the basis of UTXO snapshot data.
     //!
@@ -611,11 +577,10 @@ public:
     //!   faking nTx* block index data along the way.
     //! - Move the new chainstate to `m_snapshot_chainstate` and make it our
     //!   ChainstateActive().
-    [[nodiscard]] bool ActivateSnapshot(
-        CAutoFile& coins_file, const SnapshotMetadata& metadata, bool in_memory);
+    [[nodiscard]] virtual bool ActivateSnapshot(CAutoFile& coins_file, const SnapshotMetadata& metadata, bool in_memory) = 0;
 
     //! The most-work chain.
-    CChainState& ActiveChainstate() const;
+    virtual KernelCChainState& ActiveChainstate() const = 0;
     CChain& ActiveChain() const;
     // int ChainstateManager::ActiveHeight() const { return ActiveChain().Height(); }
     // CBlockIndex* ChainstateManager::ActiveTip() const { return ActiveChain().Tip(); }
@@ -648,13 +613,13 @@ public:
 
     //! @returns true if this chainstate is being used to validate an active
     //!          snapshot in the background.
-    bool IsBackgroundIBD(CChainState* chainstate) const;
+    bool IsBackgroundIBD(KernelCChainState* chainstate) const;
 
     //! Return the most-work chainstate that has been fully validated.
     //!
     //! During background validation of a snapshot, this is the IBD chain. After
     //! background validation has completed, this is the snapshot chain.
-    CChainState& ValidatedChainstate() const;
+    virtual KernelCChainState& ValidatedChainstate() const = 0;
 
     CChain& ValidatedChain() const;
     CBlockIndex* ValidatedTip() const { return ValidatedChain().Tip(); }
@@ -700,13 +665,13 @@ public:
     void Unload() EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
 
     //! Clear (deconstruct) chainstate data.
-    void Reset();
+    virtual void Reset() = 0;
 
     //! Check to see if caches are out of balance and if so, call
     //! ResizeCoinsCaches() as needed.
     void MaybeRebalanceCaches() EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
 
-    ~ChainstateManager();
+    virtual ~KernelChainstateManager() = default;
 };
 
 
