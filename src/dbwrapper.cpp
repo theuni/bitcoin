@@ -181,6 +181,19 @@ CDBWrapper::~CDBWrapper()
     options.env = nullptr;
 }
 
+bool CDBWrapper::Get(CDataStream& ssKey, std::string& strValue) const {
+    leveldb::Slice slKey((const char*)ssKey.data(), ssKey.size());
+
+    leveldb::Status status = pdb->Get(readoptions, slKey, &strValue);
+    if (!status.ok()) {
+        if (status.IsNotFound())
+            return false;
+        LogPrintf("LevelDB read failure: %s\n", status.ToString());
+        dbwrapper_private::HandleError(status);
+    }
+    return true;
+}
+
 bool CDBWrapper::WriteBatch(CDBBatch& batch, bool fSync)
 {
     const bool log_memory = LogAcceptCategory(BCLog::LEVELDB);

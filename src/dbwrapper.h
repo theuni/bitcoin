@@ -11,7 +11,6 @@
 #include <span.h>
 #include <streams.h>
 #include <util/strencodings.h>
-#include <logging.h>
 
 #include <leveldb/db.h>
 #include <leveldb/write_batch.h>
@@ -227,22 +226,21 @@ public:
     CDBWrapper(const CDBWrapper&) = delete;
     CDBWrapper& operator=(const CDBWrapper&) = delete;
 
+    bool Get(CDataStream& ssKey, std::string& strValue) const;
+
     template <typename K, typename V>
     bool Read(const K& key, V& value) const
     {
         CDataStream ssKey(SER_DISK, CLIENT_VERSION);
         ssKey.reserve(DBWRAPPER_PREALLOC_KEY_SIZE);
         ssKey << key;
-        leveldb::Slice slKey((const char*)ssKey.data(), ssKey.size());
 
         std::string strValue;
-        leveldb::Status status = pdb->Get(readoptions, slKey, &strValue);
-        if (!status.ok()) {
-            if (status.IsNotFound())
-                return false;
-            LogPrintf("LevelDB read failure: %s\n", status.ToString());
-            dbwrapper_private::HandleError(status);
+
+        if (!Get(ssKey, strValue)) {
+            return false;
         }
+
         try {
             CDataStream ssValue(MakeUCharSpan(strValue), SER_DISK, CLIENT_VERSION);
             ssValue.Xor(obfuscate_key);
@@ -267,17 +265,10 @@ public:
         CDataStream ssKey(SER_DISK, CLIENT_VERSION);
         ssKey.reserve(DBWRAPPER_PREALLOC_KEY_SIZE);
         ssKey << key;
-        leveldb::Slice slKey((const char*)ssKey.data(), ssKey.size());
 
         std::string strValue;
-        leveldb::Status status = pdb->Get(readoptions, slKey, &strValue);
-        if (!status.ok()) {
-            if (status.IsNotFound())
-                return false;
-            LogPrintf("LevelDB read failure: %s\n", status.ToString());
-            dbwrapper_private::HandleError(status);
-        }
-        return true;
+
+        return Get(ssKey, strValue);
     }
 
     template <typename K>

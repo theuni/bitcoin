@@ -12,6 +12,8 @@
 #include <consensus/validation.h> // for BlockValidationState
 #include <kernel/txmempool.h>
 
+#include <atomic>
+
 class ArgsManager;
 class CBlockTreeDB;
 class CChainParams;
