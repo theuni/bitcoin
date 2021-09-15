@@ -5,6 +5,8 @@
 
 #include <chain.h>
 
+#include <tinyformat.h>
+
 /**
  * CChain implementation
  */
@@ -117,6 +119,24 @@ void CBlockIndex::BuildSkip()
 {
     if (pprev)
         pskip = pprev->GetAncestor(GetSkipHeight(nHeight));
+}
+
+std::string CBlockIndex::ToString() const
+{
+    return strprintf("CBlockIndex(pprev=%p, nHeight=%d, merkle=%s, hashBlock=%s)",
+                     pprev, nHeight,
+                     hashMerkleRoot.ToString(),
+                     GetBlockHash().ToString());
+}
+
+std::string CDiskBlockIndex::ToString() const
+{
+    std::string str = "CDiskBlockIndex(";
+    str += CBlockIndex::ToString();
+    str += strprintf("\n                hashBlock=%s, hashPrev=%s)",
+                     GetBlockHash().ToString(),
+                     hashPrev.ToString());
+    return str;
 }
 
 arith_uint256 GetBlockProof(const CBlockIndex& block)
