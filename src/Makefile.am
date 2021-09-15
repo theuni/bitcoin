@@ -865,7 +865,11 @@ endif
 
 # bitcoinkernel library #
 if BUILD_BITCOIN_LIBS
-include_HEADERS += kernel/bitcoinkernel.h
+
+leveldbdir=$(includedir)/leveldb
+leveldb_HEADERS = $(shell git ls-files -- 'leveldb/include/leveldb' | grep '\.h$$')
+
+nobase_include_HEADERS = $(shell git ls-files -- 'kernel' | grep '\.h$$') config/bitcoin-config.h
 libbitcoinkernel_la_SOURCES = support/cleanse.cpp $(crypto_libbitcoin_crypto_base_a_SOURCES) $(libbitcoin_kernel_a_SOURCES)
 
 if GLIBC_BACK_COMPAT
