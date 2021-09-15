@@ -2,9 +2,9 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <amount.h>
+#include <kernel/amount.h>
 #include <node/context.h>
-#include <primitives/transaction.h>
+#include <kernel/primitives/transaction.h>
 #include <random.h>
 #include <test/util/setup_common.h>
 #include <util/translation.h>

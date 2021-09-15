@@ -4,7 +4,7 @@
 
 #include <deploymentstatus.h>
 
-#include <consensus/params.h>
+#include <kernel/consensus/params.h>
 #include <versionbits.h>
 
 #include <type_traits>

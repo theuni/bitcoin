@@ -1,6 +1,6 @@
 #include <util/init.h>
 
-#include <txdb.h>
+#include <kernel/txdb.h>
 #include <util/system.h>
 #include <validation.h>
 

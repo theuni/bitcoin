@@ -4,13 +4,13 @@
 
 #include <test/fuzz/fuzz.h>
 
-#include <primitives/transaction.h>
+#include <kernel/primitives/transaction.h>
 #include <pubkey.h>
 #include <script/interpreter.h>
-#include <serialize.h>
-#include <streams.h>
+#include <kernel/serialize.h>
+#include <kernel/streams.h>
 #include <univalue.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 
 #include <boost/algorithm/string.hpp>
 #include <cstdint>

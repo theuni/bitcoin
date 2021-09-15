@@ -3,13 +3,13 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <chainparams.h>
-#include <chainparamsbase.h>
+#include <kernel/chainparamsbase.h>
 #include <key.h>
 #include <pubkey.h>
 #include <script/keyorigin.h>
 #include <script/sign.h>
 #include <script/signingprovider.h>
-#include <streams.h>
+#include <kernel/streams.h>
 #include <test/fuzz/FuzzedDataProvider.h>
 #include <test/fuzz/fuzz.h>
 #include <test/fuzz/util.h>

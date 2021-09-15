@@ -3,8 +3,8 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <policy/rbf.h>
-#include <primitives/transaction.h>
-#include <sync.h>
+#include <kernel/primitives/transaction.h>
+#include <kernel/sync.h>
 #include <test/fuzz/FuzzedDataProvider.h>
 #include <test/fuzz/fuzz.h>
 #include <test/fuzz/util.h>

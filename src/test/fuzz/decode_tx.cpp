@@ -3,9 +3,9 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <core_io.h>
-#include <primitives/transaction.h>
+#include <kernel/primitives/transaction.h>
 #include <test/fuzz/fuzz.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 
 #include <cassert>
 #include <cstdint>

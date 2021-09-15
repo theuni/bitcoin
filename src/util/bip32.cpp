@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <tinyformat.h>
 #include <util/bip32.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 
 
 bool ParseHDKeypath(const std::string& keypath_str, std::vector<uint32_t>& keypath)

@@ -7,13 +7,13 @@
 
 #include <addrman.h>
 #include <chainparams.h>
-#include <clientversion.h>
+#include <kernel/clientversion.h>
 #include <cstdint>
 #include <hash.h>
 #include <logging/timer.h>
 #include <netbase.h>
 #include <random.h>
-#include <streams.h>
+#include <kernel/streams.h>
 #include <tinyformat.h>
 #include <univalue.h>
 #include <util/settings.h>

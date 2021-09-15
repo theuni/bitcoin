@@ -2,7 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <coins.h>
+#include <kernel/coins.h>
 #include <script/signingprovider.h>
 #include <test/util/transaction_utils.h>
 

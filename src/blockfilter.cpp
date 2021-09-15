@@ -7,11 +7,11 @@
 #include <set>
 
 #include <blockfilter.h>
-#include <crypto/siphash.h>
+#include <kernel/crypto/siphash.h>
 #include <hash.h>
-#include <primitives/transaction.h>
-#include <script/script.h>
-#include <streams.h>
+#include <kernel/primitives/transaction.h>
+#include <kernel/script/script.h>
+#include <kernel/streams.h>
 #include <util/golombrice.h>
 
 /// SerType used to serialize parameters in GCS filter encoding.

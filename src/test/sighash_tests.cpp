@@ -3,17 +3,17 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <consensus/tx_check.h>
-#include <consensus/validation.h>
+#include <kernel/consensus/validation.h>
 #include <hash.h>
 #include <script/interpreter.h>
-#include <script/script.h>
-#include <serialize.h>
-#include <streams.h>
+#include <kernel/script/script.h>
+#include <kernel/serialize.h>
+#include <kernel/streams.h>
 #include <test/data/sighash.json.h>
 #include <test/util/setup_common.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/system.h>
-#include <version.h>
+#include <kernel/version.h>
 
 #include <iostream>
 

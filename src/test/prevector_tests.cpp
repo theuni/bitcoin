@@ -2,12 +2,12 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <prevector.h>
+#include <kernel/prevector.h>
 #include <vector>
 
 #include <reverse_iterator.h>
-#include <serialize.h>
-#include <streams.h>
+#include <kernel/serialize.h>
+#include <kernel/streams.h>
 
 #include <test/util/setup_common.h>
 

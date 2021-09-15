@@ -6,7 +6,7 @@
 
 #include <base58.h>
 #include <test/util/setup_common.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/vector.h>
 
 #include <univalue.h>

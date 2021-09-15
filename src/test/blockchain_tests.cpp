@@ -6,7 +6,7 @@
 
 #include <stdlib.h>
 
-#include <chain.h>
+#include <kernel/chain.h>
 #include <rpc/blockchain.h>
 #include <test/util/setup_common.h>
 #include <util/string.h>

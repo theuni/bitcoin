@@ -2,9 +2,9 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <clientversion.h>
-#include <flatfile.h>
-#include <streams.h>
+#include <kernel/clientversion.h>
+#include <kernel/flatfile.h>
+#include <kernel/streams.h>
 #include <test/util/setup_common.h>
 #include <util/system.h>
 

@@ -11,7 +11,7 @@
 
 #include <compat.h>
 #include <netaddress.h>
-#include <serialize.h>
+#include <kernel/serialize.h>
 #include <util/sock.h>
 
 #include <functional>

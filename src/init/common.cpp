@@ -6,7 +6,7 @@
 #include <config/bitcoin-config.h>
 #endif
 
-#include <clientversion.h>
+#include <kernel/clientversion.h>
 #include <compat/sanity.h>
 #include <crypto/sha256.h>
 #include <key.h>

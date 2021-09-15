@@ -5,13 +5,13 @@
 
 #include <rpc/blockchain.h>
 
-#include <amount.h>
+#include <kernel/amount.h>
 #include <blockfilter.h>
-#include <chain.h>
+#include <kernel/chain.h>
 #include <chainparams.h>
-#include <coins.h>
-#include <consensus/params.h>
-#include <consensus/validation.h>
+#include <kernel/coins.h>
+#include <kernel/consensus/params.h>
+#include <kernel/consensus/validation.h>
 #include <core_io.h>
 #include <deploymentinfo.h>
 #include <deploymentstatus.h>
@@ -21,21 +21,21 @@
 #include <node/blockstorage.h>
 #include <node/coinstats.h>
 #include <node/context.h>
-#include <node/utxo_snapshot.h>
+#include <kernel/node/utxo_snapshot.h>
 #include <policy/feerate.h>
 #include <policy/fees.h>
 #include <policy/policy.h>
 #include <policy/rbf.h>
-#include <primitives/transaction.h>
+#include <kernel/primitives/transaction.h>
 #include <rpc/server.h>
 #include <rpc/util.h>
 #include <script/descriptor.h>
-#include <streams.h>
-#include <sync.h>
-#include <txdb.h>
+#include <kernel/streams.h>
+#include <kernel/sync.h>
+#include <kernel/txdb.h>
 #include <txmempool.h>
 #include <undo.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/string.h>
 #include <util/system.h>
 #include <util/translation.h>

@@ -4,7 +4,7 @@
 
 #include <addrdb.h>
 #include <banman.h>
-#include <chain.h>
+#include <kernel/chain.h>
 #include <chainparams.h>
 #include <deploymentstatus.h>
 #include <external_signer.h>
@@ -28,16 +28,16 @@
 #include <policy/policy.h>
 #include <policy/rbf.h>
 #include <policy/settings.h>
-#include <primitives/block.h>
-#include <primitives/transaction.h>
+#include <kernel/primitives/block.h>
+#include <kernel/primitives/transaction.h>
 #include <rpc/protocol.h>
 #include <rpc/server.h>
 #include <shutdown.h>
 #include <support/allocators/secure.h>
-#include <sync.h>
+#include <kernel/sync.h>
 #include <timedata.h>
 #include <txmempool.h>
-#include <uint256.h>
+#include <kernel/uint256.h>
 #include <univalue.h>
 #include <util/check.h>
 #include <util/system.h>

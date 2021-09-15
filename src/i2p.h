@@ -6,9 +6,9 @@
 #define BITCOIN_I2P_H
 
 #include <compat.h>
-#include <fs.h>
+#include <kernel/fs.h>
 #include <netaddress.h>
-#include <sync.h>
+#include <kernel/sync.h>
 #include <threadinterrupt.h>
 #include <util/sock.h>
 

@@ -4,7 +4,7 @@
 
 // Unit tests for denial-of-service detection/prevention code
 
-#include <arith_uint256.h>
+#include <kernel/arith_uint256.h>
 #include <banman.h>
 #include <chainparams.h>
 #include <net.h>
@@ -13,7 +13,7 @@
 #include <script/sign.h>
 #include <script/signingprovider.h>
 #include <script/standard.h>
-#include <serialize.h>
+#include <kernel/serialize.h>
 #include <test/util/net.h>
 #include <test/util/setup_common.h>
 #include <txorphanage.h>

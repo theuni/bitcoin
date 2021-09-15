@@ -8,7 +8,7 @@
 #include <compat/cpuid.h>
 #include <crypto/sha256.h>
 #include <crypto/sha512.h>
-#include <support/cleanse.h>
+#include <kernel/support/cleanse.h>
 #ifdef WIN32
 #include <compat.h> // for Windows API
 #include <wincrypt.h>
@@ -16,7 +16,7 @@
 #include <logging.h>  // for LogPrintf()
 #include <randomenv.h>
 #include <support/allocators/secure.h>
-#include <sync.h>     // for Mutex
+#include <kernel/sync.h>     // for Mutex
 #include <util/time.h> // for GetTimeMicros()
 
 #include <stdlib.h>

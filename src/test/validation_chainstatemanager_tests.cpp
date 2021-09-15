@@ -3,13 +3,13 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 //
 #include <chainparams.h>
-#include <consensus/validation.h>
-#include <node/utxo_snapshot.h>
+#include <kernel/consensus/validation.h>
+#include <kernel/node/utxo_snapshot.h>
 #include <random.h>
 #include <rpc/blockchain.h>
-#include <sync.h>
+#include <kernel/sync.h>
 #include <test/util/setup_common.h>
-#include <uint256.h>
+#include <kernel/uint256.h>
 #include <validation.h>
 #include <validationinterface.h>
 

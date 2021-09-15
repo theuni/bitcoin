@@ -3,9 +3,9 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 //
 #include <random.h>
-#include <uint256.h>
-#include <consensus/validation.h>
-#include <sync.h>
+#include <kernel/uint256.h>
+#include <kernel/consensus/validation.h>
+#include <kernel/sync.h>
 #include <test/util/setup_common.h>
 #include <validation.h>
 

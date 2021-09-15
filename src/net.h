@@ -8,11 +8,11 @@
 
 #include <addrdb.h>
 #include <addrman.h>
-#include <amount.h>
+#include <kernel/amount.h>
 #include <bloom.h>
 #include <chainparams.h>
 #include <compat.h>
-#include <crypto/siphash.h>
+#include <kernel/crypto/siphash.h>
 #include <hash.h>
 #include <i2p.h>
 #include <net_permissions.h>
@@ -21,11 +21,11 @@
 #include <policy/feerate.h>
 #include <protocol.h>
 #include <random.h>
-#include <span.h>
-#include <streams.h>
-#include <sync.h>
+#include <kernel/span.h>
+#include <kernel/streams.h>
+#include <kernel/sync.h>
 #include <threadinterrupt.h>
-#include <uint256.h>
+#include <kernel/uint256.h>
 #include <util/check.h>
 
 #include <atomic>

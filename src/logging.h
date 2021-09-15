@@ -6,9 +6,9 @@
 #ifndef BITCOIN_LOGGING_H
 #define BITCOIN_LOGGING_H
 
-#include <fs.h>
+#include <kernel/fs.h>
 #include <tinyformat.h>
-#include <threadsafety.h>
+#include <kernel/threadsafety.h>
 #include <util/string.h>
 
 #include <atomic>
@@ -65,7 +65,7 @@ namespace BCLog {
     class Logger
     {
     private:
-        mutable StdMutex m_cs; // Can not use Mutex from sync.h because in debug mode it would cause a deadlock when a potential deadlock was detected
+        mutable StdMutex m_cs; // Can not use Mutex from kernel/sync.h because in debug mode it would cause a deadlock when a potential deadlock was detected
 
         FILE* m_fileout GUARDED_BY(m_cs) = nullptr;
         std::list<std::string> m_msgs_before_open GUARDED_BY(m_cs);

@@ -5,7 +5,7 @@
 #include <test/fuzz/FuzzedDataProvider.h>
 #include <test/fuzz/fuzz.h>
 #include <tinyformat.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/string.h>
 
 #include <cassert>

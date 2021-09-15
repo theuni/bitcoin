@@ -7,7 +7,7 @@
 
 #include <qt/guiutil.h>
 
-#include <uint256.h>
+#include <kernel/uint256.h>
 
 #include <QWidget>
 #include <QKeyEvent>

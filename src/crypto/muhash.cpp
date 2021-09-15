@@ -5,7 +5,7 @@
 #include <crypto/muhash.h>
 
 #include <crypto/chacha20.h>
-#include <crypto/common.h>
+#include <kernel/crypto/common.h>
 #include <hash.h>
 
 #include <cassert>

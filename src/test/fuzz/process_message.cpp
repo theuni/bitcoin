@@ -4,13 +4,13 @@
 
 #include <banman.h>
 #include <chainparams.h>
-#include <consensus/consensus.h>
+#include <kernel/consensus/consensus.h>
 #include <net.h>
 #include <net_processing.h>
 #include <protocol.h>
 #include <scheduler.h>
-#include <script/script.h>
-#include <streams.h>
+#include <kernel/script/script.h>
+#include <kernel/streams.h>
 #include <test/fuzz/FuzzedDataProvider.h>
 #include <test/fuzz/fuzz.h>
 #include <test/fuzz/util.h>
@@ -20,7 +20,7 @@
 #include <test/util/validation.h>
 #include <txorphanage.h>
 #include <validationinterface.h>
-#include <version.h>
+#include <kernel/version.h>
 
 #include <atomic>
 #include <cassert>

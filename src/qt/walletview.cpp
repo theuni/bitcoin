@@ -20,7 +20,7 @@
 
 #include <interfaces/node.h>
 #include <node/ui_interface.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 
 #include <QAction>
 #include <QActionGroup>

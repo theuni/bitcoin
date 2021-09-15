@@ -5,7 +5,7 @@
 #ifndef BITCOIN_QT_COINCONTROLDIALOG_H
 #define BITCOIN_QT_COINCONTROLDIALOG_H
 
-#include <amount.h>
+#include <kernel/amount.h>
 
 #include <QAbstractButton>
 #include <QAction>

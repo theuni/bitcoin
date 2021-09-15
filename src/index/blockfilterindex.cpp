@@ -4,7 +4,7 @@
 
 #include <map>
 
-#include <dbwrapper.h>
+#include <kernel/dbwrapper.h>
 #include <index/blockfilterindex.h>
 #include <node/blockstorage.h>
 #include <util/system.h>

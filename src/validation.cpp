@@ -5,18 +5,18 @@
 
 #include <validation.h>
 
-#include <arith_uint256.h>
-#include <chain.h>
+#include <kernel/arith_uint256.h>
+#include <kernel/chain.h>
 #include <chainparams.h>
 #include <checkqueue.h>
-#include <consensus/consensus.h>
+#include <kernel/consensus/consensus.h>
 #include <consensus/merkle.h>
 #include <consensus/tx_check.h>
 #include <consensus/tx_verify.h>
-#include <consensus/validation.h>
+#include <kernel/consensus/validation.h>
 #include <cuckoocache.h>
 #include <deploymentstatus.h>
-#include <flatfile.h>
+#include <kernel/flatfile.h>
 #include <hash.h>
 #include <index/blockfilterindex.h>
 #include <logging.h>
@@ -27,25 +27,25 @@
 #include <policy/policy.h>
 #include <policy/settings.h>
 #include <pow.h>
-#include <primitives/block.h>
-#include <primitives/transaction.h>
+#include <kernel/primitives/block.h>
+#include <kernel/primitives/transaction.h>
 #include <random.h>
 #include <reverse_iterator.h>
-#include <script/script.h>
+#include <kernel/script/script.h>
 #include <script/sigcache.h>
 #include <shutdown.h>
 #include <signet.h>
 #include <timedata.h>
 #include <tinyformat.h>
-#include <txdb.h>
+#include <kernel/txdb.h>
 #include <txmempool.h>
-#include <uint256.h>
+#include <kernel/uint256.h>
 #include <undo.h>
 #include <util/check.h> // For NDEBUG compile time check
-#include <util/hasher.h>
+#include <kernel/util/hasher.h>
 #include <util/moneystr.h>
 #include <util/rbf.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/system.h>
 #include <util/trace.h>
 #include <util/translation.h>

@@ -5,9 +5,9 @@
 #ifndef BITCOIN_INDEX_BASE_H
 #define BITCOIN_INDEX_BASE_H
 
-#include <dbwrapper.h>
-#include <primitives/block.h>
-#include <primitives/transaction.h>
+#include <kernel/dbwrapper.h>
+#include <kernel/primitives/block.h>
+#include <kernel/primitives/transaction.h>
 #include <threadinterrupt.h>
 #include <validationinterface.h>
 

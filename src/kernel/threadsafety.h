@@ -53,7 +53,7 @@
 #endif // __GNUC__
 
 // StdMutex provides an annotated version of std::mutex for us,
-// and should only be used when sync.h Mutex/LOCK/etc are not usable.
+// and should only be used when kernel/sync.h Mutex/LOCK/etc are not usable.
 class LOCKABLE StdMutex : public std::mutex
 {
 public:
@@ -66,7 +66,7 @@ public:
 };
 
 // StdLockGuard provides an annotated version of std::lock_guard for us,
-// and should only be used when sync.h Mutex/LOCK/etc are not usable.
+// and should only be used when kernel/sync.h Mutex/LOCK/etc are not usable.
 class SCOPED_LOCKABLE StdLockGuard : public std::lock_guard<StdMutex>
 {
 public:

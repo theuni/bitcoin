@@ -11,9 +11,9 @@
 #include <unordered_set>
 #include <vector>
 
-#include <primitives/block.h>
-#include <serialize.h>
-#include <uint256.h>
+#include <kernel/primitives/block.h>
+#include <kernel/serialize.h>
+#include <kernel/uint256.h>
 #include <undo.h>
 #include <util/bytevectorhash.h>
 

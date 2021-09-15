@@ -4,12 +4,12 @@
 
 #include <bloom.h>
 
-#include <primitives/transaction.h>
+#include <kernel/primitives/transaction.h>
 #include <hash.h>
-#include <script/script.h>
+#include <kernel/script/script.h>
 #include <script/standard.h>
 #include <random.h>
-#include <streams.h>
+#include <kernel/streams.h>
 
 #include <math.h>
 #include <stdlib.h>

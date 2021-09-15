@@ -27,7 +27,7 @@
 #include <qt/splashscreen.h>
 #include <qt/utilitydialog.h>
 #include <qt/winshutdownmonitor.h>
-#include <uint256.h>
+#include <kernel/uint256.h>
 #include <util/string.h>
 #include <util/system.h>
 #include <util/threadnames.h>

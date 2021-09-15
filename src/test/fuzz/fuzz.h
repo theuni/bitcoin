@@ -5,7 +5,7 @@
 #ifndef BITCOIN_TEST_FUZZ_FUZZ_H
 #define BITCOIN_TEST_FUZZ_FUZZ_H
 
-#include <span.h>
+#include <kernel/span.h>
 
 #include <cstdint>
 #include <functional>

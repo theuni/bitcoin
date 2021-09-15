@@ -7,7 +7,7 @@
 #include <test/util/script.h>
 #include <util/rbf.h>
 #include <util/time.h>
-#include <version.h>
+#include <kernel/version.h>
 
 FuzzedSock::FuzzedSock(FuzzedDataProvider& fuzzed_data_provider)
     : m_fuzzed_data_provider{fuzzed_data_provider}

@@ -3,10 +3,10 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <hash.h>
-#include <serialize.h>
-#include <streams.h>
+#include <kernel/serialize.h>
+#include <kernel/streams.h>
 #include <test/util/setup_common.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 
 #include <stdint.h>
 

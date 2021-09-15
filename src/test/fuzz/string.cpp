@@ -3,7 +3,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <blockfilter.h>
-#include <clientversion.h>
+#include <kernel/clientversion.h>
 #include <logging.h>
 #include <netaddress.h>
 #include <netbase.h>
@@ -13,9 +13,9 @@
 #include <rpc/server.h>
 #include <rpc/util.h>
 #include <script/descriptor.h>
-#include <script/script.h>
-#include <serialize.h>
-#include <streams.h>
+#include <kernel/script/script.h>
+#include <kernel/serialize.h>
+#include <kernel/streams.h>
 #include <test/fuzz/FuzzedDataProvider.h>
 #include <test/fuzz/fuzz.h>
 #include <test/fuzz/util.h>
@@ -23,12 +23,12 @@
 #include <util/fees.h>
 #include <util/message.h>
 #include <util/settings.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/string.h>
 #include <util/system.h>
 #include <util/translation.h>
 #include <util/url.h>
-#include <version.h>
+#include <kernel/version.h>
 
 #include <cstdint>
 #include <string>

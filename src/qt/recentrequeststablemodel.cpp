@@ -9,10 +9,10 @@
 #include <qt/optionsmodel.h>
 #include <qt/walletmodel.h>
 
-#include <clientversion.h>
+#include <kernel/clientversion.h>
 #include <interfaces/wallet.h>
 #include <key_io.h>
-#include <streams.h>
+#include <kernel/streams.h>
 #include <util/string.h>
 
 #include <utility>

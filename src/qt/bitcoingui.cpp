@@ -31,7 +31,7 @@
 #endif
 
 #include <functional>
-#include <chain.h>
+#include <kernel/chain.h>
 #include <chainparams.h>
 #include <interfaces/handler.h>
 #include <interfaces/node.h>

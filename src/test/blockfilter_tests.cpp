@@ -7,10 +7,10 @@
 
 #include <blockfilter.h>
 #include <core_io.h>
-#include <serialize.h>
-#include <streams.h>
+#include <kernel/serialize.h>
+#include <kernel/streams.h>
 #include <univalue.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 
 #include <boost/test/unit_test.hpp>
 

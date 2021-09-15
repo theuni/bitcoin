@@ -4,19 +4,19 @@
 
 #include <util/system.h>
 
-#include <clientversion.h>
+#include <kernel/clientversion.h>
 #include <hash.h> // For Hash()
 #include <key.h>  // For CKey
-#include <sync.h>
+#include <kernel/sync.h>
 #include <test/util/logging.h>
 #include <test/util/setup_common.h>
 #include <test/util/str.h>
-#include <uint256.h>
+#include <kernel/uint256.h>
 #include <util/getuniquepath.h>
 #include <util/message.h> // For MessageSign(), MessageVerify(), MESSAGE_MAGIC
 #include <util/moneystr.h>
 #include <util/spanparsing.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/string.h>
 #include <util/time.h>
 #include <util/vector.h>

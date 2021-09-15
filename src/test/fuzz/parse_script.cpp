@@ -3,7 +3,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <core_io.h>
-#include <script/script.h>
+#include <kernel/script/script.h>
 #include <test/fuzz/fuzz.h>
 
 FUZZ_TARGET(parse_script)

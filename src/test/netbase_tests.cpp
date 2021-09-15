@@ -6,12 +6,12 @@
 #include <netaddress.h>
 #include <netbase.h>
 #include <protocol.h>
-#include <serialize.h>
-#include <streams.h>
+#include <kernel/serialize.h>
+#include <kernel/streams.h>
 #include <test/util/setup_common.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/translation.h>
-#include <version.h>
+#include <kernel/version.h>
 
 #include <string>
 

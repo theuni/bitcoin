@@ -2,9 +2,9 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <dbwrapper.h>
+#include <kernel/dbwrapper.h>
 #include <test/util/setup_common.h>
-#include <uint256.h>
+#include <kernel/uint256.h>
 
 #include <memory>
 

@@ -6,14 +6,14 @@
 #ifndef BITCOIN_SCRIPT_SIGN_H
 #define BITCOIN_SCRIPT_SIGN_H
 
-#include <coins.h>
+#include <kernel/coins.h>
 #include <hash.h>
 #include <pubkey.h>
 #include <script/interpreter.h>
 #include <script/keyorigin.h>
 #include <script/standard.h>
-#include <span.h>
-#include <streams.h>
+#include <kernel/span.h>
+#include <kernel/streams.h>
 
 class CKey;
 class CKeyID;

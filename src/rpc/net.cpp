@@ -6,7 +6,7 @@
 
 #include <banman.h>
 #include <chainparams.h>
-#include <clientversion.h>
+#include <kernel/clientversion.h>
 #include <core_io.h>
 #include <net.h>
 #include <net_permissions.h>
@@ -18,14 +18,14 @@
 #include <rpc/blockchain.h>
 #include <rpc/protocol.h>
 #include <rpc/util.h>
-#include <sync.h>
+#include <kernel/sync.h>
 #include <timedata.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/string.h>
 #include <util/system.h>
 #include <util/translation.h>
 #include <validation.h>
-#include <version.h>
+#include <kernel/version.h>
 #include <warnings.h>
 
 #include <optional>

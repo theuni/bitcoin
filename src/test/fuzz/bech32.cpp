@@ -5,7 +5,7 @@
 #include <bech32.h>
 #include <test/fuzz/fuzz.h>
 #include <test/util/str.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 
 #include <cassert>
 #include <cstdint>

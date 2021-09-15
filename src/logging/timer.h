@@ -7,7 +7,7 @@
 #define BITCOIN_LOGGING_TIMER_H
 
 #include <logging.h>
-#include <util/macros.h>
+#include <kernel/util/macros.h>
 #include <util/time.h>
 
 #include <chrono>

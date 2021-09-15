@@ -14,11 +14,11 @@
 #include <boost/process.hpp>
 #endif // ENABLE_EXTERNAL_SIGNER
 
-#include <chainparamsbase.h>
-#include <sync.h>
+#include <kernel/chainparamsbase.h>
+#include <kernel/sync.h>
 #include <util/check.h>
 #include <util/getuniquepath.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/string.h>
 #include <util/translation.h>
 

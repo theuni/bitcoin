@@ -7,9 +7,9 @@
 
 #include <policy/policy.h>
 
-#include <consensus/validation.h>
-#include <coins.h>
-#include <span.h>
+#include <kernel/consensus/validation.h>
+#include <kernel/coins.h>
+#include <kernel/span.h>
 
 CAmount GetDustThreshold(const CTxOut& txout, const CFeeRate& dustRelayFeeIn)
 {

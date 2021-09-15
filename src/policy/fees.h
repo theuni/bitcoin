@@ -5,11 +5,11 @@
 #ifndef BITCOIN_POLICY_FEES_H
 #define BITCOIN_POLICY_FEES_H
 
-#include <amount.h>
+#include <kernel/amount.h>
 #include <policy/feerate.h>
-#include <uint256.h>
+#include <kernel/uint256.h>
 #include <random.h>
-#include <sync.h>
+#include <kernel/sync.h>
 
 #include <array>
 #include <map>

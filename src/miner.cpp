@@ -5,19 +5,19 @@
 
 #include <miner.h>
 
-#include <amount.h>
-#include <chain.h>
+#include <kernel/amount.h>
+#include <kernel/chain.h>
 #include <chainparams.h>
-#include <coins.h>
-#include <consensus/consensus.h>
+#include <kernel/coins.h>
+#include <kernel/consensus/consensus.h>
 #include <consensus/merkle.h>
 #include <consensus/tx_verify.h>
-#include <consensus/validation.h>
+#include <kernel/consensus/validation.h>
 #include <deploymentstatus.h>
 #include <policy/feerate.h>
 #include <policy/policy.h>
 #include <pow.h>
-#include <primitives/transaction.h>
+#include <kernel/primitives/transaction.h>
 #include <timedata.h>
 #include <util/moneystr.h>
 #include <util/system.h>

@@ -5,10 +5,10 @@
 
 #include <policy/fees.h>
 
-#include <clientversion.h>
-#include <fs.h>
+#include <kernel/clientversion.h>
+#include <kernel/fs.h>
 #include <logging.h>
-#include <streams.h>
+#include <kernel/streams.h>
 #include <txmempool.h>
 #include <util/serfloat.h>
 #include <util/system.h>

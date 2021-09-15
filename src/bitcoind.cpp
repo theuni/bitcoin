@@ -8,7 +8,7 @@
 #endif
 
 #include <chainparams.h>
-#include <clientversion.h>
+#include <kernel/clientversion.h>
 #include <compat.h>
 #include <init.h>
 #include <interfaces/chain.h>
@@ -18,7 +18,7 @@
 #include <noui.h>
 #include <shutdown.h>
 #include <util/check.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/system.h>
 #include <util/threadnames.h>
 #include <util/tokenpipe.h>

@@ -9,14 +9,14 @@
 #include <config/bitcoin-config.h>
 #endif
 
-#include <attributes.h>
+#include <kernel/attributes.h>
 #include <compat.h>
-#include <crypto/siphash.h>
-#include <prevector.h>
+#include <kernel/crypto/siphash.h>
+#include <kernel/prevector.h>
 #include <random.h>
-#include <serialize.h>
+#include <kernel/serialize.h>
 #include <tinyformat.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/string.h>
 
 #include <array>
@@ -28,7 +28,7 @@
 /**
  * A flag that is ORed into the protocol version to designate that addresses
  * should be serialized in (unserialized from) v2 format (BIP155).
- * Make sure that this does not collide with any of the values in `version.h`
+ * Make sure that this does not collide with any of the values in `kernel/version.h`
  * or with `SERIALIZE_TRANSACTION_NO_WITNESS`.
  */
 static constexpr int ADDRV2_FORMAT = 0x20000000;

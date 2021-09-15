@@ -4,17 +4,17 @@
 
 #include <node/blockstorage.h>
 
-#include <chain.h>
+#include <kernel/chain.h>
 #include <chainparams.h>
-#include <clientversion.h>
-#include <consensus/validation.h>
-#include <flatfile.h>
-#include <fs.h>
+#include <kernel/clientversion.h>
+#include <kernel/consensus/validation.h>
+#include <kernel/flatfile.h>
+#include <kernel/fs.h>
 #include <hash.h>
 #include <pow.h>
 #include <shutdown.h>
 #include <signet.h>
-#include <streams.h>
+#include <kernel/streams.h>
 #include <undo.h>
 #include <util/system.h>
 #include <validation.h>

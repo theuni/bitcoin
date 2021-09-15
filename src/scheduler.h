@@ -11,7 +11,7 @@
 #include <map>
 #include <thread>
 
-#include <sync.h>
+#include <kernel/sync.h>
 
 /**
  * Simple class for background tasks that should be run

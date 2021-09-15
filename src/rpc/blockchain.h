@@ -5,10 +5,10 @@
 #ifndef BITCOIN_RPC_BLOCKCHAIN_H
 #define BITCOIN_RPC_BLOCKCHAIN_H
 
-#include <amount.h>
+#include <kernel/amount.h>
 #include <core_io.h>
-#include <streams.h>
-#include <sync.h>
+#include <kernel/streams.h>
+#include <kernel/sync.h>
 
 #include <any>
 #include <stdint.h>

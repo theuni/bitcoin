@@ -5,10 +5,10 @@
 #ifndef BITCOIN_QT_WALLETMODELTRANSACTION_H
 #define BITCOIN_QT_WALLETMODELTRANSACTION_H
 
-#include <primitives/transaction.h>
+#include <kernel/primitives/transaction.h>
 #include <qt/sendcoinsrecipient.h>
 
-#include <amount.h>
+#include <kernel/amount.h>
 
 #include <QObject>
 

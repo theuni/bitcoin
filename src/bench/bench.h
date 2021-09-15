@@ -5,7 +5,7 @@
 #ifndef BITCOIN_BENCH_BENCH_H
 #define BITCOIN_BENCH_BENCH_H
 
-#include <util/macros.h>
+#include <kernel/util/macros.h>
 
 #include <chrono>
 #include <functional>

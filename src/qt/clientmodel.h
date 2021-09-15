@@ -10,8 +10,8 @@
 
 #include <atomic>
 #include <memory>
-#include <sync.h>
-#include <uint256.h>
+#include <kernel/sync.h>
+#include <kernel/uint256.h>
 
 class BanTableModel;
 class CBlockIndex;

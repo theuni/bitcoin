@@ -11,11 +11,11 @@
 #define BITCOIN_PROTOCOL_H
 
 #include <netaddress.h>
-#include <primitives/transaction.h>
-#include <serialize.h>
-#include <streams.h>
-#include <uint256.h>
-#include <version.h>
+#include <kernel/primitives/transaction.h>
+#include <kernel/serialize.h>
+#include <kernel/streams.h>
+#include <kernel/uint256.h>
+#include <kernel/version.h>
 
 #include <limits>
 #include <stdint.h>

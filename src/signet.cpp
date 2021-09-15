@@ -9,19 +9,19 @@
 #include <vector>
 
 #include <consensus/merkle.h>
-#include <consensus/params.h>
-#include <consensus/validation.h>
+#include <kernel/consensus/params.h>
+#include <kernel/consensus/validation.h>
 #include <core_io.h>
 #include <hash.h>
-#include <primitives/block.h>
-#include <primitives/transaction.h>
-#include <span.h>
+#include <kernel/primitives/block.h>
+#include <kernel/primitives/transaction.h>
+#include <kernel/span.h>
 #include <script/interpreter.h>
 #include <script/standard.h>
-#include <streams.h>
-#include <util/strencodings.h>
+#include <kernel/streams.h>
+#include <kernel/util/strencodings.h>
 #include <util/system.h>
-#include <uint256.h>
+#include <kernel/uint256.h>
 
 static constexpr uint8_t SIGNET_HEADER[4] = {0xec, 0xc7, 0xda, 0xa2};
 

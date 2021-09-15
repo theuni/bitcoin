@@ -5,8 +5,8 @@
 #ifndef BITCOIN_CORE_IO_H
 #define BITCOIN_CORE_IO_H
 
-#include <amount.h>
-#include <attributes.h>
+#include <kernel/amount.h>
+#include <kernel/attributes.h>
 
 #include <string>
 #include <vector>

@@ -5,11 +5,11 @@
 
 #include <validationinterface.h>
 
-#include <chain.h>
-#include <consensus/validation.h>
+#include <kernel/chain.h>
+#include <kernel/consensus/validation.h>
 #include <logging.h>
-#include <primitives/block.h>
-#include <primitives/transaction.h>
+#include <kernel/primitives/block.h>
+#include <kernel/primitives/transaction.h>
 #include <scheduler.h>
 
 #include <future>

@@ -4,9 +4,9 @@
 
 #include <pubkey.h>
 #include <script/interpreter.h>
-#include <streams.h>
+#include <kernel/streams.h>
 #include <test/util/script.h>
-#include <version.h>
+#include <kernel/version.h>
 
 #include <test/fuzz/fuzz.h>
 

@@ -7,8 +7,8 @@
 
 #include <rpc/util.h>
 #include <shutdown.h>
-#include <sync.h>
-#include <util/strencodings.h>
+#include <kernel/sync.h>
+#include <kernel/util/strencodings.h>
 #include <util/system.h>
 
 #include <boost/algorithm/string/classification.hpp>

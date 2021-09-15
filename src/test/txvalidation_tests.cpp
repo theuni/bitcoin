@@ -2,12 +2,12 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <consensus/validation.h>
+#include <kernel/consensus/validation.h>
 #include <key_io.h>
 #include <policy/packages.h>
 #include <policy/policy.h>
-#include <primitives/transaction.h>
-#include <script/script.h>
+#include <kernel/primitives/transaction.h>
+#include <kernel/script/script.h>
 #include <script/standard.h>
 #include <test/util/setup_common.h>
 #include <validation.h>

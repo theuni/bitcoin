@@ -6,7 +6,7 @@
 #include <merkleblock.h>
 
 #include <hash.h>
-#include <consensus/consensus.h>
+#include <kernel/consensus/consensus.h>
 
 
 std::vector<unsigned char> BitsToBytes(const std::vector<bool>& bits)

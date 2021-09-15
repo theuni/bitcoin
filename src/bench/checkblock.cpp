@@ -6,8 +6,8 @@
 #include <bench/data.h>
 
 #include <chainparams.h>
-#include <consensus/validation.h>
-#include <streams.h>
+#include <kernel/consensus/validation.h>
+#include <kernel/streams.h>
 #include <util/system.h>
 #include <validation.h>
 

@@ -5,19 +5,19 @@
 #include <addrdb.h>
 #include <addrman.h>
 #include <chainparams.h>
-#include <clientversion.h>
+#include <kernel/clientversion.h>
 #include <cstdint>
 #include <net.h>
 #include <netaddress.h>
 #include <netbase.h>
-#include <serialize.h>
-#include <span.h>
-#include <streams.h>
+#include <kernel/serialize.h>
+#include <kernel/span.h>
+#include <kernel/streams.h>
 #include <test/util/setup_common.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/string.h>
 #include <util/system.h>
-#include <version.h>
+#include <kernel/version.h>
 
 #include <boost/test/unit_test.hpp>
 

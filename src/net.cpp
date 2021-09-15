@@ -10,9 +10,9 @@
 #include <net.h>
 
 #include <banman.h>
-#include <clientversion.h>
+#include <kernel/clientversion.h>
 #include <compat.h>
-#include <consensus/consensus.h>
+#include <kernel/consensus/consensus.h>
 #include <crypto/sha256.h>
 #include <i2p.h>
 #include <net_permissions.h>
@@ -23,7 +23,7 @@
 #include <random.h>
 #include <scheduler.h>
 #include <util/sock.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/thread.h>
 #include <util/trace.h>
 #include <util/translation.h>

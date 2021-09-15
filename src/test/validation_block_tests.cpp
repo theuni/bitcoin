@@ -6,7 +6,7 @@
 
 #include <chainparams.h>
 #include <consensus/merkle.h>
-#include <consensus/validation.h>
+#include <kernel/consensus/validation.h>
 #include <miner.h>
 #include <pow.h>
 #include <random.h>

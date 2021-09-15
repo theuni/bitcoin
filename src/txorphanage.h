@@ -6,9 +6,9 @@
 #define BITCOIN_TXORPHANAGE_H
 
 #include <net.h>
-#include <primitives/block.h>
-#include <primitives/transaction.h>
-#include <sync.h>
+#include <kernel/primitives/block.h>
+#include <kernel/primitives/transaction.h>
+#include <kernel/sync.h>
 
 /** Guards orphan transactions and extra txs for compact blocks */
 extern RecursiveMutex g_cs_orphans;

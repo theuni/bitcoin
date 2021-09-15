@@ -5,12 +5,12 @@
 #ifndef BITCOIN_DBWRAPPER_H
 #define BITCOIN_DBWRAPPER_H
 
-#include <clientversion.h>
-#include <fs.h>
-#include <serialize.h>
-#include <span.h>
-#include <streams.h>
-#include <util/strencodings.h>
+#include <kernel/clientversion.h>
+#include <kernel/fs.h>
+#include <kernel/serialize.h>
+#include <kernel/span.h>
+#include <kernel/streams.h>
+#include <kernel/util/strencodings.h>
 
 #include <leveldb/db.h>
 #include <leveldb/write_batch.h>

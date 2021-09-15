@@ -4,15 +4,15 @@
 
 #include <core_io.h>
 
-#include <primitives/block.h>
-#include <primitives/transaction.h>
-#include <script/script.h>
+#include <kernel/primitives/block.h>
+#include <kernel/primitives/transaction.h>
+#include <kernel/script/script.h>
 #include <script/sign.h>
-#include <serialize.h>
-#include <streams.h>
+#include <kernel/serialize.h>
+#include <kernel/streams.h>
 #include <univalue.h>
-#include <util/strencodings.h>
-#include <version.h>
+#include <kernel/util/strencodings.h>
+#include <kernel/version.h>
 
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>

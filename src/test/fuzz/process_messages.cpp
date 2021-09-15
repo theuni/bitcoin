@@ -2,7 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <consensus/consensus.h>
+#include <kernel/consensus/consensus.h>
 #include <net.h>
 #include <net_processing.h>
 #include <protocol.h>

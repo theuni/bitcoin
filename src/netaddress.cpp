@@ -5,13 +5,13 @@
 
 #include <netaddress.h>
 
-#include <crypto/common.h>
+#include <kernel/crypto/common.h>
 #include <crypto/sha3.h>
 #include <hash.h>
-#include <prevector.h>
+#include <kernel/prevector.h>
 #include <tinyformat.h>
 #include <util/asmap.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/string.h>
 
 #include <algorithm>

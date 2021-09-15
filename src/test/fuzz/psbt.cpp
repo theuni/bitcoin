@@ -8,10 +8,10 @@
 #include <node/psbt.h>
 #include <psbt.h>
 #include <pubkey.h>
-#include <script/script.h>
-#include <streams.h>
+#include <kernel/script/script.h>
+#include <kernel/streams.h>
 #include <util/check.h>
-#include <version.h>
+#include <kernel/version.h>
 
 #include <cstdint>
 #include <optional>

@@ -5,9 +5,9 @@
 
 #include <txmempool.h>
 
-#include <consensus/consensus.h>
+#include <kernel/consensus/consensus.h>
 #include <consensus/tx_verify.h>
-#include <consensus/validation.h>
+#include <kernel/consensus/validation.h>
 #include <core_memusage.h>
 #include <policy/fees.h>
 #include <policy/policy.h>

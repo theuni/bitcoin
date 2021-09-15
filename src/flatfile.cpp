@@ -5,7 +5,7 @@
 
 #include <stdexcept>
 
-#include <flatfile.h>
+#include <kernel/flatfile.h>
 #include <logging.h>
 #include <tinyformat.h>
 #include <util/system.h>

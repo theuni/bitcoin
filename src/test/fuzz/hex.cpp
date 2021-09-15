@@ -3,13 +3,13 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <core_io.h>
-#include <primitives/block.h>
+#include <kernel/primitives/block.h>
 #include <pubkey.h>
 #include <rpc/util.h>
 #include <test/fuzz/fuzz.h>
-#include <uint256.h>
+#include <kernel/uint256.h>
 #include <univalue.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 
 #include <cassert>
 #include <cstdint>

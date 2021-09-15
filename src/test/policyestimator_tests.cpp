@@ -5,7 +5,7 @@
 #include <policy/fees.h>
 #include <policy/policy.h>
 #include <txmempool.h>
-#include <uint256.h>
+#include <kernel/uint256.h>
 #include <util/time.h>
 
 #include <test/util/setup_common.h>

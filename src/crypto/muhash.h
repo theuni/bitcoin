@@ -9,8 +9,8 @@
 #include <config/bitcoin-config.h>
 #endif
 
-#include <serialize.h>
-#include <uint256.h>
+#include <kernel/serialize.h>
+#include <kernel/uint256.h>
 
 #include <stdint.h>
 

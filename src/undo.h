@@ -6,12 +6,12 @@
 #ifndef BITCOIN_UNDO_H
 #define BITCOIN_UNDO_H
 
-#include <coins.h>
-#include <compressor.h>
-#include <consensus/consensus.h>
-#include <primitives/transaction.h>
-#include <serialize.h>
-#include <version.h>
+#include <kernel/coins.h>
+#include <kernel/compressor.h>
+#include <kernel/consensus/consensus.h>
+#include <kernel/primitives/transaction.h>
+#include <kernel/serialize.h>
+#include <kernel/version.h>
 
 /** Formatter for undo information for a CTxIn
  *

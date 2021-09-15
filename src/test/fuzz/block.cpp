@@ -4,15 +4,15 @@
 
 #include <chainparams.h>
 #include <consensus/merkle.h>
-#include <consensus/validation.h>
+#include <kernel/consensus/validation.h>
 #include <core_io.h>
 #include <core_memusage.h>
-#include <primitives/block.h>
+#include <kernel/primitives/block.h>
 #include <pubkey.h>
-#include <streams.h>
+#include <kernel/streams.h>
 #include <test/fuzz/fuzz.h>
 #include <validation.h>
-#include <version.h>
+#include <kernel/version.h>
 
 #include <cassert>
 #include <string>

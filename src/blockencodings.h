@@ -5,7 +5,7 @@
 #ifndef BITCOIN_BLOCKENCODINGS_H
 #define BITCOIN_BLOCKENCODINGS_H
 
-#include <primitives/block.h>
+#include <kernel/primitives/block.h>
 
 
 class CTxMemPool;

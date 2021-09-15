@@ -5,7 +5,7 @@
 #include <bench/bench.h>
 #include <hash.h>
 #include <random.h>
-#include <uint256.h>
+#include <kernel/uint256.h>
 
 
 static void PrePadded(benchmark::Bench& bench)

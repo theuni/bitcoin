@@ -7,7 +7,7 @@
 #include <test/fuzz/FuzzedDataProvider.h>
 #include <test/fuzz/fuzz.h>
 #include <test/fuzz/util.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 
 #include <event2/buffer.h>
 #include <event2/event.h>

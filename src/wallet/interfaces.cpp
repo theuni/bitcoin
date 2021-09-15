@@ -4,16 +4,16 @@
 
 #include <interfaces/wallet.h>
 
-#include <amount.h>
+#include <kernel/amount.h>
 #include <interfaces/chain.h>
 #include <interfaces/handler.h>
 #include <policy/fees.h>
-#include <primitives/transaction.h>
+#include <kernel/primitives/transaction.h>
 #include <rpc/server.h>
 #include <script/standard.h>
 #include <support/allocators/secure.h>
-#include <sync.h>
-#include <uint256.h>
+#include <kernel/sync.h>
+#include <kernel/uint256.h>
 #include <util/check.h>
 #include <util/system.h>
 #include <util/translation.h>

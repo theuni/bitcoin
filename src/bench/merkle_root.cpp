@@ -6,7 +6,7 @@
 
 #include <consensus/merkle.h>
 #include <random.h>
-#include <uint256.h>
+#include <kernel/uint256.h>
 
 static void MerkleRoot(benchmark::Bench& bench)
 {

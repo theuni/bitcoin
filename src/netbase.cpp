@@ -6,10 +6,10 @@
 #include <netbase.h>
 
 #include <compat.h>
-#include <sync.h>
+#include <kernel/sync.h>
 #include <tinyformat.h>
 #include <util/sock.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/string.h>
 #include <util/system.h>
 #include <util/time.h>

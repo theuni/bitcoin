@@ -3,7 +3,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <consensus/validation.h>
+#include <kernel/consensus/validation.h>
 #include <index/txindex.h>
 #include <net.h>
 #include <net_processing.h>

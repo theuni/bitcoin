@@ -5,7 +5,7 @@
 
 #include <threadinterrupt.h>
 
-#include <sync.h>
+#include <kernel/sync.h>
 
 CThreadInterrupt::CThreadInterrupt() : flag(false) {}
 

@@ -5,7 +5,7 @@
 #ifndef BITCOIN_TEST_UTIL_LOGGING_H
 #define BITCOIN_TEST_UTIL_LOGGING_H
 
-#include <util/macros.h>
+#include <kernel/util/macros.h>
 
 #include <functional>
 #include <list>

@@ -6,7 +6,7 @@
 #ifndef BITCOIN_SERIALIZE_H
 #define BITCOIN_SERIALIZE_H
 
-#include <compat/endian.h>
+#include <kernel/compat/endian.h>
 
 #include <algorithm>
 #include <cstdint>
@@ -21,8 +21,8 @@
 #include <utility>
 #include <vector>
 
-#include <prevector.h>
-#include <span.h>
+#include <kernel/prevector.h>
+#include <kernel/span.h>
 
 /**
  * The maximum size of a serialized object in bytes or number of elements

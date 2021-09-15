@@ -16,7 +16,7 @@
 
 #include <core_io.h>
 #include <interfaces/handler.h>
-#include <uint256.h>
+#include <kernel/uint256.h>
 
 #include <algorithm>
 #include <functional>

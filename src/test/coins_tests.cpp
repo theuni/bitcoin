@@ -2,17 +2,17 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <attributes.h>
-#include <clientversion.h>
-#include <coins.h>
+#include <kernel/attributes.h>
+#include <kernel/clientversion.h>
+#include <kernel/coins.h>
 #include <memusage.h>
 #include <script/standard.h>
-#include <streams.h>
+#include <kernel/streams.h>
 #include <test/util/setup_common.h>
-#include <txdb.h>
-#include <uint256.h>
+#include <kernel/txdb.h>
+#include <kernel/uint256.h>
 #include <undo.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 
 #include <map>
 #include <vector>

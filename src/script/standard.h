@@ -8,8 +8,8 @@
 
 #include <pubkey.h>
 #include <script/interpreter.h>
-#include <uint256.h>
-#include <util/hash_type.h>
+#include <kernel/uint256.h>
+#include <kernel/util/hash_type.h>
 
 #include <map>
 #include <string>

@@ -5,10 +5,10 @@
 #include <key.h>
 
 #include <key_io.h>
-#include <streams.h>
+#include <kernel/streams.h>
 #include <test/util/setup_common.h>
-#include <uint256.h>
-#include <util/strencodings.h>
+#include <kernel/uint256.h>
+#include <kernel/util/strencodings.h>
 #include <util/string.h>
 #include <util/system.h>
 

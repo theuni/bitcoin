@@ -6,14 +6,14 @@
 #include <torcontrol.h>
 
 #include <chainparams.h>
-#include <chainparamsbase.h>
+#include <kernel/chainparamsbase.h>
 #include <compat.h>
 #include <crypto/hmac_sha256.h>
 #include <net.h>
 #include <netaddress.h>
 #include <netbase.h>
 #include <util/readwritefile.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/system.h>
 #include <util/thread.h>
 #include <util/time.h>

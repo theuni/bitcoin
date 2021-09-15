@@ -6,11 +6,11 @@
 #ifndef BITCOIN_CHAIN_H
 #define BITCOIN_CHAIN_H
 
-#include <arith_uint256.h>
-#include <consensus/params.h>
-#include <flatfile.h>
-#include <primitives/block.h>
-#include <uint256.h>
+#include <kernel/arith_uint256.h>
+#include <kernel/consensus/params.h>
+#include <kernel/flatfile.h>
+#include <kernel/primitives/block.h>
+#include <kernel/uint256.h>
 
 #include <vector>
 

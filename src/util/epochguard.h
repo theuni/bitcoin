@@ -6,7 +6,7 @@
 #ifndef BITCOIN_UTIL_EPOCHGUARD_H
 #define BITCOIN_UTIL_EPOCHGUARD_H
 
-#include <threadsafety.h>
+#include <kernel/threadsafety.h>
 
 #include <cassert>
 

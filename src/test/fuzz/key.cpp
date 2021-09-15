@@ -3,7 +3,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <chainparams.h>
-#include <chainparamsbase.h>
+#include <kernel/chainparamsbase.h>
 #include <key.h>
 #include <key_io.h>
 #include <outputtype.h>
@@ -11,13 +11,13 @@
 #include <pubkey.h>
 #include <rpc/util.h>
 #include <script/keyorigin.h>
-#include <script/script.h>
+#include <kernel/script/script.h>
 #include <script/sign.h>
 #include <script/signingprovider.h>
 #include <script/standard.h>
-#include <streams.h>
+#include <kernel/streams.h>
 #include <test/fuzz/fuzz.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 
 #include <cassert>
 #include <cstdint>

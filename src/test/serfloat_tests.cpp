@@ -5,8 +5,8 @@
 #include <hash.h>
 #include <test/util/setup_common.h>
 #include <util/serfloat.h>
-#include <serialize.h>
-#include <streams.h>
+#include <kernel/serialize.h>
+#include <kernel/streams.h>
 
 #include <boost/test/unit_test.hpp>
 

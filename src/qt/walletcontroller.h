@@ -7,7 +7,7 @@
 
 #include <qt/sendcoinsrecipient.h>
 #include <support/allocators/secure.h>
-#include <sync.h>
+#include <kernel/sync.h>
 #include <util/translation.h>
 
 #include <map>

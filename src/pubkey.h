@@ -8,9 +8,9 @@
 #define BITCOIN_PUBKEY_H
 
 #include <hash.h>
-#include <serialize.h>
-#include <span.h>
-#include <uint256.h>
+#include <kernel/serialize.h>
+#include <kernel/span.h>
+#include <kernel/uint256.h>
 
 #include <cstring>
 #include <optional>

@@ -4,7 +4,7 @@
 
 #include <blockfilter.h>
 #include <chainparams.h>
-#include <consensus/validation.h>
+#include <kernel/consensus/validation.h>
 #include <index/blockfilterindex.h>
 #include <miner.h>
 #include <pow.h>

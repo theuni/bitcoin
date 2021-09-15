@@ -6,9 +6,9 @@
 #ifndef BITCOIN_STREAMS_H
 #define BITCOIN_STREAMS_H
 
-#include <serialize.h>
-#include <span.h>
-#include <support/allocators/zeroafterfree.h>
+#include <kernel/serialize.h>
+#include <kernel/span.h>
+#include <kernel/support/allocators/zeroafterfree.h>
 
 #include <algorithm>
 #include <assert.h>

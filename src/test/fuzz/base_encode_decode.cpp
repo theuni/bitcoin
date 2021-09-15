@@ -6,7 +6,7 @@
 
 #include <base58.h>
 #include <psbt.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/string.h>
 
 #include <cassert>

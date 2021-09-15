@@ -6,9 +6,9 @@
 #ifndef BITCOIN_ADDRDB_H
 #define BITCOIN_ADDRDB_H
 
-#include <fs.h>
+#include <kernel/fs.h>
 #include <net_types.h> // For banmap_t
-#include <serialize.h>
+#include <kernel/serialize.h>
 #include <univalue.h>
 
 #include <string>

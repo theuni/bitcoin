@@ -4,15 +4,15 @@
 
 #include <chainparams.h>
 #include <compat.h>
-#include <compat/endian.h>
+#include <kernel/compat/endian.h>
 #include <crypto/sha256.h>
-#include <fs.h>
+#include <kernel/fs.h>
 #include <i2p.h>
 #include <logging.h>
 #include <netaddress.h>
 #include <netbase.h>
 #include <random.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <tinyformat.h>
 #include <util/readwritefile.h>
 #include <util/sock.h>

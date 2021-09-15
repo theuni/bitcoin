@@ -5,8 +5,8 @@
 #ifndef BITCOIN_QT_GUIUTIL_H
 #define BITCOIN_QT_GUIUTIL_H
 
-#include <amount.h>
-#include <fs.h>
+#include <kernel/amount.h>
+#include <kernel/fs.h>
 #include <net.h>
 #include <netaddress.h>
 #include <util/check.h>

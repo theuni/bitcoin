@@ -16,16 +16,16 @@
 #include <utility>
 #include <vector>
 
-#include <amount.h>
-#include <coins.h>
+#include <kernel/amount.h>
+#include <kernel/coins.h>
 #include <indirectmap.h>
 #include <policy/feerate.h>
 #include <policy/packages.h>
-#include <primitives/transaction.h>
+#include <kernel/primitives/transaction.h>
 #include <random.h>
-#include <sync.h>
+#include <kernel/sync.h>
 #include <util/epochguard.h>
-#include <util/hasher.h>
+#include <kernel/util/hasher.h>
 
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/hashed_index.hpp>

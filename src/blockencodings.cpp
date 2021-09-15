@@ -3,13 +3,13 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <blockencodings.h>
-#include <consensus/consensus.h>
-#include <consensus/validation.h>
+#include <kernel/consensus/consensus.h>
+#include <kernel/consensus/validation.h>
 #include <chainparams.h>
 #include <crypto/sha256.h>
-#include <crypto/siphash.h>
+#include <kernel/crypto/siphash.h>
 #include <random.h>
-#include <streams.h>
+#include <kernel/streams.h>
 #include <txmempool.h>
 #include <validation.h>
 #include <util/system.h>

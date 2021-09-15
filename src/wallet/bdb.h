@@ -6,10 +6,10 @@
 #ifndef BITCOIN_WALLET_BDB_H
 #define BITCOIN_WALLET_BDB_H
 
-#include <clientversion.h>
-#include <fs.h>
-#include <serialize.h>
-#include <streams.h>
+#include <kernel/clientversion.h>
+#include <kernel/fs.h>
+#include <kernel/serialize.h>
+#include <kernel/streams.h>
 #include <util/system.h>
 #include <wallet/db.h>
 

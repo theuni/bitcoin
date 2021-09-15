@@ -7,15 +7,15 @@
 #include <config/bitcoin-config.h>
 #endif
 
-#include <chainparamsbase.h>
-#include <clientversion.h>
+#include <kernel/chainparamsbase.h>
+#include <kernel/clientversion.h>
 #include <policy/feerate.h>
 #include <rpc/client.h>
 #include <rpc/mining.h>
 #include <rpc/protocol.h>
 #include <rpc/request.h>
 #include <tinyformat.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/system.h>
 #include <util/translation.h>
 #include <util/url.h>

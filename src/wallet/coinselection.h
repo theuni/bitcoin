@@ -5,9 +5,9 @@
 #ifndef BITCOIN_WALLET_COINSELECTION_H
 #define BITCOIN_WALLET_COINSELECTION_H
 
-#include <amount.h>
+#include <kernel/amount.h>
 #include <policy/feerate.h>
-#include <primitives/transaction.h>
+#include <kernel/primitives/transaction.h>
 #include <random.h>
 
 //! target minimum change amount

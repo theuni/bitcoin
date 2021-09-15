@@ -7,7 +7,7 @@
 #endif
 
 #include <chainparams.h>
-#include <fs.h>
+#include <kernel/fs.h>
 #include <qt/intro.h>
 #include <qt/forms/ui_intro.h>
 

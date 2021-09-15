@@ -7,9 +7,9 @@
 #include <addrman.h>
 #include <banman.h>
 #include <chainparams.h>
-#include <consensus/consensus.h>
-#include <consensus/params.h>
-#include <consensus/validation.h>
+#include <kernel/consensus/consensus.h>
+#include <kernel/consensus/params.h>
+#include <kernel/consensus/validation.h>
 #include <crypto/sha256.h>
 #include <init.h>
 #include <interfaces/chain.h>
@@ -27,10 +27,10 @@
 #include <scheduler.h>
 #include <script/sigcache.h>
 #include <shutdown.h> // For shutdown_requested
-#include <streams.h>
-#include <txdb.h>
+#include <kernel/streams.h>
+#include <kernel/txdb.h>
 #include <util/init.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/string.h>
 #include <util/thread.h>
 #include <util/threadnames.h>

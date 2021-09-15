@@ -5,7 +5,7 @@
 #ifndef BITCOIN_NODE_BLOCKSTORAGE_H
 #define BITCOIN_NODE_BLOCKSTORAGE_H
 
-#include <fs.h>
+#include <kernel/fs.h>
 #include <protocol.h> // For CMessageHeader::MessageStartChars
 
 #include <atomic>

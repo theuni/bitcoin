@@ -124,39 +124,39 @@ endif
 BITCOIN_CORE_H = \
   addrdb.h \
   addrman.h \
-  attributes.h \
+  kernel/attributes.h \
   banman.h \
   base58.h \
   bech32.h \
   blockencodings.h \
   blockfilter.h \
   bloom.h \
-  chain.h \
+  kernel/chain.h \
   chainparams.h \
-  chainparamsbase.h \
+  kernel/chainparamsbase.h \
   chainparamsseeds.h \
   checkqueue.h \
-  clientversion.h \
-  coins.h \
+  kernel/clientversion.h \
+  kernel/coins.h \
   compat.h \
   compat/assumptions.h \
-  compat/byteswap.h \
+  kernel/compat/byteswap.h \
   compat/cpuid.h \
-  compat/endian.h \
+  kernel/compat/endian.h \
   compat/sanity.h \
-  compressor.h \
-  consensus/consensus.h \
+  kernel/compressor.h \
+  kernel/consensus/consensus.h \
   consensus/tx_check.h \
   consensus/tx_verify.h \
   core_io.h \
   core_memusage.h \
   cuckoocache.h \
-  dbwrapper.h \
+  kernel/dbwrapper.h \
   deploymentinfo.h \
   deploymentstatus.h \
   external_signer.h \
-  flatfile.h \
-  fs.h \
+  kernel/flatfile.h \
+  kernel/fs.h \
   httprpc.h \
   httpserver.h \
   i2p.h \
@@ -197,7 +197,7 @@ BITCOIN_CORE_H = \
   node/psbt.h \
   node/transaction.h \
   node/ui_interface.h \
-  node/utxo_snapshot.h \
+  kernel/node/utxo_snapshot.h \
   noui.h \
   outputtype.h \
   policy/feerate.h \
@@ -231,18 +231,18 @@ BITCOIN_CORE_H = \
   script/standard.h \
   shutdown.h \
   signet.h \
-  streams.h \
+  kernel/streams.h \
   support/allocators/secure.h \
-  support/allocators/zeroafterfree.h \
-  support/cleanse.h \
+  kernel/support/allocators/zeroafterfree.h \
+  kernel/support/cleanse.h \
   support/events.h \
   support/lockedpool.h \
-  sync.h \
+  kernel/sync.h \
   threadinterrupt.h \
-  threadsafety.h \
+  kernel/threadsafety.h \
   timedata.h \
   torcontrol.h \
-  txdb.h \
+  kernel/txdb.h \
   txmempool.h \
   txorphanage.h \
   txrequest.h \
@@ -256,10 +256,10 @@ BITCOIN_CORE_H = \
   util/fees.h \
   util/getuniquepath.h \
   util/golombrice.h \
-  util/hash_type.h \
-  util/hasher.h \
+  kernel/util/hash_type.h \
+  kernel/util/hasher.h \
   util/init.h \
-  util/macros.h \
+  kernel/util/macros.h \
   util/message.h \
   util/moneystr.h \
   util/rbf.h \
@@ -456,7 +456,7 @@ crypto_libbitcoin_crypto_base_a_SOURCES = \
   crypto/chacha_poly_aead.cpp \
   crypto/chacha20.h \
   crypto/chacha20.cpp \
-  crypto/common.h \
+  kernel/crypto/common.h \
   crypto/hkdf_sha256_32.cpp \
   crypto/hkdf_sha256_32.h \
   crypto/hmac_sha256.cpp \
@@ -478,7 +478,7 @@ crypto_libbitcoin_crypto_base_a_SOURCES = \
   crypto/sha512.cpp \
   crypto/sha512.h \
   crypto/siphash.cpp \
-  crypto/siphash.h
+  kernel/crypto/siphash.h
 
 if USE_ASM
 crypto_libbitcoin_crypto_base_a_SOURCES += crypto/sha256_sse4.cpp
@@ -506,38 +506,38 @@ crypto_libbitcoin_crypto_shani_a_SOURCES = crypto/sha256_shani.cpp
 libbitcoin_consensus_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
 libbitcoin_consensus_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_consensus_a_SOURCES = \
-  amount.h \
+  kernel/amount.h \
   arith_uint256.cpp \
-  arith_uint256.h \
+  kernel/arith_uint256.h \
   consensus/merkle.cpp \
   consensus/merkle.h \
-  consensus/params.h \
+  kernel/consensus/params.h \
   consensus/tx_check.cpp \
-  consensus/validation.h \
+  kernel/consensus/validation.h \
   hash.cpp \
   hash.h \
-  prevector.h \
+  kernel/prevector.h \
   primitives/block.cpp \
-  primitives/block.h \
+  kernel/primitives/block.h \
   primitives/transaction.cpp \
-  primitives/transaction.h \
+  kernel/primitives/transaction.h \
   pubkey.cpp \
   pubkey.h \
   script/bitcoinconsensus.cpp \
   script/interpreter.cpp \
   script/interpreter.h \
   script/script.cpp \
-  script/script.h \
+  kernel/script/script.h \
   script/script_error.cpp \
   script/script_error.h \
-  serialize.h \
-  span.h \
+  kernel/serialize.h \
+  kernel/span.h \
   tinyformat.h \
   uint256.cpp \
-  uint256.h \
+  kernel/uint256.h \
   util/strencodings.cpp \
-  util/strencodings.h \
-  version.h
+  kernel/util/strencodings.h \
+  kernel/version.h
 
 # common: shared between bitcoind, and bitcoin-qt and non-server tools
 libbitcoin_common_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)

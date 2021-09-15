@@ -6,8 +6,8 @@
 // by Markku-Juhani O. Saarinen <mjos@iki.fi>
 
 #include <crypto/sha3.h>
-#include <crypto/common.h>
-#include <span.h>
+#include <kernel/crypto/common.h>
+#include <kernel/span.h>
 
 #include <algorithm>
 #include <array> // For std::begin and std::end.

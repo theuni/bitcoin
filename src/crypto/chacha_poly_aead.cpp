@@ -5,7 +5,7 @@
 #include <crypto/chacha_poly_aead.h>
 
 #include <crypto/poly1305.h>
-#include <support/cleanse.h>
+#include <kernel/support/cleanse.h>
 
 #include <assert.h>
 #include <string.h>

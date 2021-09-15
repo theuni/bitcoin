@@ -5,7 +5,7 @@
 #include <bench/bench.h>
 #include <checkqueue.h>
 #include <key.h>
-#include <prevector.h>
+#include <kernel/prevector.h>
 #include <pubkey.h>
 #include <random.h>
 #include <util/system.h>

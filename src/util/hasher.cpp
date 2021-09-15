@@ -3,7 +3,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <random.h>
-#include <util/hasher.h>
+#include <kernel/util/hasher.h>
 
 #include <limits>
 

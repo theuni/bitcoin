@@ -7,7 +7,7 @@
 #define BITCOIN_SUPPORT_ALLOCATORS_SECURE_H
 
 #include <support/lockedpool.h>
-#include <support/cleanse.h>
+#include <kernel/support/cleanse.h>
 
 #include <string>
 

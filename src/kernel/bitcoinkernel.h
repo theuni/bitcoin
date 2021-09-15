@@ -5,7 +5,7 @@
 #ifndef BITCOIN_KERNEL_BITCOINKERNEL_H
 #define BITCOIN_KERNEL_BITCOINKERNEL_H
 
-#include <sync.h> // For RecursiveMutex
+#include <kernel/sync.h> // For RecursiveMutex
 
 #include <optional>
 #include <functional>

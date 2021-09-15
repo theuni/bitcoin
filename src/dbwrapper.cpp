@@ -2,7 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <dbwrapper.h>
+#include <kernel/dbwrapper.h>
 
 #include <memory>
 #include <random.h>

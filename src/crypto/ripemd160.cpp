@@ -4,7 +4,7 @@
 
 #include <crypto/ripemd160.h>
 
-#include <crypto/common.h>
+#include <kernel/crypto/common.h>
 
 #include <string.h>
 

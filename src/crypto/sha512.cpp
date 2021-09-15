@@ -4,7 +4,7 @@
 
 #include <crypto/sha512.h>
 
-#include <crypto/common.h>
+#include <kernel/crypto/common.h>
 
 #include <string.h>
 

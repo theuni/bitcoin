@@ -10,7 +10,7 @@
 #include <blockencodings.h>
 #include <blockfilter.h>
 #include <chainparams.h>
-#include <consensus/validation.h>
+#include <kernel/consensus/validation.h>
 #include <core_memusage.h>
 #include <deploymentstatus.h>
 #include <hash.h>
@@ -21,19 +21,19 @@
 #include <node/blockstorage.h>
 #include <policy/fees.h>
 #include <policy/policy.h>
-#include <primitives/block.h>
-#include <primitives/transaction.h>
+#include <kernel/primitives/block.h>
+#include <kernel/primitives/transaction.h>
 #include <random.h>
 #include <reverse_iterator.h>
 #include <scheduler.h>
-#include <streams.h>
-#include <sync.h>
+#include <kernel/streams.h>
+#include <kernel/sync.h>
 #include <tinyformat.h>
 #include <txmempool.h>
 #include <txorphanage.h>
 #include <txrequest.h>
 #include <util/check.h> // For NDEBUG compile time check
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/system.h>
 #include <util/trace.h>
 #include <validation.h>

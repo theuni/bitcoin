@@ -5,10 +5,10 @@
 
 #include <pow.h>
 
-#include <arith_uint256.h>
-#include <chain.h>
-#include <primitives/block.h>
-#include <uint256.h>
+#include <kernel/arith_uint256.h>
+#include <kernel/chain.h>
+#include <kernel/primitives/block.h>
+#include <kernel/uint256.h>
 
 unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock, const Consensus::Params& params)
 {

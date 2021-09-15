@@ -3,9 +3,9 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <chain.h>
-#include <coins.h>
-#include <consensus/validation.h>
+#include <kernel/chain.h>
+#include <kernel/coins.h>
+#include <kernel/consensus/validation.h>
 #include <core_io.h>
 #include <index/txindex.h>
 #include <key_io.h>
@@ -18,21 +18,21 @@
 #include <policy/packages.h>
 #include <policy/policy.h>
 #include <policy/rbf.h>
-#include <primitives/transaction.h>
+#include <kernel/primitives/transaction.h>
 #include <psbt.h>
 #include <random.h>
 #include <rpc/blockchain.h>
 #include <rpc/rawtransaction_util.h>
 #include <rpc/server.h>
 #include <rpc/util.h>
-#include <script/script.h>
+#include <kernel/script/script.h>
 #include <script/sign.h>
 #include <script/signingprovider.h>
 #include <script/standard.h>
-#include <uint256.h>
+#include <kernel/uint256.h>
 #include <util/bip32.h>
 #include <util/moneystr.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/string.h>
 #include <validation.h>
 #include <validationinterface.h>

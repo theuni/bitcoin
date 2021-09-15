@@ -5,7 +5,7 @@
 #include <bench/bench.h>
 
 #include <crypto/sha256.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/system.h>
 
 #include <memory>

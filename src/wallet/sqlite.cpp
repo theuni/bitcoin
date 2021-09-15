@@ -5,10 +5,10 @@
 #include <wallet/sqlite.h>
 
 #include <chainparams.h>
-#include <crypto/common.h>
+#include <kernel/crypto/common.h>
 #include <logging.h>
-#include <sync.h>
-#include <util/strencodings.h>
+#include <kernel/sync.h>
+#include <kernel/util/strencodings.h>
 #include <util/system.h>
 #include <util/translation.h>
 #include <wallet/db.h>

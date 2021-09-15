@@ -6,7 +6,7 @@
 
 #include <chainparams.h>
 #include <net.h>
-#include <span.h>
+#include <kernel/span.h>
 
 #include <vector>
 

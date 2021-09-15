@@ -1,6 +1,6 @@
 #include <random.h>
-#include <fs.h>
-#include <util/strencodings.h>
+#include <kernel/fs.h>
+#include <kernel/util/strencodings.h>
 
 fs::path GetUniquePath(const fs::path& base)
 {

@@ -6,15 +6,15 @@
 #ifndef BITCOIN_ADDRMAN_H
 #define BITCOIN_ADDRMAN_H
 
-#include <clientversion.h>
+#include <kernel/clientversion.h>
 #include <config/bitcoin-config.h>
-#include <fs.h>
+#include <kernel/fs.h>
 #include <hash.h>
 #include <netaddress.h>
 #include <protocol.h>
 #include <random.h>
-#include <streams.h>
-#include <sync.h>
+#include <kernel/streams.h>
+#include <kernel/sync.h>
 #include <timedata.h>
 #include <tinyformat.h>
 #include <util/system.h>

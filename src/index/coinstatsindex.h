@@ -5,9 +5,9 @@
 #ifndef BITCOIN_INDEX_COINSTATSINDEX_H
 #define BITCOIN_INDEX_COINSTATSINDEX_H
 
-#include <chain.h>
+#include <kernel/chain.h>
 #include <crypto/muhash.h>
-#include <flatfile.h>
+#include <kernel/flatfile.h>
 #include <index/base.h>
 #include <node/coinstats.h>
 

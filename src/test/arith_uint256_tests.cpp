@@ -2,8 +2,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <arith_uint256.h>
-#include <uint256.h>
+#include <kernel/arith_uint256.h>
+#include <kernel/uint256.h>
 
 #include <boost/test/unit_test.hpp>
 

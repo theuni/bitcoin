@@ -5,12 +5,12 @@
 
 #include <rpc/request.h>
 
-#include <fs.h>
+#include <kernel/fs.h>
 
 #include <random.h>
 #include <rpc/protocol.h>
 #include <util/system.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 
 /**
  * JSON-RPC protocol.  Bitcoin speaks version 1.0 for maximum compatibility,

@@ -12,23 +12,23 @@
 
 #include <kernel/validation.h>
 
-#include <amount.h>
-#include <attributes.h>
-#include <coins.h>
-#include <consensus/validation.h>
-#include <crypto/common.h> // for ReadLE64
-#include <fs.h>
-#include <node/utxo_snapshot.h>
+#include <kernel/amount.h>
+#include <kernel/attributes.h>
+#include <kernel/coins.h>
+#include <kernel/consensus/validation.h>
+#include <kernel/crypto/common.h> // for ReadLE64
+#include <kernel/fs.h>
+#include <kernel/node/utxo_snapshot.h>
 #include <policy/feerate.h>
 #include <policy/packages.h>
 #include <protocol.h> // For CMessageHeader::MessageStartChars
 #include <script/script_error.h>
-#include <sync.h>
+#include <kernel/sync.h>
 #include <txmempool.h> // For CTxMemPool::cs
-#include <txdb.h>
-#include <serialize.h>
+#include <kernel/txdb.h>
+#include <kernel/serialize.h>
 #include <util/check.h>
-#include <util/hasher.h>
+#include <kernel/util/hasher.h>
 #include <util/translation.h>
 
 #include <atomic>
@@ -357,7 +357,7 @@ void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, int nHeight);
  *
  * Calls IsFinalTx() with current block height and appropriate block time.
  *
- * See consensus/consensus.h for flag definitions.
+ * See kernel/consensus/consensus.h for flag definitions.
  */
 bool CheckFinalTx(const CBlockIndex* active_chain_tip, const CTransaction &tx, int flags = -1) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
@@ -383,7 +383,7 @@ bool TestLockPointValidity(CChain& active_chain, const LockPoints* lp) EXCLUSIVE
  * passed in for evaluation.
  * The LockPoints should not be considered valid if CheckSequenceLocks returns false.
  *
- * See consensus/consensus.h for flag definitions.
+ * See kernel/consensus/consensus.h for flag definitions.
  */
 bool CheckSequenceLocks(CBlockIndex* tip,
                         const CCoinsView& coins_view,

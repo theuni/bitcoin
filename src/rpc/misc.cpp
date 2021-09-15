@@ -21,7 +21,7 @@
 #include <script/descriptor.h>
 #include <util/check.h>
 #include <util/message.h> // For MessageSign(), MessageVerify()
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/system.h>
 
 #include <optional>

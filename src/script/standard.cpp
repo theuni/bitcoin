@@ -9,8 +9,8 @@
 #include <hash.h>
 #include <pubkey.h>
 #include <script/interpreter.h>
-#include <script/script.h>
-#include <util/strencodings.h>
+#include <kernel/script/script.h>
+#include <kernel/util/strencodings.h>
 
 #include <string>
 

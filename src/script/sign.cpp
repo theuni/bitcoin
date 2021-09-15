@@ -7,10 +7,10 @@
 
 #include <key.h>
 #include <policy/policy.h>
-#include <primitives/transaction.h>
+#include <kernel/primitives/transaction.h>
 #include <script/signingprovider.h>
 #include <script/standard.h>
-#include <uint256.h>
+#include <kernel/uint256.h>
 #include <util/translation.h>
 #include <util/vector.h>
 

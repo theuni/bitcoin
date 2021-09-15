@@ -8,7 +8,7 @@
 #include <script/descriptor.h>
 #include <script/sign.h>
 #include <util/bip32.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/string.h>
 #include <util/system.h>
 #include <util/time.h>

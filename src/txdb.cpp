@@ -3,13 +3,13 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <txdb.h>
+#include <kernel/txdb.h>
 
 #include <node/ui_interface.h>
 #include <pow.h>
 #include <random.h>
 #include <shutdown.h>
-#include <uint256.h>
+#include <kernel/uint256.h>
 #include <util/system.h>
 #include <util/translation.h>
 #include <util/vector.h>

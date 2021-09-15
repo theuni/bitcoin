@@ -7,8 +7,8 @@
 #define BITCOIN_RANDOM_H
 
 #include <crypto/chacha20.h>
-#include <crypto/common.h>
-#include <uint256.h>
+#include <kernel/crypto/common.h>
+#include <kernel/uint256.h>
 
 #include <chrono> // For std::chrono::microseconds
 #include <cstdint>

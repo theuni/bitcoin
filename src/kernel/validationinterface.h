@@ -6,8 +6,8 @@
 #ifndef BITCOIN_KERNEL_VALIDATIONINTERFACE_H
 #define BITCOIN_KERNEL_VALIDATIONINTERFACE_H
 
-#include <primitives/transaction.h> // CTransaction(Ref)
-#include <sync.h>
+#include <kernel/primitives/transaction.h> // CTransaction(Ref)
+#include <kernel/sync.h>
 
 #include <functional>
 #include <memory>

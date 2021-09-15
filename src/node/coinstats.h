@@ -6,11 +6,11 @@
 #ifndef BITCOIN_NODE_COINSTATS_H
 #define BITCOIN_NODE_COINSTATS_H
 
-#include <amount.h>
-#include <chain.h>
-#include <coins.h>
-#include <streams.h>
-#include <uint256.h>
+#include <kernel/amount.h>
+#include <kernel/chain.h>
+#include <kernel/coins.h>
+#include <kernel/streams.h>
+#include <kernel/uint256.h>
 
 #include <cstdint>
 #include <functional>

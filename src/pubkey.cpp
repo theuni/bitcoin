@@ -10,8 +10,8 @@
 #include <secp256k1_extrakeys.h>
 #include <secp256k1_recovery.h>
 #include <secp256k1_schnorrsig.h>
-#include <span.h>
-#include <uint256.h>
+#include <kernel/span.h>
+#include <kernel/uint256.h>
 
 #include <algorithm>
 #include <cassert>

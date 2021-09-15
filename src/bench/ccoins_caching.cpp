@@ -3,7 +3,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <bench/bench.h>
-#include <coins.h>
+#include <kernel/coins.h>
 #include <policy/policy.h>
 #include <script/signingprovider.h>
 #include <test/util/transaction_utils.h>

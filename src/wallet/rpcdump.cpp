@@ -2,16 +2,16 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <chain.h>
+#include <kernel/chain.h>
 #include <core_io.h>
 #include <interfaces/chain.h>
 #include <key_io.h>
 #include <merkleblock.h>
 #include <rpc/util.h>
 #include <script/descriptor.h>
-#include <script/script.h>
+#include <kernel/script/script.h>
 #include <script/standard.h>
-#include <sync.h>
+#include <kernel/sync.h>
 #include <util/bip32.h>
 #include <util/system.h>
 #include <util/time.h>

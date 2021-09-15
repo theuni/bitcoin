@@ -5,7 +5,7 @@
 // Based on the public domain implementation 'merged' by D. J. Bernstein
 // See https://cr.yp.to/chacha.html.
 
-#include <crypto/common.h>
+#include <kernel/crypto/common.h>
 #include <crypto/chacha20.h>
 
 #include <string.h>

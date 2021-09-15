@@ -5,9 +5,9 @@
 #ifndef BITCOIN_TXREQUEST_H
 #define BITCOIN_TXREQUEST_H
 
-#include <primitives/transaction.h>
+#include <kernel/primitives/transaction.h>
 #include <net.h> // For NodeId
-#include <uint256.h>
+#include <kernel/uint256.h>
 
 #include <chrono>
 #include <vector>

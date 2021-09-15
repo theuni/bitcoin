@@ -4,17 +4,17 @@
 
 #include <core_io.h>
 
-#include <consensus/consensus.h>
-#include <consensus/validation.h>
+#include <kernel/consensus/consensus.h>
+#include <kernel/consensus/validation.h>
 #include <key_io.h>
-#include <script/script.h>
+#include <kernel/script/script.h>
 #include <script/standard.h>
-#include <serialize.h>
-#include <streams.h>
+#include <kernel/serialize.h>
+#include <kernel/streams.h>
 #include <undo.h>
 #include <univalue.h>
 #include <util/check.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/system.h>
 
 UniValue ValueFromAmount(const CAmount amount)

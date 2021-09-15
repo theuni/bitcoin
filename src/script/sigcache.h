@@ -7,8 +7,8 @@
 #define BITCOIN_SCRIPT_SIGCACHE_H
 
 #include <script/interpreter.h>
-#include <span.h>
-#include <util/hasher.h>
+#include <kernel/span.h>
+#include <kernel/util/hasher.h>
 
 #include <vector>
 

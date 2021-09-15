@@ -6,11 +6,11 @@
 #ifndef BITCOIN_TXDB_H
 #define BITCOIN_TXDB_H
 
-#include <coins.h>
-#include <dbwrapper.h>
-#include <chain.h>
-#include <primitives/block.h>
-#include <sync.h>
+#include <kernel/coins.h>
+#include <kernel/dbwrapper.h>
+#include <kernel/chain.h>
+#include <kernel/primitives/block.h>
+#include <kernel/sync.h>
 
 #include <memory>
 #include <string>

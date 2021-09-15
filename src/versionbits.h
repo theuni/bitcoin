@@ -5,8 +5,8 @@
 #ifndef BITCOIN_VERSIONBITS_H
 #define BITCOIN_VERSIONBITS_H
 
-#include <chain.h>
-#include <sync.h>
+#include <kernel/chain.h>
+#include <kernel/sync.h>
 
 #include <map>
 

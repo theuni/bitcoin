@@ -15,9 +15,9 @@
 #include <interfaces/node.h>
 #include <key_io.h>
 #include <policy/policy.h>
-#include <primitives/transaction.h>
+#include <kernel/primitives/transaction.h>
 #include <protocol.h>
-#include <script/script.h>
+#include <kernel/script/script.h>
 #include <script/standard.h>
 #include <util/system.h>
 

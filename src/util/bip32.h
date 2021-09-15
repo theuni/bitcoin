@@ -5,7 +5,7 @@
 #ifndef BITCOIN_UTIL_BIP32_H
 #define BITCOIN_UTIL_BIP32_H
 
-#include <attributes.h>
+#include <kernel/attributes.h>
 #include <string>
 #include <vector>
 

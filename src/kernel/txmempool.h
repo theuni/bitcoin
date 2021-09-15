@@ -5,7 +5,7 @@
 #ifndef BITCOIN_KERNEL_TXMEMPOOL_H
 #define BITCOIN_KERNEL_TXMEMPOOL_H
 
-#include <sync.h>
+#include <kernel/sync.h>
 
 class KernelCTxMemPool
 {

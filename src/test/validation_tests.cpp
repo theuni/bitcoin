@@ -5,7 +5,7 @@
 #include <chainparams.h>
 #include <net.h>
 #include <signet.h>
-#include <uint256.h>
+#include <kernel/uint256.h>
 #include <validation.h>
 
 #include <test/util/setup_common.h>

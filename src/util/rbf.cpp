@@ -4,7 +4,7 @@
 
 #include <util/rbf.h>
 
-#include <primitives/transaction.h>
+#include <kernel/primitives/transaction.h>
 
 bool SignalsOptInRBF(const CTransaction &tx)
 {

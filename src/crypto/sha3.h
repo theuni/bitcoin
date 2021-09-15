@@ -5,7 +5,7 @@
 #ifndef BITCOIN_CRYPTO_SHA3_H
 #define BITCOIN_CRYPTO_SHA3_H
 
-#include <span.h>
+#include <kernel/span.h>
 
 #include <stdint.h>
 #include <stdlib.h>

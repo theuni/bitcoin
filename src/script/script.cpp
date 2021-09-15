@@ -3,9 +3,9 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <script/script.h>
+#include <kernel/script/script.h>
 
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 
 #include <string>
 

@@ -13,7 +13,7 @@
 #include <qt/forms/ui_psbtoperationsdialog.h>
 #include <qt/guiutil.h>
 #include <qt/optionsmodel.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 
 #include <iostream>
 

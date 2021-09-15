@@ -13,12 +13,12 @@
 #include <qt/paymentserver.h>
 #include <qt/transactionrecord.h>
 
-#include <consensus/consensus.h>
+#include <kernel/consensus/consensus.h>
 #include <interfaces/node.h>
 #include <interfaces/wallet.h>
 #include <key_io.h>
 #include <policy/policy.h>
-#include <script/script.h>
+#include <kernel/script/script.h>
 #include <util/system.h>
 #include <validation.h>
 #include <wallet/ismine.h>

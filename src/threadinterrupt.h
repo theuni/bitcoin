@@ -5,7 +5,7 @@
 #ifndef BITCOIN_THREADINTERRUPT_H
 #define BITCOIN_THREADINTERRUPT_H
 
-#include <sync.h>
+#include <kernel/sync.h>
 
 #include <atomic>
 #include <chrono>

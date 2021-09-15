@@ -2,9 +2,9 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <prevector.h>
-#include <serialize.h>
-#include <streams.h>
+#include <kernel/prevector.h>
+#include <kernel/serialize.h>
+#include <kernel/streams.h>
 #include <type_traits>
 
 #include <bench/bench.h>

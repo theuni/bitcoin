@@ -5,13 +5,13 @@
 #ifndef BITCOIN_WALLET_TRANSACTION_H
 #define BITCOIN_WALLET_TRANSACTION_H
 
-#include <amount.h>
-#include <primitives/transaction.h>
-#include <serialize.h>
+#include <kernel/amount.h>
+#include <kernel/primitives/transaction.h>
+#include <kernel/serialize.h>
 #include <wallet/ismine.h>
-#include <threadsafety.h>
+#include <kernel/threadsafety.h>
 #include <tinyformat.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/string.h>
 
 #include <list>

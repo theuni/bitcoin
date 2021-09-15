@@ -5,7 +5,7 @@
 #ifndef BITCOIN_INTERFACES_CHAIN_H
 #define BITCOIN_INTERFACES_CHAIN_H
 
-#include <primitives/transaction.h> // For CTransactionRef
+#include <kernel/primitives/transaction.h> // For CTransactionRef
 #include <util/settings.h>          // For util::SettingsValue
 
 #include <functional>

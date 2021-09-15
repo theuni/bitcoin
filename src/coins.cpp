@@ -2,13 +2,13 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <coins.h>
+#include <kernel/coins.h>
 
-#include <consensus/consensus.h>
+#include <kernel/consensus/consensus.h>
 #include <logging.h>
 #include <memusage.h>
 #include <random.h>
-#include <version.h>
+#include <kernel/version.h>
 
 size_t Coin::DynamicMemoryUsage() const {
     return memusage::DynamicUsage(out.scriptPubKey);

@@ -4,7 +4,7 @@
 
 #include <util/spanparsing.h>
 
-#include <span.h>
+#include <kernel/span.h>
 
 #include <string>
 #include <vector>

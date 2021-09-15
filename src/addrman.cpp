@@ -8,7 +8,7 @@
 #include <hash.h>
 #include <logging.h>
 #include <netaddress.h>
-#include <serialize.h>
+#include <kernel/serialize.h>
 
 #include <cmath>
 #include <optional>

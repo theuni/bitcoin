@@ -6,13 +6,13 @@
 #include <config/bitcoin-config.h>
 #endif
 
-#include <arith_uint256.h>
-#include <chain.h>
+#include <kernel/arith_uint256.h>
+#include <kernel/chain.h>
 #include <chainparams.h>
-#include <chainparamsbase.h>
-#include <clientversion.h>
+#include <kernel/chainparamsbase.h>
+#include <kernel/clientversion.h>
 #include <core_io.h>
-#include <streams.h>
+#include <kernel/streams.h>
 #include <util/system.h>
 #include <util/translation.h>
 

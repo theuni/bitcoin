@@ -6,14 +6,14 @@
 
 #include <key_io.h>
 #include <pubkey.h>
-#include <script/script.h>
+#include <kernel/script/script.h>
 #include <script/standard.h>
 
-#include <span.h>
+#include <kernel/span.h>
 #include <util/bip32.h>
 #include <util/spanparsing.h>
 #include <util/system.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/vector.h>
 
 #include <memory>

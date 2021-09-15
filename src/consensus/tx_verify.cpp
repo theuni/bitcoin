@@ -4,14 +4,14 @@
 
 #include <consensus/tx_verify.h>
 
-#include <consensus/consensus.h>
-#include <primitives/transaction.h>
+#include <kernel/consensus/consensus.h>
+#include <kernel/primitives/transaction.h>
 #include <script/interpreter.h>
-#include <consensus/validation.h>
+#include <kernel/consensus/validation.h>
 
 // TODO remove the following dependencies
-#include <chain.h>
-#include <coins.h>
+#include <kernel/chain.h>
+#include <kernel/coins.h>
 #include <tinyformat.h>
 #include <util/moneystr.h>
 

@@ -5,7 +5,7 @@
 #ifndef BITCOIN_WALLET_WALLETUTIL_H
 #define BITCOIN_WALLET_WALLETUTIL_H
 
-#include <fs.h>
+#include <kernel/fs.h>
 #include <script/descriptor.h>
 
 #include <vector>

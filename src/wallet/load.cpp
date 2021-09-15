@@ -5,7 +5,7 @@
 
 #include <wallet/load.h>
 
-#include <fs.h>
+#include <kernel/fs.h>
 #include <interfaces/chain.h>
 #include <scheduler.h>
 #include <util/string.h>

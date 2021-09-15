@@ -7,10 +7,10 @@
 #define BITCOIN_CONSENSUS_VALIDATION_H
 
 #include <string>
-#include <version.h>
-#include <consensus/consensus.h>
-#include <primitives/transaction.h>
-#include <primitives/block.h>
+#include <kernel/version.h>
+#include <kernel/consensus/consensus.h>
+#include <kernel/primitives/transaction.h>
+#include <kernel/primitives/block.h>
 
 /** Index marker for when no witness commitment is present in a coinbase transaction. */
 static constexpr int NO_WITNESS_COMMITMENT{-1};

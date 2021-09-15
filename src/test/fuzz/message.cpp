@@ -8,7 +8,7 @@
 #include <test/fuzz/fuzz.h>
 #include <test/fuzz/util.h>
 #include <util/message.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 
 #include <cassert>
 #include <cstdint>

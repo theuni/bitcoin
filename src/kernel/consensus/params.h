@@ -6,7 +6,7 @@
 #ifndef BITCOIN_CONSENSUS_PARAMS_H
 #define BITCOIN_CONSENSUS_PARAMS_H
 
-#include <uint256.h>
+#include <kernel/uint256.h>
 #include <limits>
 
 namespace Consensus {

@@ -2,9 +2,9 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <chain.h>
+#include <kernel/chain.h>
 #include <chainparams.h>
-#include <consensus/params.h>
+#include <kernel/consensus/params.h>
 #include <deploymentstatus.h>
 #include <test/util/setup_common.h>
 #include <validation.h>

@@ -5,11 +5,11 @@
 #ifndef BITCOIN_KERNEL_VALIDATION_H
 #define BITCOIN_KERNEL_VALIDATION_H
 
-#include <arith_uint256.h> // for arith_uint256.h
-#include <chain.h>
-#include <txdb.h>
-#include <node/utxo_snapshot.h>
-#include <consensus/validation.h> // for BlockValidationState
+#include <kernel/arith_uint256.h> // for kernel/arith_uint256.h
+#include <kernel/chain.h>
+#include <kernel/txdb.h>
+#include <kernel/node/utxo_snapshot.h>
+#include <kernel/consensus/validation.h> // for BlockValidationState
 #include <kernel/txmempool.h>
 
 #include <atomic>

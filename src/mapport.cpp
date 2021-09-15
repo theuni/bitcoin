@@ -8,7 +8,7 @@
 
 #include <mapport.h>
 
-#include <clientversion.h>
+#include <kernel/clientversion.h>
 #include <logging.h>
 #include <net.h>
 #include <netaddress.h>

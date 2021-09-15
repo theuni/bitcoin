@@ -5,12 +5,12 @@
 #include <test/fuzz/FuzzedDataProvider.h>
 #include <test/fuzz/fuzz.h>
 
-#include <prevector.h>
+#include <kernel/prevector.h>
 #include <vector>
 
 #include <reverse_iterator.h>
-#include <serialize.h>
-#include <streams.h>
+#include <kernel/serialize.h>
+#include <kernel/streams.h>
 
 namespace {
 

@@ -5,12 +5,12 @@
 
 #include <node/coinstats.h>
 
-#include <coins.h>
+#include <kernel/coins.h>
 #include <crypto/muhash.h>
 #include <hash.h>
 #include <index/coinstatsindex.h>
-#include <serialize.h>
-#include <uint256.h>
+#include <kernel/serialize.h>
+#include <kernel/uint256.h>
 #include <util/system.h>
 #include <validation.h>
 

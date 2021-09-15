@@ -2,7 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <fs.h>
+#include <kernel/fs.h>
 #include <interfaces/init.h>
 #include <interfaces/ipc.h>
 #include <ipc/capnp/protocol.h>

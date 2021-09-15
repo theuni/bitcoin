@@ -5,7 +5,7 @@
 #ifndef BITCOIN_DEPLOYMENTINFO_H
 #define BITCOIN_DEPLOYMENTINFO_H
 
-#include <consensus/params.h>
+#include <kernel/consensus/params.h>
 
 #include <string>
 

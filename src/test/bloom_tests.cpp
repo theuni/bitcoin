@@ -4,17 +4,17 @@
 
 #include <bloom.h>
 
-#include <clientversion.h>
+#include <kernel/clientversion.h>
 #include <key.h>
 #include <key_io.h>
 #include <merkleblock.h>
-#include <primitives/block.h>
+#include <kernel/primitives/block.h>
 #include <random.h>
-#include <serialize.h>
-#include <streams.h>
+#include <kernel/serialize.h>
+#include <kernel/streams.h>
 #include <test/util/setup_common.h>
-#include <uint256.h>
-#include <util/strencodings.h>
+#include <kernel/uint256.h>
+#include <kernel/util/strencodings.h>
 #include <util/system.h>
 
 #include <vector>

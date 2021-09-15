@@ -8,8 +8,8 @@
 
 #include <hash.h>
 #include <script/script_error.h>
-#include <span.h>
-#include <primitives/transaction.h>
+#include <kernel/span.h>
+#include <kernel/primitives/transaction.h>
 
 #include <vector>
 #include <stdint.h>

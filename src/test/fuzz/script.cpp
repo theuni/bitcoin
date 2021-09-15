@@ -3,7 +3,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <chainparams.h>
-#include <compressor.h>
+#include <kernel/compressor.h>
 #include <core_io.h>
 #include <core_memusage.h>
 #include <key_io.h>
@@ -12,12 +12,12 @@
 #include <rpc/util.h>
 #include <script/descriptor.h>
 #include <script/interpreter.h>
-#include <script/script.h>
+#include <kernel/script/script.h>
 #include <script/script_error.h>
 #include <script/sign.h>
 #include <script/signingprovider.h>
 #include <script/standard.h>
-#include <streams.h>
+#include <kernel/streams.h>
 #include <test/fuzz/FuzzedDataProvider.h>
 #include <test/fuzz/fuzz.h>
 #include <test/fuzz/util.h>

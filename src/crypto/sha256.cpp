@@ -3,7 +3,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <crypto/sha256.h>
-#include <crypto/common.h>
+#include <kernel/crypto/common.h>
 
 #include <assert.h>
 #include <string.h>

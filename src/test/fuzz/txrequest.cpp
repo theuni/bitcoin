@@ -2,10 +2,10 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <crypto/common.h>
+#include <kernel/crypto/common.h>
 #include <crypto/sha256.h>
-#include <crypto/siphash.h>
-#include <primitives/transaction.h>
+#include <kernel/crypto/siphash.h>
+#include <kernel/primitives/transaction.h>
 #include <test/fuzz/fuzz.h>
 #include <txrequest.h>
 

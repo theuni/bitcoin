@@ -12,10 +12,10 @@
 
 #include <qt/guiutil.h>
 
-#include <clientversion.h>
+#include <kernel/clientversion.h>
 #include <init.h>
 #include <util/system.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 
 #include <stdio.h>
 

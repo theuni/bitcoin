@@ -17,7 +17,7 @@
 #include <interfaces/node.h>
 #include <validation.h> // for DEFAULT_SCRIPTCHECK_THREADS and MAX_SCRIPTCHECK_THREADS
 #include <netbase.h>
-#include <txdb.h> // for -dbcache defaults
+#include <kernel/txdb.h> // for -dbcache defaults
 
 #include <QDataWidgetMapper>
 #include <QDir>

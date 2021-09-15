@@ -7,7 +7,7 @@
 #endif
 
 #include <chainparams.h>
-#include <chainparamsbase.h>
+#include <kernel/chainparamsbase.h>
 #include <logging.h>
 #include <util/system.h>
 #include <util/translation.h>

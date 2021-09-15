@@ -5,11 +5,11 @@
 
 #include <rpc/rawtransaction_util.h>
 
-#include <coins.h>
+#include <kernel/coins.h>
 #include <core_io.h>
 #include <key_io.h>
 #include <policy/policy.h>
-#include <primitives/transaction.h>
+#include <kernel/primitives/transaction.h>
 #include <rpc/request.h>
 #include <rpc/util.h>
 #include <script/sign.h>
@@ -17,7 +17,7 @@
 #include <tinyformat.h>
 #include <univalue.h>
 #include <util/rbf.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/translation.h>
 
 CMutableTransaction ConstructTransaction(const UniValue& inputs_in, const UniValue& outputs_in, const UniValue& locktime, bool rbf)

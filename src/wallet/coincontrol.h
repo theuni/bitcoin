@@ -8,7 +8,7 @@
 #include <outputtype.h>
 #include <policy/feerate.h>
 #include <policy/fees.h>
-#include <primitives/transaction.h>
+#include <kernel/primitives/transaction.h>
 #include <script/standard.h>
 
 #include <optional>

@@ -2,11 +2,11 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <consensus/validation.h>
+#include <kernel/consensus/validation.h>
 #include <policy/packages.h>
-#include <primitives/transaction.h>
-#include <uint256.h>
-#include <util/hasher.h>
+#include <kernel/primitives/transaction.h>
+#include <kernel/uint256.h>
+#include <kernel/util/hasher.h>
 
 #include <numeric>
 #include <unordered_set>

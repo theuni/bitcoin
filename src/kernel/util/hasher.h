@@ -5,9 +5,9 @@
 #ifndef BITCOIN_UTIL_HASHER_H
 #define BITCOIN_UTIL_HASHER_H
 
-#include <crypto/siphash.h>
-#include <primitives/transaction.h>
-#include <uint256.h>
+#include <kernel/crypto/siphash.h>
+#include <kernel/primitives/transaction.h>
+#include <kernel/uint256.h>
 
 class SaltedTxidHasher
 {

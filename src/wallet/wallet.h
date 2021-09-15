@@ -6,7 +6,7 @@
 #ifndef BITCOIN_WALLET_WALLET_H
 #define BITCOIN_WALLET_WALLET_H
 
-#include <amount.h>
+#include <kernel/amount.h>
 #include <interfaces/chain.h>
 #include <interfaces/handler.h>
 #include <outputtype.h>
@@ -14,7 +14,7 @@
 #include <psbt.h>
 #include <tinyformat.h>
 #include <util/message.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/string.h>
 #include <util/system.h>
 #include <util/ui_change_type.h>

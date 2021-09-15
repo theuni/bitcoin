@@ -8,7 +8,7 @@
 #include <script/descriptor.h>
 #include <script/signingprovider.h>
 #include <tinyformat.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/string.h>
 #include <util/translation.h>
 

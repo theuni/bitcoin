@@ -6,21 +6,21 @@
 #include <config/bitcoin-config.h>
 #endif
 
-#include <clientversion.h>
-#include <coins.h>
-#include <consensus/consensus.h>
+#include <kernel/clientversion.h>
+#include <kernel/coins.h>
+#include <kernel/consensus/consensus.h>
 #include <core_io.h>
 #include <key_io.h>
 #include <policy/policy.h>
 #include <policy/rbf.h>
-#include <primitives/transaction.h>
-#include <script/script.h>
+#include <kernel/primitives/transaction.h>
+#include <kernel/script/script.h>
 #include <script/sign.h>
 #include <script/signingprovider.h>
 #include <univalue.h>
 #include <util/moneystr.h>
 #include <util/rbf.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/string.h>
 #include <util/system.h>
 #include <util/translation.h>

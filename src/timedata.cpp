@@ -10,7 +10,7 @@
 
 #include <netaddress.h>
 #include <node/ui_interface.h>
-#include <sync.h>
+#include <kernel/sync.h>
 #include <util/system.h>
 #include <util/translation.h>
 #include <warnings.h>

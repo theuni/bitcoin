@@ -8,7 +8,7 @@
 #ifndef BITCOIN_TORCONTROL_H
 #define BITCOIN_TORCONTROL_H
 
-#include <fs.h>
+#include <kernel/fs.h>
 #include <netaddress.h>
 
 #include <boost/signals2/signal.hpp>

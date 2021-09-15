@@ -5,8 +5,8 @@
 #include <base58.h>
 
 #include <hash.h>
-#include <uint256.h>
-#include <util/strencodings.h>
+#include <kernel/uint256.h>
+#include <kernel/util/strencodings.h>
 #include <util/string.h>
 
 #include <assert.h>

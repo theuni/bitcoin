@@ -6,7 +6,7 @@
 #include <bench/data.h>
 
 #include <rpc/blockchain.h>
-#include <streams.h>
+#include <kernel/streams.h>
 #include <test/util/setup_common.h>
 #include <validation.h>
 

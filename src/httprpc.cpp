@@ -9,7 +9,7 @@
 #include <httpserver.h>
 #include <rpc/protocol.h>
 #include <rpc/server.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/system.h>
 #include <util/translation.h>
 #include <walletinitinterface.h>

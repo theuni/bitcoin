@@ -10,7 +10,7 @@
 #include <qt/peertablemodel.h>
 #include <qt/peertablesortproxy.h>
 
-#include <clientversion.h>
+#include <kernel/clientversion.h>
 #include <interfaces/handler.h>
 #include <interfaces/node.h>
 #include <net.h>

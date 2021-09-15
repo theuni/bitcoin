@@ -2,13 +2,13 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <amount.h>
-#include <arith_uint256.h>
-#include <compressor.h>
+#include <kernel/amount.h>
+#include <kernel/arith_uint256.h>
+#include <kernel/compressor.h>
 #include <consensus/merkle.h>
 #include <core_io.h>
-#include <crypto/common.h>
-#include <crypto/siphash.h>
+#include <kernel/crypto/common.h>
+#include <kernel/crypto/siphash.h>
 #include <key_io.h>
 #include <memusage.h>
 #include <netbase.h>
@@ -17,19 +17,19 @@
 #include <protocol.h>
 #include <pubkey.h>
 #include <script/standard.h>
-#include <serialize.h>
-#include <streams.h>
+#include <kernel/serialize.h>
+#include <kernel/streams.h>
 #include <test/fuzz/FuzzedDataProvider.h>
 #include <test/fuzz/fuzz.h>
 #include <test/fuzz/util.h>
-#include <uint256.h>
+#include <kernel/uint256.h>
 #include <util/check.h>
 #include <util/moneystr.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/string.h>
 #include <util/system.h>
 #include <util/time.h>
-#include <version.h>
+#include <kernel/version.h>
 
 #include <cassert>
 #include <chrono>

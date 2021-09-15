@@ -10,14 +10,14 @@
 #include <init.h>
 
 #include <addrman.h>
-#include <amount.h>
+#include <kernel/amount.h>
 #include <banman.h>
 #include <blockfilter.h>
-#include <chain.h>
+#include <kernel/chain.h>
 #include <chainparams.h>
 #include <compat/sanity.h>
 #include <deploymentstatus.h>
-#include <fs.h>
+#include <kernel/fs.h>
 #include <hash.h>
 #include <httprpc.h>
 #include <httpserver.h>
@@ -50,10 +50,10 @@
 #include <script/sigcache.h>
 #include <script/standard.h>
 #include <shutdown.h>
-#include <sync.h>
+#include <kernel/sync.h>
 #include <timedata.h>
 #include <torcontrol.h>
-#include <txdb.h>
+#include <kernel/txdb.h>
 #include <txmempool.h>
 #include <txorphanage.h>
 #include <util/asmap.h>
@@ -77,7 +77,7 @@
 #include <vector>
 
 #ifndef WIN32
-#include <attributes.h>
+#include <kernel/attributes.h>
 #include <cerrno>
 #include <signal.h>
 #include <sys/stat.h>

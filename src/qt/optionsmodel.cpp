@@ -16,7 +16,7 @@
 #include <mapport.h>
 #include <net.h>
 #include <netbase.h>
-#include <txdb.h>       // for -dbcache defaults
+#include <kernel/txdb.h>       // for -dbcache defaults
 #include <util/string.h>
 #include <validation.h> // For DEFAULT_SCRIPTCHECK_THREADS
 

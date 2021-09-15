@@ -3,12 +3,12 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <amount.h>
-#include <chain.h>
+#include <kernel/amount.h>
+#include <kernel/chain.h>
 #include <chainparams.h>
-#include <consensus/consensus.h>
-#include <consensus/params.h>
-#include <consensus/validation.h>
+#include <kernel/consensus/consensus.h>
+#include <kernel/consensus/params.h>
+#include <kernel/consensus/validation.h>
 #include <core_io.h>
 #include <deploymentinfo.h>
 #include <deploymentstatus.h>
@@ -24,13 +24,13 @@
 #include <rpc/server.h>
 #include <rpc/util.h>
 #include <script/descriptor.h>
-#include <script/script.h>
+#include <kernel/script/script.h>
 #include <script/signingprovider.h>
 #include <shutdown.h>
 #include <txmempool.h>
 #include <univalue.h>
 #include <util/fees.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/string.h>
 #include <util/system.h>
 #include <util/translation.h>

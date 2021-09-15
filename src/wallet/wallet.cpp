@@ -5,11 +5,11 @@
 
 #include <wallet/wallet.h>
 
-#include <chain.h>
-#include <consensus/consensus.h>
-#include <consensus/validation.h>
+#include <kernel/chain.h>
+#include <kernel/consensus/consensus.h>
+#include <kernel/consensus/validation.h>
 #include <external_signer.h>
-#include <fs.h>
+#include <kernel/fs.h>
 #include <interfaces/chain.h>
 #include <interfaces/wallet.h>
 #include <key.h>
@@ -17,11 +17,11 @@
 #include <outputtype.h>
 #include <policy/fees.h>
 #include <policy/policy.h>
-#include <primitives/block.h>
-#include <primitives/transaction.h>
+#include <kernel/primitives/block.h>
+#include <kernel/primitives/transaction.h>
 #include <psbt.h>
 #include <script/descriptor.h>
-#include <script/script.h>
+#include <kernel/script/script.h>
 #include <script/signingprovider.h>
 #include <txmempool.h>
 #include <util/bip32.h>

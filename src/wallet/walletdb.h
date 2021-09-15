@@ -6,7 +6,7 @@
 #ifndef BITCOIN_WALLET_WALLETDB_H
 #define BITCOIN_WALLET_WALLETDB_H
 
-#include <amount.h>
+#include <kernel/amount.h>
 #include <script/sign.h>
 #include <wallet/db.h>
 #include <wallet/walletutil.h>

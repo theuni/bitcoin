@@ -6,11 +6,11 @@
 #include <config/bitcoin-config.h>
 #endif
 
-#include <sync.h>
+#include <kernel/sync.h>
 
 #include <logging.h>
 #include <tinyformat.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/threadnames.h>
 
 #include <map>

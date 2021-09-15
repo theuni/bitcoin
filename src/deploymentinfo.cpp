@@ -4,7 +4,7 @@
 
 #include <deploymentinfo.h>
 
-#include <consensus/params.h>
+#include <kernel/consensus/params.h>
 
 const struct VBDeploymentInfo VersionBitsDeploymentInfo[Consensus::MAX_VERSION_BITS_DEPLOYMENTS] = {
     {

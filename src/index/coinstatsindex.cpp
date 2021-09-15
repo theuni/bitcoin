@@ -3,12 +3,12 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <chainparams.h>
-#include <coins.h>
+#include <kernel/coins.h>
 #include <crypto/muhash.h>
 #include <index/coinstatsindex.h>
 #include <node/blockstorage.h>
-#include <serialize.h>
-#include <txdb.h>
+#include <kernel/serialize.h>
+#include <kernel/txdb.h>
 #include <undo.h>
 #include <util/system.h>
 #include <validation.h>

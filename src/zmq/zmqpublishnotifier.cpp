@@ -4,11 +4,11 @@
 
 #include <zmq/zmqpublishnotifier.h>
 
-#include <chain.h>
+#include <kernel/chain.h>
 #include <chainparams.h>
 #include <node/blockstorage.h>
 #include <rpc/server.h>
-#include <streams.h>
+#include <kernel/streams.h>
 #include <util/system.h>
 #include <validation.h> // For cs_main
 #include <zmq/zmqutil.h>

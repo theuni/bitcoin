@@ -5,7 +5,7 @@
 #ifndef BITCOIN_UTIL_SPANPARSING_H
 #define BITCOIN_UTIL_SPANPARSING_H
 
-#include <span.h>
+#include <kernel/span.h>
 
 #include <string>
 #include <vector>

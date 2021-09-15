@@ -14,12 +14,12 @@
 #include <config/bitcoin-config.h>
 #endif
 
-#include <attributes.h>
+#include <kernel/attributes.h>
 #include <compat.h>
 #include <compat/assumptions.h>
-#include <fs.h>
+#include <kernel/fs.h>
 #include <logging.h>
-#include <sync.h>
+#include <kernel/sync.h>
 #include <tinyformat.h>
 #include <util/settings.h>
 #include <util/time.h>

@@ -5,10 +5,10 @@
 #ifndef BITCOIN_KERNEL_CHAINPARAMS_H
 #define BITCOIN_KERNEL_CHAINPARAMS_H
 
-#include <chainparamsbase.h>
-#include <consensus/params.h>
-#include <primitives/block.h>
-#include <util/hash_type.h>
+#include <kernel/chainparamsbase.h>
+#include <kernel/consensus/params.h>
+#include <kernel/primitives/block.h>
+#include <kernel/util/hash_type.h>
 
 #include <memory>
 #include <string>

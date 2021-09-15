@@ -4,7 +4,7 @@
 
 
 #include <txrequest.h>
-#include <uint256.h>
+#include <kernel/uint256.h>
 
 #include <test/util/setup_common.h>
 

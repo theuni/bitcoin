@@ -4,8 +4,8 @@
 
 #include <consensus/tx_check.h>
 
-#include <primitives/transaction.h>
-#include <consensus/validation.h>
+#include <kernel/primitives/transaction.h>
+#include <kernel/consensus/validation.h>
 
 bool CheckTransaction(const CTransaction& tx, TxValidationState& state)
 {

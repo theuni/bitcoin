@@ -5,7 +5,7 @@
 #ifndef BITCOIN_SCRIPT_KEYORIGIN_H
 #define BITCOIN_SCRIPT_KEYORIGIN_H
 
-#include <serialize.h>
+#include <kernel/serialize.h>
 #include <vector>
 
 struct KeyOriginInfo

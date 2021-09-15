@@ -4,7 +4,7 @@
 
 #include <merkleblock.h>
 #include <test/util/setup_common.h>
-#include <uint256.h>
+#include <kernel/uint256.h>
 
 #include <boost/test/unit_test.hpp>
 

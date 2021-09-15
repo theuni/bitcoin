@@ -6,14 +6,14 @@
 #ifndef BITCOIN_HASH_H
 #define BITCOIN_HASH_H
 
-#include <attributes.h>
-#include <crypto/common.h>
+#include <kernel/attributes.h>
+#include <kernel/crypto/common.h>
 #include <crypto/ripemd160.h>
 #include <crypto/sha256.h>
-#include <prevector.h>
-#include <serialize.h>
-#include <uint256.h>
-#include <version.h>
+#include <kernel/prevector.h>
+#include <kernel/serialize.h>
+#include <kernel/uint256.h>
+#include <kernel/version.h>
 
 #include <string>
 #include <vector>

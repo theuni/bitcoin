@@ -5,7 +5,7 @@
 #ifndef BITCOIN_WALLET_RPCWALLET_H
 #define BITCOIN_WALLET_RPCWALLET_H
 
-#include <span.h>
+#include <kernel/span.h>
 
 #include <any>
 #include <memory>

@@ -6,9 +6,9 @@
 #ifndef BITCOIN_WALLET_DB_H
 #define BITCOIN_WALLET_DB_H
 
-#include <clientversion.h>
-#include <fs.h>
-#include <streams.h>
+#include <kernel/clientversion.h>
+#include <kernel/fs.h>
+#include <kernel/streams.h>
 #include <support/allocators/secure.h>
 
 #include <atomic>

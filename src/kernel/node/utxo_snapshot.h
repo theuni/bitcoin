@@ -6,8 +6,8 @@
 #ifndef BITCOIN_NODE_UTXO_SNAPSHOT_H
 #define BITCOIN_NODE_UTXO_SNAPSHOT_H
 
-#include <uint256.h>
-#include <serialize.h>
+#include <kernel/uint256.h>
+#include <kernel/serialize.h>
 
 //! Metadata describing a serialized version of a UTXO set from which an
 //! assumeutxo CChainState can be constructed.

@@ -2,17 +2,17 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <amount.h>
+#include <kernel/amount.h>
 #include <chainparams.h>
-#include <chainparamsbase.h>
-#include <coins.h>
+#include <kernel/chainparamsbase.h>
+#include <kernel/coins.h>
 #include <consensus/tx_check.h>
 #include <consensus/tx_verify.h>
-#include <consensus/validation.h>
+#include <kernel/consensus/validation.h>
 #include <key.h>
 #include <node/coinstats.h>
 #include <policy/policy.h>
-#include <primitives/transaction.h>
+#include <kernel/primitives/transaction.h>
 #include <pubkey.h>
 #include <test/fuzz/FuzzedDataProvider.h>
 #include <test/fuzz/fuzz.h>

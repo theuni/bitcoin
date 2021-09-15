@@ -5,7 +5,7 @@
 #ifndef BITCOIN_WALLET_CRYPTER_H
 #define BITCOIN_WALLET_CRYPTER_H
 
-#include <serialize.h>
+#include <kernel/serialize.h>
 #include <support/allocators/secure.h>
 #include <script/signingprovider.h>
 

@@ -5,18 +5,18 @@
 #include <test/data/script_tests.json.h>
 
 #include <core_io.h>
-#include <fs.h>
+#include <kernel/fs.h>
 #include <key.h>
 #include <rpc/util.h>
-#include <script/script.h>
+#include <kernel/script/script.h>
 #include <script/script_error.h>
 #include <script/sigcache.h>
 #include <script/sign.h>
 #include <script/signingprovider.h>
-#include <streams.h>
+#include <kernel/streams.h>
 #include <test/util/setup_common.h>
 #include <test/util/transaction_utils.h>
-#include <util/strencodings.h>
+#include <kernel/util/strencodings.h>
 #include <util/system.h>
 
 #if defined(HAVE_CONSENSUS_LIB)

@@ -6,7 +6,7 @@
 #define BITCOIN_MEMUSAGE_H
 
 #include <indirectmap.h>
-#include <prevector.h>
+#include <kernel/prevector.h>
 
 #include <stdlib.h>
 
