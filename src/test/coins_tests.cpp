@@ -5,6 +5,7 @@
 #include <attributes.h>
 #include <clientversion.h>
 #include <coins.h>
+#include <memusage.h>
 #include <script/standard.h>
 #include <streams.h>
 #include <test/util/setup_common.h>

@@ -6,8 +6,13 @@
 
 #include <consensus/consensus.h>
 #include <logging.h>
+#include <memusage.h>
 #include <random.h>
 #include <version.h>
+
+size_t Coin::DynamicMemoryUsage() const {
+    return memusage::DynamicUsage(out.scriptPubKey);
+}
 
 bool CCoinsView::GetCoin(const COutPoint &outpoint, Coin &coin) const { return false; }
 uint256 CCoinsView::GetBestBlock() const { return uint256(); }

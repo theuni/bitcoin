@@ -20,6 +20,7 @@
 #include <boost/signals2/signal.hpp>
 
 #include <unordered_map>
+#include <unordered_set>
 
 enum class OutputType;
 struct bilingual_str;

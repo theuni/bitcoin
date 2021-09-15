@@ -7,8 +7,6 @@
 #define BITCOIN_COINS_H
 
 #include <compressor.h>
-#include <core_memusage.h>
-#include <memusage.h>
 #include <primitives/transaction.h>
 #include <serialize.h>
 #include <uint256.h>
@@ -80,9 +78,7 @@ public:
         return out.IsNull();
     }
 
-    size_t DynamicMemoryUsage() const {
-        return memusage::DynamicUsage(out.scriptPubKey);
-    }
+    size_t DynamicMemoryUsage() const;
 };
 
 /**
