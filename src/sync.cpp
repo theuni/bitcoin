@@ -23,11 +23,6 @@
 #if !defined(HAVE_THREAD_LOCAL)
 static_assert(false, "thread_local is not supported");
 #endif
-void PrintLockContention(const char* pszName, const char* pszFile, int nLine)
-{
-    LogPrintf("LOCKCONTENTION: %s\n", pszName);
-    LogPrintf("Locker: %s:%d\n", pszFile, nLine);
-}
 #endif /* DEBUG_LOCKCONTENTION */
 
 #ifdef DEBUG_LOCKORDER
@@ -344,3 +339,26 @@ bool LockStackEmpty()
     return true;
 #endif
 }
+
+#ifdef DEBUG_LOCKCONTENTION
+static void PrintLockContention(const char* pszName, const char* pszFile, int nLine)
+{
+    LogPrintf("LOCKCONTENTION: %s\n", pszName);
+    LogPrintf("Locker: %s:%d\n", pszFile, nLine);
+}
+#endif
+
+template <typename Base>
+void CheckContentionAndLock(Base* base, const char* pszName, const char* pszFile, int nLine)
+{
+#ifdef DEBUG_LOCKCONTENTION
+    if (!base->try_lock()) {
+        PrintLockContention(pszName, pszFile, nLine);
+#endif
+        base->lock();
+#ifdef DEBUG_LOCKCONTENTION
+        }
+#endif
+}
+template void CheckContentionAndLock(Mutex::UniqueLock*, const char*, const char*, int);
+template void CheckContentionAndLock(RecursiveMutex::UniqueLock*, const char*, const char*, int);
