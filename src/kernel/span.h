@@ -5,6 +5,10 @@
 #ifndef BITCOIN_SPAN_H
 #define BITCOIN_SPAN_H
 
+#if defined(HAVE_CONFIG_H)
+#include <config/bitcoin-config.h>
+#endif
+
 #include <type_traits>
 #include <cstddef>
 #include <algorithm>

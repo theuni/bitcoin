@@ -6,6 +6,10 @@
 #ifndef BITCOIN_SYNC_H
 #define BITCOIN_SYNC_H
 
+#if defined(HAVE_CONFIG_H)
+#include <config/bitcoin-config.h>
+#endif
+
 #include <kernel/threadsafety.h>
 #include <kernel/util/macros.h>
 

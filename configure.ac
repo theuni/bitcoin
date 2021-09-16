@@ -372,9 +372,10 @@ if test "x$enable_debug" = xyes; then
     [AX_CHECK_COMPILE_FLAG([-g],[[DEBUG_CXXFLAGS="$DEBUG_CXXFLAGS -g"]],,[[$CXXFLAG_WERROR]])],
     [[$CXXFLAG_WERROR]])
 
-  AX_CHECK_PREPROC_FLAG([-DDEBUG],[[DEBUG_CPPFLAGS="$DEBUG_CPPFLAGS -DDEBUG"]],,[[$CXXFLAG_WERROR]])
-  AX_CHECK_PREPROC_FLAG([-DDEBUG_LOCKORDER],[[DEBUG_CPPFLAGS="$DEBUG_CPPFLAGS -DDEBUG_LOCKORDER"]],,[[$CXXFLAG_WERROR]])
-  AX_CHECK_PREPROC_FLAG([-DABORT_ON_FAILED_ASSUME],[[DEBUG_CPPFLAGS="$DEBUG_CPPFLAGS -DABORT_ON_FAILED_ASSUME"]],,[[$CXXFLAG_WERROR]])
+  AC_DEFINE(DEBUG, 1, [Define this symbol to build code that takes debug codepaths])
+  AC_DEFINE(DEBUG_LOCKCONTENTION, 1, [Define this symbol to build codepaths that enable lock contention debugging])
+  AC_DEFINE(DEBUG_LOCKORDER, 1, [Define this symbol to build codepaths that enable lockorder debugging])
+  AC_DEFINE(ABORT_ON_FAILED_ASSUME, 1, [Define this symbol to build code that aborts on failed assumptions])
   AX_CHECK_COMPILE_FLAG([-ftrapv],[DEBUG_CXXFLAGS="$DEBUG_CXXFLAGS -ftrapv"],,[[$CXXFLAG_WERROR]])
 fi
 
