@@ -209,10 +209,41 @@ static void pop_lock()
     }
 }
 
+static bool LockHeld(void* mutex)
+{
+    LockData& lockdata = GetLockData();
+    std::lock_guard<std::mutex> lock(lockdata.dd_mutex);
+
+    const LockStack& lock_stack = lockdata.m_lock_stacks[std::this_thread::get_id()];
+    for (const LockStackItem& i : lock_stack) {
+        if (i.first == mutex) return true;
+    }
+
+    return false;
+}
+
+std::string LocksHeld()
+{
+    LockData& lockdata = GetLockData();
+    std::lock_guard<std::mutex> lock(lockdata.dd_mutex);
+
+    const LockStack& lock_stack = lockdata.m_lock_stacks[std::this_thread::get_id()];
+    std::string result;
+    for (const LockStackItem& i : lock_stack)
+        result += i.second.ToString() + std::string("\n");
+    return result;
+}
+
+bool g_debug_lockorder_abort = true;
+
+#endif // DEBUG_LOCKORDER
+
 template <typename MutexType>
 void EnterCritical(const char* pszName, const char* pszFile, int nLine, MutexType* cs, bool fTry)
 {
+#ifdef DEBUG_LOCKORDER
     push_lock(cs, CLockLocation(pszName, pszFile, nLine, fTry, util::ThreadGetInternalName()));
+#endif
 }
 template void EnterCritical(const char*, const char*, int, Mutex*, bool);
 template void EnterCritical(const char*, const char*, int, RecursiveMutex*, bool);
@@ -221,6 +252,7 @@ template void EnterCritical(const char*, const char*, int, std::recursive_mutex*
 
 void CheckLastCritical(void* cs, std::string& lockname, const char* guardname, const char* file, int line)
 {
+#ifdef DEBUG_LOCKORDER
     LockData& lockdata = GetLockData();
     std::lock_guard<std::mutex> lock(lockdata.dd_mutex);
 
@@ -243,44 +275,24 @@ void CheckLastCritical(void* cs, std::string& lockname, const char* guardname, c
         abort();
     }
     throw std::logic_error(strprintf("%s was not most recent critical section locked", guardname));
+#endif
 }
 
 void LeaveCritical()
 {
+#ifdef DEBUG_LOCKORDER
     pop_lock();
-}
-
-std::string LocksHeld()
-{
-    LockData& lockdata = GetLockData();
-    std::lock_guard<std::mutex> lock(lockdata.dd_mutex);
-
-    const LockStack& lock_stack = lockdata.m_lock_stacks[std::this_thread::get_id()];
-    std::string result;
-    for (const LockStackItem& i : lock_stack)
-        result += i.second.ToString() + std::string("\n");
-    return result;
-}
-
-static bool LockHeld(void* mutex)
-{
-    LockData& lockdata = GetLockData();
-    std::lock_guard<std::mutex> lock(lockdata.dd_mutex);
-
-    const LockStack& lock_stack = lockdata.m_lock_stacks[std::this_thread::get_id()];
-    for (const LockStackItem& i : lock_stack) {
-        if (i.first == mutex) return true;
-    }
-
-    return false;
+#endif
 }
 
 template <typename MutexType>
 void AssertLockHeldInternal(const char* pszName, const char* pszFile, int nLine, MutexType* cs)
 {
+#ifdef DEBUG_LOCKORDER
     if (LockHeld(cs)) return;
     tfm::format(std::cerr, "Assertion failed: lock %s not held in %s:%i; locks held:\n%s", pszName, pszFile, nLine, LocksHeld());
     abort();
+#endif
 }
 template void AssertLockHeldInternal(const char*, const char*, int, Mutex*);
 template void AssertLockHeldInternal(const char*, const char*, int, RecursiveMutex*);
@@ -288,15 +300,18 @@ template void AssertLockHeldInternal(const char*, const char*, int, RecursiveMut
 template <typename MutexType>
 void AssertLockNotHeldInternal(const char* pszName, const char* pszFile, int nLine, MutexType* cs)
 {
+#ifdef DEBUG_LOCKORDER
     if (!LockHeld(cs)) return;
     tfm::format(std::cerr, "Assertion failed: lock %s held in %s:%i; locks held:\n%s", pszName, pszFile, nLine, LocksHeld());
     abort();
+#endif
 }
 template void AssertLockNotHeldInternal(const char*, const char*, int, Mutex*);
 template void AssertLockNotHeldInternal(const char*, const char*, int, RecursiveMutex*);
 
 void DeleteLock(void* cs)
 {
+#ifdef DEBUG_LOCKORDER
     LockData& lockdata = GetLockData();
     std::lock_guard<std::mutex> lock(lockdata.dd_mutex);
     const LockPair item = std::make_pair(cs, nullptr);
@@ -312,10 +327,12 @@ void DeleteLock(void* cs)
         lockdata.lockorders.erase(invinvitem);
         lockdata.invlockorders.erase(invit++);
     }
+#endif
 }
 
 bool LockStackEmpty()
 {
+#ifdef DEBUG_LOCKORDER
     LockData& lockdata = GetLockData();
     std::lock_guard<std::mutex> lock(lockdata.dd_mutex);
     const auto it = lockdata.m_lock_stacks.find(std::this_thread::get_id());
@@ -323,8 +340,7 @@ bool LockStackEmpty()
         return true;
     }
     return it->second.empty();
+#else
+    return true;
+#endif
 }
-
-bool g_debug_lockorder_abort = true;
-
-#endif /* DEBUG_LOCKORDER */
