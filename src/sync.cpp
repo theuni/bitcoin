@@ -217,7 +217,7 @@ static bool LockHeld(void* mutex)
     return false;
 }
 
-std::string LocksHeld()
+static std::string LocksHeld()
 {
     LockData& lockdata = GetLockData();
     std::lock_guard<std::mutex> lock(lockdata.dd_mutex);
@@ -304,7 +304,7 @@ void AssertLockNotHeldInternal(const char* pszName, const char* pszFile, int nLi
 template void AssertLockNotHeldInternal(const char*, const char*, int, Mutex*);
 template void AssertLockNotHeldInternal(const char*, const char*, int, RecursiveMutex*);
 
-void DeleteLock(void* cs)
+static void DeleteLock(void* cs)
 {
 #ifdef DEBUG_LOCKORDER
     LockData& lockdata = GetLockData();
@@ -325,7 +325,7 @@ void DeleteLock(void* cs)
 #endif
 }
 
-bool LockStackEmpty()
+static bool LockStackEmpty()
 {
 #ifdef DEBUG_LOCKORDER
     LockData& lockdata = GetLockData();
@@ -348,17 +348,58 @@ static void PrintLockContention(const char* pszName, const char* pszFile, int nL
 }
 #endif
 
-template <typename Base>
-void CheckContentionAndLock(Base* base, const char* pszName, const char* pszFile, int nLine)
+template <typename MutexType>
+static void Enter(MutexType* mut, const char* pszName, const char* pszFile, int nLine)
 {
+    EnterCritical(pszName, pszFile, nLine, mut);
 #ifdef DEBUG_LOCKCONTENTION
-    if (!base->try_lock()) {
+    if (!mut->try_lock()) {
         PrintLockContention(pszName, pszFile, nLine);
 #endif
-        base->lock();
+        mut->lock();
 #ifdef DEBUG_LOCKCONTENTION
         }
 #endif
 }
-template void CheckContentionAndLock(Mutex::UniqueLock*, const char*, const char*, int);
-template void CheckContentionAndLock(RecursiveMutex::UniqueLock*, const char*, const char*, int);
+
+template <typename MutexType>
+static inline bool TryEnter(MutexType* mut, const char* pszName, const char* pszFile, int nLine)
+{
+    EnterCritical(pszName, pszFile, nLine, mut->mutex(), true);
+    mut->try_lock();
+    if (!mut->owns_lock())
+        LeaveCritical();
+    return mut->owns_lock();
+}
+
+template <typename Mutex, typename Base>
+UniqueLock<Mutex, Base>::UniqueLock(Mutex& mutexIn, const char* pszName, const char* pszFile, int nLine, bool fTry) : Base(mutexIn, std::defer_lock)
+{
+    if (fTry)
+        TryEnter(this, pszName, pszFile, nLine);
+    else
+        Enter(this, pszName, pszFile, nLine);
+}
+
+template <typename Mutex, typename Base>
+UniqueLock<Mutex, Base>::UniqueLock(Mutex* pmutexIn, const char* pszName, const char* pszFile, int nLine, bool fTry)
+{
+    if (!pmutexIn) return;
+
+    *static_cast<Base*>(this) = Base(*pmutexIn, std::defer_lock);
+    if (fTry)
+        TryEnter(this, pszName, pszFile, nLine);
+    else
+        Enter(this, pszName, pszFile, nLine);
+}
+
+template class UniqueLock<AnnotatedMixin<std::recursive_mutex>, std::unique_lock<std::recursive_mutex> >;
+template class UniqueLock<AnnotatedMixin<std::mutex>, std::unique_lock<std::mutex> >;
+
+template <typename PARENT>
+AnnotatedMixin<PARENT>::~AnnotatedMixin()
+{
+    DeleteLock((void*)this);
+}
+template class AnnotatedMixin<std::mutex>;
+template class AnnotatedMixin<std::recursive_mutex>;
