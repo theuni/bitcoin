@@ -5,7 +5,6 @@
 #include <init/common.h>              // for SetGlobals, UnsetGlobals
 #include <validation.h>               // for ChainstateManager, InitScriptExecutionCache, StopScriptCheckWorkerThreads, UpdateUncommittedBlockStructures, BlockManager, DEFAULT_CHECKBLOCKS, DEFAULT_CHECKLEVEL
 #include <validationinterface.h>      // for GetMainSignals, cs_main, CMainSignals, RegisterSharedValidationInterface, UnregisterSharedValidationInterface, CValidationInterface
-#include <core_io.h>                  // for DecodeHexBlk
 #include <consensus/validation.h>     // for BlockValidationState
 #include <chainparams.h>              // for Params, SelectParams, CChainParams
 #include <node/blockstorage.h>        // for fReindex
@@ -18,6 +17,30 @@ using node::fReindex;
 using node::LoadChainstate;
 
 const extern std::function<std::string(const char*)> G_TRANSLATION_FUN = nullptr;
+
+static std::vector<uint8_t> DecodeHex(const std::string& hex_string) {
+    std::vector<uint8_t> rv;
+    assert(hex_string.size() % 2 == 0);
+    rv.reserve(hex_string.size() / 2);
+
+    for (size_t i = 0; i < hex_string.length(); i += 2) {
+        std::string sub_hex = hex_string.substr(i, 2);
+        auto ul = strtoul(sub_hex.c_str(), NULL, 16);
+        assert(ul <= UINT8_MAX);
+        rv.push_back(ul);
+    }
+    return std::move(rv);
+}
+
+static bool DecodeHexBlk(CBlock& block, const std::string& hex_string) {
+    CDataStream ssBlock(DecodeHex(hex_string), SER_NETWORK, PROTOCOL_VERSION);
+    try {
+        ssBlock >> block;
+    } catch (const std::exception&) {
+        return false;
+    }
+    return true;
+}
 
 // Adapted from rpc/mining.cpp
 class submitblock_StateCatcher final : public CValidationInterface
