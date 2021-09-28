@@ -9,7 +9,6 @@
 #include <chainparams.h>              // for Params, SelectParams, CChainParams
 #include <node/blockstorage.h>        // for fReindex
 #include <util/system.h>              // for gArgs, ArgsManager
-#include <util/thread.h>              // for TraceThread
 #include <scheduler.h>                // for CScheduler
 #include <script/sigcache.h>          // for InitSignatureCache
 
@@ -95,7 +94,7 @@ int main() {
     // START scheduler for RegisterSharedValidationInterface
     CScheduler scheduler{};
     // Start the lightweight task scheduler thread
-    scheduler.m_service_thread = std::thread(util::TraceThread, "scheduler", [&] { scheduler.serviceQueue(); });
+    scheduler.m_service_thread = std::thread([&scheduler] { scheduler.serviceQueue(); });
 
     // Gather some entropy once per minute.
     scheduler.scheduleEvery([]{
