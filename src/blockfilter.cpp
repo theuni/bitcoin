@@ -32,7 +32,8 @@ static const std::map<BlockFilterType, std::string> g_filter_types = {
 static uint64_t MapIntoRange(uint64_t x, uint64_t n)
 {
 #ifdef __SIZEOF_INT128__
-    return (static_cast<unsigned __int128>(x) * static_cast<unsigned __int128>(n)) >> 64;
+    __extension__ using uint128 = unsigned __int128;
+    return (static_cast<uint128>(x) * static_cast<uint128>(n)) >> 64;
 #else
     // To perform the calculation on 64-bit numbers without losing the
     // result to overflow, split the numbers into the most significant and
