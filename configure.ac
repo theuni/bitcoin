@@ -414,6 +414,7 @@ fi
 if test "x$CXXFLAGS_overridden" = "xno"; then
   AX_CHECK_COMPILE_FLAG([-Wall],[WARN_CXXFLAGS="$WARN_CXXFLAGS -Wall"],,[[$CXXFLAG_WERROR]])
   AX_CHECK_COMPILE_FLAG([-Wextra],[WARN_CXXFLAGS="$WARN_CXXFLAGS -Wextra"],,[[$CXXFLAG_WERROR]])
+  AX_CHECK_COMPILE_FLAG([-Wpedantic],[WARN_CXXFLAGS="$WARN_CXXFLAGS -Wpedantic"],,[[$CXXFLAG_WERROR]])
   AX_CHECK_COMPILE_FLAG([-Wgnu],[WARN_CXXFLAGS="$WARN_CXXFLAGS -Wgnu"],,[[$CXXFLAG_WERROR]])
   dnl some compilers will ignore -Wformat-security without -Wformat, so just combine the two here.
   AX_CHECK_COMPILE_FLAG([-Wformat -Wformat-security],[WARN_CXXFLAGS="$WARN_CXXFLAGS -Wformat -Wformat-security"],,[[$CXXFLAG_WERROR]])
