@@ -41,7 +41,7 @@ void HandleError(const leveldb::Status& status);
  */
 const std::vector<unsigned char>& GetObfuscateKey(const CDBWrapper &w);
 
-};
+}
 
 /** Batch of changes queued to be written to a CDBWrapper */
 class CDBBatch

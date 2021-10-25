@@ -300,7 +300,7 @@ bool ParseIntegral(const std::string& str, T* out)
     }
     return true;
 }
-}; // namespace
+} // namespace
 
 bool ParseInt32(const std::string& str, int32_t* out)
 {

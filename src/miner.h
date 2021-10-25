@@ -21,7 +21,7 @@ class CBlockIndex;
 class CChainParams;
 class CScript;
 
-namespace Consensus { struct Params; };
+namespace Consensus { struct Params; }
 
 static const bool DEFAULT_PRINTPRIORITY = false;
 

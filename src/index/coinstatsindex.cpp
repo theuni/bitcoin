@@ -91,7 +91,7 @@ struct DBHashKey {
     }
 };
 
-}; // namespace
+} // namespace
 
 std::unique_ptr<CoinStatsIndex> g_coin_stats_index;
 

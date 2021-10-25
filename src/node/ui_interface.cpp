@@ -31,16 +31,16 @@ static UISignals g_ui_signals;
         return g_ui_signals.signal_name.connect(fn);                                                          \
     }
 
-ADD_SIGNALS_IMPL_WRAPPER(ThreadSafeMessageBox);
-ADD_SIGNALS_IMPL_WRAPPER(ThreadSafeQuestion);
-ADD_SIGNALS_IMPL_WRAPPER(InitMessage);
-ADD_SIGNALS_IMPL_WRAPPER(NotifyNumConnectionsChanged);
-ADD_SIGNALS_IMPL_WRAPPER(NotifyNetworkActiveChanged);
-ADD_SIGNALS_IMPL_WRAPPER(NotifyAlertChanged);
-ADD_SIGNALS_IMPL_WRAPPER(ShowProgress);
-ADD_SIGNALS_IMPL_WRAPPER(NotifyBlockTip);
-ADD_SIGNALS_IMPL_WRAPPER(NotifyHeaderTip);
-ADD_SIGNALS_IMPL_WRAPPER(BannedListChanged);
+ADD_SIGNALS_IMPL_WRAPPER(ThreadSafeMessageBox)
+ADD_SIGNALS_IMPL_WRAPPER(ThreadSafeQuestion)
+ADD_SIGNALS_IMPL_WRAPPER(InitMessage)
+ADD_SIGNALS_IMPL_WRAPPER(NotifyNumConnectionsChanged)
+ADD_SIGNALS_IMPL_WRAPPER(NotifyNetworkActiveChanged)
+ADD_SIGNALS_IMPL_WRAPPER(NotifyAlertChanged)
+ADD_SIGNALS_IMPL_WRAPPER(ShowProgress)
+ADD_SIGNALS_IMPL_WRAPPER(NotifyBlockTip)
+ADD_SIGNALS_IMPL_WRAPPER(NotifyHeaderTip)
+ADD_SIGNALS_IMPL_WRAPPER(BannedListChanged)
 
 bool CClientUIInterface::ThreadSafeMessageBox(const bilingual_str& message, const std::string& caption, unsigned int style) { return g_ui_signals.ThreadSafeMessageBox(message, caption, style).value_or(false);}
 bool CClientUIInterface::ThreadSafeQuestion(const bilingual_str& message, const std::string& non_interactive_message, const std::string& caption, unsigned int style) { return g_ui_signals.ThreadSafeQuestion(message, non_interactive_message, caption, style).value_or(false);}

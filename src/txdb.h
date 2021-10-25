@@ -20,7 +20,7 @@ class CBlockIndex;
 class uint256;
 namespace Consensus {
 struct Params;
-};
+}
 struct bilingual_str;
 
 //! -dbcache default (MiB)

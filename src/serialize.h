@@ -593,7 +593,7 @@ struct VectorFormatter
                 formatter.Unser(s, v.back());
             }
         }
-    };
+    }
 };
 
 /**

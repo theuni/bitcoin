@@ -87,7 +87,7 @@ struct DBHashKey {
     }
 };
 
-}; // namespace
+} // namespace
 
 static std::map<BlockFilterType, BlockFilterIndex> g_filter_indexes;
 

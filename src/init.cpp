@@ -739,7 +739,7 @@ std::set<BlockFilterType> g_enabled_filter_types;
 
     // The log was successful, terminate now.
     std::terminate();
-};
+}
 
 bool AppInitBasicSetup(const ArgsManager& args)
 {

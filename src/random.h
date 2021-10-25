@@ -79,7 +79,7 @@ D GetRandomDuration(typename std::common_type<D>::type max) noexcept
 {
     assert(max.count() > 0);
     return D{GetRand(max.count())};
-};
+}
 constexpr auto GetRandMicros = GetRandomDuration<std::chrono::microseconds>;
 constexpr auto GetRandMillis = GetRandomDuration<std::chrono::milliseconds>;
 int GetRandInt(int nMax) noexcept;
