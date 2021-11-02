@@ -2652,9 +2652,14 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         pfrom.m_limited_node = (!(nServices & NODE_NETWORK) && (nServices & NODE_NETWORK_LIMITED));
 
         if (peer->m_tx_relay != nullptr) {
-            LOCK(peer->m_tx_relay->m_bloom_filter_mutex);
-            peer->m_tx_relay->m_relay_txs = fRelay; // set to true after we get the first filter* message
-            if (fRelay) pfrom.m_relays_txs = true;
+            {
+                LOCK(peer->m_tx_relay->m_bloom_filter_mutex);
+                peer->m_tx_relay->m_relay_txs = fRelay; // set to true after we get the first filter* message
+                if (fRelay) pfrom.m_relays_txs = true;
+            }
+            if (fRelay && m_evictionman) {
+                m_evictionman->UpdateRelaysTxs(pfrom.GetId(), true);
+            }
         }
 
         if((nServices & NODE_WITNESS))
@@ -3962,11 +3967,16 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         }
         else if (peer->m_tx_relay != nullptr)
         {
-            LOCK(peer->m_tx_relay->m_bloom_filter_mutex);
-            peer->m_tx_relay->m_bloom_filter.reset(new CBloomFilter(filter));
-            pfrom.m_bloom_filter_loaded = true;
-            peer->m_tx_relay->m_relay_txs = true;
-            pfrom.m_relays_txs = true;
+            {
+                LOCK(peer->m_tx_relay->m_bloom_filter_mutex);
+                peer->m_tx_relay->m_bloom_filter.reset(new CBloomFilter(filter));
+                pfrom.m_bloom_filter_loaded = true;
+                peer->m_tx_relay->m_relay_txs = true;
+                pfrom.m_relays_txs = true;
+            }
+            if (m_evictionman) {
+                m_evictionman->UpdateRelaysTxs(pfrom.GetId(), true);
+            }
         }
         return;
     }
@@ -4008,11 +4018,16 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         if (peer->m_tx_relay == nullptr) {
             return;
         }
-        LOCK(peer->m_tx_relay->m_bloom_filter_mutex);
-        peer->m_tx_relay->m_bloom_filter = nullptr;
-        pfrom.m_bloom_filter_loaded = false;
-        peer->m_tx_relay->m_relay_txs = true;
-        pfrom.m_relays_txs = true;
+        {
+            LOCK(peer->m_tx_relay->m_bloom_filter_mutex);
+            peer->m_tx_relay->m_bloom_filter = nullptr;
+            pfrom.m_bloom_filter_loaded = false;
+            peer->m_tx_relay->m_relay_txs = true;
+            pfrom.m_relays_txs = true;
+        }
+        if (m_evictionman) {
+            m_evictionman->UpdateRelaysTxs(pfrom.GetId(), true);
+        }
         return;
     }
 

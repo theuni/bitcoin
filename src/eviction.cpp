@@ -325,4 +325,15 @@ void EvictionMan::UpdateRelevantServices(NodeId id, bool relevant)
     }
 }
 
+void EvictionMan::UpdateRelaysTxs(NodeId id, bool relay)
+{
+    LOCK(cs_vNodes);
+    for (auto& node : vNodes) {
+        if (node.id == id) {
+            node.m_relay_txs = relay;
+            break;
+        }
+    }
+}
+
 EvictionMan g_evict;
