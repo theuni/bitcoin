@@ -238,3 +238,11 @@ bool Evictor::RemoveCandidate(NodeId id)
     LOCK(m_candidates_mutex);
     return m_candidates.erase(id) != 0;
 }
+
+void Evictor::UpdateMinPingTime(NodeId id, std::chrono::microseconds ping_time)
+{
+    LOCK(m_candidates_mutex);
+    if (const auto& it = m_candidates.find(id); it != m_candidates.end()) {
+        it->second.m_min_ping_time = std::min(it->second.m_min_ping_time, ping_time);
+    }
+}

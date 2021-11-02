@@ -75,6 +75,9 @@ public:
 
     void AddCandidate(NodeEvictionCandidate candidate);
     bool RemoveCandidate(NodeId id);
+
+    /** A ping-pong round trip has completed successfully. Update minimum ping time. */
+    void UpdateMinPingTime(NodeId id, std::chrono::microseconds ping_time);
 };
 
 #endif // BITCOIN_EVICTION_H

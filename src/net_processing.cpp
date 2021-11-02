@@ -3898,6 +3898,9 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
                     if (ping_time.count() >= 0) {
                         // Let connman know about this successful ping-pong
                         pfrom.PongReceived(ping_time);
+                        if (m_evictor) {
+                            m_evictor->UpdateMinPingTime(pfrom.GetId(), ping_time);
+                        }
                     } else {
                         // This should never happen
                         sProblem = "Timing mishap";
