@@ -139,6 +139,7 @@ BITCOIN_CORE_H = \
   deploymentinfo.h \
   deploymentstatus.h \
   external_signer.h \
+  eviction.h \
   flatfile.h \
   fs.h \
   httprpc.h \
