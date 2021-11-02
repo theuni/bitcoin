@@ -310,6 +310,14 @@ void Evictor::UpdateLastBlockAnnouncementTime(NodeId id, int64_t time)
     }
 }
 
+void Evictor::UpdateSlowChainProtected(NodeId id, bool is_protected)
+{
+    LOCK(m_candidates_mutex);
+    if (const auto& it = m_candidates.find(id); it != m_candidates.end()) {
+        it->second.m_slow_chain_protected = is_protected;
+    }
+}
+
 std::optional<NodeId> Evictor::SelectIncomingNodeToEvict() const
 {
     std::vector<NodeEvictionCandidate> candidates;

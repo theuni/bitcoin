@@ -35,6 +35,7 @@ struct NodeEvictionCandidate
     bool fSuccessfullyConnected;
     int nBlocksInFlight;
     int64_t m_last_block_announcement;
+    bool m_slow_chain_protected;
 };
 
 /**
@@ -98,6 +99,8 @@ public:
     void UpdateBlocksInFlight(NodeId id, bool add);
 
     void UpdateLastBlockAnnouncementTime(NodeId id, int64_t time);
+
+    void UpdateSlowChainProtected(NodeId id, bool is_protected);
 };
 
 #endif // BITCOIN_EVICTION_H
