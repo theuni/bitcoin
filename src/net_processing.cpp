@@ -13,6 +13,7 @@
 #include <consensus/amount.h>
 #include <consensus/validation.h>
 #include <deploymentstatus.h>
+#include <eviction.h>
 #include <hash.h>
 #include <index/blockfilterindex.h>
 #include <merkleblock.h>
@@ -3893,6 +3894,9 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
                     if (ping_time.count() >= 0) {
                         // Let connman know about this successful ping-pong
                         pfrom.PongReceived(ping_time);
+                        if (m_evictionman) {
+                            m_evictionman->PongReceived(pfrom.GetId(), ping_time);
+                        }
                     } else {
                         // This should never happen
                         sProblem = "Timing mishap";

@@ -281,4 +281,15 @@ std::optional<NodeId> EvictionMan::AttemptToEvictConnection()
     return SelectNodeToEvict(std::move(vEvictionCandidates));
 }
 
+void EvictionMan::PongReceived(NodeId id, std::chrono::microseconds ping_time)
+{
+    LOCK(cs_vNodes);
+    for (auto& node : vNodes) {
+        if (node.id == id) {
+            node.m_min_ping_time = std::min(node.m_min_ping_time.load(), ping_time);
+            break;
+        }
+    }
+}
+
 EvictionMan g_evict;

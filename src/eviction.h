@@ -128,6 +128,11 @@ bool RemoveNode(NodeId id);
  *   simultaneously better at all of them than honest peers.
  */
 std::optional<NodeId> AttemptToEvictConnection();
+
+
+/** A ping-pong round trip has completed successfully. Update minimum ping time. */
+void PongReceived(NodeId id, std::chrono::microseconds ping_time);
+
 };
 
 #endif // BITCOIN_EVICTION_H
