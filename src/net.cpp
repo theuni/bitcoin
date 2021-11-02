@@ -808,6 +808,25 @@ size_t CConnman::SocketSendData(CNode& node) const
     return nSentSize;
 }
 
+class EvictionMan
+{
+
+struct NodeEvictionCandidate
+{
+    NodeId id;
+    int64_t nTimeConnected;
+    std::chrono::microseconds m_min_ping_time;
+    int64_t nLastBlockTime;
+    int64_t nLastTXTime;
+    bool fRelevantServices;
+    bool m_relay_txs;
+    bool fBloomFilter;
+    uint64_t nKeyedNetGroup;
+    bool prefer_evict;
+    bool m_is_local;
+    Network m_network;
+};
+
 static bool ReverseCompareNodeMinPingTime(const NodeEvictionCandidate &a, const NodeEvictionCandidate &b)
 {
     return a.m_min_ping_time > b.m_min_ping_time;
@@ -879,6 +898,27 @@ static void EraseLastKElements(
     elements.erase(std::remove_if(elements.end() - eraseSize, elements.end(), predicate), elements.end());
 }
 
+/** Protect desirable or disadvantaged inbound peers from eviction by ratio.
+ *
+ * This function protects half of the peers which have been connected the
+ * longest, to replicate the non-eviction implicit behavior and preclude attacks
+ * that start later.
+ *
+ * Half of these protected spots (1/4 of the total) are reserved for the
+ * following categories of peers, sorted by longest uptime, even if they're not
+ * longest uptime overall:
+ *
+ * - onion peers connected via our tor control service
+ *
+ * - localhost peers, as manually configured hidden services not using
+ *   `-bind=addr[:port]=onion` will not be detected as inbound onion connections
+ *
+ * - I2P peers
+ *
+ * This helps protect these privacy network peers, which tend to be otherwise
+ * disadvantaged under our eviction criteria for their higher min ping times
+ * relative to IPv4/IPv6 peers, and favorise the diversity of peer connections.
+ */
 void ProtectEvictionCandidatesByRatio(std::vector<NodeEvictionCandidate>& eviction_candidates)
 {
     // Protect the half of the remaining nodes which have been connected the longest.
@@ -952,6 +992,13 @@ void ProtectEvictionCandidatesByRatio(std::vector<NodeEvictionCandidate>& evicti
     EraseLastKElements(eviction_candidates, ReverseCompareNodeTimeConnected, remaining_to_protect);
 }
 
+/**
+ * Select an inbound peer to evict after filtering out (protecting) peers having
+ * distinct, difficult-to-forge characteristics. The protection logic picks out
+ * fixed numbers of desirable peers per various criteria, followed by (mostly)
+ * ratios of desirable or disadvantaged peers. If any eviction candidates
+ * remain, the selection logic chooses a peer to evict.
+ */
 [[nodiscard]] std::optional<NodeId> SelectNodeToEvict(std::vector<NodeEvictionCandidate>&& vEvictionCandidates)
 {
     // Protect connections with certain characteristics
@@ -1012,6 +1059,29 @@ void ProtectEvictionCandidatesByRatio(std::vector<NodeEvictionCandidate>& evicti
     return vEvictionCandidates.front().id;
 }
 
+std::vector<CNode*> vNodes;
+Mutex cs_vNodes;
+
+public:
+
+
+void AddNode(CNode* node)
+{
+    vNodes.push_back(node);
+}
+
+bool RemoveNode(NodeId id)
+{
+    LOCK(cs_vNodes);
+    for (auto it = vNodes.begin(); it != vNodes.end(); ++it) {
+        if ((*it)->GetId() == id) {
+            vNodes.erase(it);
+            return true;
+        }
+    }
+    return false;
+}
+
 /** Try to find a connection to evict when the node is full.
  *  Extreme care must be taken to avoid opening the node to attacker
  *   triggered network partitioning.
@@ -1020,7 +1090,7 @@ void ProtectEvictionCandidatesByRatio(std::vector<NodeEvictionCandidate>& evicti
  *   to forge.  In order to partition a node the attacker must be
  *   simultaneously better at all of them than honest peers.
  */
-bool CConnman::AttemptToEvictConnection()
+bool AttemptToEvictConnection()
 {
     std::vector<NodeEvictionCandidate> vEvictionCandidates;
     {
@@ -1056,6 +1126,9 @@ bool CConnman::AttemptToEvictConnection()
     }
     return false;
 }
+};
+
+static EvictionMan g_evict;
 
 void CConnman::AcceptConnection(const ListenSocket& hListenSocket) {
     struct sockaddr_storage sockaddr;
@@ -1144,7 +1217,7 @@ void CConnman::CreateNodeFromAcceptedSocket(SOCKET hSocket,
 
     if (nInbound >= nMaxInbound)
     {
-        if (!AttemptToEvictConnection()) {
+        if (!g_evict.AttemptToEvictConnection()) {
             // No connection to evict, disconnect the new connection
             LogPrint(BCLog::NET, "failed to find an eviction candidate - connection dropped (full)\n");
             CloseSocket(hSocket);
@@ -1173,6 +1246,8 @@ void CConnman::CreateNodeFromAcceptedSocket(SOCKET hSocket,
         LOCK(cs_vNodes);
         vNodes.push_back(pnode);
     }
+
+    g_evict.AddNode(pnode);
 
     // We received a new connection, harvest entropy from the time (and our peer count)
     RandAddEvent((uint32_t)id);
@@ -1214,6 +1289,7 @@ bool CConnman::AddConnection(const std::string& address, ConnectionType conn_typ
 
 void CConnman::DisconnectNodes()
 {
+    std::vector<CNode*> vNodesJustDisconnected;
     {
         LOCK(cs_vNodes);
 
@@ -1233,6 +1309,7 @@ void CConnman::DisconnectNodes()
         {
             if (pnode->fDisconnect)
             {
+                vNodesJustDisconnected.push_back(pnode);
                 // remove from vNodes
                 vNodes.erase(remove(vNodes.begin(), vNodes.end(), pnode), vNodes.end());
 
@@ -1247,6 +1324,9 @@ void CConnman::DisconnectNodes()
                 vNodesDisconnected.push_back(pnode);
             }
         }
+    }
+    for (auto node : vNodesJustDisconnected) {
+        g_evict.RemoveNode(node->GetId());
     }
     {
         // Delete disconnected nodes
@@ -2201,6 +2281,7 @@ void CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFai
         LOCK(cs_vNodes);
         vNodes.push_back(pnode);
     }
+    g_evict.AddNode(pnode);
 }
 
 void CConnman::ThreadMessageHandler()
