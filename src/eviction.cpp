@@ -292,4 +292,15 @@ void EvictionMan::PongReceived(NodeId id, std::chrono::microseconds ping_time)
     }
 }
 
+void EvictionMan::UpdateLatestBlockTime(NodeId id, int64_t time)
+{
+    LOCK(cs_vNodes);
+    for (auto& node : vNodes) {
+        if (node.id == id) {
+            node.nLastBlockTime = time;
+            break;
+        }
+    }
+}
+
 EvictionMan g_evict;
