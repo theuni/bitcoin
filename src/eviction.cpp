@@ -346,4 +346,3 @@ void EvictionMan::UpdateLoadedBloomFilter(NodeId id, bool loaded)
         }
     }
 }
-EvictionMan g_evict;
