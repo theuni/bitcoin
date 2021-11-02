@@ -33,6 +33,7 @@ struct NodeEvictionCandidate
     NetPermissionFlags m_flags;
     bool m_is_inbound;
     bool fSuccessfullyConnected;
+    int nBlocksInFlight;
 };
 
 /**
@@ -92,6 +93,8 @@ public:
     void UpdateLoadedBloomFilter(NodeId id, bool loaded);
 
     void UpdateSuccessfullyConnected(NodeId id, bool connected);
+
+    void UpdateBlocksInFlight(NodeId id, bool add);
 };
 
 #endif // BITCOIN_EVICTION_H

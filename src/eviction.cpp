@@ -294,6 +294,14 @@ void Evictor::UpdateSuccessfullyConnected(NodeId id, bool connected)
     }
 }
 
+void Evictor::UpdateBlocksInFlight(NodeId id, bool add)
+{
+    LOCK(m_candidates_mutex);
+    if (const auto& it = m_candidates.find(id); it != m_candidates.end()) {
+        it->second.nBlocksInFlight += add ? 1 : -1;
+    }
+}
+
 std::optional<NodeId> Evictor::SelectIncomingNodeToEvict() const
 {
     std::vector<NodeEvictionCandidate> candidates;
