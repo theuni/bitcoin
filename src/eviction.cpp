@@ -4,7 +4,6 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <eviction.h>
-#include <net.h>
 
 bool EvictionMan::ReverseCompareNodeMinPingTime(const NodeEvictionCandidate &a, const NodeEvictionCandidate &b)
 {
@@ -238,16 +237,17 @@ void EvictionMan::ProtectEvictionCandidatesByRatio(std::vector<NodeEvictionCandi
     return vEvictionCandidates.front().id;
 }
 
-void EvictionMan::AddNode(CNode* node)
+void EvictionMan::AddNode(NodeEvictionCandidate candidate)
 {
-    vNodes.push_back(node);
+    LOCK(cs_vNodes);
+    vNodes.push_back(std::move(candidate));
 }
 
 bool EvictionMan::RemoveNode(NodeId id)
 {
     LOCK(cs_vNodes);
     for (auto it = vNodes.begin(); it != vNodes.end(); ++it) {
-        if ((*it)->GetId() == id) {
+        if (it->id == id) {
             vNodes.erase(it);
             return true;
         }
@@ -263,41 +263,22 @@ bool EvictionMan::RemoveNode(NodeId id)
  *   to forge.  In order to partition a node the attacker must be
  *   simultaneously better at all of them than honest peers.
  */
-bool EvictionMan::AttemptToEvictConnection()
+std::optional<NodeId> EvictionMan::AttemptToEvictConnection()
 {
-    std::vector<NodeEvictionCandidate> vEvictionCandidates;
     {
-
         LOCK(cs_vNodes);
-        for (const CNode* node : vNodes) {
-            if (node->HasPermission(NetPermissionFlags::NoBan))
-                continue;
-            if (!node->IsInboundConn())
-                continue;
-            if (node->fDisconnect)
-                continue;
-            NodeEvictionCandidate candidate = {node->GetId(), node->nTimeConnected, node->m_min_ping_time,
-                                               node->nLastBlockTime, node->nLastTXTime,
-                                               HasAllDesirableServiceFlags(node->nServices),
-                                               node->m_relays_txs.load(), node->m_bloom_filter_loaded.load(),
-                                               node->nKeyedNetGroup, node->m_prefer_evict, node->addr.IsLocal(),
-                                               node->ConnectedThroughNetwork()};
-            vEvictionCandidates.push_back(candidate);
+        std::vector<NodeEvictionCandidate> vEvictionCandidates;
+        {
+            for (const auto& candidate : vNodes) {
+                if (candidate.m_has_perm_noban)
+                    continue;
+                if (candidate.m_is_inbound)
+                    continue;
+                vEvictionCandidates.push_back(candidate);
+            }
         }
     }
-    const std::optional<NodeId> node_id_to_evict = SelectNodeToEvict(std::move(vEvictionCandidates));
-    if (!node_id_to_evict) {
-        return false;
-    }
-    LOCK(cs_vNodes);
-    for (CNode* pnode : vNodes) {
-        if (pnode->GetId() == *node_id_to_evict) {
-            LogPrint(BCLog::NET, "selected %s connection for eviction peer=%d; disconnecting\n", pnode->ConnectionTypeAsString(), pnode->GetId());
-            pnode->fDisconnect = true;
-            return true;
-        }
-    }
-    return false;
+    return SelectNodeToEvict(std::move(vEvictionCandidates));
 }
 
 EvictionMan g_evict;

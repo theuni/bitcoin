@@ -896,11 +896,26 @@ void CConnman::CreateNodeFromAcceptedSocket(SOCKET hSocket,
 
     if (nInbound >= nMaxInbound)
     {
-        if (!m_evictionman || !m_evictionman->AttemptToEvictConnection()) {
+        if (!m_evictionman) {
+            // No eviction manager, disconnect the new connection
+            LogPrint(BCLog::NET, "eviction manager not loaded - connection dropped (full)\n");
+            CloseSocket(hSocket);
+            return;
+        }
+        auto node_id_to_evict = m_evictionman->AttemptToEvictConnection();
+        if (!node_id_to_evict) {
             // No connection to evict, disconnect the new connection
             LogPrint(BCLog::NET, "failed to find an eviction candidate - connection dropped (full)\n");
             CloseSocket(hSocket);
             return;
+        }
+        LOCK(cs_vNodes);
+        for (CNode* pnode : vNodes) {
+            if (pnode->GetId() == *node_id_to_evict) {
+                LogPrint(BCLog::NET, "selected %s connection for eviction peer=%d; disconnecting\n", pnode->ConnectionTypeAsString(), pnode->GetId());
+                pnode->fDisconnect = true;
+                break;
+            }
         }
     }
 
@@ -926,7 +941,22 @@ void CConnman::CreateNodeFromAcceptedSocket(SOCKET hSocket,
         vNodes.push_back(pnode);
     }
     if (m_evictionman) {
-        m_evictionman->AddNode(pnode);
+        NodeEvictionCandidate candidate = { pnode->GetId(), // ok, already set
+                                            pnode->nTimeConnected, // ok, already set
+                                            std::chrono::microseconds::max(), // m_min_ping_time, set by ProcessMessage
+                                            0, // nLastBlockTime set by ProcessBlock
+                                            0, // nLastTxTime set by ProcessMessage
+                                            false, // fRelevantServices set by ProcessMessage handshake
+                                            false, // m_relays_txs set by ProcessMessage handshake
+                                            false, // m_bloom_filter_loaded set by ProcessMessage at any time
+                                            pnode->nKeyedNetGroup, // ok, already set
+                                            pnode->m_prefer_evict, // ok, already set
+                                            pnode->addr.IsLocal(), // ok, already set
+                                            pnode->ConnectedThroughNetwork(), // ok, already set
+                                            true, // m_is_inbound;
+                                            pnode->HasPermission(NetPermissionFlags::NoBan)
+                                          };
+        m_evictionman->AddNode(std::move(candidate));
     }
 
     // We received a new connection, harvest entropy from the time (and our peer count)
@@ -1964,7 +1994,22 @@ void CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFai
         vNodes.push_back(pnode);
     }
     if (m_evictionman) {
-        m_evictionman->AddNode(pnode);
+        NodeEvictionCandidate candidate = { pnode->GetId(), // ok, already set
+                                            pnode->nTimeConnected, // ok, already set
+                                            std::chrono::microseconds::max(), // m_min_ping_time, set by ProcessMessage
+                                            0, // nLastBlockTime set by ProcessBlock
+                                            0, // nLastTxTime set by ProcessMessage
+                                            false, // fRelevantServices set by ProcessMessage handshake
+                                            false, // m_relays_txs set by ProcessMessage handshake
+                                            false, // m_bloom_filter_loaded set by ProcessMessage at any time
+                                            pnode->nKeyedNetGroup, // ok, already set
+                                            pnode->m_prefer_evict, // ok, already set
+                                            pnode->addr.IsLocal(), // ok, already set
+                                            pnode->ConnectedThroughNetwork(), // ok, already set
+                                            false, // m_is_inbound;
+                                            pnode->HasPermission(NetPermissionFlags::NoBan)
+                                          };
+        m_evictionman->AddNode(std::move(candidate));
     }
 }
 

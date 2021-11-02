@@ -29,6 +29,8 @@ struct NodeEvictionCandidate
     bool prefer_evict;
     bool m_is_local;
     Network m_network;
+    bool m_is_inbound;
+    bool m_has_perm_noban;
 };
 
 class EvictionMan
@@ -73,12 +75,12 @@ static void ProtectEvictionCandidatesByRatio(std::vector<NodeEvictionCandidate>&
  */
 [[nodiscard]] static std::optional<NodeId> SelectNodeToEvict(std::vector<NodeEvictionCandidate>&& vEvictionCandidates);
 
-std::vector<CNode*> vNodes;
+std::vector<NodeEvictionCandidate> vNodes;
 Mutex cs_vNodes;
 
 public:
 
-void AddNode(CNode* node);
+void AddNode(NodeEvictionCandidate candidate);
 bool RemoveNode(NodeId id);
 
 /** Try to find a connection to evict when the node is full.
@@ -89,7 +91,7 @@ bool RemoveNode(NodeId id);
  *   to forge.  In order to partition a node the attacker must be
  *   simultaneously better at all of them than honest peers.
  */
-bool AttemptToEvictConnection();
+std::optional<NodeId> AttemptToEvictConnection();
 };
 
 #endif // BITCOIN_EVICTION_H
