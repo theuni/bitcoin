@@ -2516,7 +2516,11 @@ void PeerManagerImpl::ProcessBlock(CNode& node, const std::shared_ptr<const CBlo
     bool new_block{false};
     m_chainman.ProcessNewBlock(m_chainparams, block, force_processing, &new_block);
     if (new_block) {
-        node.nLastBlockTime = GetTime();
+        int64_t curtime = GetTime();
+        node.nLastBlockTime = curtime;
+        if (m_evictor) {
+            m_evictor->UpdateLatestBlockTime(node.GetId(), curtime);
+        }
     } else {
         LOCK(cs_main);
         mapBlockSource.erase(block->GetHash());
