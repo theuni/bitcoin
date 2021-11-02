@@ -302,6 +302,14 @@ void Evictor::UpdateBlocksInFlight(NodeId id, bool add)
     }
 }
 
+void Evictor::UpdateLastBlockAnnouncementTime(NodeId id, int64_t time)
+{
+    LOCK(m_candidates_mutex);
+    if (const auto& it = m_candidates.find(id); it != m_candidates.end()) {
+        it->second.m_last_block_announcement = time;
+    }
+}
+
 std::optional<NodeId> Evictor::SelectIncomingNodeToEvict() const
 {
     std::vector<NodeEvictionCandidate> candidates;
