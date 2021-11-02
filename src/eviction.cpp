@@ -368,3 +368,14 @@ void EvictionMan::UpdateBlocksInFlight(NodeId id, bool add)
         }
     }
 }
+
+void EvictionMan::UpdateLastBlockAnnouncementTime(NodeId id, int64_t time)
+{
+    LOCK(cs_vNodes);
+    for (auto& node : vNodes) {
+        if (node.id == id) {
+            node.m_last_block_announcement = time;
+            break;
+        }
+    }
+}

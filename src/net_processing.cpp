@@ -2165,7 +2165,11 @@ void PeerManagerImpl::ProcessHeadersMessage(CNode& pfrom, const Peer& peer,
         // are still present, however, as belt-and-suspenders.
 
         if (received_new_header && pindexLast->nChainWork > m_chainman.ActiveChain().Tip()->nChainWork) {
-            nodestate->m_last_block_announcement = GetTime();
+            int64_t announce_time = GetTime();
+            nodestate->m_last_block_announcement = announce_time;
+            if (m_evictionman) {
+                m_evictionman->UpdateLastBlockAnnouncementTime(pfrom.GetId(), announce_time);
+            }
         }
 
         if (nCount == MAX_HEADERS_RESULTS) {
@@ -3535,7 +3539,11 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         // If this was a new header with more work than our tip, update the
         // peer's last block announcement time
         if (received_new_header && pindex->nChainWork > m_chainman.ActiveChain().Tip()->nChainWork) {
-            nodestate->m_last_block_announcement = GetTime();
+            int64_t announce_time = GetTime();
+            nodestate->m_last_block_announcement = announce_time;
+            if (m_evictionman) {
+                m_evictionman->UpdateLastBlockAnnouncementTime(pfrom.GetId(), announce_time);
+            }
         }
 
         std::map<uint256, std::pair<NodeId, std::list<QueuedBlock>::iterator> >::iterator blockInFlightIt = mapBlocksInFlight.find(pindex->GetBlockHash());
