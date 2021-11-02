@@ -303,4 +303,15 @@ void EvictionMan::UpdateLatestBlockTime(NodeId id, int64_t time)
     }
 }
 
+void EvictionMan::UpdateLatestTxTime(NodeId id, int64_t time)
+{
+    LOCK(cs_vNodes);
+    for (auto& node : vNodes) {
+        if (node.id == id) {
+            node.nLastTXTime = time;
+            break;
+        }
+    }
+}
+
 EvictionMan g_evict;

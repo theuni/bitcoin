@@ -133,6 +133,7 @@ std::optional<NodeId> AttemptToEvictConnection();
 /** A ping-pong round trip has completed successfully. Update minimum ping time. */
 void PongReceived(NodeId id, std::chrono::microseconds ping_time);
 void UpdateLatestBlockTime(NodeId id, int64_t time);
+void UpdateLatestTxTime(NodeId id, int64_t time);
 
 };
 
