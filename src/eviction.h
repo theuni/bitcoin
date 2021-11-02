@@ -84,6 +84,8 @@ public:
     void UpdateLatestTxTime(NodeId id, int64_t time);
 
     void UpdateRelevantServices(NodeId id, bool relevant);
+
+    void UpdateRelaysTxs(NodeId id, bool relay);
 };
 
 #endif // BITCOIN_EVICTION_H

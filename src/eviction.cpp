@@ -269,3 +269,11 @@ void Evictor::UpdateRelevantServices(NodeId id, bool relevant)
         it->second.fRelevantServices = relevant;
     }
 }
+
+void Evictor::UpdateRelaysTxs(NodeId id, bool relay)
+{
+    LOCK(m_candidates_mutex);
+    if (const auto& it = m_candidates.find(id); it != m_candidates.end()) {
+        it->second.m_relay_txs = relay;
+    }
+}
