@@ -425,6 +425,9 @@ public:
         return m_conn_type == ConnectionType::INBOUND;
     }
 
+    ConnectionType GetConnectionType() const {
+        return m_conn_type;
+    }
     bool ExpectServicesFromConn() const {
         switch (m_conn_type) {
             case ConnectionType::INBOUND:

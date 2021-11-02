@@ -6,6 +6,7 @@
 #ifndef BITCOIN_EVICTION_H
 #define BITCOIN_EVICTION_H
 
+#include <connection_types.h>
 #include <netaddress.h>
 #include <sync.h>
 
@@ -32,6 +33,7 @@ struct NodeEvictionCandidate
     Network m_network;
     bool m_is_inbound;
     bool m_has_perm_noban;
+    ConnectionType m_conn_type;
 
     NodeEvictionCandidate() = default;
     NodeEvictionCandidate(const NodeEvictionCandidate& rhs) :
@@ -48,7 +50,9 @@ struct NodeEvictionCandidate
         m_is_local(rhs.m_is_local),
         m_network(rhs.m_network),
         m_is_inbound(rhs.m_is_inbound),
-        m_has_perm_noban(rhs.m_has_perm_noban){}
+        m_has_perm_noban(rhs.m_has_perm_noban),
+        m_conn_type(rhs.m_conn_type),
+        {}
 
     NodeEvictionCandidate& operator=(const NodeEvictionCandidate& rhs) {
         id = rhs.id;
@@ -65,6 +69,7 @@ struct NodeEvictionCandidate
         m_network = rhs.m_network;
         m_is_inbound = rhs.m_is_inbound;
         m_has_perm_noban = rhs.m_has_perm_noban;
+        m_conn_type = rhs.m_conn_type;
         return *this;
     }
 };
