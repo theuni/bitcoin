@@ -134,6 +134,7 @@ std::optional<NodeId> AttemptToEvictConnection();
 void PongReceived(NodeId id, std::chrono::microseconds ping_time);
 void UpdateLatestBlockTime(NodeId id, int64_t time);
 void UpdateLatestTxTime(NodeId id, int64_t time);
+void UpdateRelevantServices(NodeId id, bool relevant);
 
 };
 

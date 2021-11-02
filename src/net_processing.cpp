@@ -2633,6 +2633,11 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         m_connman.PushMessage(&pfrom, msg_maker.Make(NetMsgType::VERACK));
 
         pfrom.nServices = nServices;
+
+        if (m_evictionman) {
+            m_evictionman->UpdateRelevantServices(pfrom.GetId(), HasAllDesirableServiceFlags(nServices));
+        }
+
         pfrom.SetAddrLocal(addrMe);
         {
             LOCK(pfrom.cs_SubVer);
