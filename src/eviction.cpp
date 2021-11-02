@@ -336,4 +336,14 @@ void EvictionMan::UpdateRelaysTxs(NodeId id, bool relay)
     }
 }
 
+void EvictionMan::UpdateLoadedBloomFilter(NodeId id, bool loaded)
+{
+    LOCK(cs_vNodes);
+    for (auto& node : vNodes) {
+        if (node.id == id) {
+            node.fBloomFilter = loaded;
+            break;
+        }
+    }
+}
 EvictionMan g_evict;

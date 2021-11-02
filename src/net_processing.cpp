@@ -3976,6 +3976,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
             }
             if (m_evictionman) {
                 m_evictionman->UpdateRelaysTxs(pfrom.GetId(), true);
+                m_evictionman->UpdateLoadedBloomFilter(pfrom.GetId(), true);
             }
         }
         return;
@@ -4027,6 +4028,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         }
         if (m_evictionman) {
             m_evictionman->UpdateRelaysTxs(pfrom.GetId(), true);
+            m_evictionman->UpdateLoadedBloomFilter(pfrom.GetId(), false);
         }
         return;
     }

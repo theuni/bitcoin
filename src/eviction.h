@@ -136,6 +136,7 @@ void UpdateLatestBlockTime(NodeId id, int64_t time);
 void UpdateLatestTxTime(NodeId id, int64_t time);
 void UpdateRelevantServices(NodeId id, bool relevant);
 void UpdateRelaysTxs(NodeId id, bool relay);
+void UpdateLoadedBloomFilter(NodeId id, bool loaded);
 
 };
 
