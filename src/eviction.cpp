@@ -7,7 +7,7 @@
 
 bool EvictionMan::ReverseCompareNodeMinPingTime(const NodeEvictionCandidate &a, const NodeEvictionCandidate &b)
 {
-    return a.m_min_ping_time > b.m_min_ping_time;
+    return a.m_min_ping_time.load() > b.m_min_ping_time.load();
 }
 
 bool EvictionMan::ReverseCompareNodeTimeConnected(const NodeEvictionCandidate &a, const NodeEvictionCandidate &b)
@@ -265,9 +265,9 @@ bool EvictionMan::RemoveNode(NodeId id)
  */
 std::optional<NodeId> EvictionMan::AttemptToEvictConnection()
 {
+    std::vector<NodeEvictionCandidate> vEvictionCandidates;
     {
         LOCK(cs_vNodes);
-        std::vector<NodeEvictionCandidate> vEvictionCandidates;
         {
             for (const auto& candidate : vNodes) {
                 if (candidate.m_has_perm_noban)

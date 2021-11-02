@@ -9,6 +9,7 @@
 #include <netaddress.h>
 #include <sync.h>
 
+#include <atomic>
 #include <chrono>
 #include <cstdint>
 
@@ -19,18 +20,53 @@ struct NodeEvictionCandidate
 {
     NodeId id;
     int64_t nTimeConnected;
-    std::chrono::microseconds m_min_ping_time;
-    int64_t nLastBlockTime;
-    int64_t nLastTXTime;
+    std::atomic<std::chrono::microseconds> m_min_ping_time;
+    std::atomic<int64_t> nLastBlockTime;
+    std::atomic<int64_t> nLastTXTime;
     bool fRelevantServices;
-    bool m_relay_txs;
-    bool fBloomFilter;
+    std::atomic<bool> m_relay_txs;
+    std::atomic<bool> fBloomFilter;
     uint64_t nKeyedNetGroup;
     bool prefer_evict;
     bool m_is_local;
     Network m_network;
     bool m_is_inbound;
     bool m_has_perm_noban;
+
+    NodeEvictionCandidate() = default;
+    NodeEvictionCandidate(const NodeEvictionCandidate& rhs) :
+        id(rhs.id),
+        nTimeConnected(rhs.nTimeConnected),
+        m_min_ping_time(rhs.m_min_ping_time.load()),
+        nLastBlockTime(rhs.nLastBlockTime.load()),
+        nLastTXTime(rhs.nLastTXTime.load()),
+        fRelevantServices(rhs.fRelevantServices),
+        m_relay_txs(rhs.m_relay_txs.load()),
+        fBloomFilter(rhs.fBloomFilter.load()),
+        nKeyedNetGroup(rhs.nKeyedNetGroup),
+        prefer_evict(rhs.prefer_evict),
+        m_is_local(rhs.m_is_local),
+        m_network(rhs.m_network),
+        m_is_inbound(rhs.m_is_inbound),
+        m_has_perm_noban(rhs.m_has_perm_noban){}
+
+    NodeEvictionCandidate& operator=(const NodeEvictionCandidate& rhs) {
+        id = rhs.id;
+        nTimeConnected = rhs.nTimeConnected;
+        m_min_ping_time = rhs.m_min_ping_time.load();
+        nLastBlockTime = rhs.nLastBlockTime.load();
+        nLastTXTime = rhs.nLastTXTime.load();
+        fRelevantServices = rhs.fRelevantServices;
+        m_relay_txs = rhs.m_relay_txs.load();
+        fBloomFilter = rhs.fBloomFilter.load();
+        nKeyedNetGroup = rhs.nKeyedNetGroup;
+        prefer_evict = rhs.prefer_evict;
+        m_is_local = rhs.m_is_local;
+        m_network = rhs.m_network;
+        m_is_inbound = rhs.m_is_inbound;
+        m_has_perm_noban = rhs.m_has_perm_noban;
+        return *this;
+    }
 };
 
 class EvictionMan

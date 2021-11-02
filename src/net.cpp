@@ -940,22 +940,24 @@ void CConnman::CreateNodeFromAcceptedSocket(SOCKET hSocket,
         LOCK(cs_vNodes);
         vNodes.push_back(pnode);
     }
+    if (m_evictionman) 
+
     if (m_evictionman) {
-        NodeEvictionCandidate candidate = { pnode->GetId(), // ok, already set
-                                            pnode->nTimeConnected, // ok, already set
-                                            std::chrono::microseconds::max(), // m_min_ping_time, set by ProcessMessage
-                                            0, // nLastBlockTime set by ProcessBlock
-                                            0, // nLastTxTime set by ProcessMessage
-                                            false, // fRelevantServices set by ProcessMessage handshake
-                                            false, // m_relays_txs set by ProcessMessage handshake
-                                            false, // m_bloom_filter_loaded set by ProcessMessage at any time
-                                            pnode->nKeyedNetGroup, // ok, already set
-                                            pnode->m_prefer_evict, // ok, already set
-                                            pnode->addr.IsLocal(), // ok, already set
-                                            pnode->ConnectedThroughNetwork(), // ok, already set
-                                            true, // m_is_inbound;
-                                            pnode->HasPermission(NetPermissionFlags::NoBan)
-                                          };
+        NodeEvictionCandidate candidate;
+        candidate.id = pnode->GetId(); // ok, already set
+        candidate.nTimeConnected = pnode->nTimeConnected; // ok, already set
+        candidate.m_min_ping_time = std::chrono::microseconds::max(); // set by ProcessMessage
+        candidate.nLastBlockTime = 0; // set by ProcessBlock
+        candidate.nLastTXTime = 0; // set by ProcessMessage
+        candidate.fRelevantServices = false; // set by ProcessMessage handshake
+        candidate.m_relay_txs = false; // set by ProcessMessage handshake
+        candidate.fBloomFilter = false; // set by ProcessMessage at any time
+        candidate.nKeyedNetGroup = pnode->nKeyedNetGroup; // ok, already set
+        candidate.prefer_evict = pnode->m_prefer_evict; // ok, already set
+        candidate.m_is_local = pnode->addr.IsLocal(); // ok, already set
+        candidate.m_network = pnode->ConnectedThroughNetwork(); // ok, already set
+        candidate.m_is_inbound = false;
+        candidate.m_has_perm_noban = pnode->HasPermission(NetPermissionFlags::NoBan);
         m_evictionman->AddNode(std::move(candidate));
     }
 
@@ -1994,21 +1996,21 @@ void CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFai
         vNodes.push_back(pnode);
     }
     if (m_evictionman) {
-        NodeEvictionCandidate candidate = { pnode->GetId(), // ok, already set
-                                            pnode->nTimeConnected, // ok, already set
-                                            std::chrono::microseconds::max(), // m_min_ping_time, set by ProcessMessage
-                                            0, // nLastBlockTime set by ProcessBlock
-                                            0, // nLastTxTime set by ProcessMessage
-                                            false, // fRelevantServices set by ProcessMessage handshake
-                                            false, // m_relays_txs set by ProcessMessage handshake
-                                            false, // m_bloom_filter_loaded set by ProcessMessage at any time
-                                            pnode->nKeyedNetGroup, // ok, already set
-                                            pnode->m_prefer_evict, // ok, already set
-                                            pnode->addr.IsLocal(), // ok, already set
-                                            pnode->ConnectedThroughNetwork(), // ok, already set
-                                            false, // m_is_inbound;
-                                            pnode->HasPermission(NetPermissionFlags::NoBan)
-                                          };
+        NodeEvictionCandidate candidate;
+        candidate.id = pnode->GetId(); // ok, already set
+        candidate.nTimeConnected = pnode->nTimeConnected; // ok, already set
+        candidate.m_min_ping_time = std::chrono::microseconds::max(); // set by ProcessMessage
+        candidate.nLastBlockTime = 0; // set by ProcessBlock
+        candidate.nLastTXTime = 0; // set by ProcessMessage
+        candidate.fRelevantServices = false; // set by ProcessMessage handshake
+        candidate.m_relay_txs = false; // set by ProcessMessage handshake
+        candidate.fBloomFilter = false; // set by ProcessMessage at any time
+        candidate.nKeyedNetGroup = pnode->nKeyedNetGroup; // ok, already set
+        candidate.prefer_evict = pnode->m_prefer_evict; // ok, already set
+        candidate.m_is_local = pnode->addr.IsLocal(); // ok, already set
+        candidate.m_network = pnode->ConnectedThroughNetwork(); // ok, already set
+        candidate.m_is_inbound = false;
+        candidate.m_has_perm_noban = pnode->HasPermission(NetPermissionFlags::NoBan);
         m_evictionman->AddNode(std::move(candidate));
     }
 }
