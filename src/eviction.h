@@ -6,6 +6,7 @@
 #ifndef BITCOIN_EVICTION_H
 #define BITCOIN_EVICTION_H
 
+#include <connection_types.h>
 #include <netaddress.h>
 #include <net_permissions.h>
 #include <sync.h>
@@ -36,6 +37,7 @@ struct NodeEvictionCandidate
     int nBlocksInFlight;
     int64_t m_last_block_announcement;
     bool m_slow_chain_protected;
+    ConnectionType m_conn_type;
 };
 
 /**

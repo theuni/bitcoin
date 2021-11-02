@@ -1009,7 +1009,8 @@ void CConnman::CreateNodeFromAcceptedSocket(SOCKET hSocket,
                                             false, // fSuccessfullyConnected
                                             0, // nBlocksInFlight
                                             0, // m_last_block_announcement
-                                            false // m_slow_chain_protected
+                                            false, // m_slow_chain_protected
+                                            pnode->m_conn_type, // m_conn_type
                                           };
         m_evictor->AddCandidate(std::move(candidate));
     }
@@ -2077,7 +2078,8 @@ void CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFai
                                             false, // fSuccessfullyConnected
                                             0, // nBlocksInFlight
                                             0, // m_last_block_announcement
-                                            false // m_slow_chain_protected
+                                            false, // m_slow_chain_protected
+                                            pnode->m_conn_type, // m_conn_type
                                           };
         m_evictor->AddCandidate(std::move(candidate));
     }
