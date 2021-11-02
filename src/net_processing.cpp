@@ -3316,7 +3316,11 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
             RelayTransaction(tx.GetHash(), tx.GetWitnessHash());
             m_orphanage.AddChildrenToWorkSet(tx, peer->m_orphan_work_set);
 
-            pfrom.nLastTXTime = GetTime();
+            int64_t curtime = GetTime();
+            pfrom.nLastTXTime = curtime;
+            if (m_evictor) {
+                m_evictor->UpdateLatestTxTime(pfrom.GetId(), curtime);
+            }
 
             LogPrint(BCLog::MEMPOOL, "AcceptToMemoryPool: peer=%d: accepted %s (poolsz %u txn, %u kB)\n",
                 pfrom.GetId(),

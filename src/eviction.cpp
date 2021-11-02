@@ -254,3 +254,11 @@ void Evictor::UpdateLatestBlockTime(NodeId id, int64_t time)
         it->second.nLastBlockTime = time;
     }
 }
+
+void Evictor::UpdateLatestTxTime(NodeId id, int64_t time)
+{
+    LOCK(m_candidates_mutex);
+    if (const auto& it = m_candidates.find(id); it != m_candidates.end()) {
+        it->second.nLastTXTime = time;
+    }
+}

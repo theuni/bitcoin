@@ -80,6 +80,8 @@ public:
     void UpdateMinPingTime(NodeId id, std::chrono::microseconds ping_time);
 
     void UpdateLatestBlockTime(NodeId id, int64_t time);
+
+    void UpdateLatestTxTime(NodeId id, int64_t time);
 };
 
 #endif // BITCOIN_EVICTION_H
