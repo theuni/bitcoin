@@ -62,7 +62,7 @@ static bool CompareNodeBlockRelayOnlyTime(const NodeEvictionCandidate &a, const 
  * disadvantaged under our eviction criteria for their higher min ping times
  * relative to IPv4/IPv6 peers, and favorise the diversity of peer connections.
  */
-void ProtectEvictionCandidatesByRatio(std::vector<NodeEvictionCandidate>& eviction_candidates);
+static void ProtectEvictionCandidatesByRatio(std::vector<NodeEvictionCandidate>& eviction_candidates);
 
 /**
  * Select an inbound peer to evict after filtering out (protecting) peers having
@@ -71,7 +71,7 @@ void ProtectEvictionCandidatesByRatio(std::vector<NodeEvictionCandidate>& evicti
  * ratios of desirable or disadvantaged peers. If any eviction candidates
  * remain, the selection logic chooses a peer to evict.
  */
-[[nodiscard]] std::optional<NodeId> SelectNodeToEvict(std::vector<NodeEvictionCandidate>&& vEvictionCandidates);
+[[nodiscard]] static std::optional<NodeId> SelectNodeToEvict(std::vector<NodeEvictionCandidate>&& vEvictionCandidates);
 
 std::vector<CNode*> vNodes;
 Mutex cs_vNodes;
