@@ -2795,6 +2795,11 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
             m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::SENDCMPCT, fAnnounceUsingCMPCTBLOCK, nCMPCTBLOCKVersion));
         }
         pfrom.fSuccessfullyConnected = true;
+
+        if (m_evictor) {
+            m_evictor->UpdateSuccessfullyConnected(pfrom.GetId(), true);
+        }
+
         return;
     }
 

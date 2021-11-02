@@ -32,6 +32,7 @@ struct NodeEvictionCandidate
     Network m_network;
     NetPermissionFlags m_flags;
     bool m_is_inbound;
+    bool fSuccessfullyConnected;
 };
 
 /**
@@ -89,6 +90,8 @@ public:
     void UpdateRelaysTxs(NodeId id, bool relay);
 
     void UpdateLoadedBloomFilter(NodeId id, bool loaded);
+
+    void UpdateSuccessfullyConnected(NodeId id, bool connected);
 };
 
 #endif // BITCOIN_EVICTION_H

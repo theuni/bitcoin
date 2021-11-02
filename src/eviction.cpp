@@ -286,6 +286,14 @@ void Evictor::UpdateLoadedBloomFilter(NodeId id, bool loaded)
     }
 }
 
+void Evictor::UpdateSuccessfullyConnected(NodeId id, bool connected)
+{
+    LOCK(m_candidates_mutex);
+    if (const auto& it = m_candidates.find(id); it != m_candidates.end()) {
+        it->second.fSuccessfullyConnected = connected;
+    }
+}
+
 std::optional<NodeId> Evictor::SelectIncomingNodeToEvict() const
 {
     std::vector<NodeEvictionCandidate> candidates;
