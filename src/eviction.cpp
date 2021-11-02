@@ -357,3 +357,14 @@ void EvictionMan::UpdateSuccessfullyConnected(NodeId id, bool connected)
         }
     }
 }
+
+void EvictionMan::UpdateBlocksInFlight(NodeId id, bool add)
+{
+    LOCK(cs_vNodes);
+    for (auto& node : vNodes) {
+        if (node.id == id) {
+            node.nBlocksInFlight += add ? 1 : -1;
+            break;
+        }
+    }
+}

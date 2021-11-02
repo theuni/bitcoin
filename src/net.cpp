@@ -959,6 +959,7 @@ void CConnman::CreateNodeFromAcceptedSocket(SOCKET hSocket,
         candidate.m_is_inbound = false;
         candidate.m_has_perm_noban = pnode->HasPermission(NetPermissionFlags::NoBan);
         candidate.m_conn_type = pnode->GetConnectionType();
+        candidate.nBlocksInFlight = 0;
         m_evictionman->AddNode(std::move(candidate));
     }
 
@@ -2013,6 +2014,7 @@ void CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFai
         candidate.m_is_inbound = false;
         candidate.m_has_perm_noban = pnode->HasPermission(NetPermissionFlags::NoBan);
         candidate.m_conn_type = pnode->GetConnectionType();
+        candidate.nBlocksInFlight = 0;
         m_evictionman->AddNode(std::move(candidate));
     }
 }
