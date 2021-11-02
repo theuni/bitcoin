@@ -6,6 +6,7 @@
 
 #include <addrman.h>
 #include <banman.h>
+#include <eviction.h>
 #include <interfaces/chain.h>
 #include <net.h>
 #include <net_processing.h>

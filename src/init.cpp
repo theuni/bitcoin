@@ -17,6 +17,7 @@
 #include <compat/sanity.h>
 #include <consensus/amount.h>
 #include <deploymentstatus.h>
+#include <eviction.h>
 #include <fs.h>
 #include <hash.h>
 #include <httprpc.h>
@@ -218,6 +219,7 @@ void Shutdown(NodeContext& node)
     node.connman.reset();
     node.banman.reset();
     node.addrman.reset();
+    node.evictionman.reset();
 
     if (node.mempool && node.mempool->IsLoaded() && node.args->GetBoolArg("-persistmempool", DEFAULT_PERSIST_MEMPOOL)) {
         DumpMempool(*node.mempool);
@@ -1243,6 +1245,9 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
         }
     }
 
+    assert(!node.evictionman);
+    node.evictionman = std::make_unique<EvictionMan>();
+
     assert(!node.banman);
     node.banman = std::make_unique<BanMan>(gArgs.GetDataDirNet() / "banlist", &uiInterface, args.GetIntArg("-bantime", DEFAULT_MISBEHAVING_BANTIME));
     assert(!node.connman);
@@ -1744,6 +1749,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     connOptions.nMaxFeeler = MAX_FEELER_CONNECTIONS;
     connOptions.uiInterface = &uiInterface;
     connOptions.m_banman = node.banman.get();
+    connOptions.m_evictionman = node.evictionman.get();
     connOptions.m_msgproc = node.peerman.get();
     connOptions.nSendBufferMaxSize = 1000 * args.GetIntArg("-maxsendbuffer", DEFAULT_MAXSENDBUFFER);
     connOptions.nReceiveFloodSize = 1000 * args.GetIntArg("-maxreceivebuffer", DEFAULT_MAXRECEIVEBUFFER);

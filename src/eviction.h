@@ -92,6 +92,4 @@ bool RemoveNode(NodeId id);
 bool AttemptToEvictConnection();
 };
 
-extern EvictionMan g_evict;
-
 #endif // BITCOIN_EVICTION_H

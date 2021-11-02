@@ -15,6 +15,7 @@ class BanMan;
 class AddrMan;
 class CBlockPolicyEstimator;
 class CConnman;
+class EvictionMan;
 class CScheduler;
 class CTxMemPool;
 class ChainstateManager;
@@ -46,6 +47,7 @@ struct NodeContext {
     std::unique_ptr<PeerManager> peerman;
     std::unique_ptr<ChainstateManager> chainman;
     std::unique_ptr<BanMan> banman;
+    std::unique_ptr<EvictionMan> evictionman;
     ArgsManager* args{nullptr}; // Currently a raw pointer because the memory is not managed by this struct
     std::unique_ptr<interfaces::Chain> chain;
     //! List of all chain clients (wallet processes or other client) connected to node.

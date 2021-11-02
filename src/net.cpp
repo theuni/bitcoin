@@ -896,7 +896,7 @@ void CConnman::CreateNodeFromAcceptedSocket(SOCKET hSocket,
 
     if (nInbound >= nMaxInbound)
     {
-        if (!g_evict.AttemptToEvictConnection()) {
+        if (!m_evictionman || !m_evictionman->AttemptToEvictConnection()) {
             // No connection to evict, disconnect the new connection
             LogPrint(BCLog::NET, "failed to find an eviction candidate - connection dropped (full)\n");
             CloseSocket(hSocket);
@@ -925,8 +925,9 @@ void CConnman::CreateNodeFromAcceptedSocket(SOCKET hSocket,
         LOCK(cs_vNodes);
         vNodes.push_back(pnode);
     }
-
-    g_evict.AddNode(pnode);
+    if (m_evictionman) {
+        m_evictionman->AddNode(pnode);
+    }
 
     // We received a new connection, harvest entropy from the time (and our peer count)
     RandAddEvent((uint32_t)id);
@@ -1004,8 +1005,10 @@ void CConnman::DisconnectNodes()
             }
         }
     }
-    for (auto node : vNodesJustDisconnected) {
-        g_evict.RemoveNode(node->GetId());
+    if (m_evictionman) {
+        for (auto node : vNodesJustDisconnected) {
+            m_evictionman->RemoveNode(node->GetId());
+        }
     }
     {
         // Delete disconnected nodes
@@ -1960,7 +1963,9 @@ void CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFai
         LOCK(cs_vNodes);
         vNodes.push_back(pnode);
     }
-    g_evict.AddNode(pnode);
+    if (m_evictionman) {
+        m_evictionman->AddNode(pnode);
+    }
 }
 
 void CConnman::ThreadMessageHandler()
