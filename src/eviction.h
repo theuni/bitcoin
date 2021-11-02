@@ -14,10 +14,7 @@
 
 typedef int64_t NodeId;
 class CNode;
-class EvictionMan
-{
 
-struct CompareNodeNetworkTime;
 struct NodeEvictionCandidate
 {
     NodeId id;
@@ -33,6 +30,9 @@ struct NodeEvictionCandidate
     bool m_is_local;
     Network m_network;
 };
+
+class EvictionMan
+{
 
 static bool ReverseCompareNodeMinPingTime(const NodeEvictionCandidate &a, const NodeEvictionCandidate &b);
 static bool ReverseCompareNodeTimeConnected(const NodeEvictionCandidate &a, const NodeEvictionCandidate &b);
