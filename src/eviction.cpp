@@ -379,3 +379,14 @@ void EvictionMan::UpdateLastBlockAnnouncementTime(NodeId id, int64_t time)
         }
     }
 }
+
+void EvictionMan::UpdateSlowChainProtected(NodeId id, bool is_protected)
+{
+    LOCK(cs_vNodes);
+    for (auto& node : vNodes) {
+        if (node.id == id) {
+            node.m_slow_chain_protected = is_protected;
+            break;
+        }
+    }
+}

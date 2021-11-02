@@ -37,6 +37,7 @@ struct NodeEvictionCandidate
     bool fSuccessfullyConnected;
     int nBlocksInFlight;
     int64_t m_last_block_announcement;
+    bool m_slow_chain_protected;
 
     NodeEvictionCandidate() = default;
     NodeEvictionCandidate(const NodeEvictionCandidate& rhs) :
@@ -57,7 +58,8 @@ struct NodeEvictionCandidate
         m_conn_type(rhs.m_conn_type),
         fSuccessfullyConnected(rhs.fSuccessfullyConnected),
         nBlocksInFlight(rhs.nBlocksInFlight),
-        m_last_block_announcement(rhs.m_last_block_announcement)
+        m_last_block_announcement(rhs.m_last_block_announcement),
+        m_slow_chain_protected(rhs.m_slow_chain_protected)
         {}
 
     NodeEvictionCandidate& operator=(const NodeEvictionCandidate& rhs) {
@@ -79,6 +81,7 @@ struct NodeEvictionCandidate
         fSuccessfullyConnected = rhs.fSuccessfullyConnected;
         nBlocksInFlight = rhs.nBlocksInFlight;
         m_last_block_announcement = rhs.m_last_block_announcement;
+        m_slow_chain_protected = rhs.m_slow_chain_protected;
         return *this;
     }
 };
@@ -154,6 +157,7 @@ void UpdateLoadedBloomFilter(NodeId id, bool loaded);
 void UpdateSuccessfullyConnected(NodeId id, bool connected);
 void UpdateBlocksInFlight(NodeId id, bool add);
 void UpdateLastBlockAnnouncementTime(NodeId id, int64_t time);
+void UpdateSlowChainProtected(NodeId id, bool is_protected);
 
 };
 

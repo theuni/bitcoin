@@ -2266,6 +2266,9 @@ void PeerManagerImpl::ProcessHeadersMessage(CNode& pfrom, const Peer& peer,
                 LogPrint(BCLog::NET, "Protecting outbound peer=%d from eviction\n", pfrom.GetId());
                 nodestate->m_chain_sync.m_protect = true;
                 ++m_outbound_peers_with_protect_from_disconnect;
+                if (m_evictionman) {
+                    m_evictionman->UpdateSlowChainProtected(pfrom.GetId(), true);
+                }
             }
         }
     }
