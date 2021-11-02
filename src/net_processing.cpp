@@ -13,6 +13,7 @@
 #include <consensus/amount.h>
 #include <consensus/validation.h>
 #include <deploymentstatus.h>
+#include <eviction.h>
 #include <hash.h>
 #include <index/blockfilterindex.h>
 #include <merkleblock.h>
@@ -327,7 +328,7 @@ class PeerManagerImpl final : public PeerManager
 {
 public:
     PeerManagerImpl(const CChainParams& chainparams, CConnman& connman, AddrMan& addrman,
-                    BanMan* banman, ChainstateManager& chainman,
+                    BanMan* banman, Evictor* evictor, ChainstateManager& chainman,
                     CTxMemPool& pool, bool ignore_incoming_txs);
 
     /** Overridden from CValidationInterface. */
@@ -445,6 +446,7 @@ private:
     /** Pointer to this node's banman. May be nullptr - check existence before dereferencing. */
     BanMan* const m_banman;
     ChainstateManager& m_chainman;
+    Evictor *m_evictor;
     CTxMemPool& m_mempool;
     TxRequestTracker m_txrequest GUARDED_BY(::cs_main);
 
@@ -1471,20 +1473,21 @@ bool PeerManagerImpl::BlockRequestAllowed(const CBlockIndex* pindex)
 }
 
 std::unique_ptr<PeerManager> PeerManager::make(const CChainParams& chainparams, CConnman& connman, AddrMan& addrman,
-                                               BanMan* banman, ChainstateManager& chainman,
+                                               BanMan* banman, Evictor* evictor, ChainstateManager& chainman,
                                                CTxMemPool& pool, bool ignore_incoming_txs)
 {
-    return std::make_unique<PeerManagerImpl>(chainparams, connman, addrman, banman, chainman, pool, ignore_incoming_txs);
+    return std::make_unique<PeerManagerImpl>(chainparams, connman, addrman, banman, evictor, chainman, pool, ignore_incoming_txs);
 }
 
 PeerManagerImpl::PeerManagerImpl(const CChainParams& chainparams, CConnman& connman, AddrMan& addrman,
-                                 BanMan* banman, ChainstateManager& chainman,
+                                 BanMan* banman, Evictor* evictor, ChainstateManager& chainman,
                                  CTxMemPool& pool, bool ignore_incoming_txs)
     : m_chainparams(chainparams),
       m_connman(connman),
       m_addrman(addrman),
       m_banman(banman),
       m_chainman(chainman),
+      m_evictor(evictor),
       m_mempool(pool),
       m_ignore_incoming_txs(ignore_incoming_txs)
 {
