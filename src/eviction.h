@@ -86,6 +86,8 @@ public:
     void UpdateRelevantServices(NodeId id, bool relevant);
 
     void UpdateRelaysTxs(NodeId id, bool relay);
+
+    void UpdateLoadedBloomFilter(NodeId id, bool loaded);
 };
 
 #endif // BITCOIN_EVICTION_H

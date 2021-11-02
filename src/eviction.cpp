@@ -277,3 +277,11 @@ void Evictor::UpdateRelaysTxs(NodeId id, bool relay)
         it->second.m_relay_txs = relay;
     }
 }
+
+void Evictor::UpdateLoadedBloomFilter(NodeId id, bool loaded)
+{
+    LOCK(m_candidates_mutex);
+    if (const auto& it = m_candidates.find(id); it != m_candidates.end()) {
+        it->second.fBloomFilter = loaded;
+    }
+}
