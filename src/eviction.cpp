@@ -346,3 +346,14 @@ void EvictionMan::UpdateLoadedBloomFilter(NodeId id, bool loaded)
         }
     }
 }
+
+void EvictionMan::UpdateSuccessfullyConnected(NodeId id, bool connected)
+{
+    LOCK(cs_vNodes);
+    for (auto& node : vNodes) {
+        if (node.id == id) {
+            node.fSuccessfullyConnected = connected;
+            break;
+        }
+    }
+}

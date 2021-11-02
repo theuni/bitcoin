@@ -34,6 +34,7 @@ struct NodeEvictionCandidate
     bool m_is_inbound;
     bool m_has_perm_noban;
     ConnectionType m_conn_type;
+    bool fSuccessfullyConnected;
 
     NodeEvictionCandidate() = default;
     NodeEvictionCandidate(const NodeEvictionCandidate& rhs) :
@@ -52,6 +53,7 @@ struct NodeEvictionCandidate
         m_is_inbound(rhs.m_is_inbound),
         m_has_perm_noban(rhs.m_has_perm_noban),
         m_conn_type(rhs.m_conn_type),
+        fSuccessfullyConnected(rhs.fSuccessfullyConnected),
         {}
 
     NodeEvictionCandidate& operator=(const NodeEvictionCandidate& rhs) {
@@ -70,6 +72,7 @@ struct NodeEvictionCandidate
         m_is_inbound = rhs.m_is_inbound;
         m_has_perm_noban = rhs.m_has_perm_noban;
         m_conn_type = rhs.m_conn_type;
+        fSuccessfullyConnected = rhs.fSuccessfullyConnected;
         return *this;
     }
 };
@@ -142,6 +145,7 @@ void UpdateLatestTxTime(NodeId id, int64_t time);
 void UpdateRelevantServices(NodeId id, bool relevant);
 void UpdateRelaysTxs(NodeId id, bool relay);
 void UpdateLoadedBloomFilter(NodeId id, bool loaded);
+void UpdateSuccessfullyConnected(NodeId id, bool connected);
 
 };
 
