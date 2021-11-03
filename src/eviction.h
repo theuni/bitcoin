@@ -162,6 +162,8 @@ void UpdateBlocksInFlight(NodeId id, bool add);
 void UpdateLastBlockAnnouncementTime(NodeId id, int64_t time);
 void UpdateSlowChainProtected(NodeId id, bool is_protected);
 
+std::pair<std::vector<NodeId>, bool> EvictExtraOutboundPeers(int64_t time_in_seconds);
+
 };
 
 #endif // BITCOIN_EVICTION_H
