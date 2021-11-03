@@ -1248,7 +1248,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     int max_outbound_block_relay = std::min(MAX_BLOCK_RELAY_ONLY_CONNECTIONS, nMaxConnections - max_outbound_full_relay);
 
     assert(!node.evictionman);
-    node.evictionman = std::make_unique<EvictionMan>(max_outbound_block_relay);
+    node.evictionman = std::make_unique<EvictionMan>(max_outbound_block_relay, max_outbound_full_relay);
 
     assert(!node.banman);
     node.banman = std::make_unique<BanMan>(gArgs.GetDataDirNet() / "banlist", &uiInterface, args.GetIntArg("-bantime", DEFAULT_MISBEHAVING_BANTIME));

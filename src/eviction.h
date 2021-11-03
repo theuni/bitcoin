@@ -131,10 +131,11 @@ static void ProtectEvictionCandidatesByRatio(std::vector<NodeEvictionCandidate>&
 std::vector<NodeEvictionCandidate> vNodes;
 Mutex cs_vNodes;
 int m_max_outbound_block_relay;
+int m_max_outbound_full_relay;
 
 public:
 
-EvictionMan(int max_outbound_block_relay) : m_max_outbound_block_relay(max_outbound_block_relay){}
+EvictionMan(int max_outbound_block_relay, int max_outbound_full_relay) : m_max_outbound_block_relay(max_outbound_block_relay), m_max_outbound_full_relay(max_outbound_full_relay){}
 void AddNode(NodeEvictionCandidate candidate);
 bool RemoveNode(NodeId id);
 
