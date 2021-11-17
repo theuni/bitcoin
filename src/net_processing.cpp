@@ -4241,11 +4241,17 @@ void PeerManagerImpl::ConsiderEviction(CNode& pto, int64_t time_in_seconds)
                 state.m_chain_sync.m_work_header = nullptr;
                 state.m_chain_sync.m_sent_getheaders = false;
             }
-        } else if (state.m_chain_sync.m_timeout == 0 || (state.m_chain_sync.m_work_header != nullptr && state.pindexBestKnownBlock != nullptr && state.pindexBestKnownBlock->nChainWork >= state.m_chain_sync.m_work_header->nChainWork)) {
-            // Our best block known by this peer is behind our tip, and we're either noticing
-            // that for the first time, OR this peer was able to catch up to some earlier point
+        } else if (state.m_chain_sync.m_timeout == 0)
+            // Our best block known by this peer is behind our tip, and we're noticing
+            // that for the first time
+            // Set a new timeout based on current tip.
+            state.m_chain_sync.m_timeout = time_in_seconds + CHAIN_SYNC_TIMEOUT;
+            state.m_chain_sync.m_work_header = m_chainman.ActiveChain().Tip();
+            state.m_chain_sync.m_sent_getheaders = false;
+        } else if (state.m_chain_sync.m_work_header != nullptr && state.pindexBestKnownBlock != nullptr && state.pindexBestKnownBlock->nChainWork >= state.m_chain_sync.m_work_header->nChainWork) {
+            // This peer was able to catch up to some earlier point
             // where we checked against our tip.
-            // Either way, set a new timeout based on current tip.
+            // Set a new timeout based on current tip.
             state.m_chain_sync.m_timeout = time_in_seconds + CHAIN_SYNC_TIMEOUT;
             state.m_chain_sync.m_work_header = m_chainman.ActiveChain().Tip();
             state.m_chain_sync.m_sent_getheaders = false;
