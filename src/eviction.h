@@ -38,6 +38,7 @@ struct NodeEvictionCandidate
     int nBlocksInFlight;
     int64_t m_last_block_announcement;
     bool m_slow_chain_protected;
+    int64_t m_stale_chain_timeout;
 
     NodeEvictionCandidate() = default;
     NodeEvictionCandidate(const NodeEvictionCandidate& rhs) :
@@ -59,7 +60,8 @@ struct NodeEvictionCandidate
         fSuccessfullyConnected(rhs.fSuccessfullyConnected),
         nBlocksInFlight(rhs.nBlocksInFlight),
         m_last_block_announcement(rhs.m_last_block_announcement),
-        m_slow_chain_protected(rhs.m_slow_chain_protected)
+        m_slow_chain_protected(rhs.m_slow_chain_protected),
+        m_stale_chain_timeout(rhs.m_stale_chain_timeout)
         {}
 
     NodeEvictionCandidate& operator=(const NodeEvictionCandidate& rhs) {
@@ -82,6 +84,7 @@ struct NodeEvictionCandidate
         nBlocksInFlight = rhs.nBlocksInFlight;
         m_last_block_announcement = rhs.m_last_block_announcement;
         m_slow_chain_protected = rhs.m_slow_chain_protected;
+        m_stale_chain_timeout = rhs.m_stale_chain_timeout;
         return *this;
     }
 };
@@ -129,7 +132,7 @@ static void ProtectEvictionCandidatesByRatio(std::vector<NodeEvictionCandidate>&
 [[nodiscard]] static std::optional<NodeId> SelectNodeToEvict(std::vector<NodeEvictionCandidate>&& vEvictionCandidates);
 
 std::vector<NodeEvictionCandidate> vNodes;
-Mutex cs_vNodes;
+mutable Mutex cs_vNodes;
 int m_max_outbound_block_relay;
 int m_max_outbound_full_relay;
 
@@ -161,6 +164,9 @@ void UpdateSuccessfullyConnected(NodeId id, bool connected);
 void UpdateBlocksInFlight(NodeId id, bool add);
 void UpdateLastBlockAnnouncementTime(NodeId id, int64_t time);
 void UpdateSlowChainProtected(NodeId id, bool is_protected);
+
+void UpdateStaleChainTimeout(NodeId id, int64_t timeout);
+bool ShouldEvictForStaleChain(NodeId id, int64_t curtime) const;
 
 std::pair<std::vector<NodeId>, bool> EvictExtraOutboundPeers(int64_t time_in_seconds);
 

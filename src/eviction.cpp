@@ -394,6 +394,28 @@ void EvictionMan::UpdateSlowChainProtected(NodeId id, bool is_protected)
     }
 }
 
+void EvictionMan::UpdateStaleChainTimeout(NodeId id, int64_t timeout)
+{
+    LOCK(cs_vNodes);
+    for (auto& node : vNodes) {
+        if (node.id == id) {
+            node.m_stale_chain_timeout = timeout;
+            break;
+        }
+    }
+}
+
+bool EvictionMan::ShouldEvictForStaleChain(NodeId id, int64_t curtime) const
+{
+    LOCK(cs_vNodes);
+    for (const auto& node : vNodes) {
+        if (node.id == id) {
+            return node.m_stale_chain_timeout != 0 && curtime > node.m_stale_chain_timeout;
+        }
+    }
+    return false;
+}
+
 std::pair<std::vector<NodeId>, bool> EvictionMan::EvictExtraOutboundPeers(int64_t time_in_seconds)
 {
     std::vector<NodeId> ret;

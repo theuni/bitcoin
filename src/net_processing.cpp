@@ -4240,6 +4240,9 @@ void PeerManagerImpl::ConsiderEviction(CNode& pto, int64_t time_in_seconds)
                 state.m_chain_sync.m_timeout = 0;
                 state.m_chain_sync.m_work_header = nullptr;
                 state.m_chain_sync.m_sent_getheaders = false;
+                if (m_evictionman) {
+                    m_evictionman->UpdateStaleChainTimeout(pto.GetId(), 0);
+                }
             }
         } else if (state.m_chain_sync.m_timeout == 0)
             // Our best block known by this peer is behind our tip, and we're noticing
@@ -4255,15 +4258,14 @@ void PeerManagerImpl::ConsiderEviction(CNode& pto, int64_t time_in_seconds)
             state.m_chain_sync.m_timeout = time_in_seconds + CHAIN_SYNC_TIMEOUT;
             state.m_chain_sync.m_work_header = m_chainman.ActiveChain().Tip();
             state.m_chain_sync.m_sent_getheaders = false;
+            if (m_evictionman) {
+                m_evictionman->UpdateStaleChainTimeout(pto.GetId(), 0);
+            }
         } else if (state.m_chain_sync.m_timeout > 0 && time_in_seconds > state.m_chain_sync.m_timeout) {
             // No evidence yet that our peer has synced to a chain with work equal to that
             // of our tip, when we first detected it was behind. Send a single getheaders
             // message to give the peer a chance to update us.
-            if (state.m_chain_sync.m_sent_getheaders) {
-                // They've run out of time to catch up!
-                LogPrintf("Disconnecting outbound peer %d for old chain, best known block = %s\n", pto.GetId(), state.pindexBestKnownBlock != nullptr ? state.pindexBestKnownBlock->GetBlockHash().ToString() : "<none>");
-                pto.fDisconnect = true;
-            } else {
+            if (!state.m_chain_sync.m_sent_getheaders) {
                 assert(state.m_chain_sync.m_work_header);
                 LogPrint(BCLog::NET, "sending getheaders to outbound peer=%d to verify chain work (current best known block:%s, benchmark blockhash: %s)\n", pto.GetId(), state.pindexBestKnownBlock != nullptr ? state.pindexBestKnownBlock->GetBlockHash().ToString() : "<none>", state.m_chain_sync.m_work_header->GetBlockHash().ToString());
                 m_connman.PushMessage(&pto, msgMaker.Make(NetMsgType::GETHEADERS, m_chainman.ActiveChain().GetLocator(state.m_chain_sync.m_work_header->pprev), uint256()));
@@ -4275,6 +4277,9 @@ void PeerManagerImpl::ConsiderEviction(CNode& pto, int64_t time_in_seconds)
                 // in disconnect (if we advance to the timeout and pindexBestKnownBlock
                 // has not sufficiently progressed)
                 state.m_chain_sync.m_timeout = time_in_seconds + HEADERS_RESPONSE_TIME;
+                if (m_evictionman) {
+                    m_evictionman->UpdateStaleChainTimeout(pto.GetId(), time_in_seconds + HEADERS_RESPONSE_TIME);
+                }
             }
         }
     }
@@ -4921,6 +4926,12 @@ bool PeerManagerImpl::SendMessages(CNode* pto)
         // Check that outbound peers have reasonable chains
         // GetTime() is used by this anti-DoS logic so we can test this using mocktime
         ConsiderEviction(*pto, GetTime());
+        if (m_evictionman) {
+            if (m_evictionman->ShouldEvictForStaleChain(pto->GetId(), GetTime())) {
+                LogPrintf("Disconnecting outbound peer %d for old chain, best known block = %s\n", pto->GetId(), state.pindexBestKnownBlock != nullptr ? state.pindexBestKnownBlock->GetBlockHash().ToString() : "<none>");
+                pto->fDisconnect = true;
+            }
+        }
 
         //
         // Message: getdata (blocks)
