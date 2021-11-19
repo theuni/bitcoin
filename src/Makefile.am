@@ -589,6 +589,7 @@ libbitcoin_common_a_SOURCES = \
   deploymentinfo.cpp \
   external_signer.cpp \
   init/common.cpp \
+  kernel/init/common.cpp \
   key.cpp \
   key_io.cpp \
   merkleblock.cpp \
@@ -846,7 +847,7 @@ libbitcoinkernel_la_SOURCES = \
   hash.cpp \
   index/base.cpp \
   index/coinstatsindex.cpp \
-  init/common.cpp \
+  kernel/init/common.cpp \
   key.cpp \
   logging.cpp \
   node/blockstorage.cpp \
