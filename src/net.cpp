@@ -988,6 +988,25 @@ void CConnman::CreateNodeFromAcceptedSocket(SOCKET hSocket,
         m_nodes.push_back(pnode);
     }
 
+    if (m_evictor) {
+        NodeEvictionCandidate candidate = { pnode->GetId(), // ok, already set
+                                            pnode->nTimeConnected, // ok, already set
+                                            std::chrono::microseconds::max(), // m_min_ping_time, set by ProcessMessage
+                                            0, // nLastBlockTime set by ProcessBlock
+                                            0, // nLastTxTime set by ProcessMessage
+                                            false, // fRelevantServices set by ProcessMessage handshake
+                                            false, // m_relays_txs set by ProcessMessage handshake
+                                            false, // m_bloom_filter_loaded set by ProcessMessage at any time
+                                            pnode->nKeyedNetGroup, // ok, already set
+                                            pnode->m_prefer_evict, // ok, already set
+                                            pnode->addr.IsLocal(), // ok, already set
+                                            pnode->ConnectedThroughNetwork(), // ok, already set
+                                            pnode->m_permissionFlags, //ok, already set
+                                            true // m_is_inbound;
+                                          };
+        m_evictor->AddCandidate(std::move(candidate));
+    }
+
     // We received a new connection, harvest entropy from the time (and our peer count)
     RandAddEvent((uint32_t)id);
 }
@@ -1028,6 +1047,7 @@ bool CConnman::AddConnection(const std::string& address, ConnectionType conn_typ
 
 void CConnman::DisconnectNodes()
 {
+    std::vector<NodeId> just_disconnected;
     {
         LOCK(m_nodes_mutex);
 
@@ -1049,6 +1069,7 @@ void CConnman::DisconnectNodes()
             {
                 // remove from m_nodes
                 m_nodes.erase(remove(m_nodes.begin(), m_nodes.end(), pnode), m_nodes.end());
+                just_disconnected.push_back(pnode->GetId());
 
                 // release outbound grant (if any)
                 pnode->grantOutbound.Release();
@@ -1060,6 +1081,11 @@ void CConnman::DisconnectNodes()
                 pnode->Release();
                 m_nodes_disconnected.push_back(pnode);
             }
+        }
+    }
+    if (m_evictor) {
+        for (auto id : just_disconnected) {
+            m_evictor->RemoveCandidate(id);
         }
     }
     {
@@ -2025,6 +2051,24 @@ void CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFai
     {
         LOCK(m_nodes_mutex);
         m_nodes.push_back(pnode);
+    }
+    if (m_evictor) {
+        NodeEvictionCandidate candidate = { pnode->GetId(), // ok, already set
+                                            pnode->nTimeConnected, // ok, already set
+                                            std::chrono::microseconds::max(), // m_min_ping_time, set by ProcessMessage
+                                            0, // nLastBlockTime set by ProcessBlock
+                                            0, // nLastTxTime set by ProcessMessage
+                                            false, // fRelevantServices set by ProcessMessage handshake
+                                            false, // m_relays_txs set by ProcessMessage handshake
+                                            false, // m_bloom_filter_loaded set by ProcessMessage at any time
+                                            pnode->nKeyedNetGroup, // ok, already set
+                                            false, // m_prefer_evict
+                                            pnode->addr.IsLocal(), // ok, already set
+                                            pnode->ConnectedThroughNetwork(), // ok, already set
+                                            pnode->m_permissionFlags, //ok, already set
+                                            false // m_is_inbound;
+                                          };
+        m_evictor->AddCandidate(std::move(candidate));
     }
 }
 
