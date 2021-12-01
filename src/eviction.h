@@ -39,7 +39,7 @@ struct NodeEvictionCandidate
  * ratios of desirable or disadvantaged peers. If any eviction candidates
  * remain, the selection logic chooses a peer to evict.
  */
-[[nodiscard]] std::optional<NodeId> SelectNodeToEvict(std::vector<NodeEvictionCandidate>&& vEvictionCandidates);
+[[nodiscard]] std::optional<NodeId> SelectIncomingNodeToEvict(std::vector<NodeEvictionCandidate>&& vEvictionCandidates);
 
 /** Protect desirable or disadvantaged inbound peers from eviction by ratio.
  *

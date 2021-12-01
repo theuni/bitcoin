@@ -161,7 +161,7 @@ void ProtectEvictionCandidatesByRatio(std::vector<NodeEvictionCandidate>& evicti
     EraseLastKElements(eviction_candidates, ReverseCompareNodeTimeConnected, remaining_to_protect);
 }
 
-[[nodiscard]] std::optional<NodeId> SelectNodeToEvict(std::vector<NodeEvictionCandidate>&& vEvictionCandidates)
+[[nodiscard]] std::optional<NodeId> SelectIncomingNodeToEvict(std::vector<NodeEvictionCandidate>&& vEvictionCandidates)
 {
     // Protect connections with certain characteristics
 

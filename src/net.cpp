@@ -854,7 +854,7 @@ bool CConnman::AttemptToEvictConnection()
             vEvictionCandidates.push_back(candidate);
         }
     }
-    const std::optional<NodeId> node_id_to_evict = SelectNodeToEvict(std::move(vEvictionCandidates));
+    const std::optional<NodeId> node_id_to_evict = SelectIncomingNodeToEvict(std::move(vEvictionCandidates));
     if (!node_id_to_evict) {
         return false;
     }
