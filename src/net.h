@@ -12,6 +12,7 @@
 #include <compat.h>
 #include <consensus/amount.h>
 #include <crypto/siphash.h>
+#include <eviction.h>
 #include <hash.h>
 #include <i2p.h>
 #include <net_permissions.h>
@@ -1232,22 +1233,6 @@ std::chrono::microseconds PoissonNextSend(std::chrono::microseconds now, std::ch
 
 /** Dump binary message to file, with timestamp */
 void CaptureMessage(const CAddress& addr, const std::string& msg_type, const Span<const unsigned char>& data, bool is_incoming);
-
-struct NodeEvictionCandidate
-{
-    NodeId id;
-    int64_t nTimeConnected;
-    std::chrono::microseconds m_min_ping_time;
-    int64_t nLastBlockTime;
-    int64_t nLastTXTime;
-    bool fRelevantServices;
-    bool m_relay_txs;
-    bool fBloomFilter;
-    uint64_t nKeyedNetGroup;
-    bool prefer_evict;
-    bool m_is_local;
-    Network m_network;
-};
 
 /**
  * Select an inbound peer to evict after filtering out (protecting) peers having
