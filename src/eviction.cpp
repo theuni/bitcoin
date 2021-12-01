@@ -226,3 +226,15 @@ void ProtectEvictionCandidatesByRatio(std::vector<NodeEvictionCandidate>& evicti
     // Disconnect from the network group with the most connections
     return vEvictionCandidates.front().id;
 }
+
+void Evictor::AddCandidate(NodeEvictionCandidate candidate)
+{
+    LOCK(m_candidates_mutex);
+    m_candidates.emplace_hint(m_candidates.end(), candidate.id, std::move(candidate));
+}
+
+bool Evictor::RemoveCandidate(NodeId id)
+{
+    LOCK(m_candidates_mutex);
+    return m_candidates.erase(id) != 0;
+}

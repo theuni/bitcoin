@@ -8,9 +8,11 @@
 
 #include <netaddress.h>
 #include <net_permissions.h>
+#include <sync.h>
 
 #include <chrono>
 #include <cstdint>
+#include <map>
 
 typedef int64_t NodeId;
 
@@ -63,5 +65,16 @@ struct NodeEvictionCandidate
  * relative to IPv4/IPv6 peers, and favorise the diversity of peer connections.
  */
 void ProtectEvictionCandidatesByRatio(std::vector<NodeEvictionCandidate>& vEvictionCandidates);
+
+class Evictor
+{
+    mutable Mutex m_candidates_mutex;
+    std::map<NodeId, NodeEvictionCandidate> m_candidates GUARDED_BY(m_candidates_mutex);
+
+public:
+
+    void AddCandidate(NodeEvictionCandidate candidate);
+    bool RemoveCandidate(NodeId id);
+};
 
 #endif // BITCOIN_EVICTION_H
