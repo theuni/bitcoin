@@ -74,9 +74,12 @@ class Evictor
 {
     mutable Mutex m_candidates_mutex;
     std::map<NodeId, NodeEvictionCandidate> m_candidates GUARDED_BY(m_candidates_mutex);
+    int m_max_outbound_block_relay;
+    int m_max_outbound_full_relay;
 
 public:
 
+    Evictor(int max_outbound_block_relay, int max_outbound_full_relay) : m_max_outbound_block_relay(max_outbound_block_relay), m_max_outbound_full_relay(max_outbound_full_relay){}
     void AddCandidate(NodeEvictionCandidate candidate);
     bool RemoveCandidate(NodeId id);
     [[nodiscard]] std::optional<NodeId> SelectIncomingNodeToEvict() const;
