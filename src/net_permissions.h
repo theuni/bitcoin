@@ -45,6 +45,12 @@ static inline constexpr NetPermissionFlags operator|(NetPermissionFlags a, NetPe
     return static_cast<NetPermissionFlags>(static_cast<t>(a) | static_cast<t>(b));
 }
 
+static inline constexpr NetPermissionFlags operator&(NetPermissionFlags a, NetPermissionFlags b)
+{
+    using t = typename std::underlying_type<NetPermissionFlags>::type;
+    return static_cast<NetPermissionFlags>(static_cast<t>(a) & static_cast<t>(b));
+}
+
 class NetPermissions
 {
 public:
