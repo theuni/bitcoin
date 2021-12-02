@@ -79,7 +79,7 @@ static void EraseLastKElements(
 void ProtectNoBanConnections(std::vector<NodeEvictionCandidate>& eviction_candidates)
 {
         eviction_candidates.erase(std::remove_if(eviction_candidates.begin(),eviction_candidates.end(),
-                                  [](NodeEvictionCandidate const &n){return n.m_has_flag_noban;}),eviction_candidates.end());
+                                  [](NodeEvictionCandidate &n){return (n.m_flags & NetPermissionFlags::NoBan) == NetPermissionFlags::NoBan;}),eviction_candidates.end());
 }
 
 void ProtectOutboundConnections(std::vector<NodeEvictionCandidate>& eviction_candidates)

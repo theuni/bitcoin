@@ -58,7 +58,7 @@ std::vector<NodeEvictionCandidate> GetRandomNodeEvictionCandidates(int n_candida
             /*prefer_evict=*/random_context.randbool(),
             /*m_is_local=*/random_context.randbool(),
             /*m_network=*/ALL_NETWORKS[random_context.randrange(ALL_NETWORKS.size())],
-            /*m_has_flag_noban=*/false,
+            /*m_flags=*/NetPermissionFlags::None,
             /*m_is_inbound=*/true
         });
     }

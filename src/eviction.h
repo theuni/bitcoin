@@ -7,6 +7,7 @@
 #define BITCOIN_EVICTION_H
 
 #include <netaddress.h>
+#include <net_permissions.h>
 
 #include <chrono>
 #include <cstdint>
@@ -27,7 +28,7 @@ struct NodeEvictionCandidate
     bool prefer_evict;
     bool m_is_local;
     Network m_network;
-    bool m_has_flag_noban;
+    NetPermissionFlags m_flags;
     bool m_is_inbound;
 };
 

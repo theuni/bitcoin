@@ -851,7 +851,7 @@ bool CConnman::AttemptToEvictConnection()
                                                node->m_relays_txs.load(), node->m_bloom_filter_loaded.load(),
                                                node->nKeyedNetGroup, node->m_prefer_evict, node->addr.IsLocal(),
                                                node->ConnectedThroughNetwork(),
-                                               node->HasPermission(NetPermissionFlags::NoBan),
+                                               node->m_permissionFlags,
                                                node->IsInboundConn()};
             vEvictionCandidates.push_back(candidate);
         }
