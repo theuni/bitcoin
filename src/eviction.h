@@ -75,6 +75,7 @@ public:
 
     void AddCandidate(NodeEvictionCandidate candidate);
     bool RemoveCandidate(NodeId id);
+    [[nodiscard]] std::optional<NodeId> SelectIncomingNodeToEvict() const;
 
     /** A ping-pong round trip has completed successfully. Update minimum ping time. */
     void UpdateMinPingTime(NodeId id, std::chrono::microseconds ping_time);

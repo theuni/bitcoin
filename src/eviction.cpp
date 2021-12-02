@@ -285,3 +285,15 @@ void Evictor::UpdateLoadedBloomFilter(NodeId id, bool loaded)
         it->second.fBloomFilter = loaded;
     }
 }
+
+std::optional<NodeId> Evictor::SelectIncomingNodeToEvict() const
+{
+    std::vector<NodeEvictionCandidate> candidates;
+    {
+        LOCK(m_candidates_mutex);
+        for (const auto& it : m_candidates) {
+            candidates.push_back(it.second);
+        }
+    }
+    return ::SelectIncomingNodeToEvict(std::move(candidates));
+}
