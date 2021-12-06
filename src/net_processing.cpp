@@ -361,7 +361,8 @@ private:
     void ConsiderEviction(CNode& pto, int64_t time_in_seconds) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
     /** If we have extra outbound peers, try to disconnect the one with the oldest block announcement */
-    void EvictExtraOutboundPeers(int64_t time_in_seconds) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
+    void EvictExtraBlockOutboundPeers(int64_t time_in_seconds) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
+    void EvictExtraFullOutboundPeers(int64_t time_in_seconds) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
     /** Retrieve unbroadcast transactions from the mempool and reattempt sending to peers */
     void ReattemptInitialBroadcast(CScheduler& scheduler);
@@ -4281,7 +4282,7 @@ void PeerManagerImpl::ConsiderEviction(CNode& pto, int64_t time_in_seconds)
     }
 }
 
-void PeerManagerImpl::EvictExtraOutboundPeers(int64_t time_in_seconds)
+void PeerManagerImpl::EvictExtraBlockOutboundPeers(int64_t time_in_seconds)
 {
     // If we have any extra block-relay-only peers, disconnect the youngest unless
     // it's given us a block -- in which case, compare with the second-youngest, and
@@ -4326,7 +4327,10 @@ void PeerManagerImpl::EvictExtraOutboundPeers(int64_t time_in_seconds)
             return false;
         });
     }
+}
 
+void PeerManagerImpl::EvictExtraFullOutboundPeers(int64_t time_in_seconds)
+{
     // Check whether we have too many outbound-full-relay peers
     if (m_connman.GetExtraFullOutboundCount() > 0) {
         // If we have more outbound-full-relay peers than we target, disconnect one.
@@ -4388,7 +4392,8 @@ void PeerManagerImpl::CheckForStaleTipAndEvictPeers()
 
     int64_t time_in_seconds = GetTime();
 
-    EvictExtraOutboundPeers(time_in_seconds);
+    EvictExtraBlockOutboundPeers(time_in_seconds);
+    EvictExtraFullOutboundPeers(time_in_seconds);
 
     if (time_in_seconds > m_stale_tip_check_time) {
         // Check whether our tip is stale, and if so, allow using an extra
