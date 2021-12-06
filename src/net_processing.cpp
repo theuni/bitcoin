@@ -361,8 +361,8 @@ private:
     void ConsiderEviction(CNode& pto, int64_t time_in_seconds) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
     /** If we have extra outbound peers, try to disconnect the one with the oldest block announcement */
-    void EvictExtraBlockOutboundPeers(int64_t time_in_seconds) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
-    void EvictExtraFullOutboundPeers(int64_t time_in_seconds) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
+    std::optional<NodeId> EvictExtraBlockOutboundPeers(int64_t time_in_seconds) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
+    std::optional<NodeId> EvictExtraFullOutboundPeers(int64_t time_in_seconds) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
     /** Retrieve unbroadcast transactions from the mempool and reattempt sending to peers */
     void ReattemptInitialBroadcast(CScheduler& scheduler);
@@ -4282,7 +4282,7 @@ void PeerManagerImpl::ConsiderEviction(CNode& pto, int64_t time_in_seconds)
     }
 }
 
-void PeerManagerImpl::EvictExtraBlockOutboundPeers(int64_t time_in_seconds)
+std::optional<NodeId> PeerManagerImpl::EvictExtraBlockOutboundPeers(int64_t time_in_seconds)
 {
     // If we have any extra block-relay-only peers, disconnect the youngest unless
     // it's given us a block -- in which case, compare with the second-youngest, and
@@ -4307,7 +4307,7 @@ void PeerManagerImpl::EvictExtraBlockOutboundPeers(int64_t time_in_seconds)
             // disconnect our second youngest.
             to_disconnect = next_youngest_peer.first;
         }
-        m_connman.ForNode(to_disconnect, [&](CNode* pnode) EXCLUSIVE_LOCKS_REQUIRED(::cs_main) {
+        bool disconnect = m_connman.ForNode(to_disconnect, [&](CNode* pnode) EXCLUSIVE_LOCKS_REQUIRED(::cs_main) {
             AssertLockHeld(::cs_main);
             // Make sure we're not getting a block right now, and that
             // we've been connected long enough for this eviction to happen
@@ -4317,7 +4317,6 @@ void PeerManagerImpl::EvictExtraBlockOutboundPeers(int64_t time_in_seconds)
             CNodeState *node_state = State(pnode->GetId());
             if (node_state == nullptr ||
                 (time_in_seconds - pnode->nTimeConnected >= MINIMUM_CONNECT_TIME && node_state->nBlocksInFlight == 0)) {
-                pnode->fDisconnect = true;
                 LogPrint(BCLog::NET, "disconnecting extra block-relay-only peer=%d (last block received at time %d)\n", pnode->GetId(), pnode->nLastBlockTime);
                 return true;
             } else {
@@ -4326,10 +4325,14 @@ void PeerManagerImpl::EvictExtraBlockOutboundPeers(int64_t time_in_seconds)
             }
             return false;
         });
+        if (disconnect) {
+            return to_disconnect;
+        }
     }
+    return {};
 }
 
-void PeerManagerImpl::EvictExtraFullOutboundPeers(int64_t time_in_seconds)
+std::optional<NodeId> PeerManagerImpl::EvictExtraFullOutboundPeers(int64_t time_in_seconds)
 {
     // Check whether we have too many outbound-full-relay peers
     if (m_connman.GetExtraFullOutboundCount() > 0) {
@@ -4367,7 +4370,6 @@ void PeerManagerImpl::EvictExtraFullOutboundPeers(int64_t time_in_seconds)
                 CNodeState &state = *State(pnode->GetId());
                 if (time_in_seconds - pnode->nTimeConnected > MINIMUM_CONNECT_TIME && state.nBlocksInFlight == 0) {
                     LogPrint(BCLog::NET, "disconnecting extra outbound peer=%d (last block announcement received at time %d)\n", pnode->GetId(), oldest_block_announcement);
-                    pnode->fDisconnect = true;
                     return true;
                 } else {
                     LogPrint(BCLog::NET, "keeping outbound peer=%d chosen for eviction (connect time: %d, blocks_in_flight: %d)\n", pnode->GetId(), pnode->nTimeConnected, state.nBlocksInFlight);
@@ -4375,15 +4377,11 @@ void PeerManagerImpl::EvictExtraFullOutboundPeers(int64_t time_in_seconds)
                 }
             });
             if (disconnected) {
-                // If we disconnected an extra peer, that means we successfully
-                // connected to at least one peer after the last time we
-                // detected a stale tip. Don't try any more extra peers until
-                // we next detect a stale tip, to limit the load we put on the
-                // network from these extra connections.
-                m_connman.SetTryNewOutboundPeer(false);
+                return worst_peer;
             }
         }
     }
+    return {};
 }
 
 void PeerManagerImpl::CheckForStaleTipAndEvictPeers()
@@ -4392,8 +4390,19 @@ void PeerManagerImpl::CheckForStaleTipAndEvictPeers()
 
     int64_t time_in_seconds = GetTime();
 
-    EvictExtraBlockOutboundPeers(time_in_seconds);
-    EvictExtraFullOutboundPeers(time_in_seconds);
+    if (auto nodeid = EvictExtraBlockOutboundPeers(time_in_seconds); nodeid.has_value()) {
+        m_connman.DisconnectNode(nodeid.value());
+    }
+    if (auto nodeid = EvictExtraFullOutboundPeers(time_in_seconds); nodeid.has_value()) {
+        m_connman.DisconnectNode(nodeid.value());
+
+        // If we disconnected an extra peer, that means we successfully
+        // connected to at least one peer after the last time we
+        // detected a stale tip. Don't try any more extra peers until
+        // we next detect a stale tip, to limit the load we put on the
+        // network from these extra connections.
+        m_connman.SetTryNewOutboundPeer(false);
+    }
 
     if (time_in_seconds > m_stale_tip_check_time) {
         // Check whether our tip is stale, and if so, allow using an extra
