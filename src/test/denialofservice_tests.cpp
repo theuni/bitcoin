@@ -107,7 +107,7 @@ BOOST_AUTO_TEST_CASE(outbound_slow_chain_eviction)
     peerLogic->FinalizeNode(dummyNode1);
 }
 
-static void AddRandomOutboundPeer(std::vector<CNode*>& vNodes, PeerManager& peerLogic, ConnmanTestMsg& connman)
+static void AddRandomOutboundPeer(std::vector<CNode*>& vNodes, PeerManager& peerLogic, ConnmanTestMsg& connman, Evictor& evictor)
 {
     CAddress addr(ip(g_insecure_rand_ctx.randbits(32)), NODE_NONE);
     vNodes.emplace_back(new CNode(id++, ServiceFlags(NODE_NETWORK | NODE_WITNESS), INVALID_SOCKET, addr, /*nKeyedNetGroupIn=*/0, /*nLocalHostNonceIn=*/0, CAddress(), /*addrNameIn=*/"", ConnectionType::OUTBOUND_FULL_RELAY, /*inbound_onion=*/false));
@@ -116,6 +116,28 @@ static void AddRandomOutboundPeer(std::vector<CNode*>& vNodes, PeerManager& peer
 
     peerLogic.InitializeNode(&node);
     node.fSuccessfullyConnected = true;
+
+    NodeEvictionCandidate candidate = { node.GetId(),
+                                        node.nTimeConnected, // ok, already set
+                                        std::chrono::microseconds::max(), // m_min_ping_time, set by ProcessMessage
+                                        0, // nLastBlockTime set by ProcessBlock
+                                        0, // nLastTxTime set by ProcessMessage
+                                        false, // fRelevantServices set by ProcessMessage handshake
+                                        false, // m_relays_txs set by ProcessMessage handshake
+                                        false, // m_bloom_filter_loaded set by ProcessMessage at any time
+                                        node.nKeyedNetGroup, // ok, already set
+                                        false, // m_prefer_evict
+                                        node.addr.IsLocal(), // ok, already set
+                                        node.ConnectedThroughNetwork(), // ok, already set
+                                        node.m_permissionFlags, //ok, already set
+                                        false, // m_is_inbound;
+                                        true, // fSuccessfullyConnected
+                                        0, // nBlocksInFlight
+                                        0, // m_last_block_announcement
+                                        false, // m_slow_chain_protected
+                                        ConnectionType::OUTBOUND_FULL_RELAY // m_conn_type
+                                      };
+    evictor.AddCandidate(std::move(candidate));
 
     connman.AddTestNode(node);
 }
@@ -139,7 +161,7 @@ BOOST_AUTO_TEST_CASE(stale_tip_peer_management)
 
     // Mock some outbound peers
     for (int i = 0; i < max_outbound_full_relay; ++i) {
-        AddRandomOutboundPeer(vNodes, *peerLogic, *connman);
+        AddRandomOutboundPeer(vNodes, *peerLogic, *connman, *evictor);
     }
 
     peerLogic->CheckForStaleTipAndEvictPeers();
@@ -164,7 +186,7 @@ BOOST_AUTO_TEST_CASE(stale_tip_peer_management)
     // If we add one more peer, something should get marked for eviction
     // on the next check (since we're mocking the time to be in the future, the
     // required time connected check should be satisfied).
-    AddRandomOutboundPeer(vNodes, *peerLogic, *connman);
+    AddRandomOutboundPeer(vNodes, *peerLogic, *connman, *evictor);
 
     peerLogic->CheckForStaleTipAndEvictPeers();
     for (int i = 0; i < max_outbound_full_relay; ++i) {
@@ -177,7 +199,9 @@ BOOST_AUTO_TEST_CASE(stale_tip_peer_management)
 
     // Update the last announced block time for the last
     // peer, and check that the next newest node gets evicted.
-    UpdateLastBlockAnnounceTime(vNodes.back()->GetId(), GetTime());
+    auto curtime = GetTime();
+    UpdateLastBlockAnnounceTime(vNodes.back()->GetId(), curtime);
+    evictor->UpdateLastBlockAnnouncementTime(vNodes.back()->GetId(), curtime);
 
     peerLogic->CheckForStaleTipAndEvictPeers();
     for (int i = 0; i < max_outbound_full_relay - 1; ++i) {
