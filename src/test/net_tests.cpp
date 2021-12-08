@@ -12,9 +12,9 @@
 #include <span.h>
 #include <streams.h>
 #include <test/util/setup_common.h>
+#include <util/args.h>
 #include <util/strencodings.h>
 #include <util/string.h>
-#include <util/system.h>
 #include <version.h>
 
 #include <boost/test/unit_test.hpp>

@@ -8,7 +8,7 @@
 #include <consensus/validation.h>     // for BlockValidationState
 #include <chainparams.h>              // for Params, SelectParams, CChainParams
 #include <node/blockstorage.h>        // for fReindex
-#include <util/system.h>              // for gArgs, ArgsManager
+#include <util/args.h>                // for gArgs, ArgsManager
 #include <scheduler.h>                // for CScheduler
 #include <script/sigcache.h>          // for InitSignatureCache
 

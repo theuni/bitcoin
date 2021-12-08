@@ -7,6 +7,7 @@
 #include <dbwrapper.h>
 #include <index/blockfilterindex.h>
 #include <node/blockstorage.h>
+#include <util/args.h>
 #include <util/system.h>
 
 /* The index database stores three items for each block: the disk location of the encoded filter,

@@ -10,6 +10,8 @@
 #include <serialize.h>
 #include <txdb.h>
 #include <undo.h>
+#include <util/args.h>
+#include <util/system.h>
 #include <validation.h>
 
 static constexpr uint8_t DB_BLOCK_HASH{'s'};

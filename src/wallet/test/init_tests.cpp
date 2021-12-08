@@ -7,7 +7,7 @@
 #include <noui.h>
 #include <test/util/logging.h>
 #include <test/util/setup_common.h>
-#include <util/system.h>
+#include <util/args.h>
 #include <wallet/test/init_test_fixture.h>
 
 BOOST_FIXTURE_TEST_SUITE(init_tests, InitWalletDirTestingSetup)
