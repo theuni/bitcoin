@@ -17,6 +17,7 @@
 #include <consensus/validation.h>
 #include <cuckoocache.h>
 #include <deploymentstatus.h>
+#include <fatal_error_strings.h>
 #include <flatfile.h>
 #include <hash.h>
 #include <index/blockfilterindex.h>
@@ -144,7 +145,7 @@ extern int nLastBlockFile;
 extern bool fCheckForPruning;
 extern std::set<CBlockIndex*> setDirtyBlockIndex;
 extern std::set<int> setDirtyFileInfo;
-void FlushBlockFile(bool fFinalize = false, bool finalize_undo = false);
+maybe_fatal_t<> FlushBlockFile(bool fFinalize = false, bool finalize_undo = false);
 // ... TODO move fully to blockstorage
 
 CBlockIndex* BlockManager::LookupBlockIndex(const uint256& hash) const
@@ -1921,8 +1922,9 @@ bool CChainState::ConnectBlock(const CBlock& block, BlockValidationState& state,
     if (fJustCheck)
         return true;
 
-    if (!WriteUndoDataForBlock(blockundo, state, pindex, m_params)) {
-        return false;
+    if (auto&& write_ret = WriteUndoDataForBlock(blockundo, state, pindex, m_params); std::holds_alternative<FatalError>(write_ret)) {
+        auto errstr = FatalErrorStr(std::get<FatalError>(write_ret));
+        return AbortNode(state, errstr, _(errstr.c_str()));
     }
 
     if (!pindex->IsValid(BLOCK_VALID_SCRIPTS)) {
@@ -2055,7 +2057,10 @@ bool CChainState::FlushStateToDisk(
                 LOG_TIME_MILLIS_WITH_CATEGORY("write block and undo data to disk", BCLog::BENCH);
 
                 // First make sure all block and undo data is flushed to disk.
-                FlushBlockFile();
+                if (auto&& flush_ret = FlushBlockFile(); std::holds_alternative<FatalError>(flush_ret)) {
+                    auto errstr = FatalErrorStr(std::get<FatalError>(flush_ret));
+                    return AbortNode(state, errstr, _(errstr.c_str()));
+                }
             }
 
             // Then update all block file information (which may refer to block and undo files).
@@ -3441,12 +3446,12 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, Block
     // Write block to history file
     if (fNewBlock) *fNewBlock = true;
     try {
-        FlatFilePos blockPos = SaveBlockToDisk(block, pindex->nHeight, m_chain, m_params, dbp);
-        if (blockPos.IsNull()) {
-            state.Error(strprintf("%s: Failed to find position to write new block to disk", __func__));
-            return false;
+        auto&& save_ret = SaveBlockToDisk(block, pindex->nHeight, m_chain, m_params, dbp);
+        if (std::holds_alternative<FatalError>(save_ret)) {
+            auto errstr = FatalErrorStr(std::get<FatalError>(save_ret));
+            return AbortNode(state, errstr, _(errstr.c_str()));
         }
-        ReceivedBlockTransactions(block, pindex, blockPos);
+        ReceivedBlockTransactions(block, pindex, std::get<FlatFilePos>(save_ret));
     } catch (const std::runtime_error& e) {
         return AbortNode(state, std::string("System error: ") + e.what());
     }
@@ -4140,11 +4145,15 @@ bool CChainState::LoadGenesisBlock()
 
     try {
         const CBlock& block = m_params.GenesisBlock();
-        FlatFilePos blockPos = SaveBlockToDisk(block, 0, m_chain, m_params, nullptr);
-        if (blockPos.IsNull())
-            return error("%s: writing genesis block to disk failed", __func__);
+
+        auto&& save_ret = SaveBlockToDisk(block, 0, m_chain, m_params, nullptr);
+        if (std::holds_alternative<FatalError>(save_ret)) {
+            auto errstr = FatalErrorStr(std::get<FatalError>(save_ret));
+            error("%s: writing genesis block to disk failed", __func__);
+            return AbortNode(errstr, _(errstr.c_str()));
+        }
         CBlockIndex *pindex = m_blockman.AddToBlockIndex(block);
-        ReceivedBlockTransactions(block, pindex, blockPos);
+        ReceivedBlockTransactions(block, pindex, std::get<FlatFilePos>(save_ret));
     } catch (const std::runtime_error& e) {
         return error("%s: failed to write genesis block: %s", __func__, e.what());
     }

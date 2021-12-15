@@ -8,6 +8,7 @@
 #include <chainparams.h>
 #include <clientversion.h>
 #include <consensus/validation.h>
+#include <fatal_error.h>
 #include <flatfile.h>
 #include <fs.h>
 #include <hash.h>
@@ -107,12 +108,13 @@ CBlockFileInfo* GetBlockFileInfo(size_t n)
     return &vinfoBlockFile.at(n);
 }
 
-static bool UndoWriteToDisk(const CBlockUndo& blockundo, FlatFilePos& pos, const uint256& hashBlock, const CMessageHeader::MessageStartChars& messageStart)
+static maybe_fatal_t<> UndoWriteToDisk(const CBlockUndo& blockundo, FlatFilePos& pos, const uint256& hashBlock, const CMessageHeader::MessageStartChars& messageStart)
 {
     // Open history file to append
     CAutoFile fileout(OpenUndoFile(pos), SER_DISK, CLIENT_VERSION);
     if (fileout.IsNull()) {
-        return error("%s: OpenUndoFile failed", __func__);
+        error("%s: OpenUndoFile failed", __func__);
+        return FatalError::UNDO_WRITE_FAILED;
     }
 
     // Write index header
@@ -122,7 +124,8 @@ static bool UndoWriteToDisk(const CBlockUndo& blockundo, FlatFilePos& pos, const
     // Write undo data
     long fileOutPos = ftell(fileout.Get());
     if (fileOutPos < 0) {
-        return error("%s: ftell failed", __func__);
+        error("%s: ftell failed", __func__);
+        return FatalError::UNDO_WRITE_FAILED;
     }
     pos.nPos = (unsigned int)fileOutPos;
     fileout << blockundo;
@@ -133,7 +136,7 @@ static bool UndoWriteToDisk(const CBlockUndo& blockundo, FlatFilePos& pos, const
     hasher << blockundo;
     fileout << hasher.GetHash();
 
-    return true;
+    return {};
 }
 
 bool UndoReadFromDisk(CBlockUndo& blockundo, const CBlockIndex* pindex)
@@ -168,24 +171,28 @@ bool UndoReadFromDisk(CBlockUndo& blockundo, const CBlockIndex* pindex)
     return true;
 }
 
-static void FlushUndoFile(int block_file, bool finalize = false)
+static maybe_fatal_t<> FlushUndoFile(int block_file, bool finalize = false)
 {
     FlatFilePos undo_pos_old(block_file, vinfoBlockFile[block_file].nUndoSize);
     if (!UndoFileSeq().Flush(undo_pos_old, finalize)) {
-        AbortNode("Flushing undo file to disk failed. This is likely the result of an I/O error.");
+        error("Flushing undo file to disk failed. This is likely the result of an I/O error.");
+        return FatalError::UNDO_FLUSH_FAILED;
     }
+    return {};
 }
 
-void FlushBlockFile(bool fFinalize = false, bool finalize_undo = false)
+maybe_fatal_t<> FlushBlockFile(bool fFinalize = false, bool finalize_undo = false)
 {
     LOCK(cs_LastBlockFile);
     FlatFilePos block_pos_old(nLastBlockFile, vinfoBlockFile[nLastBlockFile].nSize);
     if (!BlockFileSeq().Flush(block_pos_old, fFinalize)) {
-        AbortNode("Flushing block file to disk failed. This is likely the result of an I/O error.");
+        error("Flushing block file to disk failed. This is likely the result of an I/O error.");
+        return FatalError::BLOCK_FLUSH_FAILED;
     }
     // we do not always flush the undo file, as the chain tip may be lagging behind the incoming blocks,
     // e.g. during IBD or a sync after a node going offline
-    if (!fFinalize || finalize_undo) FlushUndoFile(nLastBlockFile, finalize_undo);
+    if (!fFinalize || finalize_undo) return FlushUndoFile(nLastBlockFile, finalize_undo);
+    return {};
 }
 
 uint64_t CalculateCurrentUsage()
@@ -235,7 +242,7 @@ fs::path GetBlockPosFilename(const FlatFilePos& pos)
     return BlockFileSeq().FileName(pos);
 }
 
-bool FindBlockPos(FlatFilePos& pos, unsigned int nAddSize, unsigned int nHeight, CChain& active_chain, uint64_t nTime, bool fKnown = false)
+maybe_fatal_t<> FindBlockPos(FlatFilePos& pos, unsigned int nAddSize, unsigned int nHeight, CChain& active_chain, uint64_t nTime, bool fKnown = false)
 {
     LOCK(cs_LastBlockFile);
 
@@ -264,7 +271,9 @@ bool FindBlockPos(FlatFilePos& pos, unsigned int nAddSize, unsigned int nHeight,
         if (!fKnown) {
             LogPrint(BCLog::BLOCKSTORE, "Leaving block file %i: %s\n", nLastBlockFile, vinfoBlockFile[nLastBlockFile].ToString());
         }
-        FlushBlockFile(!fKnown, finalize_undo);
+        if (auto&& flush_ret = FlushBlockFile(!fKnown, finalize_undo); std::holds_alternative<FatalError>(flush_ret)) {
+            return flush_ret;
+        }
         nLastBlockFile = nFile;
     }
 
@@ -279,7 +288,8 @@ bool FindBlockPos(FlatFilePos& pos, unsigned int nAddSize, unsigned int nHeight,
         bool out_of_space;
         size_t bytes_allocated = BlockFileSeq().Allocate(pos, nAddSize, out_of_space);
         if (out_of_space) {
-            return AbortNode("Disk space is too low!", _("Disk space is too low!"));
+            error("Disk space is too low!");
+            return FatalError::DISK_SPACE_ERROR;
         }
         if (bytes_allocated != 0 && fPruneMode) {
             fCheckForPruning = true;
@@ -287,10 +297,10 @@ bool FindBlockPos(FlatFilePos& pos, unsigned int nAddSize, unsigned int nHeight,
     }
 
     setDirtyFileInfo.insert(nFile);
-    return true;
+    return {};
 }
 
-static bool FindUndoPos(BlockValidationState& state, int nFile, FlatFilePos& pos, unsigned int nAddSize)
+static maybe_fatal_t<> FindUndoPos(BlockValidationState& state, int nFile, FlatFilePos& pos, unsigned int nAddSize)
 {
     pos.nFile = nFile;
 
@@ -303,21 +313,23 @@ static bool FindUndoPos(BlockValidationState& state, int nFile, FlatFilePos& pos
     bool out_of_space;
     size_t bytes_allocated = UndoFileSeq().Allocate(pos, nAddSize, out_of_space);
     if (out_of_space) {
-        return AbortNode(state, "Disk space is too low!", _("Disk space is too low!"));
+        error("Disk space is too low!");
+        return FatalError::DISK_SPACE_ERROR;
     }
     if (bytes_allocated != 0 && fPruneMode) {
         fCheckForPruning = true;
     }
 
-    return true;
+    return {};
 }
 
-static bool WriteBlockToDisk(const CBlock& block, FlatFilePos& pos, const CMessageHeader::MessageStartChars& messageStart)
+static maybe_fatal_t<> WriteBlockToDisk(const CBlock& block, FlatFilePos& pos, const CMessageHeader::MessageStartChars& messageStart)
 {
     // Open history file to append
     CAutoFile fileout(OpenBlockFile(pos), SER_DISK, CLIENT_VERSION);
     if (fileout.IsNull()) {
-        return error("WriteBlockToDisk: OpenBlockFile failed");
+        error("WriteBlockToDisk: OpenBlockFile failed");
+        return FatalError::BLOCK_WRITE_FAILED;
     }
 
     // Write index header
@@ -327,24 +339,28 @@ static bool WriteBlockToDisk(const CBlock& block, FlatFilePos& pos, const CMessa
     // Write block
     long fileOutPos = ftell(fileout.Get());
     if (fileOutPos < 0) {
-        return error("WriteBlockToDisk: ftell failed");
+        error("WriteBlockToDisk: ftell failed");
+        return FatalError::BLOCK_WRITE_FAILED;
     }
     pos.nPos = (unsigned int)fileOutPos;
     fileout << block;
 
-    return true;
+    return {};
 }
 
-bool WriteUndoDataForBlock(const CBlockUndo& blockundo, BlockValidationState& state, CBlockIndex* pindex, const CChainParams& chainparams)
+maybe_fatal_t<> WriteUndoDataForBlock(const CBlockUndo& blockundo, BlockValidationState& state, CBlockIndex* pindex, const CChainParams& chainparams)
 {
     // Write undo information to disk
     if (pindex->GetUndoPos().IsNull()) {
         FlatFilePos _pos;
-        if (!FindUndoPos(state, pindex->nFile, _pos, ::GetSerializeSize(blockundo, CLIENT_VERSION) + 40)) {
-            return error("ConnectBlock(): FindUndoPos failed");
+        if (auto&& find_ret = FindUndoPos(state, pindex->nFile, _pos, ::GetSerializeSize(blockundo, CLIENT_VERSION) + 40); std::holds_alternative<FatalError>(find_ret)) {
+            error("ConnectBlock(): FindUndoPos failed");
+            return find_ret;
         }
-        if (!UndoWriteToDisk(blockundo, _pos, pindex->pprev->GetBlockHash(), chainparams.MessageStart())) {
-            return AbortNode(state, "Failed to write undo data");
+
+        if (auto&& write_ret = UndoWriteToDisk(blockundo, _pos, pindex->pprev->GetBlockHash(), chainparams.MessageStart()); std::holds_alternative<FatalError>(write_ret)) {
+            return write_ret;
+            error("Failed to write undo data");
         }
         // rev files are written in block height order, whereas blk files are written as blocks come in (often out of order)
         // we want to flush the rev (undo) file once we've written the last block, which is indicated by the last height
@@ -361,7 +377,7 @@ bool WriteUndoDataForBlock(const CBlockUndo& blockundo, BlockValidationState& st
         setDirtyBlockIndex.insert(pindex);
     }
 
-    return true;
+    return {};
 }
 
 bool ReadBlockFromDisk(CBlock& block, const FlatFilePos& pos, const Consensus::Params& consensusParams)
@@ -455,21 +471,21 @@ bool ReadRawBlockFromDisk(std::vector<uint8_t>& block, const CBlockIndex* pindex
 }
 
 /** Store block on disk. If dbp is non-nullptr, the file is known to already reside on disk */
-FlatFilePos SaveBlockToDisk(const CBlock& block, int nHeight, CChain& active_chain, const CChainParams& chainparams, const FlatFilePos* dbp)
+maybe_fatal_t<FlatFilePos> SaveBlockToDisk(const CBlock& block, int nHeight, CChain& active_chain, const CChainParams& chainparams, const FlatFilePos* dbp)
 {
     unsigned int nBlockSize = ::GetSerializeSize(block, CLIENT_VERSION);
     FlatFilePos blockPos;
     if (dbp != nullptr) {
         blockPos = *dbp;
     }
-    if (!FindBlockPos(blockPos, nBlockSize + 8, nHeight, active_chain, block.GetBlockTime(), dbp != nullptr)) {
+    if (auto&& find_ret = FindBlockPos(blockPos, nBlockSize + 8, nHeight, active_chain, block.GetBlockTime(), dbp != nullptr); std::holds_alternative<FatalError>(find_ret)) {
         error("%s: FindBlockPos failed", __func__);
-        return FlatFilePos();
+        return std::get<FatalError>(find_ret);
     }
     if (dbp == nullptr) {
-        if (!WriteBlockToDisk(block, blockPos, chainparams.MessageStart())) {
-            AbortNode("Failed to write block");
-            return FlatFilePos();
+        if (auto&& write_ret = WriteBlockToDisk(block, blockPos, chainparams.MessageStart()); std::holds_alternative<FatalError>(write_ret)) {
+            error("Failed to write block");
+            return std::get<FatalError>(write_ret);
         }
     }
     return blockPos;
