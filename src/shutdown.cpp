@@ -18,7 +18,7 @@
 #include <condition_variable>
 #endif
 
-bool AbortNode(const std::string& strMessage, bilingual_str user_message)
+void WarnBeforeAbort(const std::string& strMessage, bilingual_str user_message)
 {
     SetMiscWarning(Untranslated(strMessage));
     LogPrintf("*** %s\n", strMessage);
@@ -26,6 +26,10 @@ bool AbortNode(const std::string& strMessage, bilingual_str user_message)
         user_message = _("A fatal internal error occurred, see debug.log for details");
     }
     AbortError(user_message);
+}
+
+bool AbortNode()
+{
     StartShutdown();
     return false;
 }

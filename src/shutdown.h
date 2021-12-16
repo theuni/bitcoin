@@ -8,8 +8,11 @@
 
 #include <util/translation.h> // For bilingual_str
 
-/** Abort with a message */
-bool AbortNode(const std::string& strMessage, bilingual_str user_message = bilingual_str{});
+/** Warn that node is about to be aborted */
+void WarnBeforeAbort(const std::string& strMessage, bilingual_str user_message);
+
+/** Abort node */
+bool AbortNode();
 
 /** Initialize shutdown state. This must be called before using either StartShutdown(),
  * AbortShutdown() or WaitForShutdown(). Calling ShutdownRequested() is always safe.

@@ -9,6 +9,7 @@
 
 enum class FatalError
 {
+    UNKNOWN,
     BLOCK_DISCONNECT_ERROR,
     BLOCK_FLUSH_FAILED,
     BLOCK_READ_FAILED,
@@ -23,8 +24,41 @@ enum class FatalError
 };
 
 template <typename T = std::monostate>
-using maybe_fatal_t = std::variant<T, FatalError>;
+class MaybeFatalReturn final : std::variant<T, FatalError>
+{
+public:
+    //std::variant<T, FatalError> m_value;
+    using std::variant<T, FatalError>::variant;
+//    using std::variant<T, FatalError>::operator=;
 
+    const T& operator*() const {
+        assert(!std::holds_alternative<FatalError>(*this));
+        return std::get<T>(*this);
+    }
 
+    T& operator*() {
+        assert(!std::holds_alternative<FatalError>(*this));
+        return std::get<T>(*this);
+    }
+
+    const T* operator->() const {
+        assert(!std::holds_alternative<FatalError>(*this));
+        return &std::get<T>(*this);
+    }
+
+    bool IsFatal() const
+    {
+        return std::holds_alternative<FatalError>(*this);
+    }
+
+    FatalError GetFatal() const
+    {
+        assert(std::holds_alternative<FatalError>(*this));
+        return std::get<FatalError>(*this);
+    }
+};
+
+template <typename T = std::monostate>
+using maybe_fatal_t = MaybeFatalReturn<T>;
 
 #endif // BITCOIN_FATAL_ERROR_H

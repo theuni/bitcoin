@@ -271,8 +271,8 @@ maybe_fatal_t<> FindBlockPos(FlatFilePos& pos, unsigned int nAddSize, unsigned i
         if (!fKnown) {
             LogPrint(BCLog::BLOCKSTORE, "Leaving block file %i: %s\n", nLastBlockFile, vinfoBlockFile[nLastBlockFile].ToString());
         }
-        if (auto&& flush_ret = FlushBlockFile(!fKnown, finalize_undo); std::holds_alternative<FatalError>(flush_ret)) {
-            return flush_ret;
+        if (auto&& flush_ret = FlushBlockFile(!fKnown, finalize_undo); flush_ret.IsFatal()) {
+            return flush_ret.GetFatal();
         }
         nLastBlockFile = nFile;
     }
@@ -353,13 +353,13 @@ maybe_fatal_t<> WriteUndoDataForBlock(const CBlockUndo& blockundo, BlockValidati
     // Write undo information to disk
     if (pindex->GetUndoPos().IsNull()) {
         FlatFilePos _pos;
-        if (auto&& find_ret = FindUndoPos(state, pindex->nFile, _pos, ::GetSerializeSize(blockundo, CLIENT_VERSION) + 40); std::holds_alternative<FatalError>(find_ret)) {
+        if (auto&& find_ret = FindUndoPos(state, pindex->nFile, _pos, ::GetSerializeSize(blockundo, CLIENT_VERSION) + 40); find_ret.IsFatal()) {
             error("ConnectBlock(): FindUndoPos failed");
-            return find_ret;
+            return find_ret.GetFatal();;
         }
 
-        if (auto&& write_ret = UndoWriteToDisk(blockundo, _pos, pindex->pprev->GetBlockHash(), chainparams.MessageStart()); std::holds_alternative<FatalError>(write_ret)) {
-            return write_ret;
+        if (auto&& write_ret = UndoWriteToDisk(blockundo, _pos, pindex->pprev->GetBlockHash(), chainparams.MessageStart()); write_ret.IsFatal()) {
+            return write_ret.GetFatal();
             error("Failed to write undo data");
         }
         // rev files are written in block height order, whereas blk files are written as blocks come in (often out of order)
@@ -478,14 +478,14 @@ maybe_fatal_t<FlatFilePos> SaveBlockToDisk(const CBlock& block, int nHeight, CCh
     if (dbp != nullptr) {
         blockPos = *dbp;
     }
-    if (auto&& find_ret = FindBlockPos(blockPos, nBlockSize + 8, nHeight, active_chain, block.GetBlockTime(), dbp != nullptr); std::holds_alternative<FatalError>(find_ret)) {
+    if (auto&& find_ret = FindBlockPos(blockPos, nBlockSize + 8, nHeight, active_chain, block.GetBlockTime(), dbp != nullptr); find_ret.IsFatal()) {
         error("%s: FindBlockPos failed", __func__);
-        return std::get<FatalError>(find_ret);
+        return find_ret.GetFatal();
     }
     if (dbp == nullptr) {
-        if (auto&& write_ret = WriteBlockToDisk(block, blockPos, chainparams.MessageStart()); std::holds_alternative<FatalError>(write_ret)) {
+        if (auto&& write_ret = WriteBlockToDisk(block, blockPos, chainparams.MessageStart()); write_ret.IsFatal()) {
             error("Failed to write block");
-            return std::get<FatalError>(write_ret);
+            return write_ret.GetFatal();
         }
     }
     return blockPos;
@@ -562,7 +562,7 @@ void ThreadImport(ChainstateManager& chainman, std::vector<fs::path> vImportFile
         // the relevant pointers before the ABC call.
         for (CChainState* chainstate : WITH_LOCK(::cs_main, return chainman.GetAll())) {
             BlockValidationState state;
-            if (!chainstate->ActivateBestChain(state, nullptr)) {
+            if (auto abc_ret = chainstate->ActivateBestChain(state, nullptr); abc_ret.IsFatal()) {
                 LogPrintf("Failed to connect best block (%s)\n", state.ToString());
                 StartShutdown();
                 return;
