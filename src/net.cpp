@@ -2274,7 +2274,13 @@ void CConnman::ThreadMessageHandler()
                     continue;
 
                 // Receive messages
-                bool fMoreNodeWork = m_msgproc->ProcessMessages(pnode, flagInterruptMsgProc);
+                auto process_ret = m_msgproc->ProcessMessages(pnode, flagInterruptMsgProc);
+                if (process_ret.IsFatal()) {
+                    //TODO
+                    return;
+                }
+    
+                const bool& fMoreNodeWork = *process_ret;
                 fMoreWork |= (fMoreNodeWork && !pnode->fPauseSend);
                 if (flagInterruptMsgProc)
                     return;

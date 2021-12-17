@@ -526,7 +526,12 @@ void ThreadImport(ChainstateManager& chainman, std::vector<fs::path> vImportFile
                     break; // This error is logged in OpenBlockFile
                 }
                 LogPrintf("Reindexing block file blk%05u.dat...\n", (unsigned int)nFile);
-                chainman.ActiveChainstate().LoadExternalBlockFile(file, &pos);
+                auto load_ret = chainman.ActiveChainstate().LoadExternalBlockFile(file, &pos);
+                if (load_ret.IsFatal()) {
+                    // TODO
+                    LogPrintf("Fatal Error. Exit %s\n", __func__);
+                    return;
+                }
                 if (ShutdownRequested()) {
                     LogPrintf("Shutdown requested. Exit %s\n", __func__);
                     return;
@@ -537,7 +542,11 @@ void ThreadImport(ChainstateManager& chainman, std::vector<fs::path> vImportFile
             fReindex = false;
             LogPrintf("Reindexing finished\n");
             // To avoid ending up in a situation without genesis block, re-try initializing (no-op if reindexing worked):
-            chainman.ActiveChainstate().LoadGenesisBlock();
+            auto load_ret = chainman.ActiveChainstate().LoadGenesisBlock();
+            if (load_ret.IsFatal()) {
+                LogPrintf("Fatal Error. Exit %s\n", __func__);
+                return;
+            }
         }
 
         // -loadblock=
@@ -545,7 +554,11 @@ void ThreadImport(ChainstateManager& chainman, std::vector<fs::path> vImportFile
             FILE* file = fsbridge::fopen(path, "rb");
             if (file) {
                 LogPrintf("Importing blocks file %s...\n", fs::PathToString(path));
-                chainman.ActiveChainstate().LoadExternalBlockFile(file);
+                auto load_ret = chainman.ActiveChainstate().LoadExternalBlockFile(file);
+                if (load_ret.IsFatal()) {
+                    LogPrintf("Fatal Error. Exit %s\n", __func__);
+                    return;
+                }
                 if (ShutdownRequested()) {
                     LogPrintf("Shutdown requested. Exit %s\n", __func__);
                     return;

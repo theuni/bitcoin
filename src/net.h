@@ -12,6 +12,7 @@
 #include <consensus/amount.h>
 #include <crypto/siphash.h>
 #include <hash.h>
+#include <fatal_error.h>
 #include <i2p.h>
 #include <net_permissions.h>
 #include <netaddress.h>
@@ -718,7 +719,7 @@ public:
     * @param[in]   interrupt       Interrupt condition for processing threads
     * @return                      True if there is more work to be done
     */
-    virtual bool ProcessMessages(CNode* pnode, std::atomic<bool>& interrupt) = 0;
+    virtual maybe_fatal_t<bool> ProcessMessages(CNode* pnode, std::atomic<bool>& interrupt) = 0;
 
     /**
     * Send queued protocol messages to a given node.

@@ -6,6 +6,7 @@
 #ifndef BITCOIN_NET_PROCESSING_H
 #define BITCOIN_NET_PROCESSING_H
 
+#include <fatal_error.h>
 #include <net.h>
 #include <validationinterface.h>
 
@@ -84,7 +85,7 @@ public:
     virtual void CheckForStaleTipAndEvictPeers() = 0;
 
     /** Process a single message from a peer. Public for fuzz testing */
-    virtual void ProcessMessage(CNode& pfrom, const std::string& msg_type, CDataStream& vRecv,
+    [[nodiscard]] virtual maybe_fatal_t<> ProcessMessage(CNode& pfrom, const std::string& msg_type, CDataStream& vRecv,
                                 const std::chrono::microseconds time_received, const std::atomic<bool>& interruptMsgProc) = 0;
 };
 

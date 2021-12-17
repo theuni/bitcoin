@@ -5,6 +5,7 @@
 #ifndef BITCOIN_FATAL_ERROR_H
 #define BITCOIN_FATAL_ERROR_H
 
+#include <cassert>
 #include <variant>
 
 enum class FatalError

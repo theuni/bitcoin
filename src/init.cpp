@@ -232,7 +232,11 @@ void Shutdown(NodeContext& node)
         LOCK(cs_main);
         for (CChainState* chainstate : node.chainman->GetAll()) {
             if (chainstate->CanFlushToDisk()) {
-                chainstate->ForceFlushStateToDisk();
+                auto flush_ret = chainstate->ForceFlushStateToDisk();
+                if (flush_ret.IsFatal()) {
+                    // TODO
+                    // Maybe nothing?
+                }
             }
         }
     }
@@ -263,7 +267,11 @@ void Shutdown(NodeContext& node)
         LOCK(cs_main);
         for (CChainState* chainstate : node.chainman->GetAll()) {
             if (chainstate->CanFlushToDisk()) {
-                chainstate->ForceFlushStateToDisk();
+                auto flush_ret = chainstate->ForceFlushStateToDisk();
+                if (flush_ret.IsFatal()) {
+                    // TODO
+                    // Maybe Nothing?
+                }
                 chainstate->ResetCoinsViews();
             }
         }
@@ -1677,7 +1685,11 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
             LOCK(cs_main);
             for (CChainState* chainstate : chainman.GetAll()) {
                 uiInterface.InitMessage(_("Pruning blockstore…").translated);
-                chainstate->PruneAndFlush();
+                auto pf_ret = chainstate->PruneAndFlush();
+                if (pf_ret.IsFatal()) {
+                    // TODO
+                    LogPrintf("Fatal Error. Exiting.\n");
+                }
             }
         }
     }
