@@ -4,6 +4,7 @@
 
 #include <httprpc.h>
 
+#include <fatal_error.h>
 #include <chainparams.h>
 #include <crypto/hmac_sha256.h>
 #include <httpserver.h>
@@ -144,7 +145,7 @@ static bool RPCAuthorized(const std::string& strAuth, std::string& strAuthUserna
     return multiUserAuthorized(strUserPass);
 }
 
-static bool HTTPReq_JSONRPC(const std::any& context, HTTPRequest* req)
+static maybe_fatal_t<bool> HTTPReq_JSONRPC(const std::any& context, HTTPRequest* req)
 {
     // JSONRPC handles only POST
     if (req->GetRequestMethod() != HTTPRequest::POST) {
@@ -199,7 +200,11 @@ static bool HTTPReq_JSONRPC(const std::any& context, HTTPRequest* req)
                 req->WriteReply(HTTP_FORBIDDEN);
                 return false;
             }
-            UniValue result = tableRPC.execute(jreq);
+            auto ex_ret = tableRPC.execute(jreq);
+            if (ex_ret.IsFatal()) {
+                return ex_ret.GetFatal();
+            }
+            UniValue& result = *ex_ret;
 
             // Send reply
             strReply = JSONRPCReply(result, NullUniValue, jreq.id);
@@ -222,7 +227,11 @@ static bool HTTPReq_JSONRPC(const std::any& context, HTTPRequest* req)
                     }
                 }
             }
-            strReply = JSONRPCExecBatch(jreq, valRequest.get_array());
+            auto batch_ret = JSONRPCExecBatch(jreq, valRequest.get_array());
+            if (batch_ret.IsFatal()) {
+                return batch_ret.GetFatal();
+            }
+            strReply = *batch_ret;
         }
         else
             throw JSONRPCError(RPC_PARSE_ERROR, "Top-level object parse error");

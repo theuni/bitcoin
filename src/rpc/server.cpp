@@ -29,7 +29,7 @@ static RPCTimerInterface* timerInterface = nullptr;
 /* Map of name to timer. */
 static Mutex g_deadline_timers_mutex;
 static std::map<std::string, std::unique_ptr<RPCTimerBase> > deadlineTimers GUARDED_BY(g_deadline_timers_mutex);
-static bool ExecuteCommand(const CRPCCommand& command, const JSONRPCRequest& request, UniValue& result, bool last_handler);
+static maybe_fatal_t<bool> ExecuteCommand(const CRPCCommand& command, const JSONRPCRequest& request, UniValue& result, bool last_handler);
 
 struct RPCCommandExecutionInfo
 {
@@ -142,7 +142,7 @@ static RPCHelpMan help()
                     RPCResult{RPCResult::Type::ANY, "", ""},
                 },
                 RPCExamples{""},
-        [&](const RPCHelpMan& self, const JSONRPCRequest& jsonRequest) -> UniValue
+        [&](const RPCHelpMan& self, const JSONRPCRequest& jsonRequest) -> maybe_fatal_t<UniValue>
 {
     std::string strCommand;
     if (jsonRequest.params.size() > 0) {
@@ -356,15 +356,18 @@ bool IsDeprecatedRPCEnabled(const std::string& method)
     return find(enabled_methods.begin(), enabled_methods.end(), method) != enabled_methods.end();
 }
 
-static UniValue JSONRPCExecOne(JSONRPCRequest jreq, const UniValue& req)
+static maybe_fatal_t<UniValue> JSONRPCExecOne(JSONRPCRequest jreq, const UniValue& req)
 {
     UniValue rpc_result(UniValue::VOBJ);
 
     try {
         jreq.parse(req);
 
-        UniValue result = tableRPC.execute(jreq);
-        rpc_result = JSONRPCReplyObj(result, NullUniValue, jreq.id);
+        auto result = tableRPC.execute(jreq);
+        if (result.IsFatal()) {
+            return result.GetFatal();
+        }
+        rpc_result = JSONRPCReplyObj(*result, NullUniValue, jreq.id);
     }
     catch (const UniValue& objError)
     {
@@ -379,12 +382,16 @@ static UniValue JSONRPCExecOne(JSONRPCRequest jreq, const UniValue& req)
     return rpc_result;
 }
 
-std::string JSONRPCExecBatch(const JSONRPCRequest& jreq, const UniValue& vReq)
+maybe_fatal_t<std::string> JSONRPCExecBatch(const JSONRPCRequest& jreq, const UniValue& vReq)
 {
     UniValue ret(UniValue::VARR);
-    for (unsigned int reqIdx = 0; reqIdx < vReq.size(); reqIdx++)
-        ret.push_back(JSONRPCExecOne(jreq, vReq[reqIdx]));
-
+    for (unsigned int reqIdx = 0; reqIdx < vReq.size(); reqIdx++) {
+        auto exec_ret = JSONRPCExecOne(jreq, vReq[reqIdx]);
+        if (exec_ret.IsFatal()) {
+            return exec_ret.GetFatal();
+        }
+        ret.push_back(*exec_ret);
+    }
     return ret.write() + "\n";
 }
 
@@ -438,17 +445,21 @@ static inline JSONRPCRequest transformNamedArguments(const JSONRPCRequest& in, c
     return out;
 }
 
-static bool ExecuteCommands(const std::vector<const CRPCCommand*>& commands, const JSONRPCRequest& request, UniValue& result)
+static maybe_fatal_t<bool> ExecuteCommands(const std::vector<const CRPCCommand*>& commands, const JSONRPCRequest& request, UniValue& result)
 {
     for (const auto& command : commands) {
-        if (ExecuteCommand(*command, request, result, &command == &commands.back())) {
+        auto ex_ret = ExecuteCommand(*command, request, result, &command == &commands.back());
+        if (ex_ret.IsFatal()) {
+            return ex_ret.GetFatal();
+        }
+        if (*ex_ret) {
             return true;
         }
     }
     return false;
 }
 
-UniValue CRPCTable::execute(const JSONRPCRequest &request) const
+maybe_fatal_t<UniValue> CRPCTable::execute(const JSONRPCRequest &request) const
 {
     // Return immediately if in warmup
     {
@@ -461,23 +472,37 @@ UniValue CRPCTable::execute(const JSONRPCRequest &request) const
     auto it = mapCommands.find(request.strMethod);
     if (it != mapCommands.end()) {
         UniValue result;
-        if (ExecuteCommands(it->second, request, result)) {
+        auto ret = ExecuteCommands(it->second, request, result);
+        if (ret.IsFatal()) {
+            return ret.GetFatal();
+        }
+        if (*ret) {
             return result;
         }
     }
     throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found");
 }
 
-static bool ExecuteCommand(const CRPCCommand& command, const JSONRPCRequest& request, UniValue& result, bool last_handler)
+static maybe_fatal_t<bool> ExecuteCommand(const CRPCCommand& command, const JSONRPCRequest& request, UniValue& result, bool last_handler)
 {
     try
     {
         RPCCommandExecution execution(request.strMethod);
         // Execute, convert arguments to array if necessary
         if (request.params.isObject()) {
-            return command.actor(transformNamedArguments(request, command.argNames), result, last_handler);
+            auto ret = command.actor(transformNamedArguments(request, command.argNames), result, last_handler);
+            if (ret.IsFatal()) {
+                // TODO
+                return ret.GetFatal();
+            }
+            return *ret;
         } else {
-            return command.actor(request, result, last_handler);
+            auto ret = command.actor(request, result, last_handler);
+            if (ret.IsFatal()) {
+                // TODO
+                return ret.GetFatal();
+            }
+            return *ret;
         }
     }
     catch (const std::exception& e)
@@ -493,7 +518,7 @@ std::vector<std::string> CRPCTable::listCommands() const
     return commandList;
 }
 
-UniValue CRPCTable::dumpArgMap(const JSONRPCRequest& args_request) const
+maybe_fatal_t<UniValue> CRPCTable::dumpArgMap(const JSONRPCRequest& args_request) const
 {
     JSONRPCRequest request = args_request;
     request.mode = JSONRPCRequest::GET_ARGS;
@@ -501,7 +526,11 @@ UniValue CRPCTable::dumpArgMap(const JSONRPCRequest& args_request) const
     UniValue ret{UniValue::VARR};
     for (const auto& cmd : mapCommands) {
         UniValue result;
-        if (ExecuteCommands(cmd.second, request, result)) {
+        auto ex_ret = ExecuteCommands(cmd.second, request, result);
+        if (ex_ret.IsFatal()) {
+            return ex_ret.GetFatal();
+        }
+        if (*ex_ret) {
             for (const auto& values : result.getValues()) {
                 ret.push_back(values);
             }

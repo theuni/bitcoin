@@ -6,6 +6,7 @@
 #define BITCOIN_INTERFACES_NODE_H
 
 #include <consensus/amount.h>
+#include <fatal_error.h>
 #include <net.h>        // For NodeId
 #include <net_types.h>  // For banmap_t
 #include <netaddress.h> // For Network
@@ -170,7 +171,7 @@ public:
     virtual CFeeRate getDustRelayFee() = 0;
 
     //! Execute rpc command.
-    virtual UniValue executeRpc(const std::string& command, const UniValue& params, const std::string& uri) = 0;
+    [[nodiscard]] virtual maybe_fatal_t<UniValue> executeRpc(const std::string& command, const UniValue& params, const std::string& uri) = 0;
 
     //! List rpc commands.
     virtual std::vector<std::string> listRpcCommands() = 0;

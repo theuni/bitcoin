@@ -5,6 +5,7 @@
 #ifndef BITCOIN_RPC_UTIL_H
 #define BITCOIN_RPC_UTIL_H
 
+#include <fatal_error.h>
 #include <node/coinstats.h>
 #include <node/transaction.h>
 #include <outputtype.h>
@@ -346,10 +347,10 @@ class RPCHelpMan
 {
 public:
     RPCHelpMan(std::string name, std::string description, std::vector<RPCArg> args, RPCResults results, RPCExamples examples);
-    using RPCMethodImpl = std::function<UniValue(const RPCHelpMan&, const JSONRPCRequest&)>;
+    using RPCMethodImpl = std::function<maybe_fatal_t<UniValue>(const RPCHelpMan&, const JSONRPCRequest&)>;
     RPCHelpMan(std::string name, std::string description, std::vector<RPCArg> args, RPCResults results, RPCExamples examples, RPCMethodImpl fun);
 
-    UniValue HandleRequest(const JSONRPCRequest& request) const;
+    [[nodiscard]] maybe_fatal_t<UniValue> HandleRequest(const JSONRPCRequest& request) const;
     std::string ToString() const;
     /** Return the named args that need to be converted from string to another JSON type */
     UniValue GetArgMap() const;

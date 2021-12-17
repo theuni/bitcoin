@@ -92,7 +92,7 @@ public:
     //! RPC method handler reading request and assigning result. Should return
     //! true if request is fully handled, false if it should be passed on to
     //! subsequent handlers.
-    using Actor = std::function<bool(const JSONRPCRequest& request, UniValue& result, bool last_handler)>;
+    using Actor = std::function<maybe_fatal_t<bool>(const JSONRPCRequest& request, UniValue& result, bool last_handler)>;
 
     //! Constructor taking Actor callback supporting multiple handlers.
     CRPCCommand(std::string category, std::string name, Actor actor, std::vector<std::string> args, intptr_t unique_id)
@@ -106,7 +106,13 @@ public:
         : CRPCCommand(
               category,
               fn().m_name,
-              [fn](const JSONRPCRequest& request, UniValue& result, bool) { result = fn().HandleRequest(request); return true; },
+              [fn](const JSONRPCRequest& request, UniValue& result, bool) -> maybe_fatal_t<bool> {
+                  auto req_ret = fn().HandleRequest(request);
+                  if (req_ret.IsFatal()) {
+                      return req_ret.GetFatal();
+                  }
+                  return true;
+              },
               fn().GetArgNames(),
               intptr_t(fn))
     {
@@ -136,7 +142,7 @@ public:
      * @returns Result of the call.
      * @throws an exception (UniValue) when an error happens.
      */
-    UniValue execute(const JSONRPCRequest &request) const;
+    [[nodiscard]] maybe_fatal_t<UniValue> execute(const JSONRPCRequest &request) const;
 
     /**
     * Returns a list of registered commands
@@ -147,7 +153,7 @@ public:
     /**
      * Return all named arguments that need to be converted by the client from string to another JSON type
      */
-    UniValue dumpArgMap(const JSONRPCRequest& request) const;
+    [[nodiscard]] maybe_fatal_t<UniValue> dumpArgMap(const JSONRPCRequest& request) const;
 
     /**
      * Appends a CRPCCommand to the dispatch table.
@@ -172,7 +178,7 @@ extern CRPCTable tableRPC;
 void StartRPC();
 void InterruptRPC();
 void StopRPC();
-std::string JSONRPCExecBatch(const JSONRPCRequest& jreq, const UniValue& vReq);
+[[nodiscard]] maybe_fatal_t<std::string> JSONRPCExecBatch(const JSONRPCRequest& jreq, const UniValue& vReq);
 
 // Retrieves any serialization flags requested in command line argument
 int RPCSerializationFlags();

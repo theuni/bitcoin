@@ -176,7 +176,7 @@ static bool CheckWarmup(HTTPRequest* req)
     return true;
 }
 
-static bool rest_headers(const std::any& context,
+static maybe_fatal_t<bool> rest_headers(const std::any& context,
                          HTTPRequest* req,
                          const std::string& strURIPart)
 {
@@ -260,7 +260,7 @@ static bool rest_headers(const std::any& context,
     }
 }
 
-static bool rest_block(const std::any& context,
+static maybe_fatal_t<bool> rest_block(const std::any& context,
                        HTTPRequest* req,
                        const std::string& strURIPart,
                        TxVerbosity tx_verbosity)
@@ -328,12 +328,12 @@ static bool rest_block(const std::any& context,
     }
 }
 
-static bool rest_block_extended(const std::any& context, HTTPRequest* req, const std::string& strURIPart)
+static maybe_fatal_t<bool> rest_block_extended(const std::any& context, HTTPRequest* req, const std::string& strURIPart)
 {
     return rest_block(context, req, strURIPart, TxVerbosity::SHOW_DETAILS_AND_PREVOUT);
 }
 
-static bool rest_block_notxdetails(const std::any& context, HTTPRequest* req, const std::string& strURIPart)
+static maybe_fatal_t<bool> rest_block_notxdetails(const std::any& context, HTTPRequest* req, const std::string& strURIPart)
 {
     return rest_block(context, req, strURIPart, TxVerbosity::SHOW_TXID);
 }
@@ -341,7 +341,7 @@ static bool rest_block_notxdetails(const std::any& context, HTTPRequest* req, co
 // A bit of a hack - dependency on a function defined in rpc/blockchain.cpp
 RPCHelpMan getblockchaininfo();
 
-static bool rest_chaininfo(const std::any& context, HTTPRequest* req, const std::string& strURIPart)
+static maybe_fatal_t<bool> rest_chaininfo(const std::any& context, HTTPRequest* req, const std::string& strURIPart)
 {
     if (!CheckWarmup(req))
         return false;
@@ -353,8 +353,12 @@ static bool rest_chaininfo(const std::any& context, HTTPRequest* req, const std:
         JSONRPCRequest jsonRequest;
         jsonRequest.context = context;
         jsonRequest.params = UniValue(UniValue::VARR);
-        UniValue chainInfoObject = getblockchaininfo().HandleRequest(jsonRequest);
-        std::string strJSON = chainInfoObject.write() + "\n";
+        auto req_ret = getblockchaininfo().HandleRequest(jsonRequest);
+        if (req_ret.IsFatal()) {
+            // TODO
+            return req_ret.GetFatal();
+        }
+        std::string strJSON = req_ret->write() + "\n";
         req->WriteHeader("Content-Type", "application/json");
         req->WriteReply(HTTP_OK, strJSON);
         return true;
@@ -365,7 +369,7 @@ static bool rest_chaininfo(const std::any& context, HTTPRequest* req, const std:
     }
 }
 
-static bool rest_mempool_info(const std::any& context, HTTPRequest* req, const std::string& strURIPart)
+static maybe_fatal_t<bool> rest_mempool_info(const std::any& context, HTTPRequest* req, const std::string& strURIPart)
 {
     if (!CheckWarmup(req))
         return false;
@@ -389,7 +393,7 @@ static bool rest_mempool_info(const std::any& context, HTTPRequest* req, const s
     }
 }
 
-static bool rest_mempool_contents(const std::any& context, HTTPRequest* req, const std::string& strURIPart)
+static maybe_fatal_t<bool> rest_mempool_contents(const std::any& context, HTTPRequest* req, const std::string& strURIPart)
 {
     if (!CheckWarmup(req)) return false;
     const CTxMemPool* mempool = GetMemPool(context, req);
@@ -412,7 +416,7 @@ static bool rest_mempool_contents(const std::any& context, HTTPRequest* req, con
     }
 }
 
-static bool rest_tx(const std::any& context, HTTPRequest* req, const std::string& strURIPart)
+static maybe_fatal_t<bool> rest_tx(const std::any& context, HTTPRequest* req, const std::string& strURIPart)
 {
     if (!CheckWarmup(req))
         return false;
@@ -471,7 +475,7 @@ static bool rest_tx(const std::any& context, HTTPRequest* req, const std::string
     }
 }
 
-static bool rest_getutxos(const std::any& context, HTTPRequest* req, const std::string& strURIPart)
+static maybe_fatal_t<bool> rest_getutxos(const std::any& context, HTTPRequest* req, const std::string& strURIPart)
 {
     if (!CheckWarmup(req))
         return false;
@@ -661,7 +665,7 @@ static bool rest_getutxos(const std::any& context, HTTPRequest* req, const std::
     }
 }
 
-static bool rest_blockhash_by_height(const std::any& context, HTTPRequest* req,
+static maybe_fatal_t<bool> rest_blockhash_by_height(const std::any& context, HTTPRequest* req,
                        const std::string& str_uri_part)
 {
     if (!CheckWarmup(req)) return false;
@@ -713,7 +717,7 @@ static bool rest_blockhash_by_height(const std::any& context, HTTPRequest* req,
 
 static const struct {
     const char* prefix;
-    bool (*handler)(const std::any& context, HTTPRequest* req, const std::string& strReq);
+    maybe_fatal_t<bool> (*handler)(const std::any& context, HTTPRequest* req, const std::string& strReq);
 } uri_prefixes[] = {
       {"/rest/tx/", rest_tx},
       {"/rest/block/notxdetails/", rest_block_notxdetails},

@@ -259,7 +259,7 @@ public:
     }
     bool getNetworkActive() override { return m_context->connman && m_context->connman->GetNetworkActive(); }
     CFeeRate getDustRelayFee() override { return ::dustRelayFee; }
-    UniValue executeRpc(const std::string& command, const UniValue& params, const std::string& uri) override
+    maybe_fatal_t<UniValue> executeRpc(const std::string& command, const UniValue& params, const std::string& uri) override
     {
         JSONRPCRequest req;
         req.context = m_context;
@@ -415,7 +415,7 @@ class RpcHandlerImpl : public Handler
 public:
     explicit RpcHandlerImpl(const CRPCCommand& command) : m_command(command), m_wrapped_command(&command)
     {
-        m_command.actor = [this](const JSONRPCRequest& request, UniValue& result, bool last_handler) {
+        m_command.actor = [this](const JSONRPCRequest& request, UniValue& result, bool last_handler) -> maybe_fatal_t<bool> {
             if (!m_wrapped_command) return false;
             try {
                 return m_wrapped_command->actor(request, result, last_handler);

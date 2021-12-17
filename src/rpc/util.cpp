@@ -561,7 +561,7 @@ std::string RPCExamples::ToDescriptionString() const
     return m_examples.empty() ? m_examples : "\nExamples:\n" + m_examples;
 }
 
-UniValue RPCHelpMan::HandleRequest(const JSONRPCRequest& request) const
+maybe_fatal_t<UniValue> RPCHelpMan::HandleRequest(const JSONRPCRequest& request) const
 {
     if (request.mode == JSONRPCRequest::GET_ARGS) {
         return GetArgMap();
@@ -573,8 +573,11 @@ UniValue RPCHelpMan::HandleRequest(const JSONRPCRequest& request) const
     if (request.mode == JSONRPCRequest::GET_HELP || !IsValidNumArgs(request.params.size())) {
         throw std::runtime_error(ToString());
     }
-    const UniValue ret = m_fun(*this, request);
-    CHECK_NONFATAL(std::any_of(m_results.m_results.begin(), m_results.m_results.end(), [ret](const RPCResult& res) { return res.MatchesType(ret); }));
+    const auto ret = m_fun(*this, request);
+    if (ret.IsFatal()) {
+        return ret.GetFatal();
+    }
+    CHECK_NONFATAL(std::any_of(m_results.m_results.begin(), m_results.m_results.end(), [ret](const RPCResult& res) { return res.MatchesType(*ret); }));
     return ret;
 }
 
