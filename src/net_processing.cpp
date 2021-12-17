@@ -1803,8 +1803,11 @@ void PeerManagerImpl::ProcessGetBlockData(CNode& pfrom, Peer& peer, const CInv& 
     } // release cs_main before calling ActivateBestChain
     if (need_activate_chain) {
         BlockValidationState state;
-        if (!m_chainman.ActiveChainstate().ActivateBestChain(state, a_recent_block)) {
+        auto abc_ret = m_chainman.ActiveChainstate().ActivateBestChain(state, a_recent_block);
+        if (abc_ret.IsFatal()) {
+            // TODO
             LogPrint(BCLog::NET, "failed to activate chain (%s)\n", state.ToString());
+            return;
         }
     }
 
@@ -2279,15 +2282,19 @@ void PeerManagerImpl::ProcessOrphanTx(std::set<uint256>& orphan_work_set)
         const auto [porphanTx, from_peer] = m_orphanage.GetTx(orphanHash);
         if (porphanTx == nullptr) continue;
 
-        const MempoolAcceptResult result = m_chainman.ProcessTransaction(porphanTx);
-        const TxValidationState& state = result.m_state;
+        const auto result = m_chainman.ProcessTransaction(porphanTx);
+        if (result.IsFatal()) {
+            // TODO
+            return;
+        }
+        const TxValidationState& state = result->m_state;
 
-        if (result.m_result_type == MempoolAcceptResult::ResultType::VALID) {
+        if (result->m_result_type == MempoolAcceptResult::ResultType::VALID) {
             LogPrint(BCLog::MEMPOOL, "   accepted orphan tx %s\n", orphanHash.ToString());
             _RelayTransaction(orphanHash, porphanTx->GetWitnessHash());
             m_orphanage.AddChildrenToWorkSet(*porphanTx, orphan_work_set);
             m_orphanage.EraseTx(orphanHash);
-            for (const CTransactionRef& removedTx : result.m_replaced_transactions.value()) {
+            for (const CTransactionRef& removedTx : result->m_replaced_transactions.value()) {
                 AddToCompactExtraTransactions(removedTx);
             }
             break;
@@ -2509,7 +2516,11 @@ void PeerManagerImpl::ProcessGetCFCheckPt(CNode& peer, CDataStream& vRecv)
 void PeerManagerImpl::ProcessBlock(CNode& node, const std::shared_ptr<const CBlock>& block, bool force_processing)
 {
     bool new_block{false};
-    m_chainman.ProcessNewBlock(m_chainparams, block, force_processing, &new_block);
+    auto ret = m_chainman.ProcessNewBlock(m_chainparams, block, force_processing, &new_block);
+    if (ret.IsFatal()) {
+        //TODO
+        return;
+    }
     if (new_block) {
         node.nLastBlockTime = GetTime();
     } else {
@@ -3075,7 +3086,8 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
                 a_recent_block = most_recent_block;
             }
             BlockValidationState state;
-            if (!m_chainman.ActiveChainstate().ActivateBestChain(state, a_recent_block)) {
+            if (auto abc_ret = m_chainman.ActiveChainstate().ActivateBestChain(state, a_recent_block); abc_ret.IsFatal()) {
+                // TODO
                 LogPrint(BCLog::NET, "failed to activate chain (%s)\n", state.ToString());
             }
         }
@@ -3303,10 +3315,14 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
             return;
         }
 
-        const MempoolAcceptResult result = m_chainman.ProcessTransaction(ptx);
-        const TxValidationState& state = result.m_state;
+        const auto result = m_chainman.ProcessTransaction(ptx);
+        if (result.IsFatal()) {
+            // TODO
+            return;
+        }
+        const TxValidationState& state = result->m_state;
 
-        if (result.m_result_type == MempoolAcceptResult::ResultType::VALID) {
+        if (result->m_result_type == MempoolAcceptResult::ResultType::VALID) {
             // As this version of the transaction was acceptable, we can forget about any
             // requests for it.
             m_txrequest.ForgetTxHash(tx.GetHash());
@@ -3321,7 +3337,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
                 tx.GetHash().ToString(),
                 m_mempool.size(), m_mempool.DynamicMemoryUsage() / 1000);
 
-            for (const CTransactionRef& removedTx : result.m_replaced_transactions.value()) {
+            for (const CTransactionRef& removedTx : result->m_replaced_transactions.value()) {
                 AddToCompactExtraTransactions(removedTx);
             }
 

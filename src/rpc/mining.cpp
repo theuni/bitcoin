@@ -132,7 +132,12 @@ static bool GenerateBlock(ChainstateManager& chainman, CBlock& block, uint64_t& 
     }
 
     std::shared_ptr<const CBlock> shared_pblock = std::make_shared<const CBlock>(block);
-    if (!chainman.ProcessNewBlock(chainparams, shared_pblock, true, nullptr)) {
+    auto pnb_ret = chainman.ProcessNewBlock(chainparams, shared_pblock, true, nullptr);
+    if (pnb_ret.IsFatal()) {
+        // TODO
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, internal error");
+    }
+    if (!*pnb_ret) {
         throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
     }
 
@@ -383,7 +388,12 @@ static RPCHelpMan generateblock()
         LOCK(cs_main);
 
         BlockValidationState state;
-        if (!TestBlockValidity(state, chainparams, chainman.ActiveChainstate(), block, chainman.m_blockman.LookupBlockIndex(block.hashPrevBlock), false, false)) {
+        auto test_ret = TestBlockValidity(state, chainparams, chainman.ActiveChainstate(), block, chainman.m_blockman.LookupBlockIndex(block.hashPrevBlock), false, false);
+        if (test_ret.IsFatal()) {
+            // TODO
+            throw JSONRPCError(RPC_VERIFY_ERROR, strprintf("TestBlockValidity internal error"));
+        }
+        if (!*test_ret) {
             throw JSONRPCError(RPC_VERIFY_ERROR, strprintf("TestBlockValidity failed: %s", state.ToString()));
         }
     }
@@ -653,7 +663,11 @@ static RPCHelpMan getblocktemplate()
             if (block.hashPrevBlock != pindexPrev->GetBlockHash())
                 return "inconclusive-not-best-prevblk";
             BlockValidationState state;
-            TestBlockValidity(state, Params(), active_chainstate, block, pindexPrev, false, true);
+            auto test_ret = TestBlockValidity(state, Params(), active_chainstate, block, pindexPrev, false, true);
+            if (test_ret.IsFatal()) {
+                // TODO
+                throw JSONRPCError(RPC_INTERNAL_ERROR, "Internal error");
+            }
             return BIP22ValidationResult(state);
         }
 
@@ -1010,9 +1024,13 @@ static RPCHelpMan submitblock()
     bool new_block;
     auto sc = std::make_shared<submitblock_StateCatcher>(block.GetHash());
     RegisterSharedValidationInterface(sc);
-    bool accepted = chainman.ProcessNewBlock(Params(), blockptr, /*force_processing=*/true, /*new_block=*/&new_block);
+    auto accepted = chainman.ProcessNewBlock(Params(), blockptr, /*force_processing=*/true, /*new_block=*/&new_block);
+    if (accepted.IsFatal()) {
+        //TODO
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Internal error");
+    }
     UnregisterSharedValidationInterface(sc);
-    if (!new_block && accepted) {
+    if (!new_block && *accepted) {
         return "duplicate";
     }
     if (!sc->found) {

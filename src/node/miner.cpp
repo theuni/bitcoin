@@ -178,7 +178,12 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     pblocktemplate->vTxSigOpsCost[0] = WITNESS_SCALE_FACTOR * GetLegacySigOpCount(*pblock->vtx[0]);
 
     BlockValidationState state;
-    if (!TestBlockValidity(state, chainparams, m_chainstate, *pblock, pindexPrev, false, false)) {
+    auto test_ret = TestBlockValidity(state, chainparams, m_chainstate, *pblock, pindexPrev, false, false);
+    if (test_ret.IsFatal()) {
+        // TODO
+        throw std::runtime_error(strprintf("%s: TestBlockValidity failed: Internal Error", __func__));
+    }
+    if (!*test_ret) {
         throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, state.ToString()));
     }
     int64_t nTime2 = GetTimeMicros();

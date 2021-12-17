@@ -1114,7 +1114,10 @@ static RPCHelpMan pruneblockchain()
         height = chainHeight - MIN_BLOCKS_TO_KEEP;
     }
 
-    PruneBlockFilesManual(active_chainstate, height);
+    if (auto prune_ret = PruneBlockFilesManual(active_chainstate, height); prune_ret.IsFatal()) {
+        // TODO
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Internal error");
+    }
     const CBlockIndex* block = active_chain.Tip();
     CHECK_NONFATAL(block);
     while (block->pprev && (block->pprev->nStatus & BLOCK_HAVE_DATA)) {
@@ -1198,7 +1201,10 @@ static RPCHelpMan gettxoutsetinfo()
     NodeContext& node = EnsureAnyNodeContext(request.context);
     ChainstateManager& chainman = EnsureChainman(node);
     CChainState& active_chainstate = chainman.ActiveChainstate();
-    active_chainstate.ForceFlushStateToDisk();
+    if (auto flush_ret = active_chainstate.ForceFlushStateToDisk(); flush_ret.IsFatal()) {
+        // TODO
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Internal error");
+    }
 
     CCoinsView* coins_view;
     BlockManager* blockman;
@@ -1386,8 +1392,12 @@ static RPCHelpMan verifychain()
     LOCK(cs_main);
 
     CChainState& active_chainstate = chainman.ActiveChainstate();
-    return CVerifyDB().VerifyDB(
-        active_chainstate, Params(), active_chainstate.CoinsTip(), check_level, check_depth);
+    auto verify_ret = CVerifyDB().VerifyDB(active_chainstate, Params(), active_chainstate.CoinsTip(), check_level, check_depth);
+    if (verify_ret.IsFatal()) {
+        // TODO
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Internal error");
+    }
+    return *verify_ret;
 },
     };
 }
@@ -1755,8 +1765,11 @@ static RPCHelpMan preciousblock()
     }
 
     BlockValidationState state;
-    chainman.ActiveChainstate().PreciousBlock(state, pblockindex);
-
+    auto precious_ret = chainman.ActiveChainstate().PreciousBlock(state, pblockindex);
+    if (precious_ret.IsFatal()) {
+        // TODO
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Internal error");
+    }
     if (!state.IsValid()) {
         throw JSONRPCError(RPC_DATABASE_ERROR, state.ToString());
     }
@@ -1792,10 +1805,18 @@ static RPCHelpMan invalidateblock()
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
         }
     }
-    chainman.ActiveChainstate().InvalidateBlock(state, pblockindex);
+
+    if (auto invalidate_ret = chainman.ActiveChainstate().InvalidateBlock(state, pblockindex); invalidate_ret.IsFatal()) {
+        // TODO
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Internal error");
+    }
 
     if (state.IsValid()) {
-        chainman.ActiveChainstate().ActivateBestChain(state);
+        auto abc_ret = chainman.ActiveChainstate().ActivateBestChain(state);
+        if (abc_ret.IsFatal()) {
+            // TODO
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "Internal error");
+        }
     }
 
     if (!state.IsValid()) {
@@ -1836,7 +1857,10 @@ static RPCHelpMan reconsiderblock()
     }
 
     BlockValidationState state;
-    chainman.ActiveChainstate().ActivateBestChain(state);
+    if (auto abc_ret = chainman.ActiveChainstate().ActivateBestChain(state); abc_ret.IsFatal()) {
+        // TODO
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Internal error");
+    }
 
     if (!state.IsValid()) {
         throw JSONRPCError(RPC_DATABASE_ERROR, state.ToString());
@@ -2449,7 +2473,11 @@ static RPCHelpMan scantxoutset()
             ChainstateManager& chainman = EnsureChainman(node);
             LOCK(cs_main);
             CChainState& active_chainstate = chainman.ActiveChainstate();
-            active_chainstate.ForceFlushStateToDisk();
+            auto flush_ret = active_chainstate.ForceFlushStateToDisk();
+            if (flush_ret.IsFatal()) {
+                // TODO
+                throw JSONRPCError(RPC_INTERNAL_ERROR, "Internal error");
+            }
             pcursor = active_chainstate.CoinsDB().Cursor();
             CHECK_NONFATAL(pcursor);
             tip = active_chainstate.m_chain.Tip();
@@ -2651,7 +2679,11 @@ UniValue CreateUTXOSnapshot(
         //
         LOCK(::cs_main);
 
-        chainstate.ForceFlushStateToDisk();
+        auto flush_ret = chainstate.ForceFlushStateToDisk();
+        if (flush_ret.IsFatal()) {
+            // TODO
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "Internal error");
+        }
 
         if (!GetUTXOStats(&chainstate.CoinsDB(), chainstate.m_blockman, stats, node.rpc_interruption_point)) {
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Unable to read UTXO set");

@@ -1474,7 +1474,13 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
                 // If we're not mid-reindex (based on disk + args), add a genesis block on disk
                 // (otherwise we use the one already on disk).
                 // This is called again in ThreadImport after the reindex completes.
-                if (!fReindex && !chainman.ActiveChainstate().LoadGenesisBlock()) {
+                if (!fReindex) {
+                    auto load_ret = chainman.ActiveChainstate().LoadGenesisBlock();
+                    if (load_ret.IsFatal()) {
+                        //TODO
+                        strLoadError = _("Error initializing block database");
+                        break;
+                    }
                     strLoadError = _("Error initializing block database");
                     break;
                 }
@@ -1569,10 +1575,17 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
                             break;
                         }
 
-                        if (!CVerifyDB().VerifyDB(
+                        auto verify_ret = CVerifyDB().VerifyDB(
                                 *chainstate, chainparams, chainstate->CoinsDB(),
                                 args.GetIntArg("-checklevel", DEFAULT_CHECKLEVEL),
-                                args.GetIntArg("-checkblocks", DEFAULT_CHECKBLOCKS))) {
+                                args.GetIntArg("-checkblocks", DEFAULT_CHECKBLOCKS));
+                        if (verify_ret.IsFatal()) {
+                            //TODO
+                            strLoadError = _("Corrupted block database detected");
+                            failed_verification = true;
+                            break;
+                        }
+                        if (!*verify_ret) {
                             strLoadError = _("Corrupted block database detected");
                             failed_verification = true;
                             break;
