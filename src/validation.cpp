@@ -1451,12 +1451,6 @@ bool CheckInputScripts(const CTransaction& tx, TxValidationState& state,
     return true;
 }
 
-bool WarnFatal(BlockValidationState& state, const std::string& strMessage, const bilingual_str& userMessage)
-{
-    WarnBeforeAbort(strMessage, userMessage);
-    error(strMessage.c_str());
-    return state.Error(strMessage);
-}
 
 /**
  * Restore the UTXO in a Coin at a given COutPoint
@@ -1676,8 +1670,7 @@ maybe_fatal_t<bool> CChainState::ConnectBlock(const CBlock& block, BlockValidati
             // We don't write down blocks to disk if they may have been
             // corrupted, so this should be impossible unless we're having hardware
             // problems.
-            WarnFatal(state, "Corrupt block found indicating potential hardware failure; shutting down");
-            return FatalError::UNKNOWN;
+            return FatalError::BLOCK_MUTATED;
         }
         return error("%s: Consensus::CheckBlock: %s", __func__, state.ToString());
     }
@@ -1932,8 +1925,7 @@ maybe_fatal_t<bool> CChainState::ConnectBlock(const CBlock& block, BlockValidati
         return true;
 
     if (auto&& write_ret = WriteUndoDataForBlock(blockundo, state, pindex, m_params); write_ret.IsFatal()) {
-        auto errstr = FatalErrorStr(write_ret.GetFatal());
-        return WarnFatal(state, errstr, _(errstr.c_str()));
+        return write_ret.GetFatal();
     }
 
     if (!pindex->IsValid(BLOCK_VALID_SCRIPTS)) {
@@ -2060,8 +2052,7 @@ maybe_fatal_t<> CChainState::FlushStateToDisk(
         if (fDoFullFlush || fPeriodicWrite) {
             // Ensure we can write block index
             if (!CheckDiskSpace(gArgs.GetBlocksDirPath())) {
-                WarnFatal(state, "Disk space is too low!", _("Disk space is too low!"));
-                return FatalError::UNKNOWN;
+                return FatalError::DISK_SPACE_ERROR;
             }
             {
                 LOG_TIME_MILLIS_WITH_CATEGORY("write block and undo data to disk", BCLog::BENCH);
@@ -2088,8 +2079,7 @@ maybe_fatal_t<> CChainState::FlushStateToDisk(
                     setDirtyBlockIndex.erase(it++);
                 }
                 if (!m_blockman.m_block_tree_db->WriteBatchSync(vFiles, nLastBlockFile, vBlocks)) {
-                    WarnFatal(state, "Failed to write to block index database");
-                    return FatalError::UNKNOWN;
+                    return FatalError::BLOCK_INDEX_WRITE_FAILED;
                 }
             }
             // Finally remove any pruned files
@@ -2111,13 +2101,11 @@ maybe_fatal_t<> CChainState::FlushStateToDisk(
             // an overestimation, as most will delete an existing entry or
             // overwrite one. Still, use a conservative safety factor of 2.
             if (!CheckDiskSpace(gArgs.GetDataDirNet(), 48 * 2 * 2 * CoinsTip().GetCacheSize())) {
-                WarnFatal(state, "Disk space is too low!", _("Disk space is too low!"));
-                return FatalError::UNKNOWN;
+                return FatalError::DISK_SPACE_ERROR;
             }
             // Flush the chainstate (which may refer to block index entries).
             if (!CoinsTip().Flush()) {
-                WarnFatal(state, "Failed to write to coin database");
-                return FatalError::UNKNOWN;
+                return FatalError::COINSDB_WRITE_FAILED;
             }
             nLastFlush = nNow;
             full_flush_completed = true;
@@ -2135,8 +2123,7 @@ maybe_fatal_t<> CChainState::FlushStateToDisk(
         GetMainSignals().ChainStateFlushed(m_chain.GetLocator());
     }
     } catch (const std::runtime_error& e) {
-        WarnFatal(state, std::string("System error while flushing: ") + e.what());
-        return FatalError::UNKNOWN;
+        return FatalError::FLUSH_SYSTEM_ERROR;
     }
     return {};
 }
@@ -2370,7 +2357,7 @@ maybe_fatal_t<bool> CChainState::ConnectTip(BlockValidationState& state, CBlockI
     if (!pblock) {
         std::shared_ptr<CBlock> pblockNew = std::make_shared<CBlock>();
         if (!ReadBlockFromDisk(*pblockNew, pindexNew, m_params.GetConsensus())) {
-            return WarnFatal(state, "Failed to read block");
+            return FatalError::BLOCK_READ_FAILED;
         }
         pthisBlock = pblockNew;
     } else {
@@ -2521,7 +2508,6 @@ maybe_fatal_t<> CChainState::ActivateBestChainStep(BlockValidationState& state, 
             // If we're unable to disconnect a block during normal operation,
             // then that is a failure of our local system -- we should abort
             // rather than stay on a less work chain.
-            WarnFatal(state, "Failed to disconnect block; see debug.log for details");
             return disconnect_ret.GetFatal();
         }
         fBlocksDisconnected = true;
@@ -3476,13 +3462,10 @@ maybe_fatal_t<bool> CChainState::AcceptBlock(const std::shared_ptr<const CBlock>
     try {
         auto&& save_ret = SaveBlockToDisk(block, pindex->nHeight, m_chain, m_params, dbp);
         if (save_ret.IsFatal()) {
-            auto errstr = FatalErrorStr(save_ret.GetFatal());
-            WarnFatal(state, errstr, _(errstr.c_str()));
             return save_ret.GetFatal();
         }
         ReceivedBlockTransactions(block, pindex, *save_ret);
     } catch (const std::runtime_error& e) {
-        WarnFatal(state, std::string("System error: ") + e.what());
         return FatalError::UNKNOWN;
     }
 
