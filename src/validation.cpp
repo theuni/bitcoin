@@ -330,20 +330,26 @@ maybe_fatal_t<> CChainState::MaybeUpdateMempoolForReorg(
     // been previously seen in a block.
     auto it = disconnectpool.queuedTx.get<insertion_order>().rbegin();
     while (it != disconnectpool.queuedTx.get<insertion_order>().rend()) {
+        bool remove = false;
         // ignore validation errors in resurrected transactions
         if (!fAddToMempool || (*it)->IsCoinBase()) {
+            remove = true;
+        } else {
             auto atmp_ret = AcceptToMemoryPool(*this, *it, GetTime(), /*bypass_limits=*/true, /*test_accept=*/false);
             if (atmp_ret.IsFatal()) {
                 return atmp_ret.GetFatal();
             }
-            if ((*atmp_ret).m_result_type == MempoolAcceptResult::ResultType::VALID) {
+            if (atmp_ret->m_result_type != MempoolAcceptResult::ResultType::VALID) {
                 // If the transaction doesn't make it in to the mempool, remove any
                 // transactions that depend on it (which would now be orphans).
-                m_mempool->removeRecursive(**it, MemPoolRemovalReason::REORG);
-                } else if (m_mempool->exists(GenTxid::Txid((*it)->GetHash()))) {
-                    vHashUpdate.push_back((*it)->GetHash());
-                }
+                remove = true;
             }
+        }
+        if (remove) {
+            m_mempool->removeRecursive(**it, MemPoolRemovalReason::REORG);
+        } else if (m_mempool->exists(GenTxid::Txid((*it)->GetHash()))) {
+            vHashUpdate.push_back((*it)->GetHash());
+        }
         ++it;
     }
     disconnectpool.queuedTx.clear();
