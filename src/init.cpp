@@ -25,6 +25,7 @@
 #include <index/coinstatsindex.h>
 #include <index/txindex.h>
 #include <init/common.h>
+#include <kernel/init/common.h>
 #include <interfaces/chain.h>
 #include <interfaces/init.h>
 #include <interfaces/node.h>
