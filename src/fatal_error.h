@@ -25,32 +25,77 @@ enum class FatalError
     UNDO_WRITE_FAILED
 };
 
-template <typename T = std::monostate>
-class MaybeFatalReturn final : std::variant<T, FatalError>
+enum class UserInterrupted
 {
+    UNKNOWN
+};
+
+using EarlyReturn = std::variant<FatalError, UserInterrupted>;
+
+template <typename T>
+class MaybeFatalReturn;
+
+template <typename T>
+EarlyReturn BubbleUp(MaybeFatalReturn<T>&& ret);
+
+template <typename T = std::monostate>
+class MaybeFatalReturn final : std::variant<T, FatalError, UserInterrupted>
+{
+    EarlyReturn Bubble() const &&
+    {
+        if (std::holds_alternative<FatalError>(*this)) {
+            return std::get<FatalError>(*this);
+        } else if (std::holds_alternative<UserInterrupted>(*this)) {
+            return std::get<UserInterrupted>(*this);
+        } else {
+            return FatalError::UNKNOWN;
+        }
+    }
+    friend EarlyReturn BubbleUp<T>(MaybeFatalReturn<T>&&);
+
 public:
-    //std::variant<T, FatalError> m_value;
-    using std::variant<T, FatalError>::variant;
-//    using std::variant<T, FatalError>::operator=;
+    using underlying = std::variant<T, FatalError, UserInterrupted>;
+    using std::variant<T, FatalError, UserInterrupted>::variant;
+
+    MaybeFatalReturn& operator=(const MaybeFatalReturn&) = delete;
+    MaybeFatalReturn(const MaybeFatalReturn&) = delete;
+
+    MaybeFatalReturn& operator=(MaybeFatalReturn&&) = default;
+    MaybeFatalReturn(MaybeFatalReturn&&) = default;
+
+    MaybeFatalReturn(EarlyReturn err)
+    {
+        if (std::holds_alternative<FatalError>(*this)) {
+            std::variant<T, FatalError, UserInterrupted>::operator=(std::get<FatalError>(err));
+        } else {
+            std::variant<T, FatalError, UserInterrupted>::operator=(std::get<UserInterrupted>(err));
+        }
+    }
 
     const T& operator*() const {
-        assert(!std::holds_alternative<FatalError>(*this));
+        assert(std::holds_alternative<T>(*this));
         return std::get<T>(*this);
     }
 
     T& operator*() {
-        assert(!std::holds_alternative<FatalError>(*this));
+        assert(std::holds_alternative<T>(*this));
         return std::get<T>(*this);
     }
 
     const T* operator->() const {
-        assert(!std::holds_alternative<FatalError>(*this));
+        assert(std::holds_alternative<T>(*this));
         return &std::get<T>(*this);
     }
+
 
     bool IsFatal() const
     {
         return std::holds_alternative<FatalError>(*this);
+    }
+
+    bool ShouldExit() const
+    {
+        return std::holds_alternative<FatalError>(*this) || std::holds_alternative<FatalError>(*this);
     }
 
     FatalError GetFatal() const
@@ -59,6 +104,12 @@ public:
         return std::get<FatalError>(*this);
     }
 };
+
+template <typename T>
+EarlyReturn BubbleUp(MaybeFatalReturn<T>&& ret)
+{
+    return std::move(ret).Bubble();
+}
 
 template <typename T = std::monostate>
 using maybe_fatal_t = MaybeFatalReturn<T>;
