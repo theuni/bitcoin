@@ -573,11 +573,11 @@ maybe_fatal_t<UniValue> RPCHelpMan::HandleRequest(const JSONRPCRequest& request)
     if (request.mode == JSONRPCRequest::GET_HELP || !IsValidNumArgs(request.params.size())) {
         throw std::runtime_error(ToString());
     }
-    const auto ret = m_fun(*this, request);
+    auto ret = m_fun(*this, request);
     if (ret.IsFatal()) {
         return ret.GetFatal();
     }
-    CHECK_NONFATAL(std::any_of(m_results.m_results.begin(), m_results.m_results.end(), [ret](const RPCResult& res) { return res.MatchesType(*ret); }));
+    CHECK_NONFATAL(std::any_of(m_results.m_results.begin(), m_results.m_results.end(), [&ret](const RPCResult& res) { return res.MatchesType(*ret); }));
     return ret;
 }
 
