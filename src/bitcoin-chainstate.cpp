@@ -2,7 +2,7 @@
 #include <functional> // for std::function
 
 #include <node/chainstate.h>          // for LoadChainstate
-#include <init/common.h>              // for SetGlobals, UnsetGlobals
+#include <kernel/init/common.h>              // for SetGlobals, UnsetGlobals
 #include <validation.h>               // for ChainstateManager, InitScriptExecutionCache, StopScriptCheckWorkerThreads, UpdateUncommittedBlockStructures, BlockManager, DEFAULT_CHECKBLOCKS, DEFAULT_CHECKLEVEL
 #include <validationinterface.h>      // for GetMainSignals, cs_main, CMainSignals, RegisterSharedValidationInterface, UnregisterSharedValidationInterface, CValidationInterface
 #include <consensus/validation.h>     // for BlockValidationState
