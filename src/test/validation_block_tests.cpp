@@ -157,7 +157,7 @@ BOOST_AUTO_TEST_CASE(processnewblock_signals_ordering)
 
     bool ignored;
     // Connect the genesis block and drain any outstanding events
-    BOOST_CHECK(Assert(m_node.chainman)->ProcessNewBlock(Params(), std::make_shared<CBlock>(Params().GenesisBlock()), true, &ignored));
+    BOOST_CHECK(*Assert(m_node.chainman)->ProcessNewBlock(Params(), std::make_shared<CBlock>(Params().GenesisBlock()), true, &ignored));
     SyncWithValidationInterfaceQueue();
 
     // subscribe to events (this subscriber will validate event ordering)
@@ -185,7 +185,7 @@ BOOST_AUTO_TEST_CASE(processnewblock_signals_ordering)
             // to make sure that eventually we process the full chain - do it here
             for (auto block : blocks) {
                 if (block->vtx.size() == 1) {
-                    bool processed = Assert(m_node.chainman)->ProcessNewBlock(Params(), block, true, &ignored);
+                    bool processed = *Assert(m_node.chainman)->ProcessNewBlock(Params(), block, true, &ignored);
                     assert(processed);
                 }
             }
@@ -224,7 +224,7 @@ BOOST_AUTO_TEST_CASE(mempool_locks_reorg)
 {
     bool ignored;
     auto ProcessBlock = [&](std::shared_ptr<const CBlock> block) -> bool {
-        return Assert(m_node.chainman)->ProcessNewBlock(Params(), block, /*force_processing=*/true, /*new_block=*/&ignored);
+        return *Assert(m_node.chainman)->ProcessNewBlock(Params(), block, /*force_processing=*/true, /*new_block=*/&ignored);
     };
 
     // Process all mined blocks
@@ -275,7 +275,7 @@ BOOST_AUTO_TEST_CASE(mempool_locks_reorg)
         {
             LOCK(cs_main);
             for (const auto& tx : txs) {
-                const MempoolAcceptResult result = m_node.chainman->ProcessTransaction(tx);
+                const MempoolAcceptResult result = *m_node.chainman->ProcessTransaction(tx);
                 BOOST_REQUIRE(result.m_result_type == MempoolAcceptResult::ResultType::VALID);
             }
         }

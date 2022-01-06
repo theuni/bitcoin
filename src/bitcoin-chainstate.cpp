@@ -125,7 +125,7 @@ int main() {
 
     for (CChainState* chainstate : WITH_LOCK(::cs_main, return chainman.GetAll())) {
         BlockValidationState state;
-        if (!chainstate->ActivateBestChain(state, nullptr)) {
+        if (!*chainstate->ActivateBestChain(state, nullptr)) {
             std::cerr << "Failed to connect best block (" << state.ToString() << ")" << std::endl;
             goto prologue;
         }
@@ -189,7 +189,7 @@ int main() {
         bool new_block;
         auto sc = std::make_shared<submitblock_StateCatcher>(block.GetHash());
         RegisterSharedValidationInterface(sc);
-        bool accepted = chainman.ProcessNewBlock(chainparams, blockptr, /* fForceProcessing */ true, /* fNewBlock */ &new_block);
+        bool accepted = *chainman.ProcessNewBlock(chainparams, blockptr, /* fForceProcessing */ true, /* fNewBlock */ &new_block);
         UnregisterSharedValidationInterface(sc);
         if (!new_block && accepted) {
             std::cerr << "duplicate" << std::endl;

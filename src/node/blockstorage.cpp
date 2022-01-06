@@ -220,7 +220,7 @@ CBlockIndex* BlockManager::InsertBlockIndex(const uint256& hash)
     return pindexNew;
 }
 
-bool BlockManager::LoadBlockIndex(
+MaybeEarlyExit<bool> BlockManager::LoadBlockIndex(
     const Consensus::Params& consensus_params,
     ChainstateManager& chainman)
 {
@@ -367,9 +367,9 @@ bool BlockManager::WriteBlockIndexDB()
     return true;
 }
 
-bool BlockManager::LoadBlockIndexDB(ChainstateManager& chainman)
+MaybeEarlyExit<bool> BlockManager::LoadBlockIndexDB(ChainstateManager& chainman)
 {
-    if (!LoadBlockIndex(::Params().GetConsensus(), chainman)) {
+    if (!*LoadBlockIndex(::Params().GetConsensus(), chainman)) {
         return false;
     }
 
@@ -498,7 +498,7 @@ CBlockFileInfo* BlockManager::GetBlockFileInfo(size_t n)
     return &m_blockfile_info.at(n);
 }
 
-static bool UndoWriteToDisk(const CBlockUndo& blockundo, FlatFilePos& pos, const uint256& hashBlock, const CMessageHeader::MessageStartChars& messageStart)
+static MaybeEarlyExit<bool> UndoWriteToDisk(const CBlockUndo& blockundo, FlatFilePos& pos, const uint256& hashBlock, const CMessageHeader::MessageStartChars& messageStart)
 {
     // Open history file to append
     CAutoFile fileout(OpenUndoFile(pos), SER_DISK, CLIENT_VERSION);
@@ -559,15 +559,16 @@ bool UndoReadFromDisk(CBlockUndo& blockundo, const CBlockIndex* pindex)
     return true;
 }
 
-void BlockManager::FlushUndoFile(int block_file, bool finalize)
+MaybeEarlyExit<> BlockManager::FlushUndoFile(int block_file, bool finalize)
 {
     FlatFilePos undo_pos_old(block_file, m_blockfile_info[block_file].nUndoSize);
     if (!UndoFileSeq().Flush(undo_pos_old, finalize)) {
         AbortNode("Flushing undo file to disk failed. This is likely the result of an I/O error.");
     }
+    return {};
 }
 
-void BlockManager::FlushBlockFile(bool fFinalize, bool finalize_undo)
+MaybeEarlyExit<> BlockManager::FlushBlockFile(bool fFinalize, bool finalize_undo)
 {
     LOCK(cs_LastBlockFile);
     FlatFilePos block_pos_old(m_last_blockfile, m_blockfile_info[m_last_blockfile].nSize);
@@ -577,6 +578,7 @@ void BlockManager::FlushBlockFile(bool fFinalize, bool finalize_undo)
     // we do not always flush the undo file, as the chain tip may be lagging behind the incoming blocks,
     // e.g. during IBD or a sync after a node going offline
     if (!fFinalize || finalize_undo) FlushUndoFile(m_last_blockfile, finalize_undo);
+    return {};
 }
 
 uint64_t BlockManager::CalculateCurrentUsage()
@@ -626,7 +628,7 @@ fs::path GetBlockPosFilename(const FlatFilePos& pos)
     return BlockFileSeq().FileName(pos);
 }
 
-bool BlockManager::FindBlockPos(FlatFilePos& pos, unsigned int nAddSize, unsigned int nHeight, CChain& active_chain, uint64_t nTime, bool fKnown)
+MaybeEarlyExit<bool> BlockManager::FindBlockPos(FlatFilePos& pos, unsigned int nAddSize, unsigned int nHeight, CChain& active_chain, uint64_t nTime, bool fKnown)
 {
     LOCK(cs_LastBlockFile);
 
@@ -681,7 +683,7 @@ bool BlockManager::FindBlockPos(FlatFilePos& pos, unsigned int nAddSize, unsigne
     return true;
 }
 
-bool BlockManager::FindUndoPos(BlockValidationState& state, int nFile, FlatFilePos& pos, unsigned int nAddSize)
+MaybeEarlyExit<bool> BlockManager::FindUndoPos(BlockValidationState& state, int nFile, FlatFilePos& pos, unsigned int nAddSize)
 {
     pos.nFile = nFile;
 
@@ -703,7 +705,7 @@ bool BlockManager::FindUndoPos(BlockValidationState& state, int nFile, FlatFileP
     return true;
 }
 
-static bool WriteBlockToDisk(const CBlock& block, FlatFilePos& pos, const CMessageHeader::MessageStartChars& messageStart)
+static MaybeEarlyExit<bool> WriteBlockToDisk(const CBlock& block, FlatFilePos& pos, const CMessageHeader::MessageStartChars& messageStart)
 {
     // Open history file to append
     CAutoFile fileout(OpenBlockFile(pos), SER_DISK, CLIENT_VERSION);
@@ -726,15 +728,15 @@ static bool WriteBlockToDisk(const CBlock& block, FlatFilePos& pos, const CMessa
     return true;
 }
 
-bool BlockManager::WriteUndoDataForBlock(const CBlockUndo& blockundo, BlockValidationState& state, CBlockIndex* pindex, const CChainParams& chainparams)
+MaybeEarlyExit<bool> BlockManager::WriteUndoDataForBlock(const CBlockUndo& blockundo, BlockValidationState& state, CBlockIndex* pindex, const CChainParams& chainparams)
 {
     // Write undo information to disk
     if (pindex->GetUndoPos().IsNull()) {
         FlatFilePos _pos;
-        if (!FindUndoPos(state, pindex->nFile, _pos, ::GetSerializeSize(blockundo, CLIENT_VERSION) + 40)) {
+        if (!*FindUndoPos(state, pindex->nFile, _pos, ::GetSerializeSize(blockundo, CLIENT_VERSION) + 40)) {
             return error("ConnectBlock(): FindUndoPos failed");
         }
-        if (!UndoWriteToDisk(blockundo, _pos, pindex->pprev->GetBlockHash(), chainparams.MessageStart())) {
+        if (!*UndoWriteToDisk(blockundo, _pos, pindex->pprev->GetBlockHash(), chainparams.MessageStart())) {
             return AbortNode(state, "Failed to write undo data");
         }
         // rev files are written in block height order, whereas blk files are written as blocks come in (often out of order)
@@ -846,19 +848,19 @@ bool ReadRawBlockFromDisk(std::vector<uint8_t>& block, const CBlockIndex* pindex
 }
 
 /** Store block on disk. If dbp is non-nullptr, the file is known to already reside on disk */
-FlatFilePos BlockManager::SaveBlockToDisk(const CBlock& block, int nHeight, CChain& active_chain, const CChainParams& chainparams, const FlatFilePos* dbp)
+MaybeEarlyExit<FlatFilePos> BlockManager::SaveBlockToDisk(const CBlock& block, int nHeight, CChain& active_chain, const CChainParams& chainparams, const FlatFilePos* dbp)
 {
     unsigned int nBlockSize = ::GetSerializeSize(block, CLIENT_VERSION);
     FlatFilePos blockPos;
     if (dbp != nullptr) {
         blockPos = *dbp;
     }
-    if (!FindBlockPos(blockPos, nBlockSize + 8, nHeight, active_chain, block.GetBlockTime(), dbp != nullptr)) {
+    if (!*FindBlockPos(blockPos, nBlockSize + 8, nHeight, active_chain, block.GetBlockTime(), dbp != nullptr)) {
         error("%s: FindBlockPos failed", __func__);
         return FlatFilePos();
     }
     if (dbp == nullptr) {
-        if (!WriteBlockToDisk(block, blockPos, chainparams.MessageStart())) {
+        if (!*WriteBlockToDisk(block, blockPos, chainparams.MessageStart())) {
             AbortNode("Failed to write block");
             return FlatFilePos();
         }
