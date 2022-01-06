@@ -148,6 +148,7 @@ BITCOIN_CORE_H = \
   dbwrapper.h \
   deploymentinfo.h \
   deploymentstatus.h \
+  early_exit.h \
   external_signer.h \
   flatfile.h \
   fs.h \
