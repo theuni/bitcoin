@@ -1001,11 +1001,11 @@ static RPCHelpMan testmempoolaccept()
     CTxMemPool& mempool = EnsureMemPool(node);
     ChainstateManager& chainman = EnsureChainman(node);
     CChainState& chainstate = chainman.ActiveChainstate();
-    const PackageMempoolAcceptResult package_result = [&] {
+    const auto package_result = [&]() -> MaybeEarlyExit<PackageMempoolAcceptResult> {
         LOCK(::cs_main);
         if (txns.size() > 1) return ProcessNewPackage(chainstate, mempool, txns, /* test_accept */ true);
         return PackageMempoolAcceptResult(txns[0]->GetWitnessHash(),
-               chainman.ProcessTransaction(txns[0], /*test_accept=*/ true));
+               *chainman.ProcessTransaction(txns[0], /*test_accept=*/ true));
     }();
 
     UniValue rpc_result(UniValue::VARR);
@@ -1018,11 +1018,11 @@ static RPCHelpMan testmempoolaccept()
         UniValue result_inner(UniValue::VOBJ);
         result_inner.pushKV("txid", tx->GetHash().GetHex());
         result_inner.pushKV("wtxid", tx->GetWitnessHash().GetHex());
-        if (package_result.m_state.GetResult() == PackageValidationResult::PCKG_POLICY) {
-            result_inner.pushKV("package-error", package_result.m_state.GetRejectReason());
+        if (package_result->m_state.GetResult() == PackageValidationResult::PCKG_POLICY) {
+            result_inner.pushKV("package-error", package_result->m_state.GetRejectReason());
         }
-        auto it = package_result.m_tx_results.find(tx->GetWitnessHash());
-        if (exit_early || it == package_result.m_tx_results.end()) {
+        auto it = package_result->m_tx_results.find(tx->GetWitnessHash());
+        if (exit_early || it == package_result->m_tx_results.end()) {
             // Validation unfinished. Just return the txid and wtxid.
             rpc_result.push_back(result_inner);
             continue;
