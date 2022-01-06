@@ -5,6 +5,7 @@
 #ifndef BITCOIN_NODE_BLOCKSTORAGE_H
 #define BITCOIN_NODE_BLOCKSTORAGE_H
 
+#include <early_exit.h>
 #include <fs.h>
 #include <protocol.h> // For CMessageHeader::MessageStartChars
 
@@ -76,9 +77,9 @@ bool ReadRawBlockFromDisk(std::vector<uint8_t>& block, const FlatFilePos& pos, c
 bool ReadRawBlockFromDisk(std::vector<uint8_t>& block, const CBlockIndex* pindex, const CMessageHeader::MessageStartChars& message_start);
 
 bool UndoReadFromDisk(CBlockUndo& blockundo, const CBlockIndex* pindex);
-bool WriteUndoDataForBlock(const CBlockUndo& blockundo, BlockValidationState& state, CBlockIndex* pindex, const CChainParams& chainparams);
+MaybeEarlyExit<bool> WriteUndoDataForBlock(const CBlockUndo& blockundo, BlockValidationState& state, CBlockIndex* pindex, const CChainParams& chainparams);
 
-FlatFilePos SaveBlockToDisk(const CBlock& block, int nHeight, CChain& active_chain, const CChainParams& chainparams, const FlatFilePos* dbp);
+MaybeEarlyExit<FlatFilePos> SaveBlockToDisk(const CBlock& block, int nHeight, CChain& active_chain, const CChainParams& chainparams, const FlatFilePos* dbp);
 
 void ThreadImport(ChainstateManager& chainman, std::vector<fs::path> vImportFiles, const ArgsManager& args);
 

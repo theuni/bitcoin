@@ -52,7 +52,7 @@ std::optional<ChainstateLoadingError> LoadChainstate(bool fReset,
     // block file from disk.
     // Note that it also sets fReindex based on the disk flag!
     // From here on out fReindex and fReset mean something different!
-    if (!chainman.LoadBlockIndex()) {
+    if (!*chainman.LoadBlockIndex()) {
         if (shutdown_requested && shutdown_requested()) return ChainstateLoadingError::SHUTDOWN_PROBED;
         return ChainstateLoadingError::ERROR_LOADING_BLOCK_DB;
     }
@@ -72,7 +72,7 @@ std::optional<ChainstateLoadingError> LoadChainstate(bool fReset,
     // If we're not mid-reindex (based on disk + args), add a genesis block on disk
     // (otherwise we use the one already on disk).
     // This is called again in ThreadImport after the reindex completes.
-    if (!fReindex && !chainman.ActiveChainstate().LoadGenesisBlock()) {
+    if (!fReindex && !*chainman.ActiveChainstate().LoadGenesisBlock()) {
         return ChainstateLoadingError::ERROR_LOAD_GENESIS_BLOCK_FAILED;
     }
 
@@ -145,7 +145,7 @@ std::optional<ChainstateLoadVerifyError> VerifyLoadedChainstate(ChainstateManage
                 return ChainstateLoadVerifyError::ERROR_BLOCK_FROM_FUTURE;
             }
 
-            if (!CVerifyDB().VerifyDB(
+            if (!*CVerifyDB().VerifyDB(
                     *chainstate, consensus_params, chainstate->CoinsDB(),
                     check_level,
                     check_blocks)) {

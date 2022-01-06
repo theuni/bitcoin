@@ -14,6 +14,7 @@
 #include <attributes.h>
 #include <chain.h>
 #include <consensus/amount.h>
+#include <early_exit.h>
 #include <fs.h>
 #include <policy/feerate.h>
 #include <policy/packages.h>
@@ -155,7 +156,7 @@ bool AbortNode(BlockValidationState& state, const std::string& strMessage, const
 double GuessVerificationProgress(const ChainTxData& data, const CBlockIndex* pindex);
 
 /** Prune block files up to a given height */
-void PruneBlockFilesManual(CChainState& active_chainstate, int nManualPruneHeight);
+MaybeEarlyExit<> PruneBlockFilesManual(CChainState& active_chainstate, int nManualPruneHeight);
 
 /**
 * Validation result for a single transaction mempool acceptance.
@@ -244,7 +245,7 @@ struct PackageMempoolAcceptResult
  *
  * @returns a MempoolAcceptResult indicating whether the transaction was accepted/rejected with reason.
  */
-MempoolAcceptResult AcceptToMemoryPool(CChainState& active_chainstate, const CTransactionRef& tx,
+MaybeEarlyExit<MempoolAcceptResult> AcceptToMemoryPool(CChainState& active_chainstate, const CTransactionRef& tx,
                                        int64_t accept_time, bool bypass_limits, bool test_accept)
     EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
@@ -256,7 +257,7 @@ MempoolAcceptResult AcceptToMemoryPool(CChainState& active_chainstate, const CTr
 * If a transaction fails, validation will exit early and some results may be missing. It is also
 * possible for the package to be partially submitted.
 */
-PackageMempoolAcceptResult ProcessNewPackage(CChainState& active_chainstate, CTxMemPool& pool,
+MaybeEarlyExit<PackageMempoolAcceptResult> ProcessNewPackage(CChainState& active_chainstate, CTxMemPool& pool,
                                                    const Package& txns, bool test_accept)
                                                    EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
@@ -341,7 +342,7 @@ void InitScriptExecutionCache();
 bool CheckBlock(const CBlock& block, BlockValidationState& state, const Consensus::Params& consensusParams, bool fCheckPOW = true, bool fCheckMerkleRoot = true);
 
 /** Check a block is completely valid from start to finish (only works on top of our current best block) */
-bool TestBlockValidity(BlockValidationState& state,
+MaybeEarlyExit<bool> TestBlockValidity(BlockValidationState& state,
                        const CChainParams& chainparams,
                        CChainState& chainstate,
                        const CBlock& block,
@@ -360,7 +361,7 @@ class CVerifyDB {
 public:
     CVerifyDB();
     ~CVerifyDB();
-    bool VerifyDB(
+    MaybeEarlyExit<bool> VerifyDB(
         CChainState& chainstate,
         const Consensus::Params& consensus_params,
         CCoinsView& coinsview,
@@ -433,14 +434,14 @@ public:
 
     std::unique_ptr<CBlockTreeDB> m_block_tree_db GUARDED_BY(::cs_main);
 
-    bool LoadBlockIndexDB(ChainstateManager& chainman) EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
+    MaybeEarlyExit<bool> LoadBlockIndexDB(ChainstateManager& chainman) EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
 
     /**
      * Load the blocktree off disk and into memory. Populate certain metadata
      * per index entry (nStatus, nChainWork, nTimeMax, etc.) as well as peripheral
      * collections like setDirtyBlockIndex.
      */
-    bool LoadBlockIndex(
+    MaybeEarlyExit<bool> LoadBlockIndex(
         const Consensus::Params& consensus_params,
         ChainstateManager& chainman) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
@@ -668,11 +669,11 @@ public:
 
     //! Resize the CoinsViews caches dynamically and flush state to disk.
     //! @returns true unless an error occurred during the flush.
-    bool ResizeCoinsCaches(size_t coinstip_size, size_t coinsdb_size)
+    MaybeEarlyExit<bool> ResizeCoinsCaches(size_t coinstip_size, size_t coinsdb_size)
         EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
 
     /** Import blocks from an external file */
-    void LoadExternalBlockFile(FILE* fileIn, FlatFilePos* dbp = nullptr);
+    MaybeEarlyExit<> LoadExternalBlockFile(FILE* fileIn, FlatFilePos* dbp = nullptr);
 
     /**
      * Update the on-disk chain state.
@@ -685,17 +686,17 @@ public:
      *
      * @returns true unless a system error occurred
      */
-    bool FlushStateToDisk(
+    MaybeEarlyExit<bool> FlushStateToDisk(
         BlockValidationState& state,
         FlushStateMode mode,
         int nManualPruneHeight = 0);
 
     //! Unconditionally flush all changes to disk.
-    void ForceFlushStateToDisk();
+    MaybeEarlyExit<> ForceFlushStateToDisk();
 
     //! Prune blockfiles from the disk if necessary and then flush chainstate changes
     //! if we pruned.
-    void PruneAndFlush();
+    MaybeEarlyExit<> PruneAndFlush();
 
     /**
      * Find the best known block, and make it the tip of the block chain. The
@@ -712,29 +713,29 @@ public:
      *
      * @returns true unless a system error occurred
      */
-    bool ActivateBestChain(
+    MaybeEarlyExit<bool> ActivateBestChain(
         BlockValidationState& state,
         std::shared_ptr<const CBlock> pblock = nullptr) LOCKS_EXCLUDED(cs_main);
 
-    bool AcceptBlock(const std::shared_ptr<const CBlock>& pblock, BlockValidationState& state, CBlockIndex** ppindex, bool fRequested, const FlatFilePos* dbp, bool* fNewBlock) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
+    MaybeEarlyExit<bool> AcceptBlock(const std::shared_ptr<const CBlock>& pblock, BlockValidationState& state, CBlockIndex** ppindex, bool fRequested, const FlatFilePos* dbp, bool* fNewBlock) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
     // Block (dis)connection on a given view:
     DisconnectResult DisconnectBlock(const CBlock& block, const CBlockIndex* pindex, CCoinsViewCache& view)
         EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
-    bool ConnectBlock(const CBlock& block, BlockValidationState& state, CBlockIndex* pindex,
+    MaybeEarlyExit<bool> ConnectBlock(const CBlock& block, BlockValidationState& state, CBlockIndex* pindex,
                       CCoinsViewCache& view, bool fJustCheck = false) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
     // Apply the effects of a block disconnection on the UTXO set.
-    bool DisconnectTip(BlockValidationState& state, DisconnectedBlockTransactions* disconnectpool) EXCLUSIVE_LOCKS_REQUIRED(cs_main, m_mempool->cs);
+    MaybeEarlyExit<bool> DisconnectTip(BlockValidationState& state, DisconnectedBlockTransactions* disconnectpool) EXCLUSIVE_LOCKS_REQUIRED(cs_main, m_mempool->cs);
 
     // Manual block validity manipulation:
     /** Mark a block as precious and reorganize.
      *
      * May not be called in a validationinterface callback.
      */
-    bool PreciousBlock(BlockValidationState& state, CBlockIndex* pindex) LOCKS_EXCLUDED(cs_main);
+    MaybeEarlyExit<bool> PreciousBlock(BlockValidationState& state, CBlockIndex* pindex) LOCKS_EXCLUDED(cs_main);
     /** Mark a block as invalid. */
-    bool InvalidateBlock(BlockValidationState& state, CBlockIndex* pindex) LOCKS_EXCLUDED(cs_main);
+    MaybeEarlyExit<bool> InvalidateBlock(BlockValidationState& state, CBlockIndex* pindex) LOCKS_EXCLUDED(cs_main);
     /** Remove invalidity status from a block and its descendants. */
     void ResetBlockFailureFlags(CBlockIndex* pindex) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
@@ -744,7 +745,7 @@ public:
     /** Whether the chain state needs to be redownloaded due to lack of witness data */
     [[nodiscard]] bool NeedsRedownload() const EXCLUSIVE_LOCKS_REQUIRED(cs_main);
     /** Ensures we have a genesis block in the block tree, possibly writing one to disk. */
-    bool LoadGenesisBlock();
+    MaybeEarlyExit<bool> LoadGenesisBlock();
 
     void PruneBlockIndexCandidates();
 
@@ -764,7 +765,7 @@ public:
     void CheckBlockIndex();
 
     /** Load the persisted mempool from disk */
-    void LoadMempool(const ArgsManager& args);
+    MaybeEarlyExit<> LoadMempool(const ArgsManager& args);
 
     /** Update the chain tip based on database information, i.e. CoinsTip()'s best block. */
     bool LoadChainTip() EXCLUSIVE_LOCKS_REQUIRED(cs_main);
@@ -781,8 +782,8 @@ public:
     std::string ToString() EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
 
 private:
-    bool ActivateBestChainStep(BlockValidationState& state, CBlockIndex* pindexMostWork, const std::shared_ptr<const CBlock>& pblock, bool& fInvalidFound, ConnectTrace& connectTrace) EXCLUSIVE_LOCKS_REQUIRED(cs_main, m_mempool->cs);
-    bool ConnectTip(BlockValidationState& state, CBlockIndex* pindexNew, const std::shared_ptr<const CBlock>& pblock, ConnectTrace& connectTrace, DisconnectedBlockTransactions& disconnectpool) EXCLUSIVE_LOCKS_REQUIRED(cs_main, m_mempool->cs);
+    MaybeEarlyExit<bool> ActivateBestChainStep(BlockValidationState& state, CBlockIndex* pindexMostWork, const std::shared_ptr<const CBlock>& pblock, bool& fInvalidFound, ConnectTrace& connectTrace) EXCLUSIVE_LOCKS_REQUIRED(cs_main, m_mempool->cs);
+    MaybeEarlyExit<bool> ConnectTip(BlockValidationState& state, CBlockIndex* pindexNew, const std::shared_ptr<const CBlock>& pblock, ConnectTrace& connectTrace, DisconnectedBlockTransactions& disconnectpool) EXCLUSIVE_LOCKS_REQUIRED(cs_main, m_mempool->cs);
 
     void InvalidBlockFound(CBlockIndex* pindex, const BlockValidationState& state) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
     CBlockIndex* FindMostWorkChain() EXCLUSIVE_LOCKS_REQUIRED(cs_main);
@@ -812,7 +813,7 @@ private:
      * Passing fAddToMempool=false will skip trying to add the transactions back,
      * and instead just erase from the mempool as needed.
      */
-    void MaybeUpdateMempoolForReorg(
+    MaybeEarlyExit<> MaybeUpdateMempoolForReorg(
         DisconnectedBlockTransactions& disconnectpool,
         bool fAddToMempool) EXCLUSIVE_LOCKS_REQUIRED(cs_main, m_mempool->cs);
 
@@ -897,10 +898,10 @@ private:
     bool m_snapshot_validated{false};
 
     CBlockIndex* m_best_invalid;
-    friend bool BlockManager::LoadBlockIndex(const Consensus::Params&, ChainstateManager&);
+    friend MaybeEarlyExit<bool> BlockManager::LoadBlockIndex(const Consensus::Params&, ChainstateManager&);
 
     //! Internal helper for ActivateSnapshot().
-    [[nodiscard]] bool PopulateAndValidateSnapshot(
+    [[nodiscard]] MaybeEarlyExit<bool> PopulateAndValidateSnapshot(
         CChainState& snapshot_chainstate,
         CAutoFile& coins_file,
         const SnapshotMetadata& metadata);
@@ -979,7 +980,7 @@ public:
     //!   faking nTx* block index data along the way.
     //! - Move the new chainstate to `m_snapshot_chainstate` and make it our
     //!   ChainstateActive().
-    [[nodiscard]] bool ActivateSnapshot(
+    [[nodiscard]] MaybeEarlyExit<bool> ActivateSnapshot(
         CAutoFile& coins_file, const SnapshotMetadata& metadata, bool in_memory);
 
     //! The most-work chain.
@@ -1021,7 +1022,7 @@ public:
      * @param[out]  new_block A boolean which is set to indicate if the block was first received via this call
      * @returns     If the block was processed, independently of block validity
      */
-    bool ProcessNewBlock(const CChainParams& chainparams, const std::shared_ptr<const CBlock>& block, bool force_processing, bool* new_block) LOCKS_EXCLUDED(cs_main);
+    MaybeEarlyExit<bool> ProcessNewBlock(const CChainParams& chainparams, const std::shared_ptr<const CBlock>& block, bool force_processing, bool* new_block) LOCKS_EXCLUDED(cs_main);
 
     /**
      * Process incoming block headers.
@@ -1042,11 +1043,11 @@ public:
      * @param[in]  tx              The transaction to submit for mempool acceptance.
      * @param[in]  test_accept     When true, run validation checks but don't submit to mempool.
      */
-    [[nodiscard]] MempoolAcceptResult ProcessTransaction(const CTransactionRef& tx, bool test_accept=false)
+    [[nodiscard]] MaybeEarlyExit<MempoolAcceptResult> ProcessTransaction(const CTransactionRef& tx, bool test_accept=false)
         EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
     //! Load the block tree and coins database from disk, initializing state if we're running with -reindex
-    bool LoadBlockIndex() EXCLUSIVE_LOCKS_REQUIRED(cs_main);
+    MaybeEarlyExit<bool> LoadBlockIndex() EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
     //! Unload block index and chain data before shutdown.
     void Unload() EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
@@ -1056,7 +1057,7 @@ public:
 
     //! Check to see if caches are out of balance and if so, call
     //! ResizeCoinsCaches() as needed.
-    void MaybeRebalanceCaches() EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
+    MaybeEarlyExit<> MaybeRebalanceCaches() EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
 
     ~ChainstateManager() {
         LOCK(::cs_main);
@@ -1071,7 +1072,7 @@ using FopenFn = std::function<FILE*(const fs::path&, const char*)>;
 bool DumpMempool(const CTxMemPool& pool, FopenFn mockable_fopen_function = fsbridge::fopen, bool skip_file_commit = false);
 
 /** Load the mempool from disk. */
-bool LoadMempool(CTxMemPool& pool, CChainState& active_chainstate, FopenFn mockable_fopen_function = fsbridge::fopen);
+MaybeEarlyExit<bool> LoadMempool(CTxMemPool& pool, CChainState& active_chainstate, FopenFn mockable_fopen_function = fsbridge::fopen);
 
 /**
  * Return the expected assumeutxo value for a given height, if one exists.

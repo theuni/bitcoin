@@ -117,7 +117,7 @@ CBlockFileInfo* GetBlockFileInfo(size_t n)
     return &vinfoBlockFile.at(n);
 }
 
-static bool UndoWriteToDisk(const CBlockUndo& blockundo, FlatFilePos& pos, const uint256& hashBlock, const CMessageHeader::MessageStartChars& messageStart)
+static MaybeEarlyExit<bool> UndoWriteToDisk(const CBlockUndo& blockundo, FlatFilePos& pos, const uint256& hashBlock, const CMessageHeader::MessageStartChars& messageStart)
 {
     // Open history file to append
     CAutoFile fileout(OpenUndoFile(pos), SER_DISK, CLIENT_VERSION);
@@ -178,15 +178,16 @@ bool UndoReadFromDisk(CBlockUndo& blockundo, const CBlockIndex* pindex)
     return true;
 }
 
-static void FlushUndoFile(int block_file, bool finalize = false)
+static MaybeEarlyExit<> FlushUndoFile(int block_file, bool finalize = false)
 {
     FlatFilePos undo_pos_old(block_file, vinfoBlockFile[block_file].nUndoSize);
     if (!UndoFileSeq().Flush(undo_pos_old, finalize)) {
         AbortNode("Flushing undo file to disk failed. This is likely the result of an I/O error.");
     }
+    return {};
 }
 
-void FlushBlockFile(bool fFinalize = false, bool finalize_undo = false)
+MaybeEarlyExit<> FlushBlockFile(bool fFinalize = false, bool finalize_undo = false)
 {
     LOCK(cs_LastBlockFile);
     FlatFilePos block_pos_old(nLastBlockFile, vinfoBlockFile[nLastBlockFile].nSize);
@@ -196,6 +197,7 @@ void FlushBlockFile(bool fFinalize = false, bool finalize_undo = false)
     // we do not always flush the undo file, as the chain tip may be lagging behind the incoming blocks,
     // e.g. during IBD or a sync after a node going offline
     if (!fFinalize || finalize_undo) FlushUndoFile(nLastBlockFile, finalize_undo);
+    return {};
 }
 
 uint64_t CalculateCurrentUsage()
@@ -245,7 +247,7 @@ fs::path GetBlockPosFilename(const FlatFilePos& pos)
     return BlockFileSeq().FileName(pos);
 }
 
-bool FindBlockPos(FlatFilePos& pos, unsigned int nAddSize, unsigned int nHeight, CChain& active_chain, uint64_t nTime, bool fKnown = false)
+MaybeEarlyExit<bool> FindBlockPos(FlatFilePos& pos, unsigned int nAddSize, unsigned int nHeight, CChain& active_chain, uint64_t nTime, bool fKnown = false)
 {
     LOCK(cs_LastBlockFile);
 
@@ -300,7 +302,7 @@ bool FindBlockPos(FlatFilePos& pos, unsigned int nAddSize, unsigned int nHeight,
     return true;
 }
 
-static bool FindUndoPos(BlockValidationState& state, int nFile, FlatFilePos& pos, unsigned int nAddSize)
+static MaybeEarlyExit<bool> FindUndoPos(BlockValidationState& state, int nFile, FlatFilePos& pos, unsigned int nAddSize)
 {
     pos.nFile = nFile;
 
@@ -322,7 +324,7 @@ static bool FindUndoPos(BlockValidationState& state, int nFile, FlatFilePos& pos
     return true;
 }
 
-static bool WriteBlockToDisk(const CBlock& block, FlatFilePos& pos, const CMessageHeader::MessageStartChars& messageStart)
+static MaybeEarlyExit<bool> WriteBlockToDisk(const CBlock& block, FlatFilePos& pos, const CMessageHeader::MessageStartChars& messageStart)
 {
     // Open history file to append
     CAutoFile fileout(OpenBlockFile(pos), SER_DISK, CLIENT_VERSION);
@@ -345,15 +347,15 @@ static bool WriteBlockToDisk(const CBlock& block, FlatFilePos& pos, const CMessa
     return true;
 }
 
-bool WriteUndoDataForBlock(const CBlockUndo& blockundo, BlockValidationState& state, CBlockIndex* pindex, const CChainParams& chainparams)
+MaybeEarlyExit<bool> WriteUndoDataForBlock(const CBlockUndo& blockundo, BlockValidationState& state, CBlockIndex* pindex, const CChainParams& chainparams)
 {
     // Write undo information to disk
     if (pindex->GetUndoPos().IsNull()) {
         FlatFilePos _pos;
-        if (!FindUndoPos(state, pindex->nFile, _pos, ::GetSerializeSize(blockundo, CLIENT_VERSION) + 40)) {
+        if (!*FindUndoPos(state, pindex->nFile, _pos, ::GetSerializeSize(blockundo, CLIENT_VERSION) + 40)) {
             return error("ConnectBlock(): FindUndoPos failed");
         }
-        if (!UndoWriteToDisk(blockundo, _pos, pindex->pprev->GetBlockHash(), chainparams.MessageStart())) {
+        if (!*UndoWriteToDisk(blockundo, _pos, pindex->pprev->GetBlockHash(), chainparams.MessageStart())) {
             return AbortNode(state, "Failed to write undo data");
         }
         // rev files are written in block height order, whereas blk files are written as blocks come in (often out of order)
@@ -465,19 +467,19 @@ bool ReadRawBlockFromDisk(std::vector<uint8_t>& block, const CBlockIndex* pindex
 }
 
 /** Store block on disk. If dbp is non-nullptr, the file is known to already reside on disk */
-FlatFilePos SaveBlockToDisk(const CBlock& block, int nHeight, CChain& active_chain, const CChainParams& chainparams, const FlatFilePos* dbp)
+MaybeEarlyExit<FlatFilePos> SaveBlockToDisk(const CBlock& block, int nHeight, CChain& active_chain, const CChainParams& chainparams, const FlatFilePos* dbp)
 {
     unsigned int nBlockSize = ::GetSerializeSize(block, CLIENT_VERSION);
     FlatFilePos blockPos;
     if (dbp != nullptr) {
         blockPos = *dbp;
     }
-    if (!FindBlockPos(blockPos, nBlockSize + 8, nHeight, active_chain, block.GetBlockTime(), dbp != nullptr)) {
+    if (!*FindBlockPos(blockPos, nBlockSize + 8, nHeight, active_chain, block.GetBlockTime(), dbp != nullptr)) {
         error("%s: FindBlockPos failed", __func__);
         return FlatFilePos();
     }
     if (dbp == nullptr) {
-        if (!WriteBlockToDisk(block, blockPos, chainparams.MessageStart())) {
+        if (!*WriteBlockToDisk(block, blockPos, chainparams.MessageStart())) {
             AbortNode("Failed to write block");
             return FlatFilePos();
         }
@@ -556,7 +558,7 @@ void ThreadImport(ChainstateManager& chainman, std::vector<fs::path> vImportFile
         // the relevant pointers before the ABC call.
         for (CChainState* chainstate : WITH_LOCK(::cs_main, return chainman.GetAll())) {
             BlockValidationState state;
-            if (!chainstate->ActivateBestChain(state, nullptr)) {
+            if (!*chainstate->ActivateBestChain(state, nullptr)) {
                 LogPrintf("Failed to connect best block (%s)\n", state.ToString());
                 StartShutdown();
                 return;
