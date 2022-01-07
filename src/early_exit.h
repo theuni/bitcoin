@@ -5,6 +5,7 @@
 #ifndef BITCOIN_EARLY_EXIT_H
 #define BITCOIN_EARLY_EXIT_H
 
+#include <atomic>
 #include <cassert>
 #include <variant>
 
@@ -104,5 +105,7 @@ EarlyExit BubbleUp(MaybeEarlyExit<T>&& ret)
 {
     return std::move(ret).Bubble();
 }
+
+using user_interrupt_t = std::atomic<bool>;
 
 #endif // BITCOIN_EARLY_EXIT_H

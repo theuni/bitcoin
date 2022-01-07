@@ -19,7 +19,7 @@ std::optional<ChainstateLoadingError> LoadChainstate(bool fReset,
                                                      int64_t nCoinCacheUsage,
                                                      bool block_tree_db_in_memory,
                                                      bool coins_db_in_memory,
-                                                     std::function<bool()> shutdown_requested,
+                                                     const user_interrupt_t& interrupted,
                                                      std::function<void()> coins_error_cb)
 {
     auto is_coinsview_empty = [&](CChainState* chainstate) EXCLUSIVE_LOCKS_REQUIRED(::cs_main) {
@@ -46,14 +46,14 @@ std::optional<ChainstateLoadingError> LoadChainstate(bool fReset,
             CleanupBlockRevFiles();
     }
 
-    if (shutdown_requested && shutdown_requested()) return ChainstateLoadingError::SHUTDOWN_PROBED;
+    if (interrupted) return ChainstateLoadingError::SHUTDOWN_PROBED;
 
     // LoadBlockIndex will load fHavePruned if we've ever removed a
     // block file from disk.
     // Note that it also sets fReindex based on the disk flag!
     // From here on out fReindex and fReset mean something different!
-    if (!*chainman.LoadBlockIndex()) {
-        if (shutdown_requested && shutdown_requested()) return ChainstateLoadingError::SHUTDOWN_PROBED;
+    if (!*chainman.LoadBlockIndex(interrupted)) {
+        if (interrupted) return ChainstateLoadingError::SHUTDOWN_PROBED;
         return ChainstateLoadingError::ERROR_LOADING_BLOCK_DB;
     }
 
@@ -130,7 +130,7 @@ std::optional<ChainstateLoadVerifyError> VerifyLoadedChainstate(ChainstateManage
                                                                 const Consensus::Params& consensus_params,
                                                                 unsigned int check_blocks,
                                                                 unsigned int check_level,
-                                                                std::function<int64_t()> get_unix_time_seconds)
+                                                                std::function<int64_t()> get_unix_time_seconds, const user_interrupt_t& interrupted)
 {
     auto is_coinsview_empty = [&](CChainState* chainstate) EXCLUSIVE_LOCKS_REQUIRED(::cs_main) {
         return fReset || fReindexChainState || chainstate->CoinsTip().GetBestBlock().IsNull();
@@ -148,7 +148,7 @@ std::optional<ChainstateLoadVerifyError> VerifyLoadedChainstate(ChainstateManage
             if (!*CVerifyDB().VerifyDB(
                     *chainstate, consensus_params, chainstate->CoinsDB(),
                     check_level,
-                    check_blocks)) {
+                    check_blocks, interrupted)) {
                 return ChainstateLoadVerifyError::ERROR_CORRUPTED_BLOCK_DB;
             }
         }

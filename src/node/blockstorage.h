@@ -81,6 +81,6 @@ MaybeEarlyExit<bool> WriteUndoDataForBlock(const CBlockUndo& blockundo, BlockVal
 
 MaybeEarlyExit<FlatFilePos> SaveBlockToDisk(const CBlock& block, int nHeight, CChain& active_chain, const CChainParams& chainparams, const FlatFilePos* dbp);
 
-void ThreadImport(ChainstateManager& chainman, std::vector<fs::path> vImportFiles, const ArgsManager& args);
+void ThreadImport(ChainstateManager& chainman, std::vector<fs::path> vImportFiles, const ArgsManager& args, const user_interrupt_t& interrupted);
 
 #endif // BITCOIN_NODE_BLOCKSTORAGE_H

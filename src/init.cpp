@@ -1417,7 +1417,6 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
                                 cache_sizes.coins,
                                 false,
                                 false,
-                                ShutdownRequested,
                                 []() {
                                     uiInterface.ThreadSafeMessageBox(
                                                                      _("Error reading from database, shutting down."),

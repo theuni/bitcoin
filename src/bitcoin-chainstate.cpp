@@ -59,6 +59,7 @@ protected:
 
 
 int main() {
+    user_interrupt_t interrupted;
     SelectParams(CBaseChainParams::MAIN);
     const CChainParams& chainparams = Params();
 
@@ -114,7 +115,7 @@ int main() {
                              (450 << 20) - (2 << 20) - (2 << 22),
                              true,
                              true,
-                             [](){ return false; });
+                             interrupted);
     if (rv.has_value()) {
         std::cerr << "Failed to load Chain state from your datadir." << std::endl;
         goto prologue;
@@ -122,7 +123,7 @@ int main() {
 
     for (CChainState* chainstate : WITH_LOCK(::cs_main, return chainman.GetAll())) {
         BlockValidationState state;
-        if (!*chainstate->ActivateBestChain(state, nullptr)) {
+        if (!*chainstate->ActivateBestChain(state, interrupted, nullptr)) {
             std::cerr << "Failed to connect best block (" << state.ToString() << ")" << std::endl;
             goto prologue;
         }
@@ -186,7 +187,7 @@ int main() {
         bool new_block;
         auto sc = std::make_shared<submitblock_StateCatcher>(block.GetHash());
         RegisterSharedValidationInterface(sc);
-        bool accepted = *chainman.ProcessNewBlock(chainparams, blockptr, /* fForceProcessing */ true, /* fNewBlock */ &new_block);
+        bool accepted = *chainman.ProcessNewBlock(chainparams, blockptr, /* fForceProcessing */ true, interrupted, /* fNewBlock */ &new_block);
         UnregisterSharedValidationInterface(sc);
         if (!new_block && accepted) {
             std::cerr << "duplicate" << std::endl;

@@ -5,6 +5,8 @@
 #ifndef BITCOIN_NODE_CHAINSTATE_H
 #define BITCOIN_NODE_CHAINSTATE_H
 
+#include <early_exit.h>
+
 #include <cstdint>
 #include <functional>
 #include <optional>
@@ -65,7 +67,7 @@ std::optional<ChainstateLoadingError> LoadChainstate(bool fReset,
                                                      int64_t nCoinCacheUsage,
                                                      bool block_tree_db_in_memory,
                                                      bool coins_db_in_memory,
-                                                     std::function<bool()> shutdown_requested = nullptr,
+                                                     const user_interrupt_t& interrupted,
                                                      std::function<void()> coins_error_cb = nullptr);
 
 enum class ChainstateLoadVerifyError {
@@ -80,6 +82,6 @@ std::optional<ChainstateLoadVerifyError> VerifyLoadedChainstate(ChainstateManage
                                                                 const Consensus::Params& consensus_params,
                                                                 unsigned int check_blocks,
                                                                 unsigned int check_level,
-                                                                std::function<int64_t()> get_unix_time_seconds);
+                                                                std::function<int64_t()> get_unix_time_seconds, const user_interrupt_t& interrupted);
 
 #endif // BITCOIN_NODE_CHAINSTATE_H
