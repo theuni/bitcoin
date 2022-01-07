@@ -19,7 +19,6 @@ std::optional<ChainstateLoadingError> LoadChainstate(bool fReset,
                                                      int64_t nCoinCacheUsage,
                                                      bool block_tree_db_in_memory,
                                                      bool coins_db_in_memory,
-                                                     const user_interrupt_t& interrupted,
                                                      std::function<void()> coins_error_cb)
 {
     auto is_coinsview_empty = [&](CChainState* chainstate) EXCLUSIVE_LOCKS_REQUIRED(::cs_main) {
@@ -46,14 +45,11 @@ std::optional<ChainstateLoadingError> LoadChainstate(bool fReset,
             CleanupBlockRevFiles();
     }
 
-    if (interrupted) return ChainstateLoadingError::SHUTDOWN_PROBED;
-
     // LoadBlockIndex will load fHavePruned if we've ever removed a
     // block file from disk.
     // Note that it also sets fReindex based on the disk flag!
     // From here on out fReindex and fReset mean something different!
-    if (!*chainman.LoadBlockIndex(interrupted)) {
-        if (interrupted) return ChainstateLoadingError::SHUTDOWN_PROBED;
+    if (!*chainman.LoadBlockIndex()) {
         return ChainstateLoadingError::ERROR_LOADING_BLOCK_DB;
     }
 

@@ -1391,12 +1391,13 @@ CChainState::CChainState(
     CTxMemPool* mempool,
     BlockManager& blockman,
     ChainstateManager& chainman,
-    std::optional<uint256> from_snapshot_blockhash)
+    const user_interrupt_t& interrupted, std::optional<uint256> from_snapshot_blockhash)
     : m_mempool(mempool),
       m_blockman(blockman),
       m_params(::Params()),
       m_chainman(chainman),
-      m_from_snapshot_blockhash(from_snapshot_blockhash) {}
+      m_from_snapshot_blockhash(from_snapshot_blockhash),
+      m_interrupted(interrupted) {}
 
 void CChainState::InitCoinsDB(
     size_t cache_size_bytes,
@@ -2829,7 +2830,7 @@ static void LimitValidationInterfaceQueue() LOCKS_EXCLUDED(cs_main) {
     }
 }
 
-MaybeEarlyExit<bool> CChainState::ActivateBestChain(BlockValidationState& state, const user_interrupt_t& interrupted, std::shared_ptr<const CBlock> pblock)
+MaybeEarlyExit<bool> CChainState::ActivateBestChain(BlockValidationState& state, std::shared_ptr<const CBlock> pblock)
 {
     // Note that while we're often called here from ProcessNewBlock, this is
     // far from a guarantee. Things in the P2P/RPC will often end up calling
@@ -2929,7 +2930,7 @@ MaybeEarlyExit<bool> CChainState::ActivateBestChain(BlockValidationState& state,
     return true;
 }
 
-MaybeEarlyExit<bool> CChainState::PreciousBlock(BlockValidationState& state, CBlockIndex* pindex, const user_interrupt_t& interrupted)
+MaybeEarlyExit<bool> CChainState::PreciousBlock(BlockValidationState& state, CBlockIndex* pindex)
 {
     {
         LOCK(cs_main);
@@ -2955,10 +2956,10 @@ MaybeEarlyExit<bool> CChainState::PreciousBlock(BlockValidationState& state, CBl
         }
     }
 
-    return ActivateBestChain(state, interrupted, std::shared_ptr<const CBlock>());
+    return ActivateBestChain(state, std::shared_ptr<const CBlock>());
 }
 
-MaybeEarlyExit<bool> CChainState::InvalidateBlock(BlockValidationState& state, CBlockIndex* pindex, const user_interrupt_t& interrupted)
+MaybeEarlyExit<bool> CChainState::InvalidateBlock(BlockValidationState& state, CBlockIndex* pindex)
 {
     // Genesis block can't be invalidated
     assert(pindex);
@@ -3688,7 +3689,7 @@ MaybeEarlyExit<bool> CChainState::AcceptBlock(const std::shared_ptr<const CBlock
     return true;
 }
 
-MaybeEarlyExit<bool> ChainstateManager::ProcessNewBlock(const CChainParams& chainparams, const std::shared_ptr<const CBlock>& block, bool force_processing, const user_interrupt_t& interrupted, bool* new_block)
+MaybeEarlyExit<bool> ChainstateManager::ProcessNewBlock(const CChainParams& chainparams, const std::shared_ptr<const CBlock>& block, bool force_processing, bool* new_block)
 {
     AssertLockNotHeld(cs_main);
 
@@ -3720,7 +3721,7 @@ MaybeEarlyExit<bool> ChainstateManager::ProcessNewBlock(const CChainParams& chai
     NotifyHeaderTip(ActiveChainstate());
 
     BlockValidationState state; // Only used to report errors, not invalidity - ignore it
-    if (!*ActiveChainstate().ActivateBestChain(state, interrupted, block)) {
+    if (!*ActiveChainstate().ActivateBestChain(state, block)) {
         return error("%s: ActivateBestChain failed (%s)", __func__, state.ToString());
     }
 
@@ -3932,6 +3933,8 @@ MaybeEarlyExit<bool> BlockManager::LoadBlockIndex(
     const Consensus::Params& consensus_params,
     ChainstateManager& chainman, const user_interrupt_t& interrupted)
 {
+    if (ShutdownRequested()) return false;
+
     if (!m_block_tree_db->LoadBlockIndexGuts(consensus_params, [this](const uint256& hash) EXCLUSIVE_LOCKS_REQUIRED(cs_main) { return this->InsertBlockIndex(hash); })) {
         return false;
     }
@@ -4102,11 +4105,11 @@ MaybeEarlyExit<bool> BlockManager::LoadBlockIndexDB(ChainstateManager& chainman,
     return true;
 }
 
-MaybeEarlyExit<> CChainState::LoadMempool(const ArgsManager& args, const user_interrupt_t& interrupted)
+MaybeEarlyExit<> CChainState::LoadMempool(const ArgsManager& args)
 {
     if (!m_mempool) return {};
     if (args.GetBoolArg("-persistmempool", DEFAULT_PERSIST_MEMPOOL)) {
-        ::LoadMempool(*m_mempool, *this, interrupted);
+        ::LoadMempool(*m_mempool, *this, m_interrupted);
     }
     m_mempool->SetIsLoaded(!ShutdownRequested());
     return {};
@@ -4391,13 +4394,13 @@ void UnloadBlockIndex(CTxMemPool* mempool, ChainstateManager& chainman)
     fHavePruned = false;
 }
 
-MaybeEarlyExit<bool> ChainstateManager::LoadBlockIndex(const user_interrupt_t& interrupted)
+MaybeEarlyExit<bool> ChainstateManager::LoadBlockIndex()
 {
     AssertLockHeld(cs_main);
     // Load block index from databases
     bool needs_init = fReindex;
     if (!fReindex) {
-        bool ret = *m_blockman.LoadBlockIndexDB(*this, interrupted);
+        bool ret = *m_blockman.LoadBlockIndexDB(*this, m_interrupted);
         if (!ret) return false;
         needs_init = m_blockman.m_block_index.empty();
     }
@@ -4439,7 +4442,7 @@ MaybeEarlyExit<bool> CChainState::LoadGenesisBlock()
     return true;
 }
 
-MaybeEarlyExit<> CChainState::LoadExternalBlockFile(FILE* fileIn, const user_interrupt_t& interrupted, FlatFilePos* dbp)
+MaybeEarlyExit<> CChainState::LoadExternalBlockFile(FILE* fileIn, FlatFilePos* dbp)
 {
     // Map of disk positions for blocks with unknown parent (only used for reindex)
     static std::multimap<uint256, FlatFilePos> mapBlocksUnknownParent;
@@ -4515,7 +4518,7 @@ MaybeEarlyExit<> CChainState::LoadExternalBlockFile(FILE* fileIn, const user_int
                 // Activate the genesis block so normal node progress can continue
                 if (hash == m_params.GetConsensus().hashGenesisBlock) {
                     BlockValidationState state;
-                    if (!*ActivateBestChain(state, interrupted, nullptr)) {
+                    if (!*ActivateBestChain(state, nullptr)) {
                         break;
                     }
                 }
@@ -5020,7 +5023,7 @@ CChainState& ChainstateManager::InitializeChainstate(
     if (to_modify) {
         throw std::logic_error("should not be overwriting a chainstate");
     }
-    to_modify.reset(new CChainState(mempool, m_blockman, *this, snapshot_blockhash));
+    to_modify.reset(new CChainState(mempool, m_blockman, *this, m_interrupted, snapshot_blockhash));
 
     // Snapshot chainstates and initial IBD chaintates always become active.
     if (is_snapshot || (!is_snapshot && !m_active_chainstate)) {
@@ -5048,7 +5051,7 @@ const AssumeutxoData* ExpectedAssumeutxo(
 MaybeEarlyExit<bool> ChainstateManager::ActivateSnapshot(
         CAutoFile& coins_file,
         const SnapshotMetadata& metadata,
-        bool in_memory, const user_interrupt_t& interrupted)
+        bool in_memory)
 {
     uint256 base_blockhash = metadata.m_base_blockhash;
 
@@ -5091,7 +5094,7 @@ MaybeEarlyExit<bool> ChainstateManager::ActivateSnapshot(
 
     auto snapshot_chainstate = WITH_LOCK(::cs_main,
         return std::make_unique<CChainState>(
-            /* mempool */ nullptr, m_blockman, *this, base_blockhash));
+            /* mempool */ nullptr, m_blockman, *this, m_interrupted, base_blockhash));
 
     {
         LOCK(::cs_main);
@@ -5103,7 +5106,7 @@ MaybeEarlyExit<bool> ChainstateManager::ActivateSnapshot(
     }
 
     const bool snapshot_ok = *this->PopulateAndValidateSnapshot(
-        *snapshot_chainstate, coins_file, metadata, interrupted);
+        *snapshot_chainstate, coins_file, metadata);
 
     if (!snapshot_ok) {
         WITH_LOCK(::cs_main, this->MaybeRebalanceCaches());
@@ -5142,7 +5145,7 @@ static void FlushSnapshotToDisk(CCoinsViewCache& coins_cache, bool snapshot_load
 MaybeEarlyExit<bool> ChainstateManager::PopulateAndValidateSnapshot(
     CChainState& snapshot_chainstate,
     CAutoFile& coins_file,
-    const SnapshotMetadata& metadata, const user_interrupt_t& interrupted)
+    const SnapshotMetadata& metadata)
 {
     // It's okay to release cs_main before we're done using `coins_cache` because we know
     // that nothing else will be referencing the newly created snapshot_chainstate yet.

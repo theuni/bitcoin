@@ -67,7 +67,6 @@ std::optional<ChainstateLoadingError> LoadChainstate(bool fReset,
                                                      int64_t nCoinCacheUsage,
                                                      bool block_tree_db_in_memory,
                                                      bool coins_db_in_memory,
-                                                     const user_interrupt_t& interrupted,
                                                      std::function<void()> coins_error_cb = nullptr);
 
 enum class ChainstateLoadVerifyError {

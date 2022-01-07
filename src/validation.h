@@ -568,6 +568,7 @@ protected:
     //! Manages the UTXO set, which is a reflection of the contents of `m_chain`.
     std::unique_ptr<CoinsViews> m_coins_views;
 
+    const user_interrupt_t& m_interrupted;
 public:
     //! Reference to a BlockManager instance which itself is shared across all
     //! CChainState instances.
@@ -585,7 +586,7 @@ public:
         CTxMemPool* mempool,
         BlockManager& blockman,
         ChainstateManager& chainman,
-        std::optional<uint256> from_snapshot_blockhash = std::nullopt);
+        const user_interrupt_t& interrupted, std::optional<uint256> from_snapshot_blockhash = std::nullopt);
 
     /**
      * Initialize the CoinsViews UTXO set database management data structures. The in-memory
@@ -673,7 +674,7 @@ public:
         EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
 
     /** Import blocks from an external file */
-    MaybeEarlyExit<> LoadExternalBlockFile(FILE* fileIn, const user_interrupt_t& interrupted, FlatFilePos* dbp = nullptr);
+    MaybeEarlyExit<> LoadExternalBlockFile(FILE* fileIn, FlatFilePos* dbp = nullptr);
 
     /**
      * Update the on-disk chain state.
@@ -715,7 +716,7 @@ public:
      */
     MaybeEarlyExit<bool> ActivateBestChain(
         BlockValidationState& state,
-        const user_interrupt_t& interrupted, std::shared_ptr<const CBlock> pblock = nullptr) LOCKS_EXCLUDED(cs_main);
+        std::shared_ptr<const CBlock> pblock = nullptr) LOCKS_EXCLUDED(cs_main);
 
     MaybeEarlyExit<bool> AcceptBlock(const std::shared_ptr<const CBlock>& pblock, BlockValidationState& state, CBlockIndex** ppindex, bool fRequested, const FlatFilePos* dbp, bool* fNewBlock) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
@@ -733,9 +734,9 @@ public:
      *
      * May not be called in a validationinterface callback.
      */
-    MaybeEarlyExit<bool> PreciousBlock(BlockValidationState& state, CBlockIndex* pindex, const user_interrupt_t& interrupted) LOCKS_EXCLUDED(cs_main);
+    MaybeEarlyExit<bool> PreciousBlock(BlockValidationState& state, CBlockIndex* pindex) LOCKS_EXCLUDED(cs_main);
     /** Mark a block as invalid. */
-    MaybeEarlyExit<bool> InvalidateBlock(BlockValidationState& state, CBlockIndex* pindex, const user_interrupt_t& interrupted) LOCKS_EXCLUDED(cs_main);
+    MaybeEarlyExit<bool> InvalidateBlock(BlockValidationState& state, CBlockIndex* pindex) LOCKS_EXCLUDED(cs_main);
     /** Remove invalidity status from a block and its descendants. */
     void ResetBlockFailureFlags(CBlockIndex* pindex) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
@@ -765,7 +766,7 @@ public:
     void CheckBlockIndex();
 
     /** Load the persisted mempool from disk */
-    MaybeEarlyExit<> LoadMempool(const ArgsManager& args, const user_interrupt_t& interrupted);
+    MaybeEarlyExit<> LoadMempool(const ArgsManager& args);
 
     /** Update the chain tip based on database information, i.e. CoinsTip()'s best block. */
     bool LoadChainTip() EXCLUSIVE_LOCKS_REQUIRED(cs_main);
@@ -898,13 +899,13 @@ private:
     bool m_snapshot_validated{false};
 
     CBlockIndex* m_best_invalid;
-    friend MaybeEarlyExit<bool> BlockManager::LoadBlockIndex(const Consensus::Params&, ChainstateManager&, const user_interrupt_t& interrupted);
+    friend MaybeEarlyExit<bool> BlockManager::LoadBlockIndex(const Consensus::Params&, ChainstateManager&, const user_interrupt_t&);
 
     //! Internal helper for ActivateSnapshot().
     [[nodiscard]] MaybeEarlyExit<bool> PopulateAndValidateSnapshot(
         CChainState& snapshot_chainstate,
         CAutoFile& coins_file,
-        const SnapshotMetadata& metadata, const user_interrupt_t& interrupted);
+        const SnapshotMetadata& metadata);
 
     /**
      * If a block header hasn't already been seen, call CheckBlockHeader on it, ensure
@@ -917,7 +918,10 @@ private:
         CBlockIndex** ppindex) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
     friend CChainState;
 
+    const user_interrupt_t& m_interrupted;
 public:
+    ChainstateManager(const user_interrupt_t& interrupted) : m_interrupted(interrupted){}
+
     std::thread m_load_block;
     //! A single BlockManager instance is shared across each constructed
     //! chainstate to avoid duplicating block metadata.
@@ -981,7 +985,7 @@ public:
     //! - Move the new chainstate to `m_snapshot_chainstate` and make it our
     //!   ChainstateActive().
     [[nodiscard]] MaybeEarlyExit<bool> ActivateSnapshot(
-        CAutoFile& coins_file, const SnapshotMetadata& metadata, bool in_memory, const user_interrupt_t& interrupted);
+        CAutoFile& coins_file, const SnapshotMetadata& metadata, bool in_memory);
 
     //! The most-work chain.
     CChainState& ActiveChainstate() const;
@@ -1022,7 +1026,7 @@ public:
      * @param[out]  new_block A boolean which is set to indicate if the block was first received via this call
      * @returns     If the block was processed, independently of block validity
      */
-    MaybeEarlyExit<bool> ProcessNewBlock(const CChainParams& chainparams, const std::shared_ptr<const CBlock>& block, bool force_processing, const user_interrupt_t& interrupted, bool* new_block) LOCKS_EXCLUDED(cs_main);
+    MaybeEarlyExit<bool> ProcessNewBlock(const CChainParams& chainparams, const std::shared_ptr<const CBlock>& block, bool force_processing, bool* new_block) LOCKS_EXCLUDED(cs_main);
 
     /**
      * Process incoming block headers.
@@ -1047,7 +1051,7 @@ public:
         EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
     //! Load the block tree and coins database from disk, initializing state if we're running with -reindex
-    MaybeEarlyExit<bool> LoadBlockIndex(const user_interrupt_t& interrupted) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
+    MaybeEarlyExit<bool> LoadBlockIndex() EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
     //! Unload block index and chain data before shutdown.
     void Unload() EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
