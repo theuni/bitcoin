@@ -1,7 +1,6 @@
 #include <iostream> // for cout and shit
 #include <functional> // for std::function
 
-#include <node/chainstate.h>          // for LoadChainstate
 #include <kernel/init/common.h>              // for SetGlobals, UnsetGlobals
 #include <validation.h>               // for ChainstateManager, InitScriptExecutionCache, StopScriptCheckWorkerThreads, UpdateUncommittedBlockStructures, BlockManager, DEFAULT_CHECKBLOCKS, DEFAULT_CHECKLEVEL
 #include <validationinterface.h>      // for GetMainSignals, cs_main, CMainSignals, RegisterSharedValidationInterface, UnregisterSharedValidationInterface, CValidationInterface
@@ -104,8 +103,7 @@ int main() {
 
     ChainstateManager chainman(interrupted);
 
-    auto rv = LoadChainstate(false,
-                             std::ref(chainman),
+    auto rv = chainman.LoadChainstate(false,
                              nullptr,
                              false,
                              chainparams.GetConsensus(),

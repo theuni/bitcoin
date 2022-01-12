@@ -36,7 +36,6 @@
 #include <netbase.h>
 #include <node/blockstorage.h>
 #include <node/caches.h>
-#include <node/chainstate.h>
 #include <node/context.h>
 #include <node/miner.h>
 #include <node/ui_interface.h>
@@ -1270,7 +1269,8 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     node.mempool = std::make_unique<CTxMemPool>(node.fee_estimator.get(), check_ratio);
 
     assert(!node.chainman);
-    node.chainman = std::make_unique<ChainstateManager>();
+    user_interrupt_t interrupt;
+    node.chainman = std::make_unique<ChainstateManager>(interrupt);
     ChainstateManager& chainman = *node.chainman;
 
     assert(!node.peerman);
@@ -1406,8 +1406,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
         const int64_t load_block_index_start_time = GetTimeMillis();
         std::optional<ChainstateLoadingError> rv;
         try {
-            rv = LoadChainstate(fReset,
-                                chainman,
+            rv = chainman.LoadChainstate(fReset,
                                 Assert(node.mempool.get()),
                                 fPruneMode,
                                 chainparams.GetConsensus(),
@@ -1469,7 +1468,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
                     LogPrintf("Prune: pruned datadir may not have more than %d blocks; only checking available blocks\n",
                               MIN_BLOCKS_TO_KEEP);
                 }
-                rv2 = VerifyLoadedChainstate(chainman,
+                rv2 = chainman.VerifyLoadedChainstate(
                                              fReset,
                                              fReindexChainState,
                                              chainparams.GetConsensus(),
@@ -1616,7 +1615,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     }
 
     chainman.m_load_block = std::thread(&util::TraceThread, "loadblk", [=, &chainman, &args] {
-        ThreadImport(chainman, vImportFiles, args);
+        ThreadImport(chainman, vImportFiles, args, std::cref(interrupt));
     });
 
     // Wait for genesis block to be processed

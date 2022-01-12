@@ -1382,10 +1382,10 @@ static RPCHelpMan verifychain()
 
     ChainstateManager& chainman = EnsureAnyChainman(request.context);
     LOCK(cs_main);
-
+    user_interrupt_t interrupt;
     CChainState& active_chainstate = chainman.ActiveChainstate();
     return *CVerifyDB().VerifyDB(
-        active_chainstate, Params().GetConsensus(), active_chainstate.CoinsTip(), check_level, check_depth);
+        active_chainstate, Params().GetConsensus(), active_chainstate.CoinsTip(), check_level, check_depth, interrupt);
 },
     };
 }

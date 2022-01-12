@@ -6,6 +6,7 @@
 #define BITCOIN_TEST_UTIL_SETUP_COMMON_H
 
 #include <chainparamsbase.h>
+#include <early_exit.h>
 #include <fs.h>
 #include <key.h>
 #include <node/caches.h>
@@ -77,6 +78,7 @@ static constexpr CAmount CENT{1000000};
 struct BasicTestingSetup {
     ECCVerifyHandle globalVerifyHandle;
     NodeContext m_node;
+    user_interrupt_t m_interrupt;
 
     explicit BasicTestingSetup(const std::string& chainName = CBaseChainParams::MAIN, const std::vector<const char*>& extra_args = {});
     ~BasicTestingSetup();
