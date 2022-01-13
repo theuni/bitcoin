@@ -100,15 +100,11 @@
 
 using node::CacheSizes;
 using node::CalculateCacheSizes;
-using node::ChainstateLoadVerifyError;
-using node::ChainstateLoadingError;
 using node::CleanupBlockRevFiles;
 using node::DEFAULT_PRINTPRIORITY;
 using node::DEFAULT_STOPAFTERBLOCKIMPORT;
-using node::LoadChainstate;
 using node::NodeContext;
 using node::ThreadImport;
-using node::VerifyLoadedChainstate;
 using node::fPruneMode;
 using node::fReindex;
 using node::nPruneTarget;
@@ -1422,8 +1418,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
         const int64_t load_block_index_start_time = GetTimeMillis();
         std::optional<ChainstateLoadingError> maybe_load_error;
         try {
-            maybe_load_error = LoadChainstate(fReset,
-                                              chainman,
+            maybe_load_error = chainman.LoadChainstate(fReset,
                                               Assert(node.mempool.get()),
                                               fPruneMode,
                                               chainparams.GetConsensus(),
@@ -1486,7 +1481,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
                     LogPrintf("Prune: pruned datadir may not have more than %d blocks; only checking available blocks\n",
                               MIN_BLOCKS_TO_KEEP);
                 }
-                maybe_verify_error = VerifyLoadedChainstate(chainman,
+                maybe_verify_error = chainman.VerifyLoadedChainstate(
                                                             fReset,
                                                             fReindexChainState,
                                                             chainparams.GetConsensus(),

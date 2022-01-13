@@ -47,9 +47,7 @@
 
 using node::BlockAssembler;
 using node::CalculateCacheSizes;
-using node::LoadChainstate;
 using node::RegenerateCommitments;
-using node::VerifyLoadedChainstate;
 using node::fPruneMode;
 using node::fReindex;
 
@@ -192,8 +190,7 @@ TestingSetup::TestingSetup(const std::string& chainName, const std::vector<const
     // instead of unit tests, but for now we need these here.
     RegisterAllCoreRPCCommands(tableRPC);
 
-    auto maybe_load_error = LoadChainstate(fReindex.load(),
-                                           *Assert(m_node.chainman.get()),
+    auto maybe_load_error = Assert(m_node.chainman)->LoadChainstate(fReindex.load(),
                                            Assert(m_node.mempool.get()),
                                            fPruneMode,
                                            chainparams.GetConsensus(),
@@ -205,8 +202,7 @@ TestingSetup::TestingSetup(const std::string& chainName, const std::vector<const
                                            /*coins_db_in_memory=*/true);
     assert(!maybe_load_error.has_value());
 
-    auto maybe_verify_error = VerifyLoadedChainstate(
-        *Assert(m_node.chainman),
+    auto maybe_verify_error = Assert(m_node.chainman)->VerifyLoadedChainstate(
         fReindex.load(),
         m_args.GetBoolArg("-reindex-chainstate", false),
         chainparams.GetConsensus(),
