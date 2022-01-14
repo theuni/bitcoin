@@ -369,7 +369,9 @@ bool BlockManager::WriteBlockIndexDB()
 
 MaybeEarlyExit<bool> BlockManager::LoadBlockIndexDB(ChainstateManager& chainman)
 {
-    if (!*LoadBlockIndex(::Params().GetConsensus(), chainman)) {
+    auto load_ret = LoadBlockIndex(::Params().GetConsensus(), chainman);
+    if (load_ret.ShouldEarlyExit()) return BubbleUp(std::move(load_ret));
+    if (!*load_ret) {
         return false;
     }
 
@@ -733,10 +735,14 @@ MaybeEarlyExit<bool> BlockManager::WriteUndoDataForBlock(const CBlockUndo& block
     // Write undo information to disk
     if (pindex->GetUndoPos().IsNull()) {
         FlatFilePos _pos;
-        if (!*FindUndoPos(state, pindex->nFile, _pos, ::GetSerializeSize(blockundo, CLIENT_VERSION) + 40)) {
+        auto findundo_ret = FindUndoPos(state, pindex->nFile, _pos, ::GetSerializeSize(blockundo, CLIENT_VERSION) + 40);
+        if (findundo_ret.ShouldEarlyExit()) return BubbleUp(std::move(findundo_ret));
+        if (!*findundo_ret) {
             return error("ConnectBlock(): FindUndoPos failed");
         }
-        if (!*UndoWriteToDisk(blockundo, _pos, pindex->pprev->GetBlockHash(), chainparams.MessageStart())) {
+        auto undowrite_ret = UndoWriteToDisk(blockundo, _pos, pindex->pprev->GetBlockHash(), chainparams.MessageStart());
+        if (undowrite_ret.ShouldEarlyExit()) return BubbleUp(std::move(undowrite_ret));
+        if (!*undowrite_ret) {
             return AbortNode(state, "Failed to write undo data");
         }
         // rev files are written in block height order, whereas blk files are written as blocks come in (often out of order)
@@ -855,12 +861,16 @@ MaybeEarlyExit<FlatFilePos> BlockManager::SaveBlockToDisk(const CBlock& block, i
     if (dbp != nullptr) {
         blockPos = *dbp;
     }
-    if (!*FindBlockPos(blockPos, nBlockSize + 8, nHeight, active_chain, block.GetBlockTime(), dbp != nullptr)) {
+    auto find_ret = FindBlockPos(blockPos, nBlockSize + 8, nHeight, active_chain, block.GetBlockTime(), dbp != nullptr);
+    if (find_ret.ShouldEarlyExit()) return BubbleUp(std::move(find_ret));
+    if (!*find_ret) {
         error("%s: FindBlockPos failed", __func__);
         return FlatFilePos();
     }
     if (dbp == nullptr) {
-        if (!*WriteBlockToDisk(block, blockPos, chainparams.MessageStart())) {
+        auto write_ret = WriteBlockToDisk(block, blockPos, chainparams.MessageStart());
+        if (write_ret.ShouldEarlyExit()) return BubbleUp(std::move(write_ret));
+        if (!*write_ret) {
             AbortNode("Failed to write block");
             return FlatFilePos();
         }

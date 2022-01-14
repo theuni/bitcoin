@@ -53,7 +53,9 @@ std::optional<ChainstateLoadingError> LoadChainstate(bool fReset,
     // block file from disk.
     // Note that it also sets fReindex based on the disk flag!
     // From here on out fReindex and fReset mean something different!
-    if (!*chainman.LoadBlockIndex()) {
+    auto load_ret = chainman.LoadBlockIndex();
+    if (load_ret.ShouldEarlyExit()) return ChainstateLoadingError::ERROR_LOADING_BLOCK_DB;
+    if (!*load_ret) {
         if (shutdown_requested && shutdown_requested()) return ChainstateLoadingError::SHUTDOWN_PROBED;
         return ChainstateLoadingError::ERROR_LOADING_BLOCK_DB;
     }
@@ -73,8 +75,12 @@ std::optional<ChainstateLoadingError> LoadChainstate(bool fReset,
     // If we're not mid-reindex (based on disk + args), add a genesis block on disk
     // (otherwise we use the one already on disk).
     // This is called again in ThreadImport after the reindex completes.
-    if (!fReindex && !*chainman.ActiveChainstate().LoadGenesisBlock()) {
-        return ChainstateLoadingError::ERROR_LOAD_GENESIS_BLOCK_FAILED;
+    if (!fReindex) {
+        auto load_ret = chainman.ActiveChainstate().LoadGenesisBlock();
+        if (load_ret.ShouldEarlyExit()) return ChainstateLoadingError::ERROR_LOAD_GENESIS_BLOCK_FAILED;
+        if (!*load_ret) {
+            return ChainstateLoadingError::ERROR_LOAD_GENESIS_BLOCK_FAILED;
+        }
     }
 
     // At this point we're either in reindex or we've loaded a useful
@@ -145,11 +151,12 @@ std::optional<ChainstateLoadVerifyError> VerifyLoadedChainstate(ChainstateManage
             if (tip && tip->nTime > get_unix_time_seconds() + MAX_FUTURE_BLOCK_TIME) {
                 return ChainstateLoadVerifyError::ERROR_BLOCK_FROM_FUTURE;
             }
-
-            if (!*CVerifyDB().VerifyDB(
+            auto verify_ret = CVerifyDB().VerifyDB(
                     *chainstate, consensus_params, chainstate->CoinsDB(),
                     check_level,
-                    check_blocks)) {
+                    check_blocks);
+            if (verify_ret.ShouldEarlyExit()) return ChainstateLoadVerifyError::ERROR_CORRUPTED_BLOCK_DB;
+            if (!*verify_ret) {
                 return ChainstateLoadVerifyError::ERROR_CORRUPTED_BLOCK_DB;
             }
         }
