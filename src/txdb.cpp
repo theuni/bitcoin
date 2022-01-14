@@ -295,7 +295,7 @@ bool CBlockTreeDB::ReadFlag(const std::string &name, bool &fValue) {
     return true;
 }
 
-bool CBlockTreeDB::LoadBlockIndexGuts(const Consensus::Params& consensusParams, std::function<CBlockIndex*(const uint256&)> insertBlockIndex)
+bool CBlockTreeDB::LoadBlockIndexGuts(const Consensus::Params& consensusParams, std::function<CBlockIndex*(const uint256&)> insertBlockIndex, std::function<bool()> interrupted)
 {
     std::unique_ptr<CDBIterator> pcursor(NewIterator());
 
@@ -303,7 +303,7 @@ bool CBlockTreeDB::LoadBlockIndexGuts(const Consensus::Params& consensusParams, 
 
     // Load m_block_index
     while (pcursor->Valid()) {
-        if (ShutdownRequested()) return false;
+        if (interrupted()) return false;
         std::pair<uint8_t, uint256> key;
         if (pcursor->GetKey(key) && key.first == DB_BLOCK_INDEX) {
             CDiskBlockIndex diskindex;
@@ -397,7 +397,7 @@ public:
  *
  * Currently implemented: from the per-tx utxo model (0.8..0.14.x) to per-txout.
  */
-bool CCoinsViewDB::Upgrade() {
+bool CCoinsViewDB::Upgrade(std::function<bool()> interrupted) {
     std::unique_ptr<CDBIterator> pcursor(m_db->NewIterator());
     pcursor->Seek(std::make_pair(DB_COINS, uint256()));
     if (!pcursor->Valid()) {
@@ -414,7 +414,7 @@ bool CCoinsViewDB::Upgrade() {
     std::pair<unsigned char, uint256> key;
     std::pair<unsigned char, uint256> prev_key = {DB_COINS, uint256()};
     while (pcursor->Valid()) {
-        if (ShutdownRequested()) {
+        if (interrupted()) {
             break;
         }
         if (pcursor->GetKey(key) && key.first == DB_COINS) {
@@ -456,6 +456,6 @@ bool CCoinsViewDB::Upgrade() {
     m_db->WriteBatch(batch);
     m_db->CompactRange({DB_COINS, uint256()}, key);
     uiInterface.ShowProgress("", 100, false);
-    LogPrintf("[%s].\n", ShutdownRequested() ? "CANCELLED" : "DONE");
-    return !ShutdownRequested();
+    LogPrintf("[%s].\n", interrupted() ? "CANCELLED" : "DONE");
+    return !interrupted();
 }

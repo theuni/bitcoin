@@ -67,7 +67,7 @@ public:
     std::unique_ptr<CCoinsViewCursor> Cursor() const override;
 
     //! Attempt to update from an older database format. Returns whether an error occurred.
-    bool Upgrade();
+    bool Upgrade(std::function<bool()> interrupt);
     size_t EstimateSize() const override;
 
     //! Dynamically alter the underlying leveldb cache size.
@@ -87,7 +87,7 @@ public:
     void ReadReindexing(bool &fReindexing);
     bool WriteFlag(const std::string &name, bool fValue);
     bool ReadFlag(const std::string &name, bool &fValue);
-    bool LoadBlockIndexGuts(const Consensus::Params& consensusParams, std::function<CBlockIndex*(const uint256&)> insertBlockIndex);
+    bool LoadBlockIndexGuts(const Consensus::Params& consensusParams, std::function<CBlockIndex*(const uint256&)> insertBlockIndex, std::function<bool()> interrupt);
 };
 
 std::optional<bilingual_str> CheckLegacyTxindex(CBlockTreeDB& block_tree_db);

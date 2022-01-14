@@ -883,6 +883,8 @@ public:
     //! coins databases. This will be split somehow across chainstates.
     int64_t m_total_coinsdb_cache{0};
 
+    bool Interrupted() const;
+
     //! Instantiate a new chainstate and assign it based upon whether it is
     //! from a snapshot.
     //!

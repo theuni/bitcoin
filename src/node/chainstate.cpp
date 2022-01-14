@@ -92,7 +92,7 @@ std::optional<ChainstateLoadingError> LoadChainstate(bool fReset,
 
         // If necessary, upgrade from older database format.
         // This is a no-op if we cleared the coinsviewdb with -reindex or -reindex-chainstate
-        if (!chainstate->CoinsDB().Upgrade()) {
+        if (!chainstate->CoinsDB().Upgrade([&]{ return chainstate->m_chainman.Interrupted(); })) {
             return ChainstateLoadingError::ERROR_CHAINSTATE_UPGRADE_FAILED;
         }
 

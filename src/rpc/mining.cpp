@@ -127,11 +127,11 @@ static bool GenerateBlock(ChainstateManager& chainman, CBlock& block, uint64_t& 
 
     CChainParams chainparams(Params());
 
-    while (max_tries > 0 && block.nNonce < std::numeric_limits<uint32_t>::max() && !CheckProofOfWork(block.GetHash(), block.nBits, chainparams.GetConsensus()) && !ShutdownRequested()) {
+    while (max_tries > 0 && block.nNonce < std::numeric_limits<uint32_t>::max() && !CheckProofOfWork(block.GetHash(), block.nBits, chainparams.GetConsensus()) && !chainman.Interrupted()) {
         ++block.nNonce;
         --max_tries;
     }
-    if (max_tries == 0 || ShutdownRequested()) {
+    if (max_tries == 0 || chainman.Interrupted()) {
         return false;
     }
     if (block.nNonce == std::numeric_limits<uint32_t>::max()) {
@@ -159,7 +159,7 @@ static UniValue generateBlocks(ChainstateManager& chainman, const CTxMemPool& me
     }
     unsigned int nExtraNonce = 0;
     UniValue blockHashes(UniValue::VARR);
-    while (nHeight < nHeightEnd && !ShutdownRequested())
+    while (nHeight < nHeightEnd && !chainman.Interrupted())
     {
         std::unique_ptr<CBlockTemplate> pblocktemplate(BlockAssembler(chainman.ActiveChainstate(), mempool, Params()).CreateNewBlock(coinbase_script));
         if (!pblocktemplate.get())

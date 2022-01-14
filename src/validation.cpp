@@ -2904,7 +2904,7 @@ bool CChainState::ActivateBestChain(BlockValidationState& state, std::shared_ptr
         // never shutdown before connecting the genesis block during LoadChainTip(). Previously this
         // caused an assert() failure during shutdown in such cases as the UTXO DB flushing checks
         // that the best block hash is non-null.
-        if (ShutdownRequested()) break;
+        if (m_chainman.Interrupted()) break;
     } while (pindexNewTip != pindexMostWork);
     CheckBlockIndex();
 
@@ -2989,7 +2989,7 @@ bool CChainState::InvalidateBlock(BlockValidationState& state, CBlockIndex* pind
 
     // Disconnect (descendants of) pindex, and mark them invalid.
     while (true) {
-        if (ShutdownRequested()) break;
+        if (m_chainman.Interrupted()) break;
 
         // Make sure the queue of validation callbacks doesn't grow unboundedly.
         LimitValidationInterfaceQueue();
@@ -3724,7 +3724,7 @@ void CChainState::LoadMempool(bool persist)
     if (persist) {
         ::LoadMempool(*m_mempool, *this);
     }
-    m_mempool->SetIsLoaded(!ShutdownRequested());
+    m_mempool->SetIsLoaded(!m_chainman.Interrupted());
 }
 
 bool CChainState::LoadChainTip()
@@ -3840,7 +3840,7 @@ bool CVerifyDB::VerifyDB(
                 nGoodTransactions += block.vtx.size();
             }
         }
-        if (ShutdownRequested()) return true;
+        if (chainstate.m_chainman.Interrupted()) return true;
     }
     if (pindexFailure)
         return error("VerifyDB(): *** coin database inconsistencies found (last %i blocks, %i good transactions before that)\n", chainstate.m_chain.Height() - pindexFailure->nHeight + 1, nGoodTransactions);
@@ -3865,7 +3865,7 @@ bool CVerifyDB::VerifyDB(
             if (!chainstate.ConnectBlock(block, state, pindex, coins)) {
                 return error("VerifyDB(): *** found unconnectable block at %d, hash=%s (%s)", pindex->nHeight, pindex->GetBlockHash().ToString(), state.ToString());
             }
-            if (ShutdownRequested()) return true;
+            if (chainstate.m_chainman.Interrupted()) return true;
         }
     }
 
@@ -4061,7 +4061,7 @@ void CChainState::LoadExternalBlockFile(FILE* fileIn, FlatFilePos* dbp)
         CBufferedFile blkdat(fileIn, 2*MAX_BLOCK_SERIALIZED_SIZE, MAX_BLOCK_SERIALIZED_SIZE+8, SER_DISK, CLIENT_VERSION);
         uint64_t nRewind = blkdat.GetPos();
         while (!blkdat.eof()) {
-            if (ShutdownRequested()) return;
+            if (m_chainman.Interrupted()) return;
 
             blkdat.SetPos(nRewind);
             nRewind++; // start one byte further next time, in case of failure
@@ -4486,7 +4486,7 @@ bool LoadMempool(CTxMemPool& pool, CChainState& active_chainstate, FopenFn mocka
             } else {
                 ++expired;
             }
-            if (ShutdownRequested())
+            if (active_chainstate.m_chainman.Interrupted())
                 return false;
         }
         std::map<uint256, CAmount> mapDeltas;
@@ -4617,6 +4617,11 @@ std::vector<CChainState*> ChainstateManager::GetAll()
     }
 
     return out;
+}
+
+bool ChainstateManager::Interrupted() const
+{
+    return ShutdownRequested();
 }
 
 CChainState& ChainstateManager::InitializeChainstate(
@@ -4821,7 +4826,7 @@ bool ChainstateManager::PopulateAndValidateSnapshot(
         // If our average Coin size is roughly 41 bytes, checking every 120,000 coins
         // means <5MB of memory imprecision.
         if (coins_processed % 120000 == 0) {
-            if (ShutdownRequested()) {
+            if (Interrupted()) {
                 return false;
             }
 
@@ -5091,7 +5096,7 @@ std::optional<ChainstateLoadingError> ChainstateManager::LoadChainstate(bool fRe
 
         // If necessary, upgrade from older database format.
         // This is a no-op if we cleared the coinsviewdb with -reindex or -reindex-chainstate
-        if (!chainstate->CoinsDB().Upgrade()) {
+        if (!chainstate->CoinsDB().Upgrade([this]{return Interrupted();})) {
             return ChainstateLoadingError::ERROR_CHAINSTATE_UPGRADE_FAILED;
         }
 

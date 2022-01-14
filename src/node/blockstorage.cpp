@@ -224,7 +224,9 @@ bool BlockManager::LoadBlockIndex(
     const Consensus::Params& consensus_params,
     ChainstateManager& chainman)
 {
-    if (!m_block_tree_db->LoadBlockIndexGuts(consensus_params, [this](const uint256& hash) EXCLUSIVE_LOCKS_REQUIRED(cs_main) { return this->InsertBlockIndex(hash); })) {
+    auto interrupted = [&chainman]{return chainman.Interrupted(); };
+    auto insert_cb = [this](const uint256& hash) EXCLUSIVE_LOCKS_REQUIRED(cs_main) { return this->InsertBlockIndex(hash); };
+    if (!m_block_tree_db->LoadBlockIndexGuts(consensus_params, insert_cb, interrupted)) {
         return false;
     }
 
@@ -258,7 +260,7 @@ bool BlockManager::LoadBlockIndex(
     }
 
     for (const std::pair<int, CBlockIndex*>& item : vSortedByHeight) {
-        if (ShutdownRequested()) return false;
+        if (chainman.Interrupted()) return false;
         CBlockIndex* pindex = item.second;
         pindex->nChainWork = (pindex->pprev ? pindex->pprev->nChainWork : 0) + GetBlockProof(*pindex);
         pindex->nTimeMax = (pindex->pprev ? std::max(pindex->pprev->nTimeMax, pindex->nTime) : pindex->nTime);
