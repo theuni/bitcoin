@@ -1628,10 +1628,14 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     }
 
     chainman.m_load_block = std::thread(&util::TraceThread, "loadblk", [=, &chainman, &args] {
+        SetSyscallSandboxPolicy(SyscallSandboxPolicy::INITIALIZATION_LOAD_BLOCKS);
+        ScheduleBatchPriority();
         auto ret = BlockImport(chainman, vImportFiles, args);
         if (ret.ShouldEarlyExit()) {
             StartShutdown();
+            return;
         }
+        chainman.ActiveChainstate().LoadMempool(args.GetBoolArg("-persistmempool", DEFAULT_PERSIST_MEMPOOL));
     });
 
     // Wait for genesis block to be processed

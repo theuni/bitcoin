@@ -31,9 +31,6 @@ struct CImportingNow {
 
 MaybeEarlyExit<> BlockImport(ChainstateManager& chainman, std::vector<fs::path> vImportFiles, const ArgsManager& args)
 {
-    SetSyscallSandboxPolicy(SyscallSandboxPolicy::INITIALIZATION_LOAD_BLOCKS);
-    ScheduleBatchPriority();
-
     {
         CImportingNow imp;
 
@@ -99,7 +96,6 @@ MaybeEarlyExit<> BlockImport(ChainstateManager& chainman, std::vector<fs::path> 
             return UserInterrupted::BLOCK_IMPORT_COMPLETE;
         }
     } // End scope of CImportingNow
-    chainman.ActiveChainstate().LoadMempool(args.GetBoolArg("-persistmempool", DEFAULT_PERSIST_MEMPOOL));
     return {};
 }
 } // namespace node
