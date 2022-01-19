@@ -100,6 +100,6 @@ void ThreadImport(ChainstateManager& chainman, std::vector<fs::path> vImportFile
             return;
         }
     } // End scope of CImportingNow
-    chainman.ActiveChainstate().LoadMempool(args);
+    chainman.ActiveChainstate().LoadMempool(args.GetBoolArg("-persistmempool", DEFAULT_PERSIST_MEMPOOL));
 }
 } // namespace node
