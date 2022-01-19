@@ -23,6 +23,7 @@
 #include <logging/timer.h>
 #include <node/blockstorage.h>
 #include <node/coinstats.h>
+#include <node/import.h>
 #include <node/ui_interface.h>
 #include <node/utxo_snapshot.h>
 #include <policy/policy.h>

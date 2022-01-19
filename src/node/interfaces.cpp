@@ -21,6 +21,7 @@
 #include <node/blockstorage.h>
 #include <node/coin.h>
 #include <node/context.h>
+#include <node/import.h>
 #include <node/transaction.h>
 #include <node/ui_interface.h>
 #include <policy/feerate.h>

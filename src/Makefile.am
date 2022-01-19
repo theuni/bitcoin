@@ -189,6 +189,7 @@ BITCOIN_CORE_H = \
   netbase.h \
   netmessagemaker.h \
   node/blockstorage.h \
+  node/import.h \
   node/caches.h \
   node/chainstate.h \
   node/coin.h \
@@ -359,6 +360,7 @@ libbitcoin_node_a_SOURCES = \
   net.cpp \
   net_processing.cpp \
   node/blockstorage.cpp \
+  node/import.cpp \
   node/caches.cpp \
   node/chainstate.cpp \
   node/coin.cpp \
@@ -854,6 +856,7 @@ libbitcoinkernel_la_SOURCES = \
   node/blockstorage.cpp \
   node/chainstate.cpp \
   node/coinstats.cpp \
+  node/import.cpp \
   node/ui_interface.cpp \
   policy/feerate.cpp \
   policy/fees.cpp \
