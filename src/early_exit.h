@@ -27,7 +27,8 @@ enum class FatalError
 
 enum class UserInterrupted
 {
-    UNKNOWN
+    UNKNOWN,
+    BLOCK_IMPORT_COMPLETE,
 };
 
 using EarlyExit = std::variant<FatalError, UserInterrupted>;
