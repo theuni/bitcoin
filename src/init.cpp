@@ -1630,8 +1630,13 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     chainman.m_load_block = std::thread(&util::TraceThread, "loadblk", [=, &chainman, &args] {
         SetSyscallSandboxPolicy(SyscallSandboxPolicy::INITIALIZATION_LOAD_BLOCKS);
         ScheduleBatchPriority();
-        auto ret = BlockImport(chainman, vImportFiles, args);
+        auto ret = BlockImport(chainman, vImportFiles);
         if (ret.ShouldEarlyExit()) {
+            StartShutdown();
+            return;
+        }
+        if (args.GetBoolArg("-stopafterblockimport", DEFAULT_STOPAFTERBLOCKIMPORT)) {
+            LogPrintf("Stopping after block import\n");
             StartShutdown();
             return;
         }

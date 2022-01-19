@@ -20,7 +20,7 @@ static constexpr bool DEFAULT_STOPAFTERBLOCKIMPORT{false};
 
 extern std::atomic_bool fImporting;
 
-MaybeEarlyExit<> BlockImport(ChainstateManager& chainman, std::vector<fs::path> vImportFiles, const ArgsManager& args);
+MaybeEarlyExit<> BlockImport(ChainstateManager& chainman, std::vector<fs::path> vImportFiles);
 
 } // namespace node
 

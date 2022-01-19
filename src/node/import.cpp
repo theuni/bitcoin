@@ -6,9 +6,6 @@
 
 #include <flatfile.h>
 #include <node/blockstorage.h>
-#include <util/args.h>
-#include <util/syscall_sandbox.h>
-#include <util/system.h>
 #include <validation.h>
 
 namespace node {
@@ -29,7 +26,7 @@ struct CImportingNow {
     }
 };
 
-MaybeEarlyExit<> BlockImport(ChainstateManager& chainman, std::vector<fs::path> vImportFiles, const ArgsManager& args)
+MaybeEarlyExit<> BlockImport(ChainstateManager& chainman, std::vector<fs::path> vImportFiles)
 {
     {
         CImportingNow imp;
@@ -89,11 +86,6 @@ MaybeEarlyExit<> BlockImport(ChainstateManager& chainman, std::vector<fs::path> 
                 LogPrintf("Failed to connect best block (%s)\n", state.ToString());
                 return FatalError::UNKNOWN;
             }
-        }
-
-        if (args.GetBoolArg("-stopafterblockimport", DEFAULT_STOPAFTERBLOCKIMPORT)) {
-            LogPrintf("Stopping after block import\n");
-            return UserInterrupted::BLOCK_IMPORT_COMPLETE;
         }
     } // End scope of CImportingNow
     return {};
