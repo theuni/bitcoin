@@ -1628,7 +1628,10 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     }
 
     chainman.m_load_block = std::thread(&util::TraceThread, "loadblk", [=, &chainman, &args] {
-        ThreadImport(chainman, vImportFiles, args);
+        auto ret = BlockImport(chainman, vImportFiles, args);
+        if (ret.ShouldEarlyExit()) {
+            StartShutdown();
+        }
     });
 
     // Wait for genesis block to be processed

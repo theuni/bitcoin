@@ -6,7 +6,6 @@
 
 #include <flatfile.h>
 #include <node/blockstorage.h>
-#include <shutdown.h>
 #include <util/args.h>
 #include <util/syscall_sandbox.h>
 #include <util/system.h>
@@ -30,7 +29,7 @@ struct CImportingNow {
     }
 };
 
-void ThreadImport(ChainstateManager& chainman, std::vector<fs::path> vImportFiles, const ArgsManager& args)
+MaybeEarlyExit<> BlockImport(ChainstateManager& chainman, std::vector<fs::path> vImportFiles, const ArgsManager& args)
 {
     SetSyscallSandboxPolicy(SyscallSandboxPolicy::INITIALIZATION_LOAD_BLOCKS);
     ScheduleBatchPriority();
@@ -54,7 +53,7 @@ void ThreadImport(ChainstateManager& chainman, std::vector<fs::path> vImportFile
                 chainman.ActiveChainstate().LoadExternalBlockFile(file, &pos);
                 if (chainman.Interrupted()) {
                     LogPrintf("Shutdown requested. Exit %s\n", __func__);
-                    return;
+                    return UserInterrupted::UNKNOWN;
                 }
                 nFile++;
             }
@@ -73,7 +72,7 @@ void ThreadImport(ChainstateManager& chainman, std::vector<fs::path> vImportFile
                 chainman.ActiveChainstate().LoadExternalBlockFile(file);
                 if (chainman.Interrupted()) {
                     LogPrintf("Shutdown requested. Exit %s\n", __func__);
-                    return;
+                    return UserInterrupted::UNKNOWN;
                 }
             } else {
                 LogPrintf("Warning: Could not open blocks file %s\n", fs::PathToString(path));
@@ -88,20 +87,19 @@ void ThreadImport(ChainstateManager& chainman, std::vector<fs::path> vImportFile
         for (CChainState* chainstate : WITH_LOCK(::cs_main, return chainman.GetAll())) {
             BlockValidationState state;
             auto abc_ret = chainstate->ActivateBestChain(state, nullptr);
-            if (abc_ret.ShouldEarlyExit()) return;
+            if (abc_ret.ShouldEarlyExit()) return BubbleUp(std::move(abc_ret));
             if (!*abc_ret) {
                 LogPrintf("Failed to connect best block (%s)\n", state.ToString());
-                StartShutdown();
-                return;
+                return FatalError::UNKNOWN;
             }
         }
 
         if (args.GetBoolArg("-stopafterblockimport", DEFAULT_STOPAFTERBLOCKIMPORT)) {
             LogPrintf("Stopping after block import\n");
-            StartShutdown();
-            return;
+            return UserInterrupted::BLOCK_IMPORT_COMPLETE;
         }
     } // End scope of CImportingNow
     chainman.ActiveChainstate().LoadMempool(args.GetBoolArg("-persistmempool", DEFAULT_PERSIST_MEMPOOL));
+    return {};
 }
 } // namespace node

@@ -5,6 +5,7 @@
 #ifndef BITCOIN_NODE_IMPORT_H
 #define BITCOIN_NODE_IMPORT_H
 
+#include <early_exit.h>
 #include <fs.h>
 
 #include <atomic>
@@ -19,7 +20,7 @@ static constexpr bool DEFAULT_STOPAFTERBLOCKIMPORT{false};
 
 extern std::atomic_bool fImporting;
 
-void ThreadImport(ChainstateManager& chainman, std::vector<fs::path> vImportFiles, const ArgsManager& args);
+MaybeEarlyExit<> BlockImport(ChainstateManager& chainman, std::vector<fs::path> vImportFiles, const ArgsManager& args);
 
 } // namespace node
 
