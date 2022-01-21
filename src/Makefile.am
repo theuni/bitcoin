@@ -114,7 +114,7 @@ if BUILD_BITCOIN_UTIL
 endif
 
 if BUILD_BITCOIN_CHAINSTATE
-  bin_PROGRAMS += bitcoin-chainstate
+  bin_PROGRAMS += bitcoin-chainstate bitcoin-reindex
 endif
 
 .PHONY: FORCE check-symbols check-security
@@ -807,6 +807,13 @@ bitcoin_chainstate_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 bitcoin_chainstate_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS) $(PTHREAD_FLAGS)
 bitcoin_chainstate_LDADD = $(LIBBITCOINKERNEL)
 #
+
+# bitcoin-chainstate binary #
+bitcoin_reindex_SOURCES = bitcoin-reindex.cpp
+bitcoin_reindex_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
+bitcoin_reindex_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+bitcoin_reindex_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS) $(PTHREAD_FLAGS)
+bitcoin_reindex_LDADD = $(LIBBITCOINKERNEL)
 
 # bitcoinconsensus library #
 if BUILD_BITCOIN_LIBS
