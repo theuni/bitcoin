@@ -42,6 +42,7 @@ NO_UPNP ?=
 NO_USDT ?=
 NO_NATPMP ?=
 MULTIPROCESS ?=
+CLANG_TIDY_PLUGINS ?=
 FALLBACK_DOWNLOAD_PATH ?= https://bitcoincore.org/depends-sources
 
 BUILD = $(shell ./config.guess)
@@ -156,6 +157,7 @@ natpmp_packages_$(NO_NATPMP) = $(natpmp_packages)
 
 zmq_packages_$(NO_ZMQ) = $(zmq_packages)
 multiprocess_packages_$(MULTIPROCESS) = $(multiprocess_packages)
+clang_tidy_plugins_native_packages_$(CLANG_TIDY_PLUGINS) = $(clang_tidy_plugins_native_packages)
 usdt_packages_$(NO_USDT) = $(usdt_$(host_os)_packages)
 
 packages += $($(host_arch)_$(host_os)_packages) $($(host_os)_packages) $(qt_packages_) $(wallet_packages_) $(upnp_packages_) $(natpmp_packages_) $(usdt_packages_)
@@ -168,6 +170,10 @@ endif
 ifeq ($(multiprocess_packages_),)
 packages += $(multiprocess_packages)
 native_packages += $(multiprocess_native_packages)
+endif
+
+ifeq ($(clang_tidy_plugins_native_packages_),)
+native_packages += $(clang_tidy_plugins_native_packages)
 endif
 
 all_packages = $(packages) $(native_packages)
@@ -240,6 +246,7 @@ $(host_prefix)/share/config.site : config.site.in $(host_prefix)/.stamp_$(final_
             -e 's|@no_natpmp@|$(NO_NATPMP)|' \
             -e 's|@multiprocess@|$(MULTIPROCESS)|' \
             -e 's|@debug@|$(DEBUG)|' \
+            -e 's|@clang_tidy_plugins@|$(CLANG_TIDY_PLUGINS)|' \
             $< > $@
 	touch $@
 

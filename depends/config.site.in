@@ -78,6 +78,9 @@ if test "@host_os@" = darwin; then
   BREW=no
 fi
 
+if test -z "$with_clang_tidy_plugins" && test -n "@clang_tidy_plugins@"; then
+  with_clang_tidy_plugins=${depends_prefix}/native/lib/libbitcoin-tidy.so
+fi
 PATH="${depends_prefix}/native/bin:${PATH}"
 PKG_CONFIG="$(which pkg-config) --static"
 
