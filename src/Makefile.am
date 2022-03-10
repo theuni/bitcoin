@@ -866,6 +866,8 @@ bitcoin_chainstate_LDADD = \
   $(LIBLEVELDB_SSE42) \
   $(LIBMEMENV)
 
+
+bitcoin-chainstate-tidy: FORCE $(bitcoin_chainstate_SOURCES:%.cpp=%.cpp.tidy)
 # Required for obj/build.h to be generated first.
 # More details: https://www.gnu.org/software/automake/manual/html_node/Built-Sources-Example.html
 bitcoin_chainstate-clientversion.$(OBJEXT): obj/build.h
@@ -927,6 +929,10 @@ clean-local:
 	-rm -f leveldb/*/*.gcda leveldb/*/*.gcno leveldb/helpers/memenv/*.gcda leveldb/helpers/memenv/*.gcno
 	-rm -f config.h
 	-rm -rf test/__pycache__
+
+%.cpp.tidy: %.cpp FORCE
+	@echo clang-tidy: $<
+	$(AM_V_at)$(CLANGTIDY) $(CLANG_TIDY_USE_PLUGINS) -checks='$(CLANG_TIDY_CHECKS)' $< -- -std=c++17 $(DEFS) $(BITCOIN_INCLUDES)
 
 .rc.o:
 	@test -f $(WINDRES)
