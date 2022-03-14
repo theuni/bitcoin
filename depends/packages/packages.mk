@@ -21,7 +21,7 @@ natpmp_packages=libnatpmp
 multiprocess_packages = libmultiprocess capnp
 multiprocess_native_packages = native_libmultiprocess native_capnp
 
-clang_tidy_plugins_native_packages = native_clang_headers native_bitcoin_tidy
+clang_tidy_plugins_native_packages = native_clang_headers native_bitcoin_tidy native_clang_bitcoin_plugin
 
 usdt_linux_packages=systemtap
 
