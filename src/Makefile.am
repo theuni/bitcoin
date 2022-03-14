@@ -856,7 +856,7 @@ bitcoin_chainstate_SOURCES = \
   versionbits.cpp \
   warnings.cpp
 bitcoin_chainstate_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
-bitcoin_chainstate_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+bitcoin_chainstate_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) $(CLANG_USE_PLUGINS)
 bitcoin_chainstate_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS) $(PTHREAD_FLAGS)
 bitcoin_chainstate_LDADD = \
   $(LIBBITCOIN_CRYPTO) \

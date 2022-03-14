@@ -309,6 +309,11 @@ AC_ARG_WITH([sanitizers],
                     [comma separated list of extra sanitizers to build with (default is none enabled)])],
     [use_sanitizers=$withval])
 
+AC_ARG_WITH([clang-plugins],
+    [AS_HELP_STRING([--with-clang-plugins],
+                    [comma separated list of plugins to use with clang (default is none enabled)])],
+    [use_clang_plugins=$withval])
+
 AC_ARG_WITH([clang-tidy-plugins],
     [AS_HELP_STRING([--with-clang-tidy-plugins],
                     [comma separated list of plugins to use with clang-tidy (default is none enabled)])],
@@ -417,6 +422,11 @@ if test "$use_sanitizers" != ""; then
     ]],[[]])])
 fi
 
+
+if test "x$use_clang_plugins" != "x"; then
+  CLANG_USE_PLUGINS=-fplugin="${use_clang_plugins}"
+  AC_SUBST(CLANG_USE_PLUGINS)
+fi
 
 if test "x$use_clang_tidy_plugins" != "x"; then
   CLANG_TIDY_USE_PLUGINS=-load="${use_clang_tidy_plugins}"
