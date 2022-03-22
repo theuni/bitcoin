@@ -86,7 +86,7 @@ int main(int argc, char* argv[])
                                    false,
                                    false,
                                    []() { return false; });
-    if (rv.has_value()) {
+    if (rv != node::ChainstateLoadingError::OK ) {
         std::cerr << "Failed to load Chain state from your datadir." << std::endl;
         goto epilogue;
     } else {
@@ -97,7 +97,7 @@ int main(int argc, char* argv[])
                                                                DEFAULT_CHECKBLOCKS,
                                                                DEFAULT_CHECKLEVEL,
                                                                /*get_unix_time_seconds=*/static_cast<int64_t (*)()>(GetTime));
-        if (maybe_verify_error.has_value()) {
+        if (maybe_verify_error != node::ChainstateLoadVerifyError::OK) {
             std::cerr << "Failed to verify loaded Chain state from your datadir." << std::endl;
             goto epilogue;
         }

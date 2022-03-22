@@ -1411,7 +1411,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
 
         uiInterface.InitMessage(_("Loading block index…").translated);
         const int64_t load_block_index_start_time = GetTimeMillis();
-        std::optional<ChainstateLoadingError> maybe_load_error;
+        ChainstateLoadingError maybe_load_error;
         try {
             maybe_load_error = LoadChainstate(fReset,
                                               chainman,
@@ -1434,8 +1434,8 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
             LogPrintf("%s\n", e.what());
             maybe_load_error = ChainstateLoadingError::ERROR_GENERIC_BLOCKDB_OPEN_FAILED;
         }
-        if (maybe_load_error.has_value()) {
-            switch (maybe_load_error.value()) {
+        if (maybe_load_error != ChainstateLoadingError::OK) {
+            switch (maybe_load_error) {
             case ChainstateLoadingError::ERROR_LOADING_BLOCK_DB:
                 strLoadError = _("Error loading block database");
                 break;
@@ -1469,7 +1469,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
                 break;
             }
         } else {
-            std::optional<ChainstateLoadVerifyError> maybe_verify_error;
+            ChainstateLoadVerifyError maybe_verify_error;
             try {
                 uiInterface.InitMessage(_("Verifying blocks…").translated);
                 auto check_blocks = args.GetIntArg("-checkblocks", DEFAULT_CHECKBLOCKS);
@@ -1488,8 +1488,8 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
                 LogPrintf("%s\n", e.what());
                 maybe_verify_error = ChainstateLoadVerifyError::ERROR_GENERIC_FAILURE;
             }
-            if (maybe_verify_error.has_value()) {
-                switch (maybe_verify_error.value()) {
+            if (maybe_verify_error != ChainstateLoadVerifyError::OK) {
+                switch (maybe_verify_error) {
                 case ChainstateLoadVerifyError::ERROR_BLOCK_FROM_FUTURE:
                     strLoadError = _("The block database contains a block which appears to be from the future. "
                                      "This may be due to your computer's date and time being set incorrectly. "

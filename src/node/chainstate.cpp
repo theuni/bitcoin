@@ -9,7 +9,7 @@
 #include <validation.h>
 
 namespace node {
-std::optional<ChainstateLoadingError> LoadChainstate(bool fReset,
+ChainstateLoadingError LoadChainstate(bool fReset,
                                                      ChainstateManager& chainman,
                                                      CTxMemPool* mempool,
                                                      bool fPruneMode,
@@ -122,10 +122,10 @@ std::optional<ChainstateLoadingError> LoadChainstate(bool fReset,
         }
     }
 
-    return std::nullopt;
+    return ChainstateLoadingError::OK;
 }
 
-std::optional<ChainstateLoadVerifyError> VerifyLoadedChainstate(ChainstateManager& chainman,
+node::ChainstateLoadVerifyError VerifyLoadedChainstate(ChainstateManager& chainman,
                                                                 bool fReset,
                                                                 bool fReindexChainState,
                                                                 const Consensus::Params& consensus_params,
@@ -155,6 +155,6 @@ std::optional<ChainstateLoadVerifyError> VerifyLoadedChainstate(ChainstateManage
         }
     }
 
-    return std::nullopt;
+    return ChainstateLoadVerifyError::OK;
 }
 } // namespace node

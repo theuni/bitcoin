@@ -17,6 +17,7 @@ struct Params;
 
 namespace node {
 enum class ChainstateLoadingError {
+    OK,
     ERROR_LOADING_BLOCK_DB,
     ERROR_BAD_GENESIS_BLOCK,
     ERROR_PRUNED_NEEDS_REINDEX,
@@ -55,7 +56,7 @@ enum class ChainstateLoadingError {
  *  - else
  *      - Success!
  */
-std::optional<ChainstateLoadingError> LoadChainstate(bool fReset,
+ChainstateLoadingError LoadChainstate(bool fReset,
                                                      ChainstateManager& chainman,
                                                      CTxMemPool* mempool,
                                                      bool fPruneMode,
@@ -70,12 +71,13 @@ std::optional<ChainstateLoadingError> LoadChainstate(bool fReset,
                                                      std::function<void()> coins_error_cb = nullptr);
 
 enum class ChainstateLoadVerifyError {
+    OK,
     ERROR_BLOCK_FROM_FUTURE,
     ERROR_CORRUPTED_BLOCK_DB,
     ERROR_GENERIC_FAILURE,
 };
 
-std::optional<ChainstateLoadVerifyError> VerifyLoadedChainstate(ChainstateManager& chainman,
+node::ChainstateLoadVerifyError VerifyLoadedChainstate(ChainstateManager& chainman,
                                                                 bool fReset,
                                                                 bool fReindexChainState,
                                                                 const Consensus::Params& consensus_params,
