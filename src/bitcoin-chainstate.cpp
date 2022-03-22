@@ -30,6 +30,26 @@
 
 const std::function<std::string(const char*)> G_TRANSLATION_FUN = nullptr;
 
+// Adapted from rpc/mining.cpp
+class submitblock_StateCatcher final : public CValidationInterface
+{
+public:
+    uint256 hash;
+    bool found;
+    BlockValidationState state;
+
+    explicit submitblock_StateCatcher(const uint256& hashIn) : hash(hashIn), found(false), state() {}
+
+protected:
+    void BlockChecked(const CBlock& block, const BlockValidationState& stateIn) override
+    {
+        if (block.GetHash() != hash)
+            return;
+        found = true;
+        state = stateIn;
+    }
+};
+
 int main(int argc, char* argv[])
 {
     // SETUP: Argument parsing and handling
@@ -168,26 +188,6 @@ int main(int argc, char* argv[])
                 UpdateUncommittedBlockStructures(block, pindex, chainparams.GetConsensus());
             }
         }
-
-        // Adapted from rpc/mining.cpp
-        class submitblock_StateCatcher final : public CValidationInterface
-        {
-        public:
-            uint256 hash;
-            bool found;
-            BlockValidationState state;
-
-            explicit submitblock_StateCatcher(const uint256& hashIn) : hash(hashIn), found(false), state() {}
-
-        protected:
-            void BlockChecked(const CBlock& block, const BlockValidationState& stateIn) override
-            {
-                if (block.GetHash() != hash)
-                    return;
-                found = true;
-                state = stateIn;
-            }
-        };
 
         bool new_block;
         auto sc = std::make_shared<submitblock_StateCatcher>(block.GetHash());
