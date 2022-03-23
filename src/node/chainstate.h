@@ -5,6 +5,8 @@
 #ifndef BITCOIN_NODE_CHAINSTATE_H
 #define BITCOIN_NODE_CHAINSTATE_H
 
+#include <early_exit.h>
+
 #include <cstdint>
 #include <functional>
 #include <optional>
