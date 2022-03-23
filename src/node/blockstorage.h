@@ -7,6 +7,7 @@
 
 #include <attributes.h>
 #include <chain.h>
+#include <early_exit.h>
 #include <kernel/blockmanager_opts.h>
 #include <kernel/chainparams.h>
 #include <kernel/cs_main.h>
