@@ -6,6 +6,7 @@
 #ifndef BITCOIN_SHUTDOWN_H
 #define BITCOIN_SHUTDOWN_H
 
+#include <early_exit.h>
 #include <util/translation.h> // For bilingual_str
 
 /** Abort with a message */
