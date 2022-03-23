@@ -7,6 +7,7 @@
 
 #include <attributes.h>
 #include <chain.h>
+#include <early_exit.h>
 #include <fs.h>
 #include <protocol.h>
 #include <sync.h>

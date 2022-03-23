@@ -5,6 +5,7 @@
 #ifndef BITCOIN_KERNEL_MEMPOOL_PERSIST_H
 #define BITCOIN_KERNEL_MEMPOOL_PERSIST_H
 
+#include <early_exit.h>
 #include <fs.h>
 
 class CChainState;
