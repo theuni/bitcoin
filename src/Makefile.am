@@ -868,6 +868,16 @@ bitcoin_chainstate_LDADD = \
   $(LIBMEMENV)
 
 
+BITCOIN_CHAINSTATE_TRANSFORM = bitcoin-chainstate.cpp validation.cpp node/chainstate.cpp node/blockstorage.cpp
+
+bitcoin-chainstate-transform:  FORCE
+	@echo Transforming 5 times.
+	$(AM_V_at)$(CLANGTIDY) $(CLANG_TIDY_USE_PLUGINS) -checks='-*,bitcoin-*' -fix $(BITCOIN_CHAINSTATE_TRANSFORM) -- -std=c++17 $(DEFS) $(BITCOIN_INCLUDES)
+	$(AM_V_at)$(CLANGTIDY) $(CLANG_TIDY_USE_PLUGINS) -checks='-*,bitcoin-*' -fix $(BITCOIN_CHAINSTATE_TRANSFORM) -- -std=c++17 $(DEFS) $(BITCOIN_INCLUDES)
+	$(AM_V_at)$(CLANGTIDY) $(CLANG_TIDY_USE_PLUGINS) -checks='-*,bitcoin-*' -fix $(BITCOIN_CHAINSTATE_TRANSFORM) -- -std=c++17 $(DEFS) $(BITCOIN_INCLUDES)
+	$(AM_V_at)$(CLANGTIDY) $(CLANG_TIDY_USE_PLUGINS) -checks='-*,bitcoin-*' -fix $(BITCOIN_CHAINSTATE_TRANSFORM) -- -std=c++17 $(DEFS) $(BITCOIN_INCLUDES)
+	$(AM_V_at)$(CLANGTIDY) $(CLANG_TIDY_USE_PLUGINS) -checks='-*,bitcoin-*' -fix $(BITCOIN_CHAINSTATE_TRANSFORM) -- -std=c++17 $(DEFS) $(BITCOIN_INCLUDES)
+
 bitcoin-chainstate-tidy: FORCE $(bitcoin_chainstate_SOURCES:%.cpp=%.cpp.tidy)
 # Required for obj/build.h to be generated first.
 # More details: https://www.gnu.org/software/automake/manual/html_node/Built-Sources-Example.html
