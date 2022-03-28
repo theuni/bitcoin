@@ -83,8 +83,10 @@ static ChainstateLoadResult CompleteChainstateInitialization(
     // If we're not mid-reindex (based on disk + args), add a genesis block on disk
     // (otherwise we use the one already on disk).
     // This is called again in ThreadImport after the reindex completes.
-    if (!fReindex && !chainman.ActiveChainstate().LoadGenesisBlock()) {
-        return ChainstateLoadResult{ChainstateLoadStatus::FAILURE, _("Error initializing block database")};
+    if (!fReindex) {
+        if (!chainman.ActiveChainstate().LoadGenesisBlock()) {
+            return ChainstateLoadResult{ChainstateLoadStatus::FAILURE, _("Error initializing block database")};
+        }
     }
 
     auto is_coinsview_empty = [&](Chainstate* chainstate) EXCLUSIVE_LOCKS_REQUIRED(::cs_main) {
