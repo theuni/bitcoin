@@ -307,8 +307,8 @@ MaybeEarlyExit<> CChainState::MaybeUpdateMempoolForReorg(
         if (!fAddToMempool || (*it)->IsCoinBase()) {
             remove = true;
         } else {
-            MempoolAcceptResult atmp_result = AcceptToMemoryPool(*this, *it, GetTime(),
-                /*bypass_limits=*/true, /*test_accept=*/false);
+            EXIT_OR_DECL(MempoolAcceptResult atmp_result, AcceptToMemoryPool(*this, *it, GetTime(),
+                /*bypass_limits=*/true, /*test_accept=*/false));
             if (atmp_result.m_result_type !=
                     MempoolAcceptResult::ResultType::VALID) {
                 // If the transaction doesn't make it in to the mempool, remove any
@@ -1378,7 +1378,7 @@ MaybeEarlyExit<MempoolAcceptResult> AcceptToMemoryPool(CChainState& active_chain
     }
     // After we've (potentially) uncached entries, ensure our coins cache is still within its size limits
     BlockValidationState state_dummy;
-    active_chainstate.FlushStateToDisk(state_dummy, FlushStateMode::PERIODIC);
+    MAYBE_EXIT(active_chainstate.FlushStateToDisk(state_dummy, FlushStateMode::PERIODIC));
     return result;
 }
 
@@ -1410,7 +1410,7 @@ MaybeEarlyExit<PackageMempoolAcceptResult> ProcessNewPackage(CChainState& active
     }
     // Ensure the coins cache is still within limits.
     BlockValidationState state_dummy;
-    active_chainstate.FlushStateToDisk(state_dummy, FlushStateMode::PERIODIC);
+    MAYBE_EXIT(active_chainstate.FlushStateToDisk(state_dummy, FlushStateMode::PERIODIC));
     return result;
 }
 
@@ -2203,7 +2203,7 @@ MaybeEarlyExit<bool> CChainState::ConnectBlock(const CBlock& block, BlockValidat
     if (fJustCheck)
         return true;
 
-    if (!m_blockman.WriteUndoDataForBlock(blockundo, state, pindex, m_params)) {
+    EXIT_OR_IF_NOT(m_blockman.WriteUndoDataForBlock(blockundo, state, pindex, m_params)) {
         return false;
     }
 
@@ -2339,7 +2339,7 @@ MaybeEarlyExit<bool> CChainState::FlushStateToDisk(
                 LOG_TIME_MILLIS_WITH_CATEGORY("write block and undo data to disk", BCLog::BENCH);
 
                 // First make sure all block and undo data is flushed to disk.
-                m_blockman.FlushBlockFile();
+                MAYBE_EXIT(m_blockman.FlushBlockFile());
             }
 
             // Then update all block file information (which may refer to block and undo files).
@@ -2397,7 +2397,7 @@ MaybeEarlyExit<bool> CChainState::FlushStateToDisk(
 MaybeEarlyExit<> CChainState::ForceFlushStateToDisk()
 {
     BlockValidationState state;
-    if (!this->FlushStateToDisk(state, FlushStateMode::ALWAYS)) {
+    EXIT_OR_IF_NOT(this->FlushStateToDisk(state, FlushStateMode::ALWAYS)) {
         LogPrintf("%s: failed to flush state (%s)\n", __func__, state.ToString());
     }
     return {};
@@ -2407,7 +2407,7 @@ MaybeEarlyExit<> CChainState::PruneAndFlush()
 {
     BlockValidationState state;
     m_blockman.m_check_for_pruning = true;
-    if (!this->FlushStateToDisk(state, FlushStateMode::NONE)) {
+    EXIT_OR_IF_NOT(this->FlushStateToDisk(state, FlushStateMode::NONE)) {
         LogPrintf("%s: failed to flush state (%s)\n", __func__, state.ToString());
     }
     return {};
@@ -2532,7 +2532,7 @@ MaybeEarlyExit<bool> CChainState::DisconnectTip(BlockValidationState& state, Dis
     }
     LogPrint(BCLog::BENCH, "- Disconnect block: %.2fms\n", (GetTimeMicros() - nStart) * MILLI);
     // Write the chain state to disk, if necessary.
-    if (!FlushStateToDisk(state, FlushStateMode::IF_NEEDED)) {
+    EXIT_OR_IF_NOT(FlushStateToDisk(state, FlushStateMode::IF_NEEDED)) {
         return false;
     }
 
@@ -2635,7 +2635,7 @@ MaybeEarlyExit<bool> CChainState::ConnectTip(BlockValidationState& state, CBlock
     LogPrint(BCLog::BENCH, "  - Load block from disk: %.2fms [%.2fs]\n", (nTime2 - nTime1) * MILLI, nTimeReadFromDisk * MICRO);
     {
         CCoinsViewCache view(&CoinsTip());
-        bool rv = ConnectBlock(blockConnecting, state, pindexNew, view);
+        EXIT_OR_DECL(auto rv, ConnectBlock(blockConnecting, state, pindexNew, view));
         GetMainSignals().BlockChecked(blockConnecting, state);
         if (!rv) {
             if (state.IsInvalid())
@@ -2651,7 +2651,7 @@ MaybeEarlyExit<bool> CChainState::ConnectTip(BlockValidationState& state, CBlock
     int64_t nTime4 = GetTimeMicros(); nTimeFlush += nTime4 - nTime3;
     LogPrint(BCLog::BENCH, "  - Flush: %.2fms [%.2fs (%.2fms/blk)]\n", (nTime4 - nTime3) * MILLI, nTimeFlush * MICRO, nTimeFlush * MILLI / nBlocksTotal);
     // Write the chain state to disk, if necessary.
-    if (!FlushStateToDisk(state, FlushStateMode::IF_NEEDED)) {
+    EXIT_OR_IF_NOT(FlushStateToDisk(state, FlushStateMode::IF_NEEDED)) {
         return false;
     }
     int64_t nTime5 = GetTimeMicros(); nTimeChainState += nTime5 - nTime4;
@@ -2765,10 +2765,10 @@ MaybeEarlyExit<bool> CChainState::ActivateBestChainStep(BlockValidationState& st
     bool fBlocksDisconnected = false;
     DisconnectedBlockTransactions disconnectpool;
     while (m_chain.Tip() && m_chain.Tip() != pindexFork) {
-        if (!DisconnectTip(state, &disconnectpool)) {
+        EXIT_OR_IF_NOT(DisconnectTip(state, &disconnectpool)) {
             // This is likely a fatal error, but keep the mempool consistent,
             // just in case. Only remove from the mempool in this case.
-            MaybeUpdateMempoolForReorg(disconnectpool, false);
+            MAYBE_EXIT(MaybeUpdateMempoolForReorg(disconnectpool, false));
 
             // If we're unable to disconnect a block during normal operation,
             // then that is a failure of our local system -- we should abort
@@ -2798,7 +2798,7 @@ MaybeEarlyExit<bool> CChainState::ActivateBestChainStep(BlockValidationState& st
 
         // Connect new blocks.
         for (CBlockIndex* pindexConnect : reverse_iterate(vpindexToConnect)) {
-            if (!ConnectTip(state, pindexConnect, pindexConnect == pindexMostWork ? pblock : std::shared_ptr<const CBlock>(), connectTrace, disconnectpool)) {
+            EXIT_OR_IF_NOT(ConnectTip(state, pindexConnect, pindexConnect == pindexMostWork ? pblock : std::shared_ptr<const CBlock>(), connectTrace, disconnectpool)) {
                 if (state.IsInvalid()) {
                     // The block violates a consensus rule.
                     if (state.GetResult() != BlockValidationResult::BLOCK_MUTATED) {
@@ -2812,7 +2812,7 @@ MaybeEarlyExit<bool> CChainState::ActivateBestChainStep(BlockValidationState& st
                     // A system error occurred (disk space, database error, ...).
                     // Make the mempool consistent with the current tip, just in case
                     // any observers try to use it before shutdown.
-                    MaybeUpdateMempoolForReorg(disconnectpool, false);
+                    MAYBE_EXIT(MaybeUpdateMempoolForReorg(disconnectpool, false));
                     return false;
                 }
             } else {
@@ -2829,7 +2829,7 @@ MaybeEarlyExit<bool> CChainState::ActivateBestChainStep(BlockValidationState& st
     if (fBlocksDisconnected) {
         // If any blocks were disconnected, disconnectpool may be non empty.  Add
         // any disconnected transactions back to the mempool.
-        MaybeUpdateMempoolForReorg(disconnectpool, true);
+        MAYBE_EXIT(MaybeUpdateMempoolForReorg(disconnectpool, true));
     }
     if (m_mempool) m_mempool->check(this->CoinsTip(), this->m_chain.Height() + 1);
 
@@ -2925,7 +2925,7 @@ MaybeEarlyExit<bool> CChainState::ActivateBestChain(BlockValidationState& state,
 
                 bool fInvalidFound = false;
                 std::shared_ptr<const CBlock> nullBlockPtr;
-                if (!ActivateBestChainStep(state, pindexMostWork, pblock && pblock->GetHash() == pindexMostWork->GetBlockHash() ? pblock : nullBlockPtr, fInvalidFound, connectTrace)) {
+                EXIT_OR_IF_NOT(ActivateBestChainStep(state, pindexMostWork, pblock && pblock->GetHash() == pindexMostWork->GetBlockHash() ? pblock : nullBlockPtr, fInvalidFound, connectTrace)) {
                     // A system error occurred
                     return false;
                 }
@@ -2970,7 +2970,7 @@ MaybeEarlyExit<bool> CChainState::ActivateBestChain(BlockValidationState& state,
     CheckBlockIndex();
 
     // Write changes periodically to disk, after relay.
-    if (!FlushStateToDisk(state, FlushStateMode::PERIODIC)) {
+    EXIT_OR_IF_NOT(FlushStateToDisk(state, FlushStateMode::PERIODIC)) {
         return false;
     }
 
@@ -3071,13 +3071,13 @@ MaybeEarlyExit<bool> CChainState::InvalidateBlock(BlockValidationState& state, C
         // ActivateBestChain considers blocks already in m_chain
         // unconditionally valid already, so force disconnect away from it.
         DisconnectedBlockTransactions disconnectpool;
-        bool ret = DisconnectTip(state, &disconnectpool);
+        EXIT_OR_DECL(bool ret, DisconnectTip(state, &disconnectpool));
         // DisconnectTip will add transactions to disconnectpool.
         // Adjust the mempool to be consistent with the new tip, adding
         // transactions back to the mempool if disconnecting was successful,
         // and we're not doing a very deep invalidation (in which case
         // keeping the mempool up to date is probably futile anyway).
-        MaybeUpdateMempoolForReorg(disconnectpool, /* fAddToMempool = */ (++disconnected <= 10) && ret);
+        MAYBE_EXIT(MaybeUpdateMempoolForReorg(disconnectpool, /* fAddToMempool = */ (++disconnected <= 10) && ret));
         if (!ret) return false;
         assert(invalid_walk_tip->pprev == m_chain.Tip());
 
@@ -3675,7 +3675,7 @@ MaybeEarlyExit<bool> CChainState::AcceptBlock(const std::shared_ptr<const CBlock
     if (fNewBlock) *fNewBlock = true;
     try {
         FlatFilePos blockPos;
-        blockPos = m_blockman.SaveBlockToDisk(block, pindex->nHeight, m_chain, m_params, dbp);
+        EXIT_OR_ASSIGN(blockPos, m_blockman.SaveBlockToDisk(block, pindex->nHeight, m_chain, m_params, dbp));
         if (blockPos.IsNull()) {
             state.Error(strprintf("%s: Failed to find position to write new block to disk", __func__));
             return false;
@@ -3685,7 +3685,7 @@ MaybeEarlyExit<bool> CChainState::AcceptBlock(const std::shared_ptr<const CBlock
         return AbortNode(state, std::string("System error: ") + e.what());
     }
 
-    FlushStateToDisk(state, FlushStateMode::NONE);
+    MAYBE_EXIT(FlushStateToDisk(state, FlushStateMode::NONE));
 
     CheckBlockIndex();
 
@@ -3713,7 +3713,7 @@ MaybeEarlyExit<bool> ChainstateManager::ProcessNewBlock(const CChainParams& chai
         bool ret = CheckBlock(*block, state, chainparams.GetConsensus());
         if (ret) {
             // Store to disk
-            ret = ActiveChainstate().AcceptBlock(block, state, &pindex, force_processing, nullptr, new_block);
+            EXIT_OR_ASSIGN(ret, ActiveChainstate().AcceptBlock(block, state, &pindex, force_processing, nullptr, new_block));
         }
         if (!ret) {
             GetMainSignals().BlockChecked(*block, state);
@@ -3724,7 +3724,7 @@ MaybeEarlyExit<bool> ChainstateManager::ProcessNewBlock(const CChainParams& chai
     NotifyHeaderTip(ActiveChainstate());
 
     BlockValidationState state; // Only used to report errors, not invalidity - ignore it
-    if (!ActiveChainstate().ActivateBestChain(state, block)) {
+    EXIT_OR_IF_NOT(ActiveChainstate().ActivateBestChain(state, block)) {
         return error("%s: ActivateBestChain failed (%s)", __func__, state.ToString());
     }
 
@@ -3740,7 +3740,7 @@ MaybeEarlyExit<MempoolAcceptResult> ChainstateManager::ProcessTransaction(const 
         state.Invalid(TxValidationResult::TX_NO_MEMPOOL, "no-mempool");
         return MempoolAcceptResult::Failure(state);
     }
-    MempoolAcceptResult result = AcceptToMemoryPool(active_chainstate, tx, GetTime(), /*bypass_limits=*/ false, test_accept);
+    EXIT_OR_DECL(MempoolAcceptResult result, AcceptToMemoryPool(active_chainstate, tx, GetTime(), /*bypass_limits=*/ false, test_accept));
     active_chainstate.GetMempool()->check(active_chainstate.CoinsTip(), active_chainstate.m_chain.Height() + 1);
     return result;
 }
@@ -3769,7 +3769,7 @@ MaybeEarlyExit<bool> TestBlockValidity(BlockValidationState& state,
         return error("%s: Consensus::CheckBlock: %s", __func__, state.ToString());
     if (!ContextualCheckBlock(block, state, chainparams.GetConsensus(), pindexPrev))
         return error("%s: Consensus::ContextualCheckBlock: %s", __func__, state.ToString());
-    if (!chainstate.ConnectBlock(block, state, &indexDummy, viewNew, true)) {
+    EXIT_OR_IF_NOT(chainstate.ConnectBlock(block, state, &indexDummy, viewNew, true)) {
         return false;
     }
     assert(state.IsValid());
@@ -3781,7 +3781,7 @@ MaybeEarlyExit<bool> TestBlockValidity(BlockValidationState& state,
 MaybeEarlyExit<> PruneBlockFilesManual(CChainState& active_chainstate, int nManualPruneHeight)
 {
     BlockValidationState state;
-    if (!active_chainstate.FlushStateToDisk(
+    EXIT_OR_IF_NOT(active_chainstate.FlushStateToDisk(
             state, FlushStateMode::NONE, nManualPruneHeight)) {
         LogPrintf("%s: failed to flush state (%s)\n", __func__, state.ToString());
     }
@@ -3792,7 +3792,7 @@ MaybeEarlyExit<> CChainState::LoadMempool(const ArgsManager& args)
 {
     if (!m_mempool) return {};
     if (args.GetBoolArg("-persistmempool", DEFAULT_PERSIST_MEMPOOL)) {
-        ::LoadMempool(*m_mempool, *this);
+        MAYBE_EXIT(::LoadMempool(*m_mempool, *this));
     }
     m_mempool->SetIsLoaded(!ShutdownRequested());
     return {};
@@ -3939,7 +3939,7 @@ MaybeEarlyExit<bool> CVerifyDB::VerifyDB(
             CBlock block;
             if (!ReadBlockFromDisk(block, pindex, consensus_params))
                 return error("VerifyDB(): *** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
-            if (!chainstate.ConnectBlock(block, state, pindex, coins)) {
+            EXIT_OR_IF_NOT(chainstate.ConnectBlock(block, state, pindex, coins)) {
                 return error("VerifyDB(): *** found unconnectable block at %d, hash=%s (%s)", pindex->nHeight, pindex->GetBlockHash().ToString(), state.ToString());
             }
             if (ShutdownRequested()) return true;
@@ -4185,7 +4185,7 @@ MaybeEarlyExit<bool> CChainState::LoadGenesisBlock()
     try {
         const CBlock& block = m_params.GenesisBlock();
         FlatFilePos blockPos;
-        blockPos = m_blockman.SaveBlockToDisk(block, 0, m_chain, m_params, nullptr);
+        EXIT_OR_ASSIGN(blockPos, m_blockman.SaveBlockToDisk(block, 0, m_chain, m_params, nullptr));
         if (blockPos.IsNull()) {
             return error("%s: writing genesis block to disk failed", __func__);
         }
@@ -4261,7 +4261,7 @@ MaybeEarlyExit<> CChainState::LoadExternalBlockFile(FILE* fileIn, FlatFilePos* d
                     const CBlockIndex* pindex = m_blockman.LookupBlockIndex(hash);
                     if (!pindex || (pindex->nStatus & BLOCK_HAVE_DATA) == 0) {
                       BlockValidationState state;
-                      if (AcceptBlock(pblock, state, nullptr, true, dbp, nullptr)) {
+                      EXIT_OR_IF(AcceptBlock(pblock, state, nullptr, true, dbp, nullptr)) {
                           nLoaded++;
                       }
                       if (state.IsError()) {
@@ -4275,7 +4275,7 @@ MaybeEarlyExit<> CChainState::LoadExternalBlockFile(FILE* fileIn, FlatFilePos* d
                 // Activate the genesis block so normal node progress can continue
                 if (hash == m_params.GetConsensus().hashGenesisBlock) {
                     BlockValidationState state;
-                    if (!ActivateBestChain(state, nullptr)) {
+                    EXIT_OR_IF_NOT(ActivateBestChain(state, nullptr)) {
                         break;
                     }
                 }
@@ -4297,7 +4297,7 @@ MaybeEarlyExit<> CChainState::LoadExternalBlockFile(FILE* fileIn, FlatFilePos* d
                                     head.ToString());
                             LOCK(cs_main);
                             BlockValidationState dummy;
-                            if (AcceptBlock(pblockrecursive, dummy, nullptr, true, &it->second, nullptr)) {
+                            EXIT_OR_IF(AcceptBlock(pblockrecursive, dummy, nullptr, true, &it->second, nullptr)) {
                                 nLoaded++;
                                 queue.push_back(pblockrecursive->GetHash());
                             }
@@ -4572,10 +4572,10 @@ MaybeEarlyExit<bool> CChainState::ResizeCoinsCaches(size_t coinstip_size, size_t
 
     if (coinstip_size > old_coinstip_size) {
         // Likely no need to flush if cache sizes have grown.
-        ret = FlushStateToDisk(state, FlushStateMode::IF_NEEDED);
+        EXIT_OR_ASSIGN(ret, FlushStateToDisk(state, FlushStateMode::IF_NEEDED));
     } else {
         // Otherwise, flush state to disk and deallocate the in-memory coins map.
-        ret = FlushStateToDisk(state, FlushStateMode::ALWAYS);
+        EXIT_OR_ASSIGN(ret, FlushStateToDisk(state, FlushStateMode::ALWAYS));
         CoinsTip().ReallocateCache();
     }
     return ret;
@@ -4623,7 +4623,7 @@ MaybeEarlyExit<bool> LoadMempool(CTxMemPool& pool, CChainState& active_chainstat
             }
             if (nTime > nNow - nExpiryTimeout) {
                 LOCK(cs_main);
-                MempoolAcceptResult accepted = AcceptToMemoryPool(active_chainstate, tx, nTime, /*bypass_limits=*/false, /*test_accept=*/false);
+                EXIT_OR_DECL(MempoolAcceptResult accepted, AcceptToMemoryPool(active_chainstate, tx, nTime, /*bypass_limits=*/false, /*test_accept=*/false));
                 if (accepted.m_result_type == MempoolAcceptResult::ResultType::VALID) {
                     ++count;
                 } else {
@@ -4848,9 +4848,9 @@ MaybeEarlyExit<bool> ChainstateManager::ActivateSnapshot(
 
         // Temporarily resize the active coins cache to make room for the newly-created
         // snapshot chain.
-        this->ActiveChainstate().ResizeCoinsCaches(
+        MAYBE_EXIT(this->ActiveChainstate().ResizeCoinsCaches(
             static_cast<size_t>(current_coinstip_cache_size * IBD_CACHE_PERC),
-            static_cast<size_t>(current_coinsdb_cache_size * IBD_CACHE_PERC));
+            static_cast<size_t>(current_coinsdb_cache_size * IBD_CACHE_PERC)));
     }
 
     auto snapshot_chainstate = WITH_LOCK(::cs_main,
@@ -4871,7 +4871,7 @@ MaybeEarlyExit<bool> ChainstateManager::ActivateSnapshot(
 
     if (!snapshot_ok) {
         LOCK(::cs_main);
-        this->MaybeRebalanceCaches();
+        MAYBE_EXIT(this->MaybeRebalanceCaches());
         return false;
     }
 
@@ -4888,7 +4888,7 @@ MaybeEarlyExit<bool> ChainstateManager::ActivateSnapshot(
         LogPrintf("[snapshot] (%.2f MB)\n",
             m_snapshot_chainstate->CoinsTip().DynamicMemoryUsage() / (1000 * 1000));
 
-        this->MaybeRebalanceCaches();
+        MAYBE_EXIT(this->MaybeRebalanceCaches());
     }
     return true;
 }
@@ -5132,27 +5132,27 @@ MaybeEarlyExit<> ChainstateManager::MaybeRebalanceCaches()
     if (m_ibd_chainstate && !m_snapshot_chainstate) {
         LogPrintf("[snapshot] allocating all cache to the IBD chainstate\n");
         // Allocate everything to the IBD chainstate.
-        m_ibd_chainstate->ResizeCoinsCaches(m_total_coinstip_cache, m_total_coinsdb_cache);
+        MAYBE_EXIT(m_ibd_chainstate->ResizeCoinsCaches(m_total_coinstip_cache, m_total_coinsdb_cache));
     }
     else if (m_snapshot_chainstate && !m_ibd_chainstate) {
         LogPrintf("[snapshot] allocating all cache to the snapshot chainstate\n");
         // Allocate everything to the snapshot chainstate.
-        m_snapshot_chainstate->ResizeCoinsCaches(m_total_coinstip_cache, m_total_coinsdb_cache);
+        MAYBE_EXIT(m_snapshot_chainstate->ResizeCoinsCaches(m_total_coinstip_cache, m_total_coinsdb_cache));
     }
     else if (m_ibd_chainstate && m_snapshot_chainstate) {
         // If both chainstates exist, determine who needs more cache based on IBD status.
         //
         // Note: shrink caches first so that we don't inadvertently overwhelm available memory.
         if (m_snapshot_chainstate->IsInitialBlockDownload()) {
-            m_ibd_chainstate->ResizeCoinsCaches(
-                m_total_coinstip_cache * 0.05, m_total_coinsdb_cache * 0.05);
-            m_snapshot_chainstate->ResizeCoinsCaches(
-                m_total_coinstip_cache * 0.95, m_total_coinsdb_cache * 0.95);
+            MAYBE_EXIT(m_ibd_chainstate->ResizeCoinsCaches(
+                m_total_coinstip_cache * 0.05, m_total_coinsdb_cache * 0.05));
+            MAYBE_EXIT(m_snapshot_chainstate->ResizeCoinsCaches(
+                m_total_coinstip_cache * 0.95, m_total_coinsdb_cache * 0.95));
         } else {
-            m_snapshot_chainstate->ResizeCoinsCaches(
-                m_total_coinstip_cache * 0.05, m_total_coinsdb_cache * 0.05);
-            m_ibd_chainstate->ResizeCoinsCaches(
-                m_total_coinstip_cache * 0.95, m_total_coinsdb_cache * 0.95);
+            MAYBE_EXIT(m_snapshot_chainstate->ResizeCoinsCaches(
+                m_total_coinstip_cache * 0.05, m_total_coinsdb_cache * 0.05));
+            MAYBE_EXIT(m_ibd_chainstate->ResizeCoinsCaches(
+                m_total_coinstip_cache * 0.95, m_total_coinsdb_cache * 0.95));
         }
     }
     return {};

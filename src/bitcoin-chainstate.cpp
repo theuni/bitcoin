@@ -106,7 +106,11 @@ int main(int argc, char* argv[])
                                    false,
                                    false,
                                    []() { return false; });
-    if (rv != node::ChainstateLoadingError::OK ) {
+    if (rv.ShouldEarlyExit()) {
+        std::cerr << "Failed to load Chain state from your datadir." << std::endl;
+        goto epilogue;
+    }
+    if (*rv != node::ChainstateLoadingError::OK ) {
         std::cerr << "Failed to load Chain state from your datadir." << std::endl;
         goto epilogue;
     } else {
@@ -117,7 +121,7 @@ int main(int argc, char* argv[])
                                                                DEFAULT_CHECKBLOCKS,
                                                                DEFAULT_CHECKLEVEL,
                                                                /*get_unix_time_seconds=*/static_cast<int64_t (*)()>(GetTime));
-        if (maybe_verify_error != node::ChainstateLoadVerifyError::OK) {
+        if (*maybe_verify_error != node::ChainstateLoadVerifyError::OK) {
             std::cerr << "Failed to verify loaded Chain state from your datadir." << std::endl;
             goto epilogue;
         }
@@ -125,7 +129,11 @@ int main(int argc, char* argv[])
 
     for (CChainState* chainstate : WITH_LOCK(::cs_main, return chainman.GetAll())) {
         BlockValidationState state;
-        if (!chainstate->ActivateBestChain(state, nullptr)) {
+        if (auto abc_ret = chainstate->ActivateBestChain(state, nullptr); abc_ret.ShouldEarlyExit()) {
+            std::cerr << "Failed to connect best block (" << state.ToString() << ")" << std::endl;
+            goto epilogue;
+        }
+        else if (!*abc_ret) {
             std::cerr << "Failed to connect best block (" << state.ToString() << ")" << std::endl;
             goto epilogue;
         }
@@ -192,7 +200,11 @@ int main(int argc, char* argv[])
         bool new_block;
         auto sc = std::make_shared<submitblock_StateCatcher>(block.GetHash());
         RegisterSharedValidationInterface(sc);
-        bool accepted = chainman.ProcessNewBlock(chainparams, blockptr, /* force_processing */ true, /* new_block */ &new_block);
+        auto processed = chainman.ProcessNewBlock(chainparams, blockptr, /* force_processing */ true, /* new_block */ &new_block);
+        if (processed.ShouldEarlyExit()) {
+            break;
+        }
+        bool accepted = *processed;
         UnregisterSharedValidationInterface(sc);
         if (!new_block && accepted) {
             std::cerr << "duplicate" << std::endl;
@@ -249,7 +261,10 @@ epilogue:
         LOCK(cs_main);
         for (CChainState* chainstate : chainman.GetAll()) {
             if (chainstate->CanFlushToDisk()) {
-                chainstate->ForceFlushStateToDisk();
+                auto flush_ret = chainstate->ForceFlushStateToDisk();
+                if (flush_ret.ShouldEarlyExit()) {
+                    std::cerr << "error flushing to disk" << std::endl;
+                }
                 chainstate->ResetCoinsViews();
             }
         }

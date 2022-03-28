@@ -528,7 +528,7 @@ MaybeEarlyExit<> BlockManager::FlushBlockFile(bool fFinalize, bool finalize_undo
     }
     // we do not always flush the undo file, as the chain tip may be lagging behind the incoming blocks,
     // e.g. during IBD or a sync after a node going offline
-    if (!fFinalize || finalize_undo) FlushUndoFile(m_last_blockfile, finalize_undo);
+    if (!fFinalize || finalize_undo) MAYBE_EXIT(FlushUndoFile(m_last_blockfile, finalize_undo));
     return {};
 }
 
@@ -608,7 +608,7 @@ MaybeEarlyExit<bool> BlockManager::FindBlockPos(FlatFilePos& pos, unsigned int n
         if (!fKnown) {
             LogPrint(BCLog::BLOCKSTORE, "Leaving block file %i: %s\n", m_last_blockfile, m_blockfile_info[m_last_blockfile].ToString());
         }
-        FlushBlockFile(!fKnown, finalize_undo);
+        MAYBE_EXIT(FlushBlockFile(!fKnown, finalize_undo));
         m_last_blockfile = nFile;
     }
 
@@ -685,7 +685,7 @@ MaybeEarlyExit<bool> BlockManager::WriteUndoDataForBlock(const CBlockUndo& block
     // Write undo information to disk
     if (pindex->GetUndoPos().IsNull()) {
         FlatFilePos _pos;
-        if (!FindUndoPos(state, pindex->nFile, _pos, ::GetSerializeSize(blockundo, CLIENT_VERSION) + 40)) {
+        EXIT_OR_IF_NOT(FindUndoPos(state, pindex->nFile, _pos, ::GetSerializeSize(blockundo, CLIENT_VERSION) + 40)) {
             return error("ConnectBlock(): FindUndoPos failed");
         }
         if (!UndoWriteToDisk(blockundo, _pos, pindex->pprev->GetBlockHash(), chainparams.MessageStart())) {
@@ -697,7 +697,7 @@ MaybeEarlyExit<bool> BlockManager::WriteUndoDataForBlock(const CBlockUndo& block
         // with the block writes (usually when a synced up node is getting newly mined blocks) -- this case is caught in
         // the FindBlockPos function
         if (_pos.nFile < m_last_blockfile && static_cast<uint32_t>(pindex->nHeight) == m_blockfile_info[_pos.nFile].nHeightLast) {
-            FlushUndoFile(_pos.nFile, true);
+            MAYBE_EXIT(FlushUndoFile(_pos.nFile, true));
         }
 
         // update nUndoPos in block index
@@ -796,7 +796,7 @@ MaybeEarlyExit<FlatFilePos> BlockManager::SaveBlockToDisk(const CBlock& block, i
     if (dbp != nullptr) {
         blockPos = *dbp;
     }
-    if (!FindBlockPos(blockPos, nBlockSize + 8, nHeight, active_chain, block.GetBlockTime(), dbp != nullptr)) {
+    EXIT_OR_IF_NOT(FindBlockPos(blockPos, nBlockSize + 8, nHeight, active_chain, block.GetBlockTime(), dbp != nullptr)) {
         error("%s: FindBlockPos failed", __func__);
         return FlatFilePos();
     }
@@ -844,7 +844,7 @@ MaybeEarlyExit<> ThreadImport(ChainstateManager& chainman, std::vector<fs::path>
                     break; // This error is logged in OpenBlockFile
                 }
                 LogPrintf("Reindexing block file blk%05u.dat...\n", (unsigned int)nFile);
-                chainman.ActiveChainstate().LoadExternalBlockFile(file, &pos);
+                MAYBE_EXIT(chainman.ActiveChainstate().LoadExternalBlockFile(file, &pos));
                 if (ShutdownRequested()) {
                     LogPrintf("Shutdown requested. Exit %s\n", __func__);
                     return {};
@@ -855,7 +855,7 @@ MaybeEarlyExit<> ThreadImport(ChainstateManager& chainman, std::vector<fs::path>
             fReindex = false;
             LogPrintf("Reindexing finished\n");
             // To avoid ending up in a situation without genesis block, re-try initializing (no-op if reindexing worked):
-            chainman.ActiveChainstate().LoadGenesisBlock();
+            MAYBE_EXIT(chainman.ActiveChainstate().LoadGenesisBlock());
         }
 
         // -loadblock=
@@ -863,7 +863,7 @@ MaybeEarlyExit<> ThreadImport(ChainstateManager& chainman, std::vector<fs::path>
             FILE* file = fsbridge::fopen(path, "rb");
             if (file) {
                 LogPrintf("Importing blocks file %s...\n", fs::PathToString(path));
-                chainman.ActiveChainstate().LoadExternalBlockFile(file);
+                MAYBE_EXIT(chainman.ActiveChainstate().LoadExternalBlockFile(file));
                 if (ShutdownRequested()) {
                     LogPrintf("Shutdown requested. Exit %s\n", __func__);
                     return {};
@@ -880,7 +880,7 @@ MaybeEarlyExit<> ThreadImport(ChainstateManager& chainman, std::vector<fs::path>
         // the relevant pointers before the ABC call.
         for (CChainState* chainstate : WITH_LOCK(::cs_main, return chainman.GetAll())) {
             BlockValidationState state;
-            if (!chainstate->ActivateBestChain(state, nullptr)) {
+            EXIT_OR_IF_NOT(chainstate->ActivateBestChain(state, nullptr)) {
                 LogPrintf("Failed to connect best block (%s)\n", state.ToString());
                 StartShutdown();
                 return {};
@@ -893,7 +893,7 @@ MaybeEarlyExit<> ThreadImport(ChainstateManager& chainman, std::vector<fs::path>
             return {};
         }
     } // End scope of CImportingNow
-    chainman.ActiveChainstate().LoadMempool(args);
+    MAYBE_EXIT(chainman.ActiveChainstate().LoadMempool(args));
     return {};
 }
 } // namespace node

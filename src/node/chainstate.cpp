@@ -74,7 +74,7 @@ MaybeEarlyExit<node::ChainstateLoadingError> LoadChainstate(bool fReset,
     // (otherwise we use the one already on disk).
     // This is called again in ThreadImport after the reindex completes.
     if (!fReindex) {
-        if (!chainman.ActiveChainstate().LoadGenesisBlock()) {
+        EXIT_OR_IF_NOT(chainman.ActiveChainstate().LoadGenesisBlock()) {
             return ChainstateLoadingError::ERROR_LOAD_GENESIS_BLOCK_FAILED;
         }
     }
@@ -148,7 +148,7 @@ MaybeEarlyExit<node::ChainstateLoadVerifyError> VerifyLoadedChainstate(Chainstat
                 return ChainstateLoadVerifyError::ERROR_BLOCK_FROM_FUTURE;
             }
 
-            if (!CVerifyDB().VerifyDB(
+            EXIT_OR_IF_NOT(CVerifyDB().VerifyDB(
                     *chainstate, consensus_params, chainstate->CoinsDB(),
                     check_level,
                     check_blocks)) {
