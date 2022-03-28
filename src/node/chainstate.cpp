@@ -79,8 +79,10 @@ ChainstateLoadResult LoadChainstate(ChainstateManager& chainman, const CacheSize
     // If we're not mid-reindex (based on disk + args), add a genesis block on disk
     // (otherwise we use the one already on disk).
     // This is called again in ThreadImport after the reindex completes.
-    if (!fReindex && !chainman.ActiveChainstate().LoadGenesisBlock()) {
-        return {ChainstateLoadStatus::FAILURE, _("Error initializing block database")};
+    if (!fReindex) {
+        if (!chainman.ActiveChainstate().LoadGenesisBlock()) {
+            return {ChainstateLoadStatus::FAILURE, _("Error initializing block database")};
+        }
     }
 
     // At this point we're either in reindex or we've loaded a useful
