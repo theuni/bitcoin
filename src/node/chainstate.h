@@ -58,7 +58,7 @@ enum class ChainstateLoadingError {
  *  - else
  *      - Success!
  */
-ChainstateLoadingError LoadChainstate(bool fReset,
+[[nodiscard]] MaybeEarlyExit<node::ChainstateLoadingError> LoadChainstate(bool fReset,
                                                      ChainstateManager& chainman,
                                                      CTxMemPool* mempool,
                                                      bool fPruneMode,
@@ -79,7 +79,7 @@ enum class ChainstateLoadVerifyError {
     ERROR_GENERIC_FAILURE,
 };
 
-node::ChainstateLoadVerifyError VerifyLoadedChainstate(ChainstateManager& chainman,
+[[nodiscard]] MaybeEarlyExit<node::ChainstateLoadVerifyError> VerifyLoadedChainstate(ChainstateManager& chainman,
                                                                 bool fReset,
                                                                 bool fReindexChainState,
                                                                 const Consensus::Params& consensus_params,

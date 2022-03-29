@@ -9,7 +9,7 @@
 #include <validation.h>
 
 namespace node {
-ChainstateLoadingError LoadChainstate(bool fReset,
+MaybeEarlyExit<node::ChainstateLoadingError> LoadChainstate(bool fReset,
                                                      ChainstateManager& chainman,
                                                      CTxMemPool* mempool,
                                                      bool fPruneMode,
@@ -127,7 +127,7 @@ ChainstateLoadingError LoadChainstate(bool fReset,
     return ChainstateLoadingError::OK;
 }
 
-node::ChainstateLoadVerifyError VerifyLoadedChainstate(ChainstateManager& chainman,
+MaybeEarlyExit<node::ChainstateLoadVerifyError> VerifyLoadedChainstate(ChainstateManager& chainman,
                                                                 bool fReset,
                                                                 bool fReindexChainState,
                                                                 const Consensus::Params& consensus_params,

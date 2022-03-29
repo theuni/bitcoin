@@ -519,7 +519,7 @@ MaybeEarlyExit<> BlockManager::FlushUndoFile(int block_file, bool finalize)
     return {};
 }
 
-void BlockManager::FlushBlockFile(bool fFinalize, bool finalize_undo)
+MaybeEarlyExit<> BlockManager::FlushBlockFile(bool fFinalize, bool finalize_undo)
 {
     LOCK(cs_LastBlockFile);
     FlatFilePos block_pos_old(m_last_blockfile, m_blockfile_info[m_last_blockfile].nSize);
@@ -529,6 +529,7 @@ void BlockManager::FlushBlockFile(bool fFinalize, bool finalize_undo)
     // we do not always flush the undo file, as the chain tip may be lagging behind the incoming blocks,
     // e.g. during IBD or a sync after a node going offline
     if (!fFinalize || finalize_undo) FlushUndoFile(m_last_blockfile, finalize_undo);
+    return {};
 }
 
 uint64_t BlockManager::CalculateCurrentUsage()
@@ -578,7 +579,7 @@ fs::path GetBlockPosFilename(const FlatFilePos& pos)
     return BlockFileSeq().FileName(pos);
 }
 
-bool BlockManager::FindBlockPos(FlatFilePos& pos, unsigned int nAddSize, unsigned int nHeight, CChain& active_chain, uint64_t nTime, bool fKnown)
+MaybeEarlyExit<bool> BlockManager::FindBlockPos(FlatFilePos& pos, unsigned int nAddSize, unsigned int nHeight, CChain& active_chain, uint64_t nTime, bool fKnown)
 {
     LOCK(cs_LastBlockFile);
 
@@ -678,7 +679,7 @@ static bool WriteBlockToDisk(const CBlock& block, FlatFilePos& pos, const CMessa
     return true;
 }
 
-bool BlockManager::WriteUndoDataForBlock(const CBlockUndo& blockundo, BlockValidationState& state, CBlockIndex* pindex, const CChainParams& chainparams)
+MaybeEarlyExit<bool> BlockManager::WriteUndoDataForBlock(const CBlockUndo& blockundo, BlockValidationState& state, CBlockIndex* pindex, const CChainParams& chainparams)
 {
     AssertLockHeld(::cs_main);
     // Write undo information to disk
@@ -788,7 +789,7 @@ bool ReadRawBlockFromDisk(std::vector<uint8_t>& block, const FlatFilePos& pos, c
 }
 
 /** Store block on disk. If dbp is non-nullptr, the file is known to already reside on disk */
-FlatFilePos BlockManager::SaveBlockToDisk(const CBlock& block, int nHeight, CChain& active_chain, const CChainParams& chainparams, const FlatFilePos* dbp)
+MaybeEarlyExit<FlatFilePos> BlockManager::SaveBlockToDisk(const CBlock& block, int nHeight, CChain& active_chain, const CChainParams& chainparams, const FlatFilePos* dbp)
 {
     unsigned int nBlockSize = ::GetSerializeSize(block, CLIENT_VERSION);
     FlatFilePos blockPos;
@@ -822,7 +823,7 @@ struct CImportingNow {
     }
 };
 
-void ThreadImport(ChainstateManager& chainman, std::vector<fs::path> vImportFiles, const ArgsManager& args)
+MaybeEarlyExit<> ThreadImport(ChainstateManager& chainman, std::vector<fs::path> vImportFiles, const ArgsManager& args)
 {
     SetSyscallSandboxPolicy(SyscallSandboxPolicy::INITIALIZATION_LOAD_BLOCKS);
     ScheduleBatchPriority();
@@ -846,7 +847,7 @@ void ThreadImport(ChainstateManager& chainman, std::vector<fs::path> vImportFile
                 chainman.ActiveChainstate().LoadExternalBlockFile(file, &pos);
                 if (ShutdownRequested()) {
                     LogPrintf("Shutdown requested. Exit %s\n", __func__);
-                    return;
+                    return {};
                 }
                 nFile++;
             }
@@ -865,7 +866,7 @@ void ThreadImport(ChainstateManager& chainman, std::vector<fs::path> vImportFile
                 chainman.ActiveChainstate().LoadExternalBlockFile(file);
                 if (ShutdownRequested()) {
                     LogPrintf("Shutdown requested. Exit %s\n", __func__);
-                    return;
+                    return {};
                 }
             } else {
                 LogPrintf("Warning: Could not open blocks file %s\n", fs::PathToString(path));
@@ -882,16 +883,17 @@ void ThreadImport(ChainstateManager& chainman, std::vector<fs::path> vImportFile
             if (!chainstate->ActivateBestChain(state, nullptr)) {
                 LogPrintf("Failed to connect best block (%s)\n", state.ToString());
                 StartShutdown();
-                return;
+                return {};
             }
         }
 
         if (args.GetBoolArg("-stopafterblockimport", DEFAULT_STOPAFTERBLOCKIMPORT)) {
             LogPrintf("Stopping after block import\n");
             StartShutdown();
-            return;
+            return {};
         }
     } // End scope of CImportingNow
     chainman.ActiveChainstate().LoadMempool(args);
+    return {};
 }
 } // namespace node
