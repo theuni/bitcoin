@@ -42,7 +42,7 @@ template <typename T>
 EarlyExit BubbleUp(MaybeEarlyExit<T>&& ret);
 
 template <typename T = VoidType>
-class MaybeEarlyExit : std::variant<T, FatalError, UserInterrupted>
+class [[nodiscard]] MaybeEarlyExit : std::variant<T, FatalError, UserInterrupted>
 {
     EarlyExit Bubble() const &&
     {
