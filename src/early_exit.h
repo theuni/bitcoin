@@ -145,4 +145,12 @@ EarlyExit BubbleUp(MaybeEarlyExit<T>&& ret)
 // __COUNTER__ could potentially be used instead, but it's non-standard and confuses LTO.
 #define EXIT_OR_DECL(ret_val, func) auto PASTE2(tmp_int_ret, __LINE__) = func; if(PASTE2(tmp_int_ret, __LINE__).ShouldEarlyExit()) return BubbleUp(std::move(PASTE2(tmp_int_ret, __LINE__))); ret_val = std::move(*PASTE2(tmp_int_ret, __LINE__));
 
+
+// NOOP versions of the same macros for temporarily catching in top-level functions
+#define NOOP_MAYBE_EXIT(func) if ([[maybe_unused]] auto tmp_int_ret = func; true) ;
+#define NOOP_EXIT_OR_ASSIGN(ret_val, func) ret_val = *func;
+#define NOOP_EXIT_OR_IF(func) if(auto tmp_int_ret = func; *tmp_int_ret)
+#define NOOP_EXIT_OR_IF_NOT(func) if(auto tmp_int_ret = func; !*tmp_int_ret)
+#define NOOP_EXIT_OR_DECL(ret_val, func) ret_val = *func
+
 #endif // BITCOIN_EARLY_EXIT_H
