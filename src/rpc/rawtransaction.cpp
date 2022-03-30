@@ -1005,7 +1005,7 @@ static RPCHelpMan testmempoolaccept()
     CTxMemPool& mempool = EnsureMemPool(node);
     ChainstateManager& chainman = EnsureChainman(node);
     CChainState& chainstate = chainman.ActiveChainstate();
-    const PackageMempoolAcceptResult package_result = [&] {
+    const PackageMempoolAcceptResult package_result = [&]() -> PackageMempoolAcceptResult {
         LOCK(::cs_main);
         if (txns.size() > 1) return ProcessNewPackage(chainstate, mempool, txns, /* test_accept */ true);
         return PackageMempoolAcceptResult(txns[0]->GetWitnessHash(),
