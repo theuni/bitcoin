@@ -681,13 +681,13 @@ static RPCHelpMan setban()
                             + HelpExampleCli("setban", "\"192.168.0.0/24\" \"add\"")
                             + HelpExampleRpc("setban", "\"192.168.0.6\", \"add\", 86400")
                 },
-        [&](const RPCHelpMan& help, const JSONRPCRequest& request) -> UniValue
+        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     std::string strCommand;
     if (!request.params[1].isNull())
         strCommand = request.params[1].get_str();
     if (strCommand != "add" && strCommand != "remove") {
-        throw std::runtime_error(help.ToString());
+        throw std::runtime_error(self.ToString());
     }
     NodeContext& node = EnsureAnyNodeContext(request.context);
     if (!node.banman) {
