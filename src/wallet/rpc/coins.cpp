@@ -101,7 +101,7 @@ RPCHelpMan getreceivedbyaddress()
             "\nAs a JSON-RPC call\n"
             + HelpExampleRpc("getreceivedbyaddress", "\"" + EXAMPLE_ADDRESS[0] + "\", 6")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     const std::shared_ptr<const CWallet> pwallet = GetWalletForJSONRPCRequest(request);
     if (!pwallet) return NullUniValue;
@@ -142,7 +142,7 @@ RPCHelpMan getreceivedbylabel()
             "\nAs a JSON-RPC call\n"
             + HelpExampleRpc("getreceivedbylabel", "\"tabby\", 6, true")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     const std::shared_ptr<const CWallet> pwallet = GetWalletForJSONRPCRequest(request);
     if (!pwallet) return NullUniValue;
@@ -182,7 +182,7 @@ RPCHelpMan getbalance()
             "\nAs a JSON-RPC call\n"
             + HelpExampleRpc("getbalance", "\"*\", 6")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     const std::shared_ptr<const CWallet> pwallet = GetWalletForJSONRPCRequest(request);
     if (!pwallet) return NullUniValue;
@@ -221,7 +221,7 @@ RPCHelpMan getunconfirmedbalance()
                 {},
                 RPCResult{RPCResult::Type::NUM, "", "The balance"},
                 RPCExamples{""},
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     const std::shared_ptr<const CWallet> pwallet = GetWalletForJSONRPCRequest(request);
     if (!pwallet) return NullUniValue;
@@ -280,7 +280,7 @@ RPCHelpMan lockunspent()
             "\nAs a JSON-RPC call\n"
             + HelpExampleRpc("lockunspent", "false, \"[{\\\"txid\\\":\\\"a08e6907dbbd3d809776dbfc5d82e371b764ed838b5655e72f463568df1aadf0\\\",\\\"vout\\\":1}]\"")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     std::shared_ptr<CWallet> const pwallet = GetWalletForJSONRPCRequest(request);
     if (!pwallet) return NullUniValue;
@@ -405,7 +405,7 @@ RPCHelpMan listlockunspent()
             "\nAs a JSON-RPC call\n"
             + HelpExampleRpc("listlockunspent", "")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     const std::shared_ptr<const CWallet> pwallet = GetWalletForJSONRPCRequest(request);
     if (!pwallet) return NullUniValue;
@@ -457,7 +457,7 @@ RPCHelpMan getbalances()
         RPCExamples{
             HelpExampleCli("getbalances", "") +
             HelpExampleRpc("getbalances", "")},
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     const std::shared_ptr<const CWallet> rpc_wallet = GetWalletForJSONRPCRequest(request);
     if (!rpc_wallet) return NullUniValue;
@@ -557,7 +557,7 @@ RPCHelpMan listunspent()
             + HelpExampleCli("listunspent", "6 9999999 '[]' true '{ \"minimumAmount\": 0.005 }'")
             + HelpExampleRpc("listunspent", "6, 9999999, [] , true, { \"minimumAmount\": 0.005 } ")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     const std::shared_ptr<const CWallet> pwallet = GetWalletForJSONRPCRequest(request);
     if (!pwallet) return NullUniValue;

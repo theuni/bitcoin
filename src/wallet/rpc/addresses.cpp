@@ -31,7 +31,7 @@ RPCHelpMan getnewaddress()
                     HelpExampleCli("getnewaddress", "")
             + HelpExampleRpc("getnewaddress", "")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     std::shared_ptr<CWallet> const pwallet = GetWalletForJSONRPCRequest(request);
     if (!pwallet) return NullUniValue;
@@ -84,7 +84,7 @@ RPCHelpMan getrawchangeaddress()
                     HelpExampleCli("getrawchangeaddress", "")
             + HelpExampleRpc("getrawchangeaddress", "")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     std::shared_ptr<CWallet> const pwallet = GetWalletForJSONRPCRequest(request);
     if (!pwallet) return NullUniValue;
@@ -130,7 +130,7 @@ RPCHelpMan setlabel()
                     HelpExampleCli("setlabel", "\"" + EXAMPLE_ADDRESS[0] + "\" \"tabby\"")
             + HelpExampleRpc("setlabel", "\"" + EXAMPLE_ADDRESS[0] + "\", \"tabby\"")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     std::shared_ptr<CWallet> const pwallet = GetWalletForJSONRPCRequest(request);
     if (!pwallet) return NullUniValue;
@@ -180,7 +180,7 @@ RPCHelpMan listaddressgroupings()
                     HelpExampleCli("listaddressgroupings", "")
             + HelpExampleRpc("listaddressgroupings", "")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     const std::shared_ptr<const CWallet> pwallet = GetWalletForJSONRPCRequest(request);
     if (!pwallet) return NullUniValue;
@@ -251,7 +251,7 @@ RPCHelpMan addmultisigaddress()
             "\nAs a JSON-RPC call\n"
             + HelpExampleRpc("addmultisigaddress", "2, \"[\\\"" + EXAMPLE_ADDRESS[0] + "\\\",\\\"" + EXAMPLE_ADDRESS[1] + "\\\"]\"")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     std::shared_ptr<CWallet> const pwallet = GetWalletForJSONRPCRequest(request);
     if (!pwallet) return NullUniValue;
@@ -326,7 +326,7 @@ RPCHelpMan keypoolrefill()
                     HelpExampleCli("keypoolrefill", "")
             + HelpExampleRpc("keypoolrefill", "")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     std::shared_ptr<CWallet> const pwallet = GetWalletForJSONRPCRequest(request);
     if (!pwallet) return NullUniValue;
@@ -373,7 +373,7 @@ RPCHelpMan newkeypool()
             HelpExampleCli("newkeypool", "")
             + HelpExampleRpc("newkeypool", "")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     std::shared_ptr<CWallet> const pwallet = GetWalletForJSONRPCRequest(request);
     if (!pwallet) return NullUniValue;
@@ -547,7 +547,7 @@ RPCHelpMan getaddressinfo()
                     HelpExampleCli("getaddressinfo", "\"" + EXAMPLE_ADDRESS[0] + "\"") +
                     HelpExampleRpc("getaddressinfo", "\"" + EXAMPLE_ADDRESS[0] + "\"")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     const std::shared_ptr<const CWallet> pwallet = GetWalletForJSONRPCRequest(request);
     if (!pwallet) return NullUniValue;
@@ -668,7 +668,7 @@ RPCHelpMan getaddressesbylabel()
                     HelpExampleCli("getaddressesbylabel", "\"tabby\"")
             + HelpExampleRpc("getaddressesbylabel", "\"tabby\"")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     const std::shared_ptr<const CWallet> pwallet = GetWalletForJSONRPCRequest(request);
     if (!pwallet) return NullUniValue;
@@ -729,7 +729,7 @@ RPCHelpMan listlabels()
             "\nAs a JSON-RPC call\n"
             + HelpExampleRpc("listlabels", "receive")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     const std::shared_ptr<const CWallet> pwallet = GetWalletForJSONRPCRequest(request);
     if (!pwallet) return NullUniValue;
@@ -777,7 +777,7 @@ RPCHelpMan walletdisplayaddress()
             }
         },
         RPCExamples{""},
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
         {
             std::shared_ptr<CWallet> const wallet = GetWalletForJSONRPCRequest(request);
             if (!wallet) return NullUniValue;

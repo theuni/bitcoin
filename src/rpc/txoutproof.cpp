@@ -40,7 +40,7 @@ static RPCHelpMan gettxoutproof()
             RPCResult::Type::STR, "data", "A string that is a serialized, hex-encoded data for the proof."
         },
         RPCExamples{""},
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
         {
             std::set<uint256> setTxids;
             UniValue txids = request.params[0].get_array();
@@ -136,7 +136,7 @@ static RPCHelpMan verifytxoutproof()
             }
         },
         RPCExamples{""},
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
         {
             CDataStream ssMB(ParseHexV(request.params[0], "proof"), SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS);
             CMerkleBlock merkleBlock;

@@ -29,7 +29,7 @@ RPCHelpMan walletpassphrase()
             "\nAs a JSON-RPC call\n"
             + HelpExampleRpc("walletpassphrase", "\"my pass phrase\", 60")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     std::shared_ptr<CWallet> const wallet = GetWalletForJSONRPCRequest(request);
     if (!wallet) return NullUniValue;
@@ -117,7 +117,7 @@ RPCHelpMan walletpassphrasechange()
                     HelpExampleCli("walletpassphrasechange", "\"old one\" \"new one\"")
             + HelpExampleRpc("walletpassphrasechange", "\"old one\", \"new one\"")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     std::shared_ptr<CWallet> const pwallet = GetWalletForJSONRPCRequest(request);
     if (!pwallet) return NullUniValue;
@@ -170,7 +170,7 @@ RPCHelpMan walletlock()
             "\nAs a JSON-RPC call\n"
             + HelpExampleRpc("walletlock", "")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     std::shared_ptr<CWallet> const pwallet = GetWalletForJSONRPCRequest(request);
     if (!pwallet) return NullUniValue;
@@ -214,7 +214,7 @@ RPCHelpMan encryptwallet()
             "\nAs a JSON-RPC call\n"
             + HelpExampleRpc("encryptwallet", "\"my pass phrase\"")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     std::shared_ptr<CWallet> const pwallet = GetWalletForJSONRPCRequest(request);
     if (!pwallet) return NullUniValue;

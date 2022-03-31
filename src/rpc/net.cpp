@@ -55,7 +55,7 @@ static RPCHelpMan getconnectioncount()
                     HelpExampleCli("getconnectioncount", "")
             + HelpExampleRpc("getconnectioncount", "")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     NodeContext& node = EnsureAnyNodeContext(request.context);
     const CConnman& connman = EnsureConnman(node);
@@ -77,7 +77,7 @@ static RPCHelpMan ping()
                     HelpExampleCli("ping", "")
             + HelpExampleRpc("ping", "")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     NodeContext& node = EnsureAnyNodeContext(request.context);
     PeerManager& peerman = EnsurePeerman(node);
@@ -168,7 +168,7 @@ static RPCHelpMan getpeerinfo()
             HelpExampleCli("getpeerinfo", "")
             + HelpExampleRpc("getpeerinfo", "")
         },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     NodeContext& node = EnsureAnyNodeContext(request.context);
     const CConnman& connman = EnsureConnman(node);
@@ -284,7 +284,7 @@ static RPCHelpMan addnode()
                     HelpExampleCli("addnode", "\"192.168.0.6:8333\" \"onetry\"")
             + HelpExampleRpc("addnode", "\"192.168.0.6:8333\", \"onetry\"")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     std::string strCommand;
     if (!request.params[1].isNull())
@@ -342,7 +342,7 @@ static RPCHelpMan addconnection()
             HelpExampleCli("addconnection", "\"192.168.0.6:8333\" \"outbound-full-relay\"")
             + HelpExampleRpc("addconnection", "\"192.168.0.6:8333\" \"outbound-full-relay\"")
         },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     if (Params().NetworkIDString() != CBaseChainParams::REGTEST) {
         throw std::runtime_error("addconnection is for regression testing (-regtest mode) only.");
@@ -398,7 +398,7 @@ static RPCHelpMan disconnectnode()
             + HelpExampleRpc("disconnectnode", "\"192.168.0.6:8333\"")
             + HelpExampleRpc("disconnectnode", "\"\", 1")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     NodeContext& node = EnsureAnyNodeContext(request.context);
     CConnman& connman = EnsureConnman(node);
@@ -457,7 +457,7 @@ static RPCHelpMan getaddednodeinfo()
                     HelpExampleCli("getaddednodeinfo", "\"192.168.0.201\"")
             + HelpExampleRpc("getaddednodeinfo", "\"192.168.0.201\"")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     NodeContext& node = EnsureAnyNodeContext(request.context);
     const CConnman& connman = EnsureConnman(node);
@@ -527,7 +527,7 @@ static RPCHelpMan getnettotals()
                     HelpExampleCli("getnettotals", "")
             + HelpExampleRpc("getnettotals", "")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     NodeContext& node = EnsureAnyNodeContext(request.context);
     const CConnman& connman = EnsureConnman(node);
@@ -620,7 +620,7 @@ static RPCHelpMan getnetworkinfo()
                     HelpExampleCli("getnetworkinfo", "")
             + HelpExampleRpc("getnetworkinfo", "")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     LOCK(cs_main);
     UniValue obj(UniValue::VOBJ);
@@ -681,7 +681,7 @@ static RPCHelpMan setban()
                             + HelpExampleCli("setban", "\"192.168.0.0/24\" \"add\"")
                             + HelpExampleRpc("setban", "\"192.168.0.6\", \"add\", 86400")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     std::string strCommand;
     if (!request.params[1].isNull())
@@ -769,7 +769,7 @@ static RPCHelpMan listbanned()
                     HelpExampleCli("listbanned", "")
                             + HelpExampleRpc("listbanned", "")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     NodeContext& node = EnsureAnyNodeContext(request.context);
     if(!node.banman) {
@@ -809,7 +809,7 @@ static RPCHelpMan clearbanned()
                     HelpExampleCli("clearbanned", "")
                             + HelpExampleRpc("clearbanned", "")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     NodeContext& node = EnsureAnyNodeContext(request.context);
     if (!node.banman) {
@@ -832,7 +832,7 @@ static RPCHelpMan setnetworkactive()
                 },
                 RPCResult{RPCResult::Type::BOOL, "", "The value that was passed in"},
                 RPCExamples{""},
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     NodeContext& node = EnsureAnyNodeContext(request.context);
     CConnman& connman = EnsureConnman(node);
@@ -874,7 +874,7 @@ static RPCHelpMan getnodeaddresses()
                     + HelpExampleRpc("getnodeaddresses", "8")
                     + HelpExampleRpc("getnodeaddresses", "4, \"i2p\"")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     NodeContext& node = EnsureAnyNodeContext(request.context);
     const CConnman& connman = EnsureConnman(node);
@@ -924,7 +924,7 @@ static RPCHelpMan addpeeraddress()
             HelpExampleCli("addpeeraddress", "\"1.2.3.4\" 8333 true")
     + HelpExampleRpc("addpeeraddress", "\"1.2.3.4\", 8333, true")
         },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     NodeContext& node = EnsureAnyNodeContext(request.context);
     if (!node.addrman) {

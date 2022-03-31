@@ -48,7 +48,7 @@ static RPCHelpMan sendrawtransaction()
             "\nAs a JSON-RPC call\n"
             + HelpExampleRpc("sendrawtransaction", "\"signedhex\"")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
         {
             RPCTypeCheck(request.params, {
                 UniValue::VSTR,
@@ -130,7 +130,7 @@ static RPCHelpMan testmempoolaccept()
             "\nAs a JSON-RPC call\n"
             + HelpExampleRpc("testmempoolaccept", "[\"signedhex\"]")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
         {
             RPCTypeCheck(request.params, {
                 UniValue::VARR,
@@ -409,7 +409,7 @@ static RPCHelpMan getrawmempool()
             HelpExampleCli("getrawmempool", "true")
             + HelpExampleRpc("getrawmempool", "true")
         },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     bool fVerbose = false;
     if (!request.params[0].isNull())
@@ -447,7 +447,7 @@ static RPCHelpMan getmempoolancestors()
             HelpExampleCli("getmempoolancestors", "\"mytxid\"")
             + HelpExampleRpc("getmempoolancestors", "\"mytxid\"")
         },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     bool fVerbose = false;
     if (!request.params[1].isNull())
@@ -511,7 +511,7 @@ static RPCHelpMan getmempooldescendants()
             HelpExampleCli("getmempooldescendants", "\"mytxid\"")
             + HelpExampleRpc("getmempooldescendants", "\"mytxid\"")
         },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     bool fVerbose = false;
     if (!request.params[1].isNull())
@@ -567,7 +567,7 @@ static RPCHelpMan getmempoolentry()
             HelpExampleCli("getmempoolentry", "\"mytxid\"")
             + HelpExampleRpc("getmempoolentry", "\"mytxid\"")
         },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     uint256 hash = ParseHashV(request.params[0], "parameter 1");
 
@@ -627,7 +627,7 @@ static RPCHelpMan getmempoolinfo()
             HelpExampleCli("getmempoolinfo", "")
             + HelpExampleRpc("getmempoolinfo", "")
         },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     return MempoolInfoToJSON(EnsureAnyMemPool(request.context));
 },
@@ -648,7 +648,7 @@ static RPCHelpMan savemempool()
             HelpExampleCli("savemempool", "")
             + HelpExampleRpc("savemempool", "")
         },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     const ArgsManager& args{EnsureAnyArgsman(request.context)};
     const CTxMemPool& mempool = EnsureAnyMemPool(request.context);

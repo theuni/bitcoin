@@ -261,7 +261,7 @@ RPCHelpMan sendtoaddress()
                     + HelpExampleCli("-named sendtoaddress", "address=\"" + EXAMPLE_ADDRESS[0] + "\" amount=0.5 fee_rate=25")
                     + HelpExampleCli("-named sendtoaddress", "address=\"" + EXAMPLE_ADDRESS[0] + "\" amount=0.5 fee_rate=25 subtractfeefromamount=false replaceable=true avoid_reuse=true comment=\"2 pizzas\" comment_to=\"jeremy\" verbose=true")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     std::shared_ptr<CWallet> const pwallet = GetWalletForJSONRPCRequest(request);
     if (!pwallet) return NullUniValue;
@@ -367,7 +367,7 @@ RPCHelpMan sendmany()
             "\nAs a JSON-RPC call\n"
             + HelpExampleRpc("sendmany", "\"\", {\"" + EXAMPLE_ADDRESS[0] + "\":0.01,\"" + EXAMPLE_ADDRESS[1] + "\":0.02}, 6, \"testing\"")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     std::shared_ptr<CWallet> const pwallet = GetWalletForJSONRPCRequest(request);
     if (!pwallet) return NullUniValue;
@@ -422,7 +422,7 @@ RPCHelpMan settxfee()
                     HelpExampleCli("settxfee", "0.00001")
             + HelpExampleRpc("settxfee", "0.00001")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     std::shared_ptr<CWallet> const pwallet = GetWalletForJSONRPCRequest(request);
     if (!pwallet) return NullUniValue;
@@ -818,7 +818,7 @@ RPCHelpMan fundrawtransaction()
                             "\nSend the transaction\n"
                             + HelpExampleCli("sendrawtransaction", "\"signedtransactionhex\"")
                                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     std::shared_ptr<CWallet> const pwallet = GetWalletForJSONRPCRequest(request);
     if (!pwallet) return NullUniValue;
@@ -908,7 +908,7 @@ RPCHelpMan signrawtransactionwithwallet()
                     HelpExampleCli("signrawtransactionwithwallet", "\"myhex\"")
             + HelpExampleRpc("signrawtransactionwithwallet", "\"myhex\"")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     const std::shared_ptr<const CWallet> pwallet = GetWalletForJSONRPCRequest(request);
     if (!pwallet) return NullUniValue;
@@ -1214,7 +1214,7 @@ RPCHelpMan send()
         "Create a transaction that should confirm the next block, with a specific input, and return result without adding to wallet or broadcasting to the network\n"
         + HelpExampleCli("send", "'{\"" + EXAMPLE_ADDRESS[0] + "\": 0.1}' 1 economical '{\"add_to_wallet\": false, \"inputs\": [{\"txid\":\"a08e6907dbbd3d809776dbfc5d82e371b764ed838b5655e72f463568df1aadf0\", \"vout\":1}]}'")
         },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
         {
             RPCTypeCheck(request.params, {
                 UniValueType(), // outputs (ARR or OBJ, checked later)
@@ -1319,7 +1319,7 @@ RPCHelpMan sendall()
         "Spend all UTXOs with a fee rate of 1.3 " + CURRENCY_ATOM + "/vB using named arguments and sending a 0.25 " + CURRENCY_UNIT + " to another recipient\n"
         + HelpExampleCli("-named sendall", "recipients='[{\"" + EXAMPLE_ADDRESS[1] + "\": 0.25}, \""+ EXAMPLE_ADDRESS[0] + "\"]' fee_rate=1.3\n")
         },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
         {
             RPCTypeCheck(request.params, {
                 UniValue::VARR, // recipients
@@ -1506,7 +1506,7 @@ RPCHelpMan walletprocesspsbt()
                 RPCExamples{
                     HelpExampleCli("walletprocesspsbt", "\"psbt\"")
                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     const std::shared_ptr<const CWallet> pwallet = GetWalletForJSONRPCRequest(request);
     if (!pwallet) return NullUniValue;
@@ -1633,7 +1633,7 @@ RPCHelpMan walletcreatefundedpsbt()
                             "\nCreate a transaction with no inputs\n"
                             + HelpExampleCli("walletcreatefundedpsbt", "\"[{\\\"txid\\\":\\\"myid\\\",\\\"vout\\\":0}]\" \"[{\\\"data\\\":\\\"00010203\\\"}]\"")
                                 },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        [](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     std::shared_ptr<CWallet> const pwallet = GetWalletForJSONRPCRequest(request);
     if (!pwallet) return NullUniValue;
