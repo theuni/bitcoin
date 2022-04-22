@@ -835,6 +835,10 @@ if TARGET_WINDOWS
 libbitcoinkernel_la_CXXFLAGS += -static
 endif
 
+# TODO: libbitcoinkernel is a work in progress consensus engine library, as more
+#       and more modules are decoupled from the consensus engine, this list will
+#       shrink to only those which are absolutely necessary. For example, things
+#       like index/*.cpp will be removed.
 libbitcoinkernel_la_SOURCES = \
   kernel/bitcoinkernel.cpp \
   arith_uint256.cpp \
