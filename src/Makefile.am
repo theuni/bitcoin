@@ -811,7 +811,7 @@ lib_LTLIBRARIES += $(LIBBITCOINKERNEL)
 # TODO: For now, only build a static version of this library with -all-static.
 #       There are unresolved problems when building dll's on mingw-w64 and
 #       attempting to statically embed libstdc++, libpthread, etc.
-libbitcoinkernel_la_LDFLAGS = $(AM_LDFLAGS) -all-static $(RELDFLAGS) $(PTHREAD_FLAGS)
+libbitcoinkernel_la_LDFLAGS = $(AM_LDFLAGS) $(RELDFLAGS) $(PTHREAD_FLAGS) -no-undefined
 
 libbitcoinkernel_la_LIBADD = $(LIBBITCOIN_CRYPTO) $(LIBUNIVALUE) $(LIBLEVELDB) $(LIBMEMENV) $(LIBSECP256K1)
 libbitcoinkernel_la_CPPFLAGS = $(AM_CPPFLAGS) -I$(builddir)/obj -I$(srcdir)/secp256k1/include -DBUILD_BITCOIN_INTERNAL $(BOOST_CPPFLAGS) $(LEVELDB_CPPFLAGS) -I$(srcdir)/$(UNIVALUE_INCLUDE_DIR_INT)

@@ -104,7 +104,7 @@ AC_PROG_OBJCXX
 dnl OpenBSD ships with 2.4.2
 LT_PREREQ([2.4.2])
 dnl Libtool init checks.
-LT_INIT([pic-only win32-dll])
+LT_INIT([pic-only win32-dll disable-shared])
 
 dnl Check/return PATH for base programs.
 AC_PATH_TOOL([AR], [ar])
