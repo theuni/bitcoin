@@ -64,6 +64,10 @@ dnl we have those under control, re-enable that functionality.
 case $host in
   *mingw*)
      lt_cv_deplibs_check_method="pass_all"
+
+     dnl remove unwanted -DDLL_EXPORT
+     lt_cv_prog_compiler_pic="-DPIC"
+     lt_cv_prog_compiler_pic_CXX="-DPIC"
   ;;
 esac
 
