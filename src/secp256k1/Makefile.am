@@ -94,7 +94,9 @@ libsecp256k1_la_LDFLAGS = -no-undefined -version-info $(LIB_VERSION_CURRENT):$(L
 if VALGRIND_ENABLED
 libsecp256k1_la_CPPFLAGS += -DVALGRIND
 endif
-
+if !ENABLE_EXPORTS
+libsecp256k1_la_CPPFLAGS += -DSECP256K1_NO_EXPORT
+endif
 noinst_PROGRAMS =
 if USE_BENCHMARK
 noinst_PROGRAMS += bench bench_internal bench_ecmult

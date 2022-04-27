@@ -143,7 +143,7 @@ typedef int (*secp256k1_nonce_function)(
 
 #ifndef SECP256K1_API
 # if defined(_WIN32)
-#  ifdef SECP256K1_BUILD
+#  if defined(SECP256K1_BUILD) && !defined(SECP256K1_NO_EXPORT)
 #   define SECP256K1_API __declspec(dllexport)
 #  else
 #   define SECP256K1_API

@@ -160,6 +160,11 @@ AC_ARG_ENABLE(external_default_callbacks,
     AS_HELP_STRING([--enable-external-default-callbacks],[enable external default callback functions [default=no]]), [],
     [SECP_SET_DEFAULT([enable_external_default_callbacks], [no], [no])])
 
+AC_ARG_ENABLE(exports_internal,
+    AS_HELP_STRING([--enable-exports-internal],[internal use only [default=yes]]), [],
+    [SECP_SET_DEFAULT([enable_exports_internal], [yes], [yes])])
+
+
 # Test-only override of the (autodetected by the C code) "widemul" setting.
 # Legal values are int64 (for [u]int64_t), int128 (for [unsigned] __int128), and auto (the default).
 AC_ARG_WITH([test-override-wide-multiply], [] ,[set_widemul=$withval], [set_widemul=auto])
@@ -387,6 +392,7 @@ AM_CONDITIONAL([USE_TESTS], [test x"$enable_tests" != x"no"])
 AM_CONDITIONAL([USE_EXHAUSTIVE_TESTS], [test x"$enable_exhaustive_tests" != x"no"])
 AM_CONDITIONAL([USE_EXAMPLES], [test x"$enable_examples" != x"no"])
 AM_CONDITIONAL([USE_BENCHMARK], [test x"$enable_benchmark" = x"yes"])
+AM_CONDITIONAL([ENABLE_EXPORTS],[test x"$enable_exports_internal" = x"yes"])
 AM_CONDITIONAL([ENABLE_MODULE_ECDH], [test x"$enable_module_ecdh" = x"yes"])
 AM_CONDITIONAL([ENABLE_MODULE_RECOVERY], [test x"$enable_module_recovery" = x"yes"])
 AM_CONDITIONAL([ENABLE_MODULE_EXTRAKEYS], [test x"$enable_module_extrakeys" = x"yes"])
