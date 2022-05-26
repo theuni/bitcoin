@@ -67,7 +67,6 @@ void AddPeer(NodeId& id, std::vector<CNode*>& nodes, PeerManager& peerman, Connm
     nodes.emplace_back(new CNode{++id,
                                  /*sock=*/nullptr,
                                  addr,
-                                 /*nKeyedNetGroupIn=*/0,
                                  /*nLocalHostNonceIn=*/0,
                                  CAddress{},
                                  /*addrNameIn=*/"",

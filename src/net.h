@@ -666,7 +666,6 @@ struct CNodeOptions
 {
     NetPermissionFlags permission_flags = NetPermissionFlags::None;
     std::unique_ptr<i2p::sam::Session> i2p_sam_session = nullptr;
-    bool prefer_evict = false;
     size_t recv_flood_size{DEFAULT_MAXRECEIVEBUFFER * 1000};
     bool use_v2transport = false;
 };
@@ -723,7 +722,6 @@ public:
      * from the wire. This cleaned string can safely be logged or displayed.
      */
     std::string cleanSubVer GUARDED_BY(m_subver_mutex){};
-    const bool m_prefer_evict{false}; // This peer is preferred for eviction.
     bool HasPermission(NetPermissionFlags permission) const {
         return NetPermissions::HasFlag(m_permission_flags, permission);
     }
@@ -735,7 +733,6 @@ public:
     CountingSemaphoreGrant<> grantOutbound;
     std::atomic<int> nRefCount{0};
 
-    const uint64_t nKeyedNetGroup;
     std::atomic_bool fPauseRecv{false};
     std::atomic_bool fPauseSend{false};
 
@@ -884,7 +881,6 @@ public:
     CNode(NodeId id,
           std::shared_ptr<Sock> sock,
           const CAddress& addrIn,
-          uint64_t nKeyedNetGroupIn,
           uint64_t nLocalHostNonceIn,
           const CService& addrBindIn,
           const std::string& addrNameIn,
