@@ -3203,9 +3203,10 @@ void CConnman::SetNetworkActive(bool active)
 }
 
 CConnman::CConnman(uint64_t nSeed0In, uint64_t nSeed1In, AddrMan& addrman_in,
-                   const NetGroupManager& netgroupman, const CChainParams& params, bool network_active)
+                   const NetGroupManager& netgroupman, const CChainParams& params, EvictionManager& evictionman, bool network_active)
     : addrman(addrman_in)
     , m_netgroupman{netgroupman}
+    , m_evictionman{evictionman}
     , nSeed0(nSeed0In)
     , nSeed1(nSeed1In)
     , m_params(params)

@@ -1509,10 +1509,12 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     FastRandomContext rng;
     assert(!node.banman);
     node.banman = std::make_unique<BanMan>(args.GetDataDirNet() / "banlist", &uiInterface, args.GetIntArg("-bantime", DEFAULT_MISBEHAVING_BANTIME));
+    assert(!node.evictionman);
+    node.evictionman = std::make_unique<EvictionManager>();
     assert(!node.connman);
     node.connman = std::make_unique<CConnman>(rng.rand64(),
                                               rng.rand64(),
-                                              *node.addrman, *node.netgroupman, chainparams, args.GetBoolArg("-networkactive", true));
+                                              *node.addrman, *node.netgroupman, chainparams, *node.evictionman, args.GetBoolArg("-networkactive", true));
 
     assert(!node.fee_estimator);
     // Don't initialize fee estimation with old data if we don't relay transactions,
@@ -1755,7 +1757,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
 
     assert(!node.peerman);
     node.peerman = PeerManager::make(*node.connman, *node.addrman,
-                                     node.banman.get(), chainman,
+                                     *node.evictionman, node.banman.get(), chainman,
                                      *node.mempool, *node.warnings,
                                      peerman_opts);
     validation_signals.RegisterValidationInterface(node.peerman.get());

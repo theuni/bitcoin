@@ -23,6 +23,7 @@ class CScheduler;
 class CTxMemPool;
 class ChainstateManager;
 class ECC_Context;
+class EvictionManager;
 class NetGroupManager;
 class PeerManager;
 namespace interfaces {
@@ -69,6 +70,7 @@ struct NodeContext {
     std::unique_ptr<const NetGroupManager> netgroupman;
     std::unique_ptr<CBlockPolicyEstimator> fee_estimator;
     std::unique_ptr<PeerManager> peerman;
+    std::unique_ptr<EvictionManager> evictionman;
     std::unique_ptr<ChainstateManager> chainman;
     std::unique_ptr<BanMan> banman;
     ArgsManager* args{nullptr}; // Currently a raw pointer because the memory is not managed by this struct

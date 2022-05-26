@@ -49,8 +49,9 @@ FUZZ_TARGET(p2p_handshake, .init = ::initialize)
 
     node::Warnings warnings{};
     NetGroupManager netgroupman{{}};
+    EvictionManager evictionman{};
     AddrMan addrman{netgroupman, /*deterministic=*/true, 0};
-    auto peerman = PeerManager::make(connman, addrman,
+    auto peerman = PeerManager::make(connman, addrman, evictionman,
                                      /*banman=*/nullptr, chainman,
                                      *g_setup->m_node.mempool, warnings,
                                      PeerManager::Options{

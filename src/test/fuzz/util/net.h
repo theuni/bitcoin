@@ -215,6 +215,11 @@ public:
     return NetGroupManager(asmap);
 }
 
+[[nodiscard]] inline EvictionManager ConsumeEvictionManager(FuzzedDataProvider& fuzzed_data_provider) noexcept
+{
+    return EvictionManager();
+}
+
 inline CSubNet ConsumeSubNet(FuzzedDataProvider& fuzzed_data_provider) noexcept
 {
     return {ConsumeNetAddr(fuzzed_data_provider), fuzzed_data_provider.ConsumeIntegral<uint8_t>()};
