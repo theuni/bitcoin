@@ -1710,6 +1710,7 @@ bool CConnman::AttemptToEvictConnection()
     if (!node_id_to_evict) {
         return false;
     }
+
     LOCK(m_nodes_mutex);
     for (CNode* pnode : m_nodes) {
         if (pnode->GetId() == *node_id_to_evict) {
@@ -1852,6 +1853,16 @@ void CConnman::CreateNodeFromAcceptedSocket(std::unique_ptr<Sock>&& sock,
         pnode->ConnectedThroughNetwork(),
         GetNodeCount(ConnectionDirection::In));
 
+    m_evictionman.AddCandidate(
+        /*id=*/pnode->GetId(),
+        /*connected=*/pnode->m_connected,
+        /*keyed_net_group=*/pnode->nKeyedNetGroup,
+        /*prefer_evict=*/pnode->m_prefer_evict,
+        /*is_local=*/pnode->addr.IsLocal(),
+        /*network=*/pnode->ConnectedThroughNetwork(),
+        /*noban=*/pnode->HasPermission(NetPermissionFlags::NoBan),
+        /*conn_type=*/ConnectionType::INBOUND);
+
     // We received a new connection, harvest entropy from the time (and our peer count)
     RandAddEvent((uint32_t)id);
 }
@@ -1937,6 +1948,8 @@ void CConnman::DisconnectNodes()
                         .use_v2transport = false});
                     LogDebug(BCLog::NET, "retrying with v1 transport protocol for peer=%d\n", pnode->GetId());
                 }
+                // Tell the eviction manager to forget about this node
+                m_evictionman.RemoveCandidate(pnode->GetId());
 
                 // release outbound grant (if any)
                 pnode->grantOutbound.Release();
@@ -1953,6 +1966,7 @@ void CConnman::DisconnectNodes()
             }
         }
     }
+
     {
         // Delete disconnected nodes
         std::list<CNode*> nodes_disconnected_copy = m_nodes_disconnected;
@@ -3021,6 +3035,16 @@ void CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFai
         pnode->ConnectionTypeAsString().c_str(),
         pnode->ConnectedThroughNetwork(),
         GetNodeCount(ConnectionDirection::Out));
+
+    m_evictionman.AddCandidate(
+        /*id=*/pnode->GetId(),
+        /*connected=*/pnode->m_connected,
+        /*keyed_net_group=*/pnode->nKeyedNetGroup,
+        /*prefer_evict=*/pnode->m_prefer_evict,
+        /*is_local=*/pnode->addr.IsLocal(),
+        /*network=*/pnode->ConnectedThroughNetwork(),
+        /*noban=*/pnode->HasPermission(NetPermissionFlags::NoBan),
+        /*conn_type=*/conn_type);
 }
 
 Mutex NetEventsInterface::g_msgproc_mutex;
