@@ -4,6 +4,8 @@
 
 #include <test/util/net.h>
 
+#include <chainparams.h>
+#include <node/eviction_impl.h>
 #include <net.h>
 #include <net_processing.h>
 #include <netaddress.h>

@@ -4,7 +4,7 @@
 
 #include <bench/bench.h>
 #include <netaddress.h>
-#include <node/eviction.h>
+#include <node/eviction_impl.h>
 #include <random.h>
 #include <test/util/net.h>
 

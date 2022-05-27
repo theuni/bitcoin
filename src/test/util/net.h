@@ -12,7 +12,7 @@
 #include <net_processing.h>
 #include <netaddress.h>
 #include <node/connection_types.h>
-#include <node/eviction.h>
+#include <node/eviction_impl.h>
 #include <span.h>
 #include <sync.h>
 #include <util/sock.h>
