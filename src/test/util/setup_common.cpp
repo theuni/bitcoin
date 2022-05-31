@@ -119,7 +119,7 @@ BasicTestingSetup::BasicTestingSetup(const std::string& chainName, const std::ve
             throw std::runtime_error{error};
         }
     }
-    SelectParams(chainName);
+    SelectParams(chainName, m_node.args->GetOverrides());
     SeedInsecureRand();
     if (G_TEST_LOG_FUN) LogInstance().PushBackCallback(G_TEST_LOG_FUN);
     InitLogging(*m_node.args);

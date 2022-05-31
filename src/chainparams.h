@@ -152,7 +152,7 @@ protected:
  * @returns a CChainParams* of the chosen chain.
  * @throws a std::runtime_error if the chain is not supported.
  */
-std::unique_ptr<const CChainParams> CreateChainParams(const std::string& chain, ParamOverrides overrides = {} );
+std::unique_ptr<const CChainParams> CreateChainParams(const std::string& chain, ParamOverrides overrides);
 
 /**
  * Return the currently selected parameters. This won't change after app
@@ -164,6 +164,6 @@ const CChainParams &Params();
  * Sets the params returned by Params() to those for the given chain name.
  * @throws std::runtime_error when the chain is not supported.
  */
-void SelectParams(const std::string& chain, ParamOverrides overrides = {});
+void SelectParams(const std::string& chain, ParamOverrides overrides);
 
 #endif // BITCOIN_CHAINPARAMS_H

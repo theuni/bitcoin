@@ -22,7 +22,7 @@ const std::vector<std::shared_ptr<CBlock>>* g_chain;
 
 void initialize_chain()
 {
-    const auto params{CreateChainParams(ArgsManager{}, CBaseChainParams::REGTEST)};
+    const auto params{CreateChainParams(CBaseChainParams::REGTEST, ParamOverrides{})};
     static const auto chain{CreateBlockChain(2 * COINBASE_MATURITY, *params)};
     g_chain = &chain;
 }

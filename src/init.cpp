@@ -382,11 +382,10 @@ void SetupServerArgs(ArgsManager& argsman)
     const auto signetBaseParams = CreateBaseChainParams(CBaseChainParams::SIGNET);
     const auto regtestBaseParams = CreateBaseChainParams(CBaseChainParams::REGTEST);
 
-    // Overrides are not provided to CreateChainParams because only the static defaults should be 
-    const auto defaultChainParams = CreateChainParams(CBaseChainParams::MAIN);
-    const auto testnetChainParams = CreateChainParams(CBaseChainParams::TESTNET);
-    const auto signetChainParams = CreateChainParams(CBaseChainParams::SIGNET);
-    const auto regtestChainParams = CreateChainParams(CBaseChainParams::REGTEST);
+    const auto defaultChainParams = CreateChainParams(CBaseChainParams::MAIN, argsman.GetOverrides());
+    const auto testnetChainParams = CreateChainParams(CBaseChainParams::TESTNET, argsman.GetOverrides());
+    const auto signetChainParams = CreateChainParams(CBaseChainParams::SIGNET, argsman.GetOverrides());
+    const auto regtestChainParams = CreateChainParams(CBaseChainParams::REGTEST, argsman.GetOverrides());
 
     // Hidden Options
     std::vector<std::string> hidden_args = {
