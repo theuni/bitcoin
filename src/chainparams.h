@@ -149,6 +149,9 @@ protected:
 
 struct ParamOverrides{
     std::optional<std::vector<uint8_t>> m_signet_challenge;
+    std::optional<bool> m_fastprune;
+    std::optional<std::vector<std::string>> m_deployments;
+    std::optional<std::vector<std::string>> m_activation_heights;
 };
 
 /**

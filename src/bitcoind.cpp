@@ -168,6 +168,29 @@ static bool AppInit(NodeContext& node, int argc, char* argv[])
             LogPrintf("Signet with challenge %s\n", signet_challenge[0]);
         }
 
+        if (args.GetBoolArg("-fastprune", false)) {
+            overrides.m_fastprune = true;
+        }
+
+        if (args.IsArgSet("-testactivationheight")) {
+            std::vector<std::string> activation_heights;
+            for (const std::string& heightstr : args.GetArgs("-testactivationheight")) {
+                activation_heights.push_back(heightstr);
+            }
+            if (!activation_heights.empty()) {
+                overrides.m_activation_heights = std::move(activation_heights);
+            }
+        }
+
+        if (args.IsArgSet("-vbparams")) {
+            std::vector<std::string> deployments;
+            for (const std::string& strDeployment : args.GetArgs("-vbparams")) {
+                deployments.push_back(strDeployment);
+            }
+            if (!deployments.empty()) {
+                overrides.m_deployments = std::move(deployments);
+            }
+        }
 
         // Check for chain settings (Params() calls are only valid after this clause)
         try {

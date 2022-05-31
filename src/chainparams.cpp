@@ -378,7 +378,7 @@ public:
  */
 class CRegTestParams : public CChainParams {
 public:
-    explicit CRegTestParams(const ArgsManager& args) {
+    explicit CRegTestParams(const ArgsManager& args, ParamOverrides overrides) {
         strNetworkID =  CBaseChainParams::REGTEST;
         consensus.signet_blocks = false;
         consensus.signet_challenge.clear();
@@ -416,11 +416,12 @@ public:
         pchMessageStart[2] = 0xb5;
         pchMessageStart[3] = 0xda;
         nDefaultPort = 18444;
-        nPruneAfterHeight = args.GetBoolArg("-fastprune", false) ? 100 : 1000;
+        bool fastprune = overrides.m_fastprune && *overrides.m_fastprune;
+        nPruneAfterHeight = fastprune ? 100 : 1000;
         m_assumed_blockchain_size = 0;
         m_assumed_chain_state_size = 0;
 
-        UpdateActivationParametersFromArgs(args);
+        UpdateActivationParametersFromOverrides(overrides);
 
         genesis = CreateGenesisBlock(1296688602, 2, 0x207fffff, 1, 50 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
@@ -477,12 +478,13 @@ public:
         consensus.vDeployments[d].nTimeout = nTimeout;
         consensus.vDeployments[d].min_activation_height = min_activation_height;
     }
-    void UpdateActivationParametersFromArgs(const ArgsManager& args);
+    void UpdateActivationParametersFromOverrides(const ParamOverrides& overrides);
 };
 
-static void MaybeUpdateHeights(const ArgsManager& args, Consensus::Params& consensus)
+static void MaybeUpdateHeights(const ParamOverrides& overrides, Consensus::Params& consensus)
 {
-    for (const std::string& arg : args.GetArgs("-testactivationheight")) {
+    if (!overrides.m_activation_heights) return;
+    for (const std::string& arg : *overrides.m_activation_heights) {
         const auto found{arg.find('@')};
         if (found == std::string::npos) {
             throw std::runtime_error(strprintf("Invalid format (%s) for -testactivationheight=name@height.", arg));
@@ -509,13 +511,13 @@ static void MaybeUpdateHeights(const ArgsManager& args, Consensus::Params& conse
     }
 }
 
-void CRegTestParams::UpdateActivationParametersFromArgs(const ArgsManager& args)
+void CRegTestParams::UpdateActivationParametersFromOverrides(const ParamOverrides& overrides)
 {
-    MaybeUpdateHeights(args, consensus);
+    MaybeUpdateHeights(overrides, consensus);
 
-    if (!args.IsArgSet("-vbparams")) return;
+    if (!overrides.m_deployments) return;
 
-    for (const std::string& strDeployment : args.GetArgs("-vbparams")) {
+    for (const std::string& strDeployment : *overrides.m_deployments) {
         std::vector<std::string> vDeploymentParams = SplitString(strDeployment, ':');
         if (vDeploymentParams.size() < 3 || 4 < vDeploymentParams.size()) {
             throw std::runtime_error("Version bits parameters malformed, expecting deployment:start:end[:min_activation_height]");
@@ -562,7 +564,7 @@ std::unique_ptr<const CChainParams> CreateChainParams(const ArgsManager& args, c
     } else if (chain == CBaseChainParams::SIGNET) {
         return std::unique_ptr<CChainParams>(new SigNetParams(args, std::move(overrides)));
     } else if (chain == CBaseChainParams::REGTEST) {
-        return std::unique_ptr<CChainParams>(new CRegTestParams(args));
+        return std::unique_ptr<CChainParams>(new CRegTestParams(args, std::move(overrides)));
     }
     throw std::runtime_error(strprintf("%s: Unknown chain %s.", __func__, chain));
 }
