@@ -747,6 +747,7 @@ public:
         uint64_t nMaxOutboundLimit = 0;
         int64_t m_peer_connect_timeout = DEFAULT_PEER_CONNECT_TIMEOUT;
         std::vector<std::string> vSeedNodes;
+        std::vector<std::string> m_dns_seed_nodes;
         std::vector<NetWhitelistPermissions> vWhitelistedRange;
         std::vector<NetWhitebindPermissions> vWhiteBinds;
         std::vector<CService> vBinds;
@@ -788,6 +789,7 @@ public:
             m_added_nodes = connOptions.m_added_nodes;
         }
         m_onion_binds = connOptions.onion_binds;
+        m_dns_seed_nodes = connOptions.m_dns_seed_nodes;
     }
 
     CConnman(uint64_t seed0, uint64_t seed1, AddrMan& addrman, const NetGroupManager& netgroupman,
@@ -1217,6 +1219,7 @@ private:
      */
     std::vector<CService> m_onion_binds;
 
+    std::vector<std::string> m_dns_seed_nodes;
     /**
      * RAII helper to atomically create a copy of `m_nodes` and add a reference
      * to each of the nodes. The nodes are released when this object is destroyed.

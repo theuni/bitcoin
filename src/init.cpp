@@ -1796,6 +1796,12 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
 
     connOptions.vSeedNodes = args.GetArgs("-seednode");
 
+    if (args.IsArgSet("-signetseednode")) {
+        connOptions.m_dns_seed_nodes = args.GetArgs("-signetseednode");
+    } else {
+        connOptions.m_dns_seed_nodes = chainparams.DNSSeeds();
+    }
+
     // Initiate outbound connections unless connect=0
     connOptions.m_use_addrman_outgoing = !args.IsArgSet("-connect");
     if (!connOptions.m_use_addrman_outgoing) {
