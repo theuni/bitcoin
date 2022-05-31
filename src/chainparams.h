@@ -147,13 +147,6 @@ protected:
     ChainTxData chainTxData;
 };
 
-struct ParamOverrides{
-    std::optional<std::vector<uint8_t>> m_signet_challenge;
-    std::optional<bool> m_fastprune;
-    std::optional<std::vector<std::string>> m_deployments;
-    std::optional<std::vector<std::string>> m_activation_heights;
-};
-
 /**
  * Creates and returns a std::unique_ptr<CChainParams> of the chosen chain.
  * @returns a CChainParams* of the chosen chain.
