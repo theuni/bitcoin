@@ -156,9 +156,22 @@ static bool AppInit(NodeContext& node, int argc, char* argv[])
         if (!args.ReadConfigFiles(error, true)) {
             return InitError(Untranslated(strprintf("Error reading configuration file: %s\n", error)));
         }
+
+        ParamOverrides overrides;
+        if (args.IsArgSet("-signetchallenge")) {
+            const auto signet_challenge = args.GetArgs("-signetchallenge");
+            if (signet_challenge.size() != 1) {
+                throw std::runtime_error(strprintf("%s: -signetchallenge cannot be multiple values.", __func__));
+            }
+            auto bin = ParseHex(signet_challenge[0]);
+            overrides.m_signet_challenge = bin;
+            LogPrintf("Signet with challenge %s\n", signet_challenge[0]);
+        }
+
+
         // Check for chain settings (Params() calls are only valid after this clause)
         try {
-            SelectParams(args.GetChainName());
+            SelectParams(args.GetChainName(), std::move(overrides));
         } catch (const std::exception& e) {
             return InitError(Untranslated(strprintf("%s\n", e.what())));
         }

@@ -277,11 +277,11 @@ public:
  */
 class SigNetParams : public CChainParams {
 public:
-    explicit SigNetParams(const ArgsManager& args) {
+    explicit SigNetParams(const ArgsManager& args, ParamOverrides overrides) {
         std::vector<uint8_t> bin;
         vSeeds.clear();
 
-        if (!args.IsArgSet("-signetchallenge")) {
+        if (!overrides.m_signet_challenge) {
             bin = ParseHex("512103ad5e0edad18cb1f0fc0d28a3d4f1f3e445640337489abb10404f2d1e086be430210359ef5021964fe22d6f8e05b2463c9540ce96883fe3b278760f048f5189f2e6c452ae");
             vSeeds.emplace_back("seed.signet.bitcoin.sprovoost.nl.");
 
@@ -300,12 +300,7 @@ public:
                 /* dTxRate  */ 0.1389638742514995,
             };
         } else {
-            const auto signet_challenge = args.GetArgs("-signetchallenge");
-            if (signet_challenge.size() != 1) {
-                throw std::runtime_error(strprintf("%s: -signetchallenge cannot be multiple values.", __func__));
-            }
-            bin = ParseHex(signet_challenge[0]);
-
+            bin  = *overrides.m_signet_challenge;
             consensus.nMinimumChainWork = uint256{};
             consensus.defaultAssumeValid = uint256{};
             m_assumed_blockchain_size = 0;
@@ -315,7 +310,6 @@ public:
                 0,
                 0,
             };
-            LogPrintf("Signet with challenge %s\n", signet_challenge[0]);
         }
 
         if (args.IsArgSet("-signetseednode")) {
@@ -563,22 +557,22 @@ const CChainParams &Params() {
     return *globalChainParams;
 }
 
-std::unique_ptr<const CChainParams> CreateChainParams(const ArgsManager& args, const std::string& chain)
+std::unique_ptr<const CChainParams> CreateChainParams(const ArgsManager& args, const std::string& chain, ParamOverrides overrides)
 {
     if (chain == CBaseChainParams::MAIN) {
         return std::unique_ptr<CChainParams>(new CMainParams());
     } else if (chain == CBaseChainParams::TESTNET) {
         return std::unique_ptr<CChainParams>(new CTestNetParams());
     } else if (chain == CBaseChainParams::SIGNET) {
-        return std::unique_ptr<CChainParams>(new SigNetParams(args));
+        return std::unique_ptr<CChainParams>(new SigNetParams(args, std::move(overrides)));
     } else if (chain == CBaseChainParams::REGTEST) {
         return std::unique_ptr<CChainParams>(new CRegTestParams(args));
     }
     throw std::runtime_error(strprintf("%s: Unknown chain %s.", __func__, chain));
 }
 
-void SelectParams(const std::string& network)
+void SelectParams(const std::string& network, ParamOverrides overrides)
 {
     SelectBaseParams(network);
-    globalChainParams = CreateChainParams(gArgs, network);
+    globalChainParams = CreateChainParams(gArgs, network, std::move(overrides));
 }
