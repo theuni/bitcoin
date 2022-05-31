@@ -277,7 +277,7 @@ public:
  */
 class SigNetParams : public CChainParams {
 public:
-    explicit SigNetParams(const ArgsManager& args, ParamOverrides overrides) {
+    explicit SigNetParams(ParamOverrides overrides) {
         std::vector<uint8_t> bin;
         vSeeds.clear();
 
@@ -378,7 +378,7 @@ public:
  */
 class CRegTestParams : public CChainParams {
 public:
-    explicit CRegTestParams(const ArgsManager& args, ParamOverrides overrides) {
+    explicit CRegTestParams(ParamOverrides overrides) {
         strNetworkID =  CBaseChainParams::REGTEST;
         consensus.signet_blocks = false;
         consensus.signet_challenge.clear();
@@ -555,16 +555,16 @@ const CChainParams &Params() {
     return *globalChainParams;
 }
 
-std::unique_ptr<const CChainParams> CreateChainParams(const ArgsManager& args, const std::string& chain, ParamOverrides overrides)
+std::unique_ptr<const CChainParams> CreateChainParams(const std::string& chain, ParamOverrides overrides)
 {
     if (chain == CBaseChainParams::MAIN) {
         return std::unique_ptr<CChainParams>(new CMainParams());
     } else if (chain == CBaseChainParams::TESTNET) {
         return std::unique_ptr<CChainParams>(new CTestNetParams());
     } else if (chain == CBaseChainParams::SIGNET) {
-        return std::unique_ptr<CChainParams>(new SigNetParams(args, std::move(overrides)));
+        return std::unique_ptr<CChainParams>(new SigNetParams(std::move(overrides)));
     } else if (chain == CBaseChainParams::REGTEST) {
-        return std::unique_ptr<CChainParams>(new CRegTestParams(args, std::move(overrides)));
+        return std::unique_ptr<CChainParams>(new CRegTestParams(std::move(overrides)));
     }
     throw std::runtime_error(strprintf("%s: Unknown chain %s.", __func__, chain));
 }
@@ -572,5 +572,5 @@ std::unique_ptr<const CChainParams> CreateChainParams(const ArgsManager& args, c
 void SelectParams(const std::string& network, ParamOverrides overrides)
 {
     SelectBaseParams(network);
-    globalChainParams = CreateChainParams(gArgs, network, std::move(overrides));
+    globalChainParams = CreateChainParams(network, std::move(overrides));
 }
