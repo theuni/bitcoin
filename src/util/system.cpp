@@ -1103,6 +1103,45 @@ void ArgsManager::LogArgs() const
     logArgsPrefix("Command-line arg:", "", m_settings.command_line_options);
 }
 
+ParamOverrides ArgsManager::GetOverrides() const
+{
+        ParamOverrides overrides;
+        if (IsArgSet("-signetchallenge")) {
+            const auto signet_challenge = GetArgs("-signetchallenge");
+            if (signet_challenge.size() != 1) {
+                throw std::runtime_error(strprintf("%s: -signetchallenge cannot be multiple values.", __func__));
+            }
+            auto bin = ParseHex(signet_challenge[0]);
+            overrides.m_signet_challenge = bin;
+            LogPrintf("Signet with challenge %s\n", signet_challenge[0]);
+        }
+
+        if (GetBoolArg("-fastprune", false)) {
+            overrides.m_fastprune = true;
+        }
+
+        if (IsArgSet("-testactivationheight")) {
+            std::vector<std::string> activation_heights;
+            for (const std::string& heightstr : GetArgs("-testactivationheight")) {
+                activation_heights.push_back(heightstr);
+            }
+            if (!activation_heights.empty()) {
+                overrides.m_activation_heights = std::move(activation_heights);
+            }
+        }
+
+        if (IsArgSet("-vbparams")) {
+            std::vector<std::string> deployments;
+            for (const std::string& strDeployment : GetArgs("-vbparams")) {
+                deployments.push_back(strDeployment);
+            }
+            if (!deployments.empty()) {
+                overrides.m_deployments = std::move(deployments);
+            }
+        }
+        return overrides;
+}
+
 bool RenameOver(fs::path src, fs::path dest)
 {
 #ifdef __MINGW64__

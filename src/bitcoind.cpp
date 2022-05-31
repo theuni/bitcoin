@@ -157,44 +157,9 @@ static bool AppInit(NodeContext& node, int argc, char* argv[])
             return InitError(Untranslated(strprintf("Error reading configuration file: %s\n", error)));
         }
 
-        ParamOverrides overrides;
-        if (args.IsArgSet("-signetchallenge")) {
-            const auto signet_challenge = args.GetArgs("-signetchallenge");
-            if (signet_challenge.size() != 1) {
-                throw std::runtime_error(strprintf("%s: -signetchallenge cannot be multiple values.", __func__));
-            }
-            auto bin = ParseHex(signet_challenge[0]);
-            overrides.m_signet_challenge = bin;
-            LogPrintf("Signet with challenge %s\n", signet_challenge[0]);
-        }
-
-        if (args.GetBoolArg("-fastprune", false)) {
-            overrides.m_fastprune = true;
-        }
-
-        if (args.IsArgSet("-testactivationheight")) {
-            std::vector<std::string> activation_heights;
-            for (const std::string& heightstr : args.GetArgs("-testactivationheight")) {
-                activation_heights.push_back(heightstr);
-            }
-            if (!activation_heights.empty()) {
-                overrides.m_activation_heights = std::move(activation_heights);
-            }
-        }
-
-        if (args.IsArgSet("-vbparams")) {
-            std::vector<std::string> deployments;
-            for (const std::string& strDeployment : args.GetArgs("-vbparams")) {
-                deployments.push_back(strDeployment);
-            }
-            if (!deployments.empty()) {
-                overrides.m_deployments = std::move(deployments);
-            }
-        }
-
         // Check for chain settings (Params() calls are only valid after this clause)
         try {
-            SelectParams(args.GetChainName(), std::move(overrides));
+            SelectParams(args.GetChainName(), args.GetOverrides());
         } catch (const std::exception& e) {
             return InitError(Untranslated(strprintf("%s\n", e.what())));
         }

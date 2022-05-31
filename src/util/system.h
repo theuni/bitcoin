@@ -34,7 +34,7 @@
 #include <vector>
 
 class UniValue;
-
+struct ParamOverrides;
 // Application startup time (used for uptime calculation)
 int64_t GetStartupTime();
 
@@ -474,6 +474,8 @@ protected:
      * useful for troubleshooting.
      */
     void LogArgs() const;
+
+    ParamOverrides GetOverrides() const;
 
 private:
     /**
