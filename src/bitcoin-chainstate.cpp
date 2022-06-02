@@ -46,7 +46,7 @@ int main(int argc, char* argv[])
 
 
     // SETUP: Misc Globals
-    SelectParams(CBaseChainParams::MAIN);
+    SelectParams(CBaseChainParams::MAIN, CMainParamsOpts{});
     const CChainParams& chainparams = Params();
 
     init::SetGlobals(); // ECC_Start, etc.
