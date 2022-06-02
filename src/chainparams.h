@@ -15,6 +15,7 @@
 
 #include <memory>
 #include <string>
+#include <variant>
 #include <vector>
 
 typedef std::map<int, uint256> MapCheckpoints;
@@ -146,12 +147,29 @@ protected:
     ChainTxData chainTxData;
 };
 
+struct CMainParamsOpts{};
+struct CTestNetParamsOpts{};
+
+struct CRegTestParamsOpts
+{
+    std::vector<uint8_t> m_signet_challenge = ParseHex("512103ad5e0edad18cb1f0fc0d28a3d4f1f3e445640337489abb10404f2d1e086be430210359ef5021964fe22d6f8e05b2463c9540ce96883fe3b278760f048f5189f2e6c452ae");
+    bool m_fastprune = false;
+};
+
+struct SigNetParamsOpts
+{
+    std::vector<std::string> m_deployments = {};
+    std::vector<std::string> m_activation_heights = {};
+};
+
+using ChainParamsOpts = std::variant<CMainParamsOpts, CTestNetParamsOpts, CRegTestParamsOpts, SigNetParamsOpts>;
+
 /**
  * Creates and returns a std::unique_ptr<CChainParams> of the chosen chain.
  * @returns a CChainParams* of the chosen chain.
  * @throws a std::runtime_error if the chain is not supported.
  */
-std::unique_ptr<const CChainParams> CreateChainParams(const ArgsManager& args, const std::string& chain);
+std::unique_ptr<const CChainParams> CreateChainParams(const ArgsManager& args, const std::string& chain, ChainParamsOpts opts);
 
 /**
  * Return the currently selected parameters. This won't change after app
@@ -163,6 +181,6 @@ const CChainParams &Params();
  * Sets the params returned by Params() to those for the given chain name.
  * @throws std::runtime_error when the chain is not supported.
  */
-void SelectParams(const std::string& chain);
+void SelectParams(const std::string& chain, ChainParamsOpts opts);
 
 #endif // BITCOIN_CHAINPARAMS_H

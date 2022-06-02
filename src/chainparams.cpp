@@ -277,7 +277,8 @@ public:
  */
 class SigNetParams : public CChainParams {
 public:
-    explicit SigNetParams(const ArgsManager& args) {
+    explicit SigNetParams(const ArgsManager& args, SigNetParamsOpts opts) {
+
         std::vector<uint8_t> bin;
         vSeeds.clear();
 
@@ -388,7 +389,7 @@ public:
  */
 class CRegTestParams : public CChainParams {
 public:
-    explicit CRegTestParams(const ArgsManager& args) {
+    explicit CRegTestParams(const ArgsManager& args, CRegTestParamsOpts opts) {
         strNetworkID =  CBaseChainParams::REGTEST;
         consensus.signet_blocks = false;
         consensus.signet_challenge.clear();
@@ -563,22 +564,27 @@ const CChainParams &Params() {
     return *globalChainParams;
 }
 
-std::unique_ptr<const CChainParams> CreateChainParams(const ArgsManager& args, const std::string& chain)
+std::unique_ptr<const CChainParams> CreateChainParams(const ArgsManager& args, const std::string& chain, ChainParamsOpts opts)
 {
+
     if (chain == CBaseChainParams::MAIN) {
+        assert(std::holds_alternative<CMainParamsOpts>(opts));
         return std::unique_ptr<CChainParams>(new CMainParams());
     } else if (chain == CBaseChainParams::TESTNET) {
+        assert(std::holds_alternative<CTestNetParamsOpts>(opts));
         return std::unique_ptr<CChainParams>(new CTestNetParams());
     } else if (chain == CBaseChainParams::SIGNET) {
-        return std::unique_ptr<CChainParams>(new SigNetParams(args));
+        assert(std::holds_alternative<SigNetParamsOpts>(opts));
+        return std::unique_ptr<CChainParams>(new SigNetParams(args, std::get<SigNetParamsOpts>(opts)));
     } else if (chain == CBaseChainParams::REGTEST) {
-        return std::unique_ptr<CChainParams>(new CRegTestParams(args));
+        assert(std::holds_alternative<CRegTestParamsOpts>(opts));
+        return std::unique_ptr<CChainParams>(new CRegTestParams(args, std::get<CRegTestParamsOpts>(opts)));
     }
     throw std::runtime_error(strprintf("%s: Unknown chain %s.", __func__, chain));
 }
 
-void SelectParams(const std::string& network)
+void SelectParams(const std::string& network, ChainParamsOpts opts)
 {
     SelectBaseParams(network);
-    globalChainParams = CreateChainParams(gArgs, network);
+    globalChainParams = CreateChainParams(gArgs, network, std::move(opts));
 }
