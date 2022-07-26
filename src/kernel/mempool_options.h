@@ -31,7 +31,7 @@ struct MemPoolOptions {
     CBlockPolicyEstimator* estimator{nullptr};
     /* The ratio used to determine how often sanity checks will run.  */
     int check_ratio{0};
-    int64_t max_size_bytes{DEFAULT_MAX_MEMPOOL_SIZE_MB * 1'000'000};
+    int64_t max_size_bytes;
     std::chrono::seconds expiry{std::chrono::hours{DEFAULT_MEMPOOL_EXPIRY_HOURS}};
     bool full_rbf{DEFAULT_MEMPOOL_FULL_RBF};
     MemPoolLimits limits{};
