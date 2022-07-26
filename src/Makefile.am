@@ -969,6 +969,23 @@ libbitcoinconsensus_la_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 endif
 #
 
+CLANG_TIDY_LINT_FILES =
+CLANG_TIDY_LINT_FILES += $(filter-out $(BITCOIN_CORE_H),$(libbitcoin_node_a_SOURCES))
+CLANG_TIDY_LINT_FILES += $(filter-out $(BITCOIN_CORE_H),$(libbitcoin_wallet_a_SOURCES))
+CLANG_TIDY_LINT_FILES += $(filter-out $(CRYPTO_BASE_H),$(crypto_libbitcoin_crypto_base_la_SOURCES))
+CLANG_TIDY_LINT_FILES += $(filter-out $(libbitcoin_consensus_H),$(libbitcoin_consensus_a_SOURCES))
+CLANG_TIDY_LINT_FILES += $(filter-out $(BITCOIN_CORE_H),$(libbitcoin_common_a_SOURCES))
+CLANG_TIDY_LINT_FILES += $(filter-out $(BITCOIN_CORE_H),$(libbitcoin_util_a_SOURCES))
+
+CLANG_TIDY_LINT_FILES += $(filter-out $(libbitcoin_ipc_H),$(libbitcoin_ipc_a_SOURCES))
+CLANG_TIDY_LINT_FILES += $(filter-out $(BITCOIN_CORE_H),$(libbitcoin_cli_a_SOURCES))
+CLANG_TIDY_LINT_FILES += $(filter-out $(BITCOIN_CORE_H),$(libbitcoin_wallet_tool_a_SOURCES))
+CLANG_TIDY_LINT_FILES += $(libbitcoin_zmq_a_SOURCES)
+
+bitcoin-tidy-lint: FORCE
+	$(AM_V_at)$(CLANGTIDY) --load=$(CLANG_TIDY_USE_PLUGINS) -checks='-*,bitcoin-init-list' $(CLANG_TIDY_LINT_FILES) -- -std=c++17 $(DEFS) $(BITCOIN_INCLUDES) 2>/dev/null
+
+
 CTAES_DIST =  crypto/ctaes/bench.c
 CTAES_DIST += crypto/ctaes/ctaes.c
 CTAES_DIST += crypto/ctaes/ctaes.h
