@@ -138,6 +138,7 @@ BITCOIN_CORE_H = \
   compat/compat.h \
   compat/cpuid.h \
   compat/endian.h \
+  compat/stdin.h \
   compressor.h \
   node/connection_types.h \
   consensus/consensus.h \
@@ -501,36 +502,38 @@ crypto_libbitcoin_crypto_base_la_CPPFLAGS = $(AM_CPPFLAGS)
 crypto_libbitcoin_crypto_base_la_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) -static
 crypto_libbitcoin_crypto_base_la_LDFLAGS = $(AM_LDFLAGS) -static
 
-crypto_libbitcoin_crypto_base_la_SOURCES = \
-  crypto/aes.cpp \
+CRYPTO_BASE_H = \
   crypto/aes.h \
   crypto/chacha_poly_aead.h \
-  crypto/chacha_poly_aead.cpp \
   crypto/chacha20.h \
-  crypto/chacha20.cpp \
   crypto/common.h \
-  crypto/hkdf_sha256_32.cpp \
   crypto/hkdf_sha256_32.h \
-  crypto/hmac_sha256.cpp \
   crypto/hmac_sha256.h \
-  crypto/hmac_sha512.cpp \
   crypto/hmac_sha512.h \
   crypto/poly1305.h \
-  crypto/poly1305.cpp \
   crypto/muhash.h \
+  crypto/ripemd160.h \
+  crypto/sha1.h \
+  crypto/sha256.h \
+  crypto/sha3.h \
+  crypto/sha512.h \
+  crypto/siphash.h
+crypto_libbitcoin_crypto_base_la_SOURCES = \
+  crypto/aes.cpp \
+  crypto/chacha_poly_aead.cpp \
+  crypto/chacha20.cpp \
+  crypto/hkdf_sha256_32.cpp \
+  crypto/hmac_sha256.cpp \
+  crypto/hmac_sha512.cpp \
+  crypto/poly1305.cpp \
   crypto/muhash.cpp \
   crypto/ripemd160.cpp \
-  crypto/ripemd160.h \
   crypto/sha1.cpp \
-  crypto/sha1.h \
   crypto/sha256.cpp \
-  crypto/sha256.h \
   crypto/sha3.cpp \
-  crypto/sha3.h \
   crypto/sha512.cpp \
-  crypto/sha512.h \
   crypto/siphash.cpp \
-  crypto/siphash.h
+  $(CRYPTO_BASE_H)
 
 if USE_ASM
 crypto_libbitcoin_crypto_base_la_SOURCES += crypto/sha256_sse4.cpp
@@ -575,39 +578,42 @@ crypto_libbitcoin_crypto_arm_shani_la_SOURCES = crypto/sha256_arm_shani.cpp
 # consensus: shared between all executables that validate any consensus rules.
 libbitcoin_consensus_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
 libbitcoin_consensus_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
-libbitcoin_consensus_a_SOURCES = \
-  arith_uint256.cpp \
+libbitcoin_consensus_H = \
   arith_uint256.h \
   consensus/amount.h \
-  consensus/merkle.cpp \
   consensus/merkle.h \
   consensus/params.h \
-  consensus/tx_check.cpp \
   consensus/validation.h \
-  hash.cpp \
   hash.h \
   prevector.h \
-  primitives/block.cpp \
   primitives/block.h \
-  primitives/transaction.cpp \
   primitives/transaction.h \
-  pubkey.cpp \
   pubkey.h \
-  script/bitcoinconsensus.cpp \
-  script/interpreter.cpp \
   script/interpreter.h \
-  script/script.cpp \
   script/script.h \
-  script/script_error.cpp \
   script/script_error.h \
   serialize.h \
   span.h \
   tinyformat.h \
-  uint256.cpp \
   uint256.h \
-  util/strencodings.cpp \
   util/strencodings.h \
   version.h
+
+libbitcoin_consensus_a_SOURCES = \
+  arith_uint256.cpp \
+  consensus/merkle.cpp \
+  consensus/tx_check.cpp \
+  hash.cpp \
+  primitives/block.cpp \
+  primitives/transaction.cpp \
+  pubkey.cpp \
+  script/bitcoinconsensus.cpp \
+  script/interpreter.cpp \
+  script/script.cpp \
+  script/script_error.cpp \
+  uint256.cpp \
+  util/strencodings.cpp \
+  $(libbitcoin_consensus_H)
 
 # common: shared between bitcoind, and bitcoin-qt and non-server tools
 libbitcoin_common_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
@@ -701,7 +707,6 @@ endif
 libbitcoin_cli_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
 libbitcoin_cli_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_cli_a_SOURCES = \
-  compat/stdin.h \
   compat/stdin.cpp \
   rpc/client.cpp \
   $(BITCOIN_CORE_H)
@@ -1035,17 +1040,21 @@ ipc/capnp/libbitcoin_ipc_a-protocol.$(OBJEXT): $(libbitcoin_ipc_mpgen_input:=.h)
 
 if BUILD_MULTIPROCESS
 LIBBITCOIN_IPC=libbitcoin_ipc.a
-libbitcoin_ipc_a_SOURCES = \
+libbitcoin_ipc_H = \
   ipc/capnp/context.h \
   ipc/capnp/init-types.h \
-  ipc/capnp/protocol.cpp \
   ipc/capnp/protocol.h \
   ipc/context.h \
   ipc/exception.h \
-  ipc/interfaces.cpp \
-  ipc/process.cpp \
   ipc/process.h \
   ipc/protocol.h
+
+libbitcoin_ipc_a_SOURCES = \
+  ipc/capnp/protocol.cpp \
+  ipc/interfaces.cpp \
+  ipc/process.cpp \
+  $(libbitcoin_ipc_H)
+
 libbitcoin_ipc_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
 libbitcoin_ipc_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) $(LIBMULTIPROCESS_CFLAGS)
 
