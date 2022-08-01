@@ -17,6 +17,7 @@
 #include <compat/compat.h>
 #include <compat/assumptions.h>
 #include <fs.h>
+#include <kernel/exports.h>
 #include <logging.h>
 #include <sync.h>
 #include <tinyformat.h>
@@ -394,7 +395,7 @@ protected:
 
     // Forces an arg setting. Called by SoftSetArg() if the arg hasn't already
     // been set. Also called directly in testing.
-    void ForceSetArg(const std::string& strArg, const std::string& strValue);
+    BITCOIN_EXPORT void ForceSetArg(const std::string& strArg, const std::string& strValue);
 
     /**
      * Returns the appropriate chain name from the program arguments.
@@ -491,7 +492,7 @@ private:
      * @return Absolute path on success, otherwise an empty path when a non-directory path would be returned
      * @post Returned directory path is created unless it is empty
      */
-    const fs::path& GetDataDir(bool net_specific) const;
+    BITCOIN_EXPORT const fs::path& GetDataDir(bool net_specific) const;
 
     // Helper function for LogArgs().
     void logArgsPrefix(
@@ -500,7 +501,7 @@ private:
         const std::map<std::string, std::vector<util::SettingsValue>>& args) const;
 };
 
-extern ArgsManager gArgs;
+extern BITCOIN_EXPORT ArgsManager gArgs;
 
 /**
  * @return true if help has been requested via a command-line arg

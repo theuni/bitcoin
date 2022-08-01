@@ -9,6 +9,7 @@
 #include <config/bitcoin-config.h>
 #endif
 
+#include <kernel/exports.h>
 #include <tinyformat.h>
 
 #include <stdexcept>
@@ -52,7 +53,7 @@ T&& inline_check_non_fatal(T&& val, const char* file, int line, const char* func
 #endif
 
 /** Helper for Assert() */
-void assertion_fail(const char* file, int line, const char* func, const char* assertion);
+BITCOIN_EXPORT void assertion_fail(const char* file, int line, const char* func, const char* assertion);
 
 /** Helper for Assert()/Assume() */
 template <bool IS_ASSERT, typename T>

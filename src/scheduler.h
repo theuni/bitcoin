@@ -6,6 +6,7 @@
 #define BITCOIN_SCHEDULER_H
 
 #include <attributes.h>
+#include <kernel/exports.h>
 #include <sync.h>
 #include <threadsafety.h>
 
@@ -35,7 +36,7 @@
  * delete t;
  * delete s; // Must be done after thread is interrupted/joined.
  */
-class CScheduler
+class BITCOIN_EXPORT CScheduler
 {
 public:
     CScheduler();

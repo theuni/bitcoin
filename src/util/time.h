@@ -7,6 +7,7 @@
 #define BITCOIN_UTIL_TIME_H
 
 #include <compat/compat.h>
+#include <kernel/exports.h>
 
 #include <chrono>
 #include <cstdint>
@@ -66,7 +67,7 @@ using SecondsDouble = std::chrono::duration<double, std::chrono::seconds::period
  * - std::chrono::system_clock for system time
  * - NodeClock                 for mockable system time
  */
-int64_t GetTime();
+BITCOIN_EXPORT int64_t GetTime();
 
 /** Returns the system time (not mockable) */
 int64_t GetTimeMillis();

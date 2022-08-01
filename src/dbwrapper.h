@@ -7,6 +7,7 @@
 
 #include <clientversion.h>
 #include <fs.h>
+#include <kernel/exports.h>
 #include <logging.h>
 #include <serialize.h>
 #include <span.h>
@@ -180,7 +181,7 @@ public:
     }
 };
 
-class CDBWrapper
+class BITCOIN_EXPORT CDBWrapper
 {
     friend const std::vector<unsigned char>& dbwrapper_private::GetObfuscateKey(const CDBWrapper &w);
 private:

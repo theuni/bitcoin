@@ -8,6 +8,7 @@
 
 #include <chainparamsbase.h>
 #include <consensus/params.h>
+#include <kernel/exports.h>
 #include <netaddress.h>
 #include <primitives/block.h>
 #include <protocol.h>
@@ -157,12 +158,12 @@ std::unique_ptr<const CChainParams> CreateChainParams(const ArgsManager& args, c
  * Return the currently selected parameters. This won't change after app
  * startup, except for unit tests.
  */
-const CChainParams &Params();
+BITCOIN_EXPORT const CChainParams &Params();
 
 /**
  * Sets the params returned by Params() to those for the given chain name.
  * @throws std::runtime_error when the chain is not supported.
  */
-void SelectParams(const std::string& chain);
+BITCOIN_EXPORT void SelectParams(const std::string& chain);
 
 #endif // BITCOIN_CHAINPARAMS_H

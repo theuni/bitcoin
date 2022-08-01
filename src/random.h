@@ -8,6 +8,7 @@
 
 #include <crypto/chacha20.h>
 #include <crypto/common.h>
+#include <kernel/exports.h>
 #include <span.h>
 #include <uint256.h>
 
@@ -123,7 +124,7 @@ void GetStrongRandBytes(Span<unsigned char> bytes) noexcept;
  *
  * Thread-safe.
  */
-void RandAddPeriodic() noexcept;
+BITCOIN_EXPORT void RandAddPeriodic() noexcept;
 
 /**
  * Gathers entropy from the low bits of the time at which events occur. Should

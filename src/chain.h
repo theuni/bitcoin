@@ -9,6 +9,7 @@
 #include <arith_uint256.h>
 #include <consensus/params.h>
 #include <flatfile.h>
+#include <kernel/exports.h>
 #include <primitives/block.h>
 #include <sync.h>
 #include <uint256.h>
@@ -77,7 +78,7 @@ public:
         SetNull();
     }
 
-    std::string ToString() const;
+    BITCOIN_EXPORT std::string ToString() const;
 
     /** update statistics (does not update nSize) */
     void AddBlock(unsigned int nHeightIn, uint64_t nTimeIn)
@@ -301,7 +302,7 @@ public:
         return pbegin[(pend - pbegin) / 2];
     }
 
-    std::string ToString() const;
+    BITCOIN_EXPORT std::string ToString() const;
 
     //! Check whether this block index entry is valid up to the passed validity level.
     bool IsValid(enum BlockStatus nUpTo = BLOCK_VALID_TRANSACTIONS) const

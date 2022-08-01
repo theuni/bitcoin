@@ -8,6 +8,7 @@
 
 #include <coins.h>
 #include <dbwrapper.h>
+#include <kernel/exports.h>
 #include <sync.h>
 
 #include <memory>
@@ -47,7 +48,7 @@ static const int64_t nMaxCoinsDBCache = 8;
 extern RecursiveMutex cs_main;
 
 /** CCoinsView backed by the coin database (chainstate/) */
-class CCoinsViewDB final : public CCoinsView
+class BITCOIN_EXPORT CCoinsViewDB final : public CCoinsView
 {
 protected:
     std::unique_ptr<CDBWrapper> m_db;

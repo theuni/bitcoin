@@ -6,6 +6,7 @@
 #ifndef BITCOIN_VALIDATIONINTERFACE_H
 #define BITCOIN_VALIDATIONINTERFACE_H
 
+#include <kernel/exports.h>
 #include <primitives/transaction.h> // CTransaction(Ref)
 #include <sync.h>
 
@@ -22,7 +23,7 @@ class CScheduler;
 enum class MemPoolRemovalReason;
 
 /** Register subscriber */
-void RegisterValidationInterface(CValidationInterface* callbacks);
+BITCOIN_EXPORT void RegisterValidationInterface(CValidationInterface* callbacks);
 /** Unregister subscriber. DEPRECATED. This is not safe to use when the RPC server or main message handler thread is running. */
 void UnregisterValidationInterface(CValidationInterface* callbacks);
 /** Unregister all subscribers */
@@ -33,9 +34,9 @@ void UnregisterAllValidationInterfaces();
 // unregistration is nonblocking and can return before the last notification is
 // processed.
 /** Register subscriber */
-void RegisterSharedValidationInterface(std::shared_ptr<CValidationInterface> callbacks);
+BITCOIN_EXPORT void RegisterSharedValidationInterface(std::shared_ptr<CValidationInterface> callbacks);
 /** Unregister subscriber */
-void UnregisterSharedValidationInterface(std::shared_ptr<CValidationInterface> callbacks);
+BITCOIN_EXPORT void UnregisterSharedValidationInterface(std::shared_ptr<CValidationInterface> callbacks);
 
 /**
  * Pushes a function to callback onto the notification queue, guaranteeing any
@@ -187,11 +188,11 @@ private:
 
 public:
     /** Register a CScheduler to give callbacks which should run in the background (may only be called once) */
-    void RegisterBackgroundSignalScheduler(CScheduler& scheduler);
+    BITCOIN_EXPORT void RegisterBackgroundSignalScheduler(CScheduler& scheduler);
     /** Unregister a CScheduler to give callbacks which should run in the background - these callbacks will now be dropped! */
-    void UnregisterBackgroundSignalScheduler();
+    BITCOIN_EXPORT void UnregisterBackgroundSignalScheduler();
     /** Call any remaining callbacks on the calling thread */
-    void FlushBackgroundCallbacks();
+    BITCOIN_EXPORT void FlushBackgroundCallbacks();
 
     size_t CallbacksPending();
 
@@ -206,6 +207,6 @@ public:
     void NewPoWValidBlock(const CBlockIndex *, const std::shared_ptr<const CBlock>&);
 };
 
-CMainSignals& GetMainSignals();
+CMainSignals& BITCOIN_EXPORT GetMainSignals();
 
 #endif // BITCOIN_VALIDATIONINTERFACE_H

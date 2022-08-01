@@ -15,6 +15,7 @@
 #include <chain.h>
 #include <chainparams.h>
 #include <kernel/chainstatemanager_opts.h>
+#include <kernel/exports.h>
 #include <consensus/amount.h>
 #include <deploymentstatus.h>
 #include <fs.h>
@@ -91,7 +92,7 @@ enum class SynchronizationState {
     POST_INIT
 };
 
-extern RecursiveMutex cs_main;
+BITCOIN_EXPORT extern RecursiveMutex cs_main;
 extern GlobalMutex g_best_block_mutex;
 extern std::condition_variable g_best_block_cv;
 /** Used to notify getblocktemplate RPC of new tips. */
@@ -118,7 +119,7 @@ extern const std::vector<std::string> CHECKLEVEL_DOC;
 /** Run instances of script checking worker threads */
 void StartScriptCheckWorkerThreads(int threads_num);
 /** Stop all of the script checking worker threads */
-void StopScriptCheckWorkerThreads();
+BITCOIN_EXPORT void StopScriptCheckWorkerThreads();
 
 CAmount GetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams);
 
@@ -324,7 +325,7 @@ public:
 };
 
 /** Initializes the script-execution cache */
-void InitScriptExecutionCache();
+BITCOIN_EXPORT void InitScriptExecutionCache();
 
 /** Functions for validating blocks and updating the block tree */
 
@@ -624,7 +625,7 @@ public:
         int nManualPruneHeight = 0);
 
     //! Unconditionally flush all changes to disk.
-    void ForceFlushStateToDisk();
+    BITCOIN_EXPORT void ForceFlushStateToDisk();
 
     //! Prune blockfiles from the disk if necessary and then flush chainstate changes
     //! if we pruned.
@@ -645,7 +646,7 @@ public:
      *
      * @returns true unless a system error occurred
      */
-    bool ActivateBestChain(
+    BITCOIN_EXPORT bool ActivateBestChain(
         BlockValidationState& state,
         std::shared_ptr<const CBlock> pblock = nullptr)
         EXCLUSIVE_LOCKS_REQUIRED(!m_chainstate_mutex)
@@ -692,7 +693,7 @@ public:
     void UnloadBlockIndex() EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
 
     /** Check whether we are doing an initial block download (synchronizing from disk or network) */
-    bool IsInitialBlockDownload() const;
+    BITCOIN_EXPORT bool IsInitialBlockDownload() const;
 
     /** Find the last common block of this chain and a locator. */
     const CBlockIndex* FindForkInGlobalIndex(const CBlockLocator& locator) const EXCLUSIVE_LOCKS_REQUIRED(cs_main);
@@ -791,7 +792,7 @@ private:
  *    IBD process is happening in the background while use of the
  *    active (snapshot) chainstate allows the rest of the system to function.
  */
-class ChainstateManager
+class BITCOIN_EXPORT ChainstateManager
 {
 private:
     //! The chainstate used under normal operation (i.e. "regular" IBD) or, if

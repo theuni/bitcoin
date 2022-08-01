@@ -5,13 +5,15 @@
 #ifndef BITCOIN_UTIL_THREAD_H
 #define BITCOIN_UTIL_THREAD_H
 
+#include <kernel/exports.h>
+
 #include <functional>
 
 namespace util {
 /**
  * A wrapper for do-something-once thread functions.
  */
-void TraceThread(const char* thread_name, std::function<void()> thread_func);
+BITCOIN_EXPORT void TraceThread(const char* thread_name, std::function<void()> thread_func);
 
 } // namespace util
 

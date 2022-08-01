@@ -6,6 +6,7 @@
 #ifndef BITCOIN_SCRIPT_SIGCACHE_H
 #define BITCOIN_SCRIPT_SIGCACHE_H
 
+#include <kernel/exports.h>
 #include <script/interpreter.h>
 #include <span.h>
 #include <util/hasher.h>
@@ -33,6 +34,6 @@ public:
     bool VerifySchnorrSignature(Span<const unsigned char> sig, const XOnlyPubKey& pubkey, const uint256& sighash) const override;
 };
 
-void InitSignatureCache();
+BITCOIN_EXPORT void InitSignatureCache();
 
 #endif // BITCOIN_SCRIPT_SIGCACHE_H

@@ -5,6 +5,8 @@
 #ifndef BITCOIN_CHAINPARAMSBASE_H
 #define BITCOIN_CHAINPARAMSBASE_H
 
+#include <kernel/exports.h>
+
 #include <memory>
 #include <string>
 
@@ -19,7 +21,7 @@ class CBaseChainParams
 public:
     ///@{
     /** Chain name strings */
-    static const std::string MAIN;
+    static const BITCOIN_EXPORT std::string MAIN;
     static const std::string TESTNET;
     static const std::string SIGNET;
     static const std::string REGTEST;
