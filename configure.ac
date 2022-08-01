@@ -67,8 +67,8 @@ case $host in
      lt_cv_deplibs_check_method="pass_all"
 
      dnl remove unwanted -DDLL_EXPORT
-     lt_cv_prog_compiler_pic="-DPIC"
-     lt_cv_prog_compiler_pic_CXX="-DPIC"
+     lt_cv_prog_compiler_pic="-DPIC -DBITCOIN_DLL_EXPORT"
+     lt_cv_prog_compiler_pic_CXX="-DPIC -DBITCOIN_DLL_EXPORT"
   ;;
 esac
 
