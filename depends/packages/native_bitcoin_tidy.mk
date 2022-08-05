@@ -1,8 +1,8 @@
 package=native_bitcoin_tidy
-$(package)_version=eb51df3f2b803af251b3c924942137520917a314
+$(package)_version=aa62f3e2279ef4b9cbba7a6e2dc6185fefb39a23
 $(package)_download_path=https://github.com/theuni/bitcoin-tidy-experiments/archive
 $(package)_file_name=$($(package)_version).tar.gz
-$(package)_sha256_hash=1640c41f19b6f7b47e00fe853c148802098153e3022b1a1837494f926241093d
+$(package)_sha256_hash=34a4eabfca8a02f47d61531b6262ade3d4df53e281c6c69c687f914eb978475d
 $(package)_dependencies=native_clang_headers
 define $(package)_config_cmds
   $($(package)_cmake)
