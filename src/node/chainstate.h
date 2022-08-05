@@ -49,7 +49,10 @@ enum class ChainstateLoadStatus {
 };
 
 //! Chainstate load status code and optional error string.
-using ChainstateLoadResult = std::tuple<ChainstateLoadStatus, bilingual_str>;
+struct ChainstateLoadResult{
+    ChainstateLoadStatus m_status;
+    bilingual_str m_str;
+};
 
 /** This sequence can have 4 types of outcomes:
  *

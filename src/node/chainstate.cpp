@@ -189,9 +189,9 @@ ChainstateLoadResult LoadChainstate(ChainstateManager& chainman, const CacheSize
     // Load a chain created from a UTXO snapshot, if any exist.
     chainman.DetectSnapshotChainstate(options.mempool);
 
-    auto [init_status, init_error] = CompleteChainstateInitialization(chainman, cache_sizes, options);
-    if (init_status != ChainstateLoadStatus::SUCCESS) {
-        return ChainstateLoadResult{init_status, init_error};
+    ChainstateLoadResult init_result = CompleteChainstateInitialization(chainman, cache_sizes, options);
+    if (init_result.m_status != ChainstateLoadStatus::SUCCESS) {
+        return init_result;
     }
 
     // If a snapshot chainstate was fully validated by a background chainstate during
@@ -225,9 +225,9 @@ ChainstateLoadResult LoadChainstate(ChainstateManager& chainman, const CacheSize
         // for the fully validated chainstate.
         chainman.ActiveChainstate().UnloadBlockIndex();
 
-        auto [init_status, init_error] = CompleteChainstateInitialization(chainman, cache_sizes, options);
-        if (init_status != ChainstateLoadStatus::SUCCESS) {
-            return ChainstateLoadResult{init_status, init_error};
+        init_result = CompleteChainstateInitialization(chainman, cache_sizes, options);
+        if (init_result.m_status != ChainstateLoadStatus::SUCCESS) {
+            return init_result;
         }
     } else {
         return ChainstateLoadResult{ChainstateLoadStatus::FAILURE, _(
