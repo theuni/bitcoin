@@ -1016,7 +1016,7 @@ clean-local:
 
 %.cpp.tidy: %.cpp FORCE
 	@echo clang-tidy: $<
-	$(AM_V_at)$(CLANGTIDY) $(CLANG_TIDY_USE_PLUGINS) -checks='$(CLANG_TIDY_CHECKS)' $< -- -std=c++17 $(DEFS) $(BITCOIN_INCLUDES)
+	$(AM_V_at)$(CLANGTIDY) $(CLANG_TIDY_USE_PLUGINS) -fix -checks='$(CLANG_TIDY_CHECKS)' $< -- -std=c++17 $(DEFS) $(BITCOIN_INCLUDES)
 
 .rc.o:
 	@test -f $(WINDRES)
