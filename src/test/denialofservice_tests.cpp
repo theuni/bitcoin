@@ -46,10 +46,19 @@ BOOST_AUTO_TEST_CASE(outbound_slow_chain_eviction)
 {
     LOCK(NetEventsInterface::g_msgproc_mutex);
 
-    ConnmanTestMsg& connman = static_cast<ConnmanTestMsg&>(*m_node.connman);
-    // Disable inactivity checks for this test to avoid interference
-    connman.SetPeerConnectTimeout(99999s);
-    PeerManager& peerman = *m_node.peerman;
+    auto connman = std::make_unique<ConnmanTestMsg>(0x1337, 0x1337, *m_node.addrman, *m_node.netgroupman, Params());
+    auto peerLogic = PeerManager::make(*connman, *m_node.addrman, nullptr,
+                                       *m_node.chainman, *m_node.mempool, *m_node.warnings, {});
+
+    {
+        // Disable inactivity checks for this test to avoid interference
+        CConnman::Options opts;
+        opts.m_peer_connect_timeout = 99999;
+        opts.m_msgproc = peerLogic.get();
+        connman->Init(opts);
+    }
+
+    PeerManager& peerman = *peerLogic;
 
     // Mock an outbound peer
     CAddress addr1(ip(0xa0b0c001), NODE_NONE);
@@ -64,7 +73,7 @@ BOOST_AUTO_TEST_CASE(outbound_slow_chain_eviction)
                      ConnectionType::OUTBOUND_FULL_RELAY,
                      /*inbound_onion=*/false};
 
-    connman.Handshake(
+    connman->Handshake(
         /*node=*/dummyNode1,
         /*successfully_connected=*/true,
         /*remote_services=*/ServiceFlags(NODE_NETWORK | NODE_WITNESS),
@@ -87,7 +96,7 @@ BOOST_AUTO_TEST_CASE(outbound_slow_chain_eviction)
         const auto& [to_send, _more, _msg_type] = dummyNode1.m_transport->GetBytesToSend(false);
         BOOST_CHECK(!to_send.empty());
     }
-    connman.FlushSendBuffer(dummyNode1);
+    connman->FlushSendBuffer(dummyNode1);
 
     int64_t nStartTime = GetTime();
     // Wait 21 minutes
