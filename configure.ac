@@ -1493,6 +1493,9 @@ if test "$use_boost" = "yes"; then
   dnl See: https://github.com/boostorg/container_hash/issues/22.
   BOOST_CPPFLAGS="$BOOST_CPPFLAGS -DBOOST_NO_CXX98_FUNCTION_BASE"
 
+  dnl Prevent ASIO (Process dependency) from depending on more Boost
+  BOOST_CPPFLAGS="$BOOST_CPPFLAGS -DBOOST_ASIO_STANDALONE"
+
   if test "$enable_debug" = "yes" || test "$enable_fuzz" = "yes"; then
     BOOST_CPPFLAGS="$BOOST_CPPFLAGS -DBOOST_MULTI_INDEX_ENABLE_SAFE_MODE"
   fi
