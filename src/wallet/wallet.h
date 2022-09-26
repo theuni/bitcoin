@@ -724,13 +724,13 @@ public:
     void Close();
 
     /** Wallet is about to be unloaded */
-    boost::signals2::signal<void ()> NotifyUnload;
+    btcsignals::signal<void ()> NotifyUnload;
 
     /**
      * Address book entry changed.
      * @note called without lock cs_wallet held.
      */
-    boost::signals2::signal<void(const CTxDestination& address,
+    btcsignals::signal<void(const CTxDestination& address,
                                  const std::string& label, bool isMine,
                                  const std::string& purpose, ChangeType status)>
         NotifyAddressBookChanged;
@@ -739,22 +739,22 @@ public:
      * Wallet transaction added, removed or updated.
      * @note called with lock cs_wallet held.
      */
-    boost::signals2::signal<void(const uint256& hashTx, ChangeType status)> NotifyTransactionChanged;
+    btcsignals::signal<void(const uint256& hashTx, ChangeType status)> NotifyTransactionChanged;
 
     /** Show progress e.g. for rescan */
-    boost::signals2::signal<void (const std::string &title, int nProgress)> ShowProgress;
+    btcsignals::signal<void (const std::string &title, int nProgress)> ShowProgress;
 
     /** Watch-only address added */
-    boost::signals2::signal<void (bool fHaveWatchOnly)> NotifyWatchonlyChanged;
+    btcsignals::signal<void (bool fHaveWatchOnly)> NotifyWatchonlyChanged;
 
     /** Keypool has new keys */
-    boost::signals2::signal<void ()> NotifyCanGetAddressesChanged;
+    btcsignals::signal<void ()> NotifyCanGetAddressesChanged;
 
     /**
      * Wallet status (encrypted, locked) changed.
      * Note: Called without locks held.
      */
-    boost::signals2::signal<void (CWallet* wallet)> NotifyStatusChanged;
+    btcsignals::signal<void (CWallet* wallet)> NotifyStatusChanged;
 
     /** Inquire whether this wallet broadcasts transactions. */
     bool GetBroadcastTransactions() const { return fBroadcastTransactions; }

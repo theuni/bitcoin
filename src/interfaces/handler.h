@@ -25,7 +25,7 @@ public:
 };
 
 //! Return handler wrapping a boost signal connection.
-std::unique_ptr<Handler> MakeHandler(boost::signals2::connection connection);
+std::unique_ptr<Handler> MakeHandler(btcsignals::connection connection);
 
 //! Return handler wrapping a cleanup function.
 std::unique_ptr<Handler> MakeHandler(std::function<void()> cleanup);

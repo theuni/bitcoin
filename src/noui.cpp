@@ -14,9 +14,9 @@
 #include <btcsignals.h>
 
 /** Store connections so we can disconnect them when suppressing output */
-boost::signals2::connection noui_ThreadSafeMessageBoxConn;
-boost::signals2::connection noui_ThreadSafeQuestionConn;
-boost::signals2::connection noui_InitMessageConn;
+btcsignals::connection noui_ThreadSafeMessageBoxConn;
+btcsignals::connection noui_ThreadSafeQuestionConn;
+btcsignals::connection noui_InitMessageConn;
 
 bool noui_ThreadSafeMessageBox(const bilingual_str& message, const std::string& caption, unsigned int style)
 {

@@ -84,7 +84,7 @@ public:
     bool Command(const std::string &cmd, const ReplyHandlerCB& reply_handler);
 
     /** Response handlers for async replies */
-    boost::signals2::signal<void(TorControlConnection &,const TorControlReply &)> async_handler;
+    btcsignals::signal<void(TorControlConnection &,const TorControlReply &)> async_handler;
 private:
     /** Callback when ready for use */
     std::function<void(TorControlConnection&)> connected;
