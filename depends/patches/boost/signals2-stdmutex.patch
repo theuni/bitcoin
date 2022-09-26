@@ -1,0 +1,119 @@
+From 1e10bcfbdbac338e44f2f7e72ec42537f057a731 Mon Sep 17 00:00:00 2001
+From: Cory Fields <cory-nospam-@coryfields.com>
+Date: Mon, 26 Sep 2022 16:39:18 +0000
+Subject: [PATCH] Add std::mutex impl for signals2
+
+---
+ boost/config/detail/suffix.hpp          |  4 +-
+ boost/signals2/detail/lwm_std_mutex.hpp | 63 +++++++++++++++++++++++++
+ boost/signals2/mutex.hpp                |  3 +-
+ 3 files changed, 68 insertions(+), 2 deletions(-)
+ create mode 100644 boost/signals2/detail/lwm_std_mutex.hpp
+
+diff --git a/boost/config/detail/suffix.hpp b/boost/config/detail/suffix.hpp
+index 13d4bb6..33ec98e 100644
+--- a/boost/config/detail/suffix.hpp
++++ b/boost/config/detail/suffix.hpp
+@@ -265,7 +265,9 @@
+ #if defined(BOOST_HAS_THREADS) && !defined(BOOST_HAS_PTHREADS)\
+       && !defined(BOOST_HAS_WINTHREADS) && !defined(BOOST_HAS_BETHREADS)\
+       && !defined(BOOST_HAS_MPTASKS)
+-#  undef BOOST_HAS_THREADS
++#  if !defined(__cplusplus) || __cplusplus < 201103L || defined(BOOST_NO_CXX11_HDR_THREAD)
++#    undef BOOST_HAS_THREADS
++#  endif
+ #endif
+ 
+ //
+diff --git a/boost/signals2/detail/lwm_std_mutex.hpp b/boost/signals2/detail/lwm_std_mutex.hpp
+new file mode 100644
+index 0000000..a6aebb8
+--- /dev/null
++++ b/boost/signals2/detail/lwm_std_mutex.hpp
+@@ -0,0 +1,63 @@
++//
++//  boost/signals2/detail/lwm_std_mutex.hpp
++//
++//  Copyright (c) 2022 Cory Fields
++//
++// Distributed under the Boost Software License, Version 1.0. (See
++// accompanying file LICENSE_1_0.txt or copy at
++// http://www.boost.org/LICENSE_1_0.txt)
++//
++
++#ifndef BOOST_SIGNALS2_LWM_STD_MUTEX_HPP
++#define BOOST_SIGNALS2_LWM_STD_MUTEX_HPP
++
++// MS compatible compilers support #pragma once
++
++#if defined(_MSC_VER)
++# pragma once
++#endif
++
++#include <mutex>
++
++namespace boost
++{
++
++namespace signals2
++{
++
++class mutex
++{
++private:
++
++    std::mutex m_;
++
++    mutex(mutex const &);
++    mutex & operator=(mutex const &);
++
++public:
++
++    mutex()
++    {
++    }
++
++    void lock()
++    {
++        m_.lock();
++    }
++
++    bool try_lock()
++    {
++        return m_.try_lock();
++    }
++
++    void unlock()
++    {
++        m_.unlock();
++    }
++};
++
++} // namespace signals2
++
++} // namespace boost
++
++#endif // #ifndef BOOST_SIGNALS2_LWM_STD_MUTEX_HPP
+diff --git a/boost/signals2/mutex.hpp b/boost/signals2/mutex.hpp
+index e58aca1..bcd1f65 100644
+--- a/boost/signals2/mutex.hpp
++++ b/boost/signals2/mutex.hpp
+@@ -23,13 +23,14 @@
+ #endif
+ 
+ #include <boost/config.hpp>
+-
+ #if !defined(BOOST_HAS_THREADS)
+ # include <boost/signals2/detail/lwm_nop.hpp>
+ #elif defined(BOOST_HAS_PTHREADS)
+ #  include <boost/signals2/detail/lwm_pthreads.hpp>
+ #elif defined(BOOST_HAS_WINTHREADS)
+ #  include <boost/signals2/detail/lwm_win32_cs.hpp>
++#elif defined(__cplusplus) && __cplusplus >= 201103L && !defined(BOOST_NO_CXX11_HDR_MUTEX)
++#  include <boost/signals2/detail/lwm_std_mutex.hpp>
+ #else
+ // Use #define BOOST_DISABLE_THREADS to avoid the error
+ #  error Unrecognized threading platform
+-- 
+2.25.1
+
