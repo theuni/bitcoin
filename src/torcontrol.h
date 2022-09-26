@@ -11,7 +11,7 @@
 #include <fs.h>
 #include <netaddress.h>
 
-#include <boost/signals2/signal.hpp>
+#include <btcsignals.h>
 
 #include <event2/bufferevent.h>
 #include <event2/event.h>

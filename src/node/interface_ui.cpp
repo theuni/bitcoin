@@ -6,8 +6,7 @@
 
 #include <util/translation.h>
 
-#include <boost/signals2/optional_last_value.hpp>
-#include <boost/signals2/signal.hpp>
+#include <btcsignals.h>
 
 CClientUIInterface uiInterface;
 

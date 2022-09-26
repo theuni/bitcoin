@@ -18,7 +18,7 @@
 #include <wallet/walletdb.h>
 #include <wallet/walletutil.h>
 
-#include <boost/signals2/signal.hpp>
+#include <btcsignals.h>
 
 #include <optional>
 #include <unordered_map>

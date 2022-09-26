@@ -5,7 +5,7 @@
 #include <interfaces/handler.h>
 
 
-#include <boost/signals2/connection.hpp>
+#include <btcsignals.h>
 #include <utility>
 
 namespace interfaces {

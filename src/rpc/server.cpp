@@ -13,7 +13,7 @@
 #include <util/system.h>
 #include <util/time.h>
 
-#include <boost/signals2/signal.hpp>
+#include <btcsignals.h>
 
 #include <cassert>
 #include <chrono>
