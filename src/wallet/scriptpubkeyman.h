@@ -260,13 +260,13 @@ public:
     };
 
     /** Watch-only address added */
-    boost::signals2::signal<void (bool fHaveWatchOnly)> NotifyWatchonlyChanged;
+    btcsignals::signal<void (bool fHaveWatchOnly)> NotifyWatchonlyChanged;
 
     /** Keypool has new keys */
-    boost::signals2::signal<void ()> NotifyCanGetAddressesChanged;
+    btcsignals::signal<void ()> NotifyCanGetAddressesChanged;
 
     /** Birth time changed */
-    boost::signals2::signal<void (const ScriptPubKeyMan* spkm, int64_t new_birth_time)> NotifyFirstKeyTimeChanged;
+    btcsignals::signal<void (const ScriptPubKeyMan* spkm, int64_t new_birth_time)> NotifyFirstKeyTimeChanged;
 };
 
 /** OutputTypes supported by the LegacyScriptPubKeyMan */
