@@ -7,6 +7,7 @@
 
 #include <rpc/server.h>
 
+#include <btcsignals.h>
 #include <common/args.h>
 #include <common/system.h>
 #include <logging.h>

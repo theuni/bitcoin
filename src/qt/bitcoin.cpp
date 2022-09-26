@@ -44,7 +44,7 @@
 #include <wallet/types.h>
 #endif // ENABLE_WALLET
 
-#include <boost/signals2/connection.hpp>
+#include <btcsignals.h>
 #include <chrono>
 #include <memory>
 

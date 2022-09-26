@@ -107,7 +107,7 @@
 #include <sys/stat.h>
 #endif
 
-#include <boost/signals2/signal.hpp>
+#include <btcsignals.h>
 
 #ifdef ENABLE_ZMQ
 #include <zmq/zmqabstractnotifier.h>

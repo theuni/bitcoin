@@ -22,7 +22,7 @@
 #include <wallet/walletdb.h>
 #include <wallet/walletutil.h>
 
-#include <boost/signals2/signal.hpp>
+#include <btcsignals.h>
 
 #include <functional>
 #include <optional>

@@ -49,7 +49,7 @@
 #include <utility>
 #include <vector>
 
-#include <boost/signals2/signal.hpp>
+#include <btcsignals.h>
 
 class CKey;
 class CKeyID;
