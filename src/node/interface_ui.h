@@ -63,10 +63,17 @@ public:
         MSG_ERROR = (ICON_ERROR | BTN_OK | MODAL)
     };
 
+#define ADD_SIGNALS_DECL_WRAPPER_NOARGS(signal_name, rtype)                                  \
+    rtype signal_name();                                                        \
+    using signal_name##Sig = rtype();                                           \
+    using signal_name##SigType = btcsignals::signal<rtype>;                                           \
+    btcsignals::connection signal_name##_connect(std::function<rtype()> fn);
+
 #define ADD_SIGNALS_DECL_WRAPPER(signal_name, rtype, ...)                                  \
     rtype signal_name(__VA_ARGS__);                                                        \
     using signal_name##Sig = rtype(__VA_ARGS__);                                           \
-    btcsignals::connection signal_name##_connect(std::function<signal_name##Sig> fn);
+    using signal_name##SigType = btcsignals::signal<rtype, __VA_ARGS__>;                                           \
+    btcsignals::connection signal_name##_connect(std::function<rtype(__VA_ARGS__)> fn);
 
     /** Show message box. */
     ADD_SIGNALS_DECL_WRAPPER(ThreadSafeMessageBox, bool, const bilingual_str&, const std::string&, unsigned int);
@@ -78,7 +85,7 @@ public:
     ADD_SIGNALS_DECL_WRAPPER(InitMessage, void, const std::string&);
 
     /** Wallet loader created. */
-    ADD_SIGNALS_DECL_WRAPPER(InitWallet, void, );
+    ADD_SIGNALS_DECL_WRAPPER_NOARGS(InitWallet, void);
 
     /** Number of network connections changed. */
     ADD_SIGNALS_DECL_WRAPPER(NotifyNumConnectionsChanged, void, int);
@@ -89,7 +96,7 @@ public:
     /**
      * Status bar alerts changed.
      */
-    ADD_SIGNALS_DECL_WRAPPER(NotifyAlertChanged, void, );
+    ADD_SIGNALS_DECL_WRAPPER_NOARGS(NotifyAlertChanged, void);
 
     /**
      * Show progress e.g. for verifychain.
@@ -104,7 +111,7 @@ public:
     ADD_SIGNALS_DECL_WRAPPER(NotifyHeaderTip, void, SynchronizationState, int64_t, int64_t, bool);
 
     /** Banlist did change. */
-    ADD_SIGNALS_DECL_WRAPPER(BannedListChanged, void, void);
+    ADD_SIGNALS_DECL_WRAPPER_NOARGS(BannedListChanged, void);
 };
 
 /** Show warning message **/

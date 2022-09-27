@@ -252,10 +252,10 @@ public:
     };
 
     /** Watch-only address added */
-    btcsignals::signal<void (bool fHaveWatchOnly)> NotifyWatchonlyChanged;
+    btcsignals::signal<void, bool> NotifyWatchonlyChanged;
 
     /** Keypool has new keys */
-    btcsignals::signal<void ()> NotifyCanGetAddressesChanged;
+    btcsignals::signal<void> NotifyCanGetAddressesChanged;
 };
 
 /** OutputTypes supported by the LegacyScriptPubKeyMan */

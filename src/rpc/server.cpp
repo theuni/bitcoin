@@ -63,8 +63,8 @@ struct RPCCommandExecution
 
 static struct CRPCSignals
 {
-    btcsignals::signal<void ()> Started;
-    btcsignals::signal<void ()> Stopped;
+    btcsignals::signal<void> Started;
+    btcsignals::signal<void> Stopped;
 } g_rpcSignals;
 
 void RPCServer::OnStarted(std::function<void ()> slot)

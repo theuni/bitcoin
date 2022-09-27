@@ -11,22 +11,22 @@
 CClientUIInterface uiInterface;
 
 struct UISignals {
-    btcsignals::signal<CClientUIInterface::ThreadSafeMessageBoxSig, btcsignals::optional_last_value<bool>> ThreadSafeMessageBox;
-    btcsignals::signal<CClientUIInterface::ThreadSafeQuestionSig, btcsignals::optional_last_value<bool>> ThreadSafeQuestion;
-    btcsignals::signal<CClientUIInterface::InitMessageSig> InitMessage;
-    btcsignals::signal<CClientUIInterface::InitWalletSig> InitWallet;
-    btcsignals::signal<CClientUIInterface::NotifyNumConnectionsChangedSig> NotifyNumConnectionsChanged;
-    btcsignals::signal<CClientUIInterface::NotifyNetworkActiveChangedSig> NotifyNetworkActiveChanged;
-    btcsignals::signal<CClientUIInterface::NotifyAlertChangedSig> NotifyAlertChanged;
-    btcsignals::signal<CClientUIInterface::ShowProgressSig> ShowProgress;
-    btcsignals::signal<CClientUIInterface::NotifyBlockTipSig> NotifyBlockTip;
-    btcsignals::signal<CClientUIInterface::NotifyHeaderTipSig> NotifyHeaderTip;
-    btcsignals::signal<CClientUIInterface::BannedListChangedSig> BannedListChanged;
+    CClientUIInterface::ThreadSafeMessageBoxSigType ThreadSafeMessageBox;
+    CClientUIInterface::ThreadSafeQuestionSigType ThreadSafeQuestion;
+    CClientUIInterface::InitMessageSigType InitMessage;
+    CClientUIInterface::InitWalletSigType InitWallet;
+    CClientUIInterface::NotifyNumConnectionsChangedSigType NotifyNumConnectionsChanged;
+    CClientUIInterface::NotifyNetworkActiveChangedSigType NotifyNetworkActiveChanged;
+    CClientUIInterface::NotifyAlertChangedSigType NotifyAlertChanged;
+    CClientUIInterface::ShowProgressSigType ShowProgress;
+    CClientUIInterface::NotifyBlockTipSigType NotifyBlockTip;
+    CClientUIInterface::NotifyHeaderTipSigType NotifyHeaderTip;
+    CClientUIInterface::BannedListChangedSigType BannedListChanged;
 };
 static UISignals g_ui_signals;
 
 #define ADD_SIGNALS_IMPL_WRAPPER(signal_name)                                                                 \
-    btcsignals::connection CClientUIInterface::signal_name##_connect(std::function<signal_name##Sig> fn) \
+    btcsignals::connection CClientUIInterface::signal_name##_connect(signal_name##SigType::functype fn) \
     {                                                                                                         \
         return g_ui_signals.signal_name.connect(fn);                                                          \
     }
