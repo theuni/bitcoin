@@ -829,37 +829,37 @@ public:
     void Close();
 
     /** Wallet is about to be unloaded */
-    btcsignals::signal<void ()> NotifyUnload;
+    btcsignals::signal<void> NotifyUnload;
 
     /**
      * Address book entry changed.
      * @note called without lock cs_wallet held.
      */
-    btcsignals::signal<void(const CTxDestination& address,
-                                 const std::string& label, bool isMine,
-                                 AddressPurpose purpose, ChangeType status)>
+    btcsignals::signal<void, const CTxDestination&,
+                                 const std::string&, bool,
+                                 AddressPurpose, ChangeType>
         NotifyAddressBookChanged;
 
     /**
      * Wallet transaction added, removed or updated.
      * @note called with lock cs_wallet held.
      */
-    btcsignals::signal<void(const uint256& hashTx, ChangeType status)> NotifyTransactionChanged;
+    btcsignals::signal<void, const uint256&, ChangeType> NotifyTransactionChanged;
 
     /** Show progress e.g. for rescan */
-    btcsignals::signal<void (const std::string &title, int nProgress)> ShowProgress;
+    btcsignals::signal<void, const std::string &, int> ShowProgress;
 
     /** Watch-only address added */
-    btcsignals::signal<void (bool fHaveWatchOnly)> NotifyWatchonlyChanged;
+    btcsignals::signal<void, bool> NotifyWatchonlyChanged;
 
     /** Keypool has new keys */
-    btcsignals::signal<void ()> NotifyCanGetAddressesChanged;
+    btcsignals::signal<void> NotifyCanGetAddressesChanged;
 
     /**
      * Wallet status (encrypted, locked) changed.
      * Note: Called without locks held.
      */
-    btcsignals::signal<void (CWallet* wallet)> NotifyStatusChanged;
+    btcsignals::signal<void, CWallet*> NotifyStatusChanged;
 
     /** Inquire whether this wallet broadcasts transactions. */
     bool GetBroadcastTransactions() const { return fBroadcastTransactions; }
