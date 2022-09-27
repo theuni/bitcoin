@@ -69,22 +69,22 @@ public:
     btcsignals::connection signal_name##_connect(std::function<signal_name##Sig> fn);
 
     /** Show message box. */
-    ADD_SIGNALS_DECL_WRAPPER(ThreadSafeMessageBox, bool, const bilingual_str& message, const std::string& caption, unsigned int style);
+    ADD_SIGNALS_DECL_WRAPPER(ThreadSafeMessageBox, bool, const bilingual_str&, const std::string&, unsigned int);
 
     /** If possible, ask the user a question. If not, falls back to ThreadSafeMessageBox(noninteractive_message, caption, style) and returns false. */
-    ADD_SIGNALS_DECL_WRAPPER(ThreadSafeQuestion, bool, const bilingual_str& message, const std::string& noninteractive_message, const std::string& caption, unsigned int style);
+    ADD_SIGNALS_DECL_WRAPPER(ThreadSafeQuestion, bool, const bilingual_str&, const std::string&, const std::string&, unsigned int);
 
     /** Progress message during initialization. */
-    ADD_SIGNALS_DECL_WRAPPER(InitMessage, void, const std::string& message);
+    ADD_SIGNALS_DECL_WRAPPER(InitMessage, void, const std::string&);
 
     /** Wallet loader created. */
     ADD_SIGNALS_DECL_WRAPPER(InitWallet, void, );
 
     /** Number of network connections changed. */
-    ADD_SIGNALS_DECL_WRAPPER(NotifyNumConnectionsChanged, void, int newNumConnections);
+    ADD_SIGNALS_DECL_WRAPPER(NotifyNumConnectionsChanged, void, int);
 
     /** Network activity state changed. */
-    ADD_SIGNALS_DECL_WRAPPER(NotifyNetworkActiveChanged, void, bool networkActive);
+    ADD_SIGNALS_DECL_WRAPPER(NotifyNetworkActiveChanged, void, bool);
 
     /**
      * Status bar alerts changed.
@@ -95,13 +95,13 @@ public:
      * Show progress e.g. for verifychain.
      * resume_possible indicates shutting down now will result in the current progress action resuming upon restart.
      */
-    ADD_SIGNALS_DECL_WRAPPER(ShowProgress, void, const std::string& title, int nProgress, bool resume_possible);
+    ADD_SIGNALS_DECL_WRAPPER(ShowProgress, void, const std::string&, int, bool);
 
     /** New block has been accepted */
     ADD_SIGNALS_DECL_WRAPPER(NotifyBlockTip, void, SynchronizationState, const CBlockIndex*);
 
     /** Best header has changed */
-    ADD_SIGNALS_DECL_WRAPPER(NotifyHeaderTip, void, SynchronizationState, int64_t height, int64_t timestamp, bool presync);
+    ADD_SIGNALS_DECL_WRAPPER(NotifyHeaderTip, void, SynchronizationState, int64_t, int64_t, bool);
 
     /** Banlist did change. */
     ADD_SIGNALS_DECL_WRAPPER(BannedListChanged, void, void);
