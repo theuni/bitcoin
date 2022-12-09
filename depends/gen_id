@@ -51,18 +51,18 @@
     echo "END CXX"
 
     echo "BEGIN AR"
-    bash -c "${AR} --version"
+    #bash -c "${AR} --version"
     env | grep '^AR_'
     echo "ZERO_AR_DATE=${ZERO_AR_DATE}"
     echo "END AR"
 
     echo "BEGIN RANLIB"
-    bash -c "${RANLIB} --version"
+    #bash -c "${RANLIB} --version"
     env | grep '^RANLIB_'
     echo "END RANLIB"
 
     echo "BEGIN STRIP"
-    bash -c "${STRIP} --version"
+    #bash -c "${STRIP} --version"
     env | grep '^STRIP_'
     echo "END STRIP"
 
