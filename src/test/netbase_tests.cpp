@@ -559,35 +559,39 @@ static constexpr const char* stream_addrv2_hex =
 
 BOOST_AUTO_TEST_CASE(caddress_serialize_v1)
 {
-    CDataStream s(SER_NETWORK, PROTOCOL_VERSION);
+    DataStream s{};
+    const CAddress::SerParams ser_params{{CNetAddr::Encoding::V1}, CAddress::Format::Network};
 
-    s << fixture_addresses;
+    s << WithParams(ser_params, fixture_addresses);
     BOOST_CHECK_EQUAL(HexStr(s), stream_addrv1_hex);
 }
 
 BOOST_AUTO_TEST_CASE(caddress_unserialize_v1)
 {
-    CDataStream s(ParseHex(stream_addrv1_hex), SER_NETWORK, PROTOCOL_VERSION);
+    DataStream s{ParseHex(stream_addrv1_hex)};
+    const CAddress::SerParams ser_params{{CNetAddr::Encoding::V1}, CAddress::Format::Network};
     std::vector<CAddress> addresses_unserialized;
 
-    s >> addresses_unserialized;
+    s >> WithParams(ser_params, addresses_unserialized);
     BOOST_CHECK(fixture_addresses == addresses_unserialized);
 }
 
 BOOST_AUTO_TEST_CASE(caddress_serialize_v2)
 {
-    CDataStream s(SER_NETWORK, PROTOCOL_VERSION | ADDRV2_FORMAT);
+    DataStream s{};
+    const CAddress::SerParams ser_params{{CNetAddr::Encoding::V2}, CAddress::Format::Network};
 
-    s << fixture_addresses;
+    s << WithParams(ser_params, fixture_addresses);
     BOOST_CHECK_EQUAL(HexStr(s), stream_addrv2_hex);
 }
 
 BOOST_AUTO_TEST_CASE(caddress_unserialize_v2)
 {
-    CDataStream s(ParseHex(stream_addrv2_hex), SER_NETWORK, PROTOCOL_VERSION | ADDRV2_FORMAT);
+    DataStream s{ParseHex(stream_addrv2_hex)};
+    const CAddress::SerParams ser_params{{CNetAddr::Encoding::V2}, CAddress::Format::Network};
     std::vector<CAddress> addresses_unserialized;
 
-    s >> addresses_unserialized;
+    s >> WithParams(ser_params, addresses_unserialized);
     BOOST_CHECK(fixture_addresses == addresses_unserialized);
 }
 

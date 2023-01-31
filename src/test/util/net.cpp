@@ -22,6 +22,7 @@ void ConnmanTestMsg::Handshake(CNode& node,
 {
     auto& peerman{static_cast<PeerManager&>(*m_msgproc)};
     auto& connman{*this};
+    const CNetAddr::SerParams ser_params{CNetAddr::Encoding::V1};
     const CNetMsgMaker mm{0};
 
     peerman.InitializeNode(node, local_services);
@@ -32,9 +33,9 @@ void ConnmanTestMsg::Handshake(CNode& node,
                 Using<CustomUintFormatter<8>>(remote_services), //
                 int64_t{},                                      // dummy time
                 int64_t{},                                      // ignored service bits
-                CService{},                                     // dummy
+                WithParams(ser_params, CService{}),             // dummy
                 int64_t{},                                      // ignored service bits
-                CService{},                                     // ignored
+                WithParams(ser_params, CService{}),             // ignored
                 uint64_t{1},                                    // dummy nonce
                 std::string{},                                  // dummy subver
                 int32_t{},                                      // dummy starting_height
