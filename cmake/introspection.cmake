@@ -253,3 +253,15 @@ if(WIN32)
   int main(){}
   " HAVE_DLLEXPORT_ATTRIBUTE)
 endif()
+
+check_cxx_source_compiles("
+#include <fcntl.h>
+int main(){
+  open(\"\", O_CLOEXEC);
+}" HAVE_O_CLOEXEC)
+
+check_cxx_source_compiles("
+#include <fcntl.h>
+int main(){
+  fcntl(0, F_FULLFSYNC, 0);
+}" HAVE_FULLFSYNC)
