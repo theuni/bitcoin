@@ -18,6 +18,8 @@ mark_as_advanced(
 )
 add_subdirectory(crc32c EXCLUDE_FROM_ALL)
 
+include(leveldb.cmake)
+
 configure_file(${CMAKE_SOURCE_DIR}/cmake/bitcoin-config.h.in config/bitcoin-config.h @ONLY)
 add_compile_definitions(HAVE_CONFIG_H)
 include_directories(${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
