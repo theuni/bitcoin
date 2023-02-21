@@ -870,14 +870,6 @@ libbitcoinkernel_la_LDFLAGS = $(AM_LDFLAGS) -no-undefined $(RELDFLAGS) $(PTHREAD
 libbitcoinkernel_la_LIBADD = $(LIBBITCOIN_CRYPTO) $(LIBUNIVALUE) $(LIBLEVELDB) $(LIBMEMENV) $(LIBSECP256K1)
 libbitcoinkernel_la_CPPFLAGS = $(AM_CPPFLAGS) -I$(builddir)/obj -I$(srcdir)/secp256k1/include -DBUILD_BITCOIN_INTERNAL $(BOOST_CPPFLAGS) $(LEVELDB_CPPFLAGS) -I$(srcdir)/$(UNIVALUE_INCLUDE_DIR_INT)
 
-# libbitcoinkernel requires default symbol visibility, explicitly specify that
-# here so that things still work even when user configures with
-#   --enable-reduce-exports
-#
-# Note this is a quick hack that will be removed as we incrementally define what
-# to export from the library.
-libbitcoinkernel_la_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) -fvisibility=default
-
 # TODO: For now, Specify -static in both CXXFLAGS and LDFLAGS when building for
 #       windows targets so libtool will only build a static version of this
 #       library. There are unresolved problems when building dll's for mingw-w64
