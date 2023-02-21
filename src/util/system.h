@@ -17,6 +17,7 @@
 #include <compat/compat.h>
 #include <compat/assumptions.h>
 #include <fs.h>
+#include <kernel/bitcoinkernel.h>
 #include <logging.h>
 #include <sync.h>
 #include <tinyformat.h>
@@ -161,7 +162,7 @@ std::optional<int64_t> SettingToInt(const util::SettingsValue&);
 bool SettingToBool(const util::SettingsValue&, bool);
 std::optional<bool> SettingToBool(const util::SettingsValue&);
 
-class ArgsManager
+class EXPORT_SYMBOL ArgsManager
 {
 public:
     /**
@@ -492,7 +493,7 @@ private:
         const std::map<std::string, std::vector<util::SettingsValue>>& args) const;
 };
 
-extern ArgsManager gArgs;
+EXPORT_SYMBOL extern ArgsManager gArgs;
 
 /**
  * @return true if help has been requested via a command-line arg

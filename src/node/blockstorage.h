@@ -9,6 +9,7 @@
 #include <chain.h>
 #include <fs.h>
 #include <kernel/cs_main.h>
+#include <kernel/bitcoinkernel.h>
 #include <protocol.h>
 #include <sync.h>
 #include <txdb.h>
@@ -47,7 +48,7 @@ static const unsigned int MAX_BLOCKFILE_SIZE = 0x8000000; // 128 MiB
 static constexpr size_t BLOCK_SERIALIZATION_HEADER_SIZE = CMessageHeader::MESSAGE_START_SIZE + sizeof(unsigned int);
 
 extern std::atomic_bool fImporting;
-extern std::atomic_bool fReindex;
+EXPORT_SYMBOL extern std::atomic_bool fReindex;
 extern bool fPruneMode;
 extern uint64_t nPruneTarget;
 
@@ -77,7 +78,7 @@ struct PruneLockInfo {
  * This data is used mostly in `Chainstate` - information about, e.g.,
  * candidate tips is not maintained here.
  */
-class BlockManager
+class EXPORT_SYMBOL BlockManager
 {
     friend Chainstate;
     friend ChainstateManager;

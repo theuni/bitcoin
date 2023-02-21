@@ -5,6 +5,8 @@
 #ifndef BITCOIN_KERNEL_CONTEXT_H
 #define BITCOIN_KERNEL_CONTEXT_H
 
+#include <kernel/bitcoinkernel.h>
+
 #include <memory>
 
 namespace kernel {
@@ -15,7 +17,7 @@ namespace kernel {
 //!
 //! State stored directly in this struct should be simple. More complex state
 //! should be stored to std::unique_ptr members pointing to opaque types.
-struct Context {
+struct EXPORT_SYMBOL Context {
     //! Declare default constructor and destructor that are not inline, so code
     //! instantiating the kernel::Context struct doesn't need to #include class
     //! definitions for all the unique_ptr members.

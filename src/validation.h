@@ -19,6 +19,7 @@
 #include <deploymentstatus.h>
 #include <fs.h>
 #include <kernel/cs_main.h> // IWYU pragma: export
+#include <kernel/bitcoinkernel.h>
 #include <node/blockstorage.h>
 #include <policy/feerate.h>
 #include <policy/packages.h>
@@ -96,9 +97,9 @@ extern uint256 g_best_block;
 extern const std::vector<std::string> CHECKLEVEL_DOC;
 
 /** Run instances of script checking worker threads */
-void StartScriptCheckWorkerThreads(int threads_num);
+EXPORT_SYMBOL void StartScriptCheckWorkerThreads(int threads_num);
 /** Stop all of the script checking worker threads */
-void StopScriptCheckWorkerThreads();
+EXPORT_SYMBOL void StopScriptCheckWorkerThreads();
 
 CAmount GetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams);
 
@@ -326,7 +327,7 @@ public:
 };
 
 /** Initializes the script-execution cache */
-[[nodiscard]] bool InitScriptExecutionCache(size_t max_size_bytes);
+EXPORT_SYMBOL [[nodiscard]] bool InitScriptExecutionCache(size_t max_size_bytes);
 
 /** Functions for validating blocks and updating the block tree */
 
@@ -437,7 +438,7 @@ enum class CoinsCacheSizeState
  * whereas block information and metadata independent of the current tip is
  * kept in `BlockManager`.
  */
-class Chainstate
+class EXPORT_SYMBOL Chainstate
 {
 protected:
     /**
@@ -798,7 +799,7 @@ private:
  *    IBD process is happening in the background while use of the
  *    active (snapshot) chainstate allows the rest of the system to function.
  */
-class ChainstateManager
+class EXPORT_SYMBOL ChainstateManager
 {
 private:
     //! The chainstate used under normal operation (i.e. "regular" IBD) or, if

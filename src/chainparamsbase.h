@@ -5,6 +5,8 @@
 #ifndef BITCOIN_CHAINPARAMSBASE_H
 #define BITCOIN_CHAINPARAMSBASE_H
 
+#include <kernel/bitcoinkernel.h>
+
 #include <memory>
 #include <string>
 
@@ -14,7 +16,7 @@ class ArgsManager;
  * CBaseChainParams defines the base parameters (shared between bitcoin-cli and bitcoind)
  * of a given instance of the Bitcoin system.
  */
-class CBaseChainParams
+class EXPORT_SYMBOL CBaseChainParams
 {
 public:
     ///@{

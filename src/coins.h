@@ -8,6 +8,7 @@
 
 #include <compressor.h>
 #include <core_memusage.h>
+#include <kernel/bitcoinkernel.h>
 #include <memusage.h>
 #include <primitives/transaction.h>
 #include <serialize.h>
@@ -355,7 +356,7 @@ const Coin& AccessByTxid(const CCoinsViewCache& cache, const uint256& txid);
  *
  * Writes do not need similar protection, as failure to write is handled by the caller.
 */
-class CCoinsViewErrorCatcher final : public CCoinsViewBacked
+class EXPORT_SYMBOL CCoinsViewErrorCatcher final : public CCoinsViewBacked
 {
 public:
     explicit CCoinsViewErrorCatcher(CCoinsView* view) : CCoinsViewBacked(view) {}

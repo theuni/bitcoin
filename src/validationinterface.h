@@ -6,6 +6,7 @@
 #ifndef BITCOIN_VALIDATIONINTERFACE_H
 #define BITCOIN_VALIDATIONINTERFACE_H
 
+#include <kernel/bitcoinkernel.h>
 #include <kernel/cs_main.h>
 #include <primitives/transaction.h> // CTransaction(Ref)
 #include <sync.h>
@@ -22,20 +23,20 @@ class CScheduler;
 enum class MemPoolRemovalReason;
 
 /** Register subscriber */
-void RegisterValidationInterface(CValidationInterface* callbacks);
+EXPORT_SYMBOL void RegisterValidationInterface(CValidationInterface* callbacks);
 /** Unregister subscriber. DEPRECATED. This is not safe to use when the RPC server or main message handler thread is running. */
-void UnregisterValidationInterface(CValidationInterface* callbacks);
+EXPORT_SYMBOL void UnregisterValidationInterface(CValidationInterface* callbacks);
 /** Unregister all subscribers */
-void UnregisterAllValidationInterfaces();
+EXPORT_SYMBOL void UnregisterAllValidationInterfaces();
 
 // Alternate registration functions that release a shared_ptr after the last
 // notification is sent. These are useful for race-free cleanup, since
 // unregistration is nonblocking and can return before the last notification is
 // processed.
 /** Register subscriber */
-void RegisterSharedValidationInterface(std::shared_ptr<CValidationInterface> callbacks);
+EXPORT_SYMBOL void RegisterSharedValidationInterface(std::shared_ptr<CValidationInterface> callbacks);
 /** Unregister subscriber */
-void UnregisterSharedValidationInterface(std::shared_ptr<CValidationInterface> callbacks);
+EXPORT_SYMBOL void UnregisterSharedValidationInterface(std::shared_ptr<CValidationInterface> callbacks);
 
 /**
  * Pushes a function to callback onto the notification queue, guaranteeing any
@@ -176,7 +177,7 @@ protected:
 };
 
 class MainSignalsImpl;
-class CMainSignals {
+class EXPORT_SYMBOL CMainSignals {
 private:
     std::unique_ptr<MainSignalsImpl> m_internals;
 
@@ -206,6 +207,6 @@ public:
     void NewPoWValidBlock(const CBlockIndex *, const std::shared_ptr<const CBlock>&);
 };
 
-CMainSignals& GetMainSignals();
+EXPORT_SYMBOL CMainSignals& GetMainSignals();
 
 #endif // BITCOIN_VALIDATIONINTERFACE_H

@@ -6,6 +6,7 @@
 #define BITCOIN_CORE_IO_H
 
 #include <consensus/amount.h>
+#include <kernel/bitcoinkernel.h>
 
 #include <string>
 #include <vector>
@@ -33,7 +34,7 @@ enum class TxVerbosity {
 CScript ParseScript(const std::string& s);
 std::string ScriptToAsmStr(const CScript& script, const bool fAttemptSighashDecode = false);
 [[nodiscard]] bool DecodeHexTx(CMutableTransaction& tx, const std::string& hex_tx, bool try_no_witness = false, bool try_witness = true);
-[[nodiscard]] bool DecodeHexBlk(CBlock&, const std::string& strHexBlk);
+EXPORT_SYMBOL [[nodiscard]] bool DecodeHexBlk(CBlock&, const std::string& strHexBlk);
 bool DecodeHexBlockHeader(CBlockHeader&, const std::string& hex_header);
 
 /**

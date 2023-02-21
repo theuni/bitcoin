@@ -9,6 +9,7 @@
 #include <coins.h>
 #include <dbwrapper.h>
 #include <kernel/cs_main.h>
+#include <kernel/bitcoinkernel.h>
 #include <sync.h>
 #include <fs.h>
 
@@ -55,7 +56,7 @@ struct CoinsViewOptions {
 };
 
 /** CCoinsView backed by the coin database (chainstate/) */
-class CCoinsViewDB final : public CCoinsView
+class EXPORT_SYMBOL CCoinsViewDB final : public CCoinsView
 {
 protected:
     DBParams m_db_params;

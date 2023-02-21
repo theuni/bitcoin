@@ -6,6 +6,7 @@
 #define BITCOIN_UTIL_CHECK_H
 
 #include <attributes.h>
+#include <kernel/bitcoinkernel.h>
 
 #include <stdexcept>
 #include <string>
@@ -51,7 +52,7 @@ T&& inline_check_non_fatal(LIFETIMEBOUND T&& val, const char* file, int line, co
 #endif
 
 /** Helper for Assert() */
-void assertion_fail(std::string_view file, int line, std::string_view func, std::string_view assertion);
+EXPORT_SYMBOL void assertion_fail(std::string_view file, int line, std::string_view func, std::string_view assertion);
 
 /** Helper for Assert()/Assume() */
 template <bool IS_ASSERT, typename T>
