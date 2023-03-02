@@ -42,6 +42,18 @@ if(HAVE_CLMUL)
     ${PROJECT_SOURCE_DIR}/src/minisketch/src/fields/clmul_7bytes.cpp
     ${PROJECT_SOURCE_DIR}/src/minisketch/src/fields/clmul_8bytes.cpp
   )
+  target_precompile_headers(minisketch_clmul
+    PRIVATE
+    ${PROJECT_SOURCE_DIR}/src/minisketch/src/false_positives.h
+    ${PROJECT_SOURCE_DIR}/src/minisketch/src/fielddefines.h
+    ${PROJECT_SOURCE_DIR}/src/minisketch/src/fields/clmul_common_impl.h
+    ${PROJECT_SOURCE_DIR}/src/minisketch/src/int_utils.h
+    ${PROJECT_SOURCE_DIR}/src/minisketch/src/lintrans.h
+    ${PROJECT_SOURCE_DIR}/src/minisketch/src/sketch.h
+    ${PROJECT_SOURCE_DIR}/src/minisketch/src/sketch_impl.h
+    ${PROJECT_SOURCE_DIR}/src/minisketch/src/util.h
+  )
+
   target_compile_definitions(minisketch_clmul PUBLIC HAVE_CLMUL)
   target_compile_options(minisketch_clmul PRIVATE ${CLMUL_CXXFLAGS})
   target_link_libraries(minisketch_clmul PRIVATE minisketch_defs)
@@ -57,6 +69,18 @@ add_library(minisketch STATIC EXCLUDE_FROM_ALL
   ${PROJECT_SOURCE_DIR}/src/minisketch/src/fields/generic_6bytes.cpp
   ${PROJECT_SOURCE_DIR}/src/minisketch/src/fields/generic_7bytes.cpp
   ${PROJECT_SOURCE_DIR}/src/minisketch/src/fields/generic_8bytes.cpp
+)
+
+target_precompile_headers(minisketch
+  PRIVATE
+  ${PROJECT_SOURCE_DIR}/src/minisketch/src/false_positives.h
+  ${PROJECT_SOURCE_DIR}/src/minisketch/src/fielddefines.h
+  ${PROJECT_SOURCE_DIR}/src/minisketch/src/fields/generic_common_impl.h
+  ${PROJECT_SOURCE_DIR}/src/minisketch/src/int_utils.h
+  ${PROJECT_SOURCE_DIR}/src/minisketch/src/lintrans.h
+  ${PROJECT_SOURCE_DIR}/src/minisketch/src/sketch.h
+  ${PROJECT_SOURCE_DIR}/src/minisketch/src/sketch_impl.h
+  ${PROJECT_SOURCE_DIR}/src/minisketch/src/util.h
 )
 
 target_include_directories(minisketch

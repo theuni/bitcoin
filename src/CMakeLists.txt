@@ -29,6 +29,22 @@ add_library(bitcoin_consensus OBJECT EXCLUDE_FROM_ALL
 )
 target_link_libraries(bitcoin_consensus PRIVATE secp256k1)
 
+target_precompile_headers(bitcoin_consensus
+  PRIVATE
+  arith_uint256.h
+  consensus/merkle.h
+   consensus/tx_check.h
+  hash.h
+  primitives/block.h
+  primitives/transaction.h
+  pubkey.h
+  script/interpreter.h
+  script/script.h
+  script/script_error.h
+  uint256.h
+  util/strencodings.h
+)
+
 
 # Home for common functionality shared by different executables and libraries.
 # Similar to `bitcoin_util` library, but higher-level.
@@ -71,10 +87,48 @@ add_library(bitcoin_common STATIC EXCLUDE_FROM_ALL
   script/standard.cpp
   warnings.cpp
 )
+target_precompile_headers(bitcoin_common
+  PRIVATE
+  base58.h
+  bech32.h
+  chainparams.h
+  coins.h
+  common/bloom.h
+  common/run_command.h
+  $<$<TARGET_EXISTS:libevent::libevent>:common/url.h>
+  compressor.h
+  deploymentinfo.h
+  external_signer.h
+  init/common.h
+  key.h
+  key_io.h
+  merkleblock.h
+  net_types.h
+  netaddress.h
+  netbase.h
+  net_permissions.h
+  outputtype.h
+  policy/feerate.h
+  policy/policy.h
+  protocol.h
+  psbt.h
+  rpc/rawtransaction_util.h
+  rpc/request.h
+  rpc/util.h
+  scheduler.h
+  script/descriptor.h
+  script/miniscript.h
+  script/sign.h
+  script/signingprovider.h
+  script/standard.h
+  warnings.h
+)
+
 target_compile_definitions(bitcoin_common
   PRIVATE
     ${THREAD_LOCAL_IF_AVAILABLE}
 )
+
 target_link_libraries(bitcoin_common
   PRIVATE
     bitcoin_consensus
@@ -173,6 +227,86 @@ add_library(bitcoin_node STATIC EXCLUDE_FROM_ALL
 
   dummywallet.cpp
 )
+
+
+target_precompile_headers(bitcoin_node
+  PRIVATE
+  addrdb.h
+  addrman.h
+  banman.h
+  blockencodings.h
+  blockfilter.h
+  chain.h
+  consensus/tx_verify.h
+  dbwrapper.h
+  deploymentstatus.h
+  flatfile.h
+  headerssync.h
+  httprpc.h
+  httpserver.h
+  i2p.h
+  index/base.h
+  index/blockfilterindex.h
+  index/coinstatsindex.h
+  index/txindex.h
+  init.h
+  kernel/chain.h
+  kernel/checks.h
+  kernel/coinstats.h
+  kernel/context.h
+  kernel/cs_main.h
+  kernel/mempool_persist.h
+  mapport.h
+  net.h
+  netgroup.h
+  net_processing.h
+  node/blockstorage.h
+  node/caches.h
+  node/chainstate.h
+  node/chainstatemanager_args.h
+  node/coin.h
+  node/coins_view_args.h
+  node/connection_types.h
+  node/context.h
+  node/database_args.h
+  node/eviction.h
+  node/interface_ui.h
+  node/mempool_args.h
+  node/mempool_persist_args.h
+  node/miner.h
+  node/minisketchwrapper.h
+  node/psbt.h
+  node/transaction.h
+  node/txreconciliation.h
+  node/utxo_snapshot.h
+  node/validation_cache_args.h
+  noui.h
+  policy/fees.h
+  policy/fees_args.h
+  policy/packages.h
+  policy/rbf.h
+  policy/settings.h
+  pow.h
+  rest.h
+  rpc/blockchain.h
+  rpc/mempool.h
+  rpc/mining.h
+  rpc/server.h
+  rpc/server_util.h
+  script/sigcache.h
+  shutdown.h
+  signet.h
+  timedata.h
+  torcontrol.h
+  txdb.h
+  txmempool.h
+  txorphanage.h
+  txrequest.h
+  validation.h
+  validationinterface.h
+  versionbits.h
+)
+
 target_link_libraries(bitcoin_node
   PRIVATE
     bitcoin_common

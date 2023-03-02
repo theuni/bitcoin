@@ -58,6 +58,66 @@ else()
   target_sources(leveldb PRIVATE ${PROJECT_SOURCE_DIR}/src/leveldb/util/env_posix.cc)
 endif()
 
+target_precompile_headers(leveldb
+  PRIVATE
+  ${PROJECT_SOURCE_DIR}/src/leveldb/db/builder.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/db/db_impl.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/db/db_iter.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/db/dbformat.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/db/filename.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/db/log_format.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/db/log_reader.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/db/log_writer.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/db/memtable.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/db/skiplist.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/db/snapshot.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/db/table_cache.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/db/version_edit.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/db/version_set.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/db/write_batch_internal.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/helpers/memenv/memenv.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/include/leveldb/c.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/include/leveldb/cache.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/include/leveldb/comparator.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/include/leveldb/db.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/include/leveldb/dumpfile.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/include/leveldb/env.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/include/leveldb/export.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/include/leveldb/filter_policy.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/include/leveldb/iterator.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/include/leveldb/options.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/include/leveldb/slice.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/include/leveldb/status.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/include/leveldb/table.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/include/leveldb/table_builder.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/include/leveldb/write_batch.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/port/port.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/port/port_stdcxx.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/port/thread_annotations.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/table/block.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/table/block_builder.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/table/filter_block.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/table/format.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/table/iterator_wrapper.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/table/merger.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/table/two_level_iterator.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/util/arena.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/util/coding.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/util/crc32c.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/util/hash.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/util/histogram.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/util/logging.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/util/mutexlock.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/util/no_destructor.h
+  ${PROJECT_SOURCE_DIR}/src/leveldb/util/random.h
+)
+
+if (WIN32)
+  target_precompile_headers(leveldb PRIVATE ${PROJECT_SOURCE_DIR}/src/leveldb/util/windows_logger.h)
+else()
+  target_precompile_headers(leveldb PRIVATE ${PROJECT_SOURCE_DIR}/src/leveldb/util/posix_logger.h)
+endif()
+
 target_compile_definitions(leveldb
   PRIVATE
     HAVE_SNAPPY=0

@@ -40,6 +40,45 @@ add_library(bitcoin_util STATIC EXCLUDE_FROM_ALL
   ../sync.cpp
 )
 
+target_precompile_headers(bitcoin_util
+  PRIVATE
+  asmap.h
+  bip32.h
+  bytevectorhash.h
+  check.h
+  error.h
+  fees.h
+  getuniquepath.h
+  hasher.h
+  message.h
+  moneystr.h
+  rbf.h
+  readwritefile.h
+  settings.h
+  serfloat.h
+  sock.h
+  spanparsing.h
+  strencodings.h
+  string.h
+  syscall_sandbox.h
+  syserror.h
+  system.h
+  thread.h
+  threadinterrupt.h
+  threadnames.h
+  time.h
+  tokenpipe.h
+  ../chainparamsbase.h
+  ../clientversion.h
+  ../fs.h
+  ../logging.h
+  ../random.h
+  ../randomenv.h
+  ../support/cleanse.h
+  ../support/lockedpool.h
+  ../sync.h
+)
+
 target_compile_definitions(bitcoin_util
   PRIVATE
     ${THREAD_LOCAL_IF_AVAILABLE}

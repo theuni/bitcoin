@@ -83,6 +83,25 @@ add_library(bitcoin_crypto OBJECT EXCLUDE_FROM_ALL
   sha512.cpp
   siphash.cpp
 )
+
+target_precompile_headers(bitcoin_crypto
+  PRIVATE
+  aes.h
+  chacha_poly_aead.h
+  chacha20.h
+  hkdf_sha256_32.h
+  hmac_sha256.h
+  hmac_sha512.h
+  poly1305.h
+  muhash.h
+  ripemd160.h
+  sha1.h
+  sha256.h
+  sha3.h
+  sha512.h
+  siphash.h
+)
+
 target_compile_definitions(bitcoin_crypto
   PRIVATE
     $<$<BOOL:${ASM}>:USE_ASM>
@@ -98,6 +117,7 @@ if(HAVE_SSE41)
   set_property(SOURCE sha256_sse41.cpp
     APPEND PROPERTY COMPILE_OPTIONS ${SSE41_CXXFLAGS}
   )
+  set_source_files_properties(sha256_sse41.cpp PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
 endif()
 
 if(HAVE_AVX2)
@@ -105,6 +125,7 @@ if(HAVE_AVX2)
   set_property(SOURCE sha256_avx2.cpp
     APPEND PROPERTY COMPILE_OPTIONS ${AVX2_CXXFLAGS}
   )
+  set_source_files_properties(sha256_avx2.cpp PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
 endif()
 
 if(HAVE_X86_SHANI)
@@ -112,6 +133,7 @@ if(HAVE_X86_SHANI)
   set_property(SOURCE sha256_x86_shani.cpp
     APPEND PROPERTY COMPILE_OPTIONS ${X86_SHANI_CXXFLAGS}
   )
+  set_source_files_properties(sha256_x86_shani.cpp PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
 endif()
 
 if(HAVE_ARM_SHANI)
@@ -119,4 +141,5 @@ if(HAVE_ARM_SHANI)
   set_property(SOURCE sha256_arm_shani.cpp
     APPEND PROPERTY COMPILE_OPTIONS ${ARM_SHANI_CXXFLAGS}
   )
+  set_source_files_properties(sha256_arm_shani.cpp PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
 endif()
