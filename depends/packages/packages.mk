@@ -1,5 +1,7 @@
 packages:=
 
+native_packages = native_cmake
+
 boost_packages = boost
 
 libevent_packages = libevent

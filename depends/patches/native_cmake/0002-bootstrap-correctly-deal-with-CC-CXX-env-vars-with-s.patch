@@ -1,0 +1,110 @@
+From 9f81df82ce30dc88895a3a0f7550b3b71039c4a8 Mon Sep 17 00:00:00 2001
+From: Cory Fields <cory-nospam-@coryfields.com>
+Date: Fri, 7 Apr 2023 18:02:00 +0000
+Subject: [PATCH 2/2] bootstrap: correctly deal with CC/CXX env vars with
+ spaces
+
+---
+ bootstrap | 55 ++++++++++++++++++++++++++++++++++++-------------------
+ 1 file changed, 36 insertions(+), 19 deletions(-)
+
+diff --git a/bootstrap b/bootstrap
+index ee8769f3ec..3298cf116c 100755
+--- a/bootstrap
++++ b/bootstrap
+@@ -1004,11 +1004,8 @@ esac
+ # Test C compiler
+ cmake_c_compiler=
+ 
+-# If CC is set, use that for compiler, otherwise use list of known compilers
+ if [ -n "${cmake_toolchain}" ]; then
+   eval cmake_c_compilers="\${cmake_toolchain_${cmake_toolchain}_CC}"
+-elif [ -n "${CC}" ]; then
+-  cmake_c_compilers="${CC}"
+ else
+   cmake_c_compilers="${CMAKE_KNOWN_C_COMPILERS}"
+ fi
+@@ -1038,17 +1035,28 @@ int main(int argc, char* argv[])
+ ' > "${TMPFILE}.c"
+ for std in 11 99 90; do
+   std_flags="`cmake_extract_standard_flags \"${cmake_toolchain}\" C \"${std}\"`"
+-  for compiler in ${cmake_c_compilers}; do
+-    for std_flag in '' $std_flags; do
+-      for thread_flag in '' $thread_flags; do
+-        echo "Checking whether '${compiler} ${cmake_c_flags} ${std_flag} ${thread_flag}' works." >> cmake_bootstrap.log 2>&1
+-        if cmake_try_run "${compiler}" "${cmake_c_flags} ${std_flag} ${thread_flag}" \
++  for std_flag in '' $std_flags; do
++    for thread_flag in '' $thread_flags; do
++      # If CC is set, use that for compiler, otherwise use list of known compilers
++      if test -n "${CC}" && test -z "${cmake_toolchain}"; then
++        echo "Checking whether '${CC} ${cmake_c_flags} ${std_flag} ${thread_flag}' works." >> cmake_bootstrap.log 2>&1
++        if cmake_try_run "${CC}" "${cmake_c_flags} ${std_flag} ${thread_flag}" \
+           "${TMPFILE}.c" >> cmake_bootstrap.log 2>&1; then
+-          cmake_c_compiler="${compiler}"
++          cmake_c_compiler="${CC}"
+           cmake_c_flags="${cmake_c_flags} ${std_flag} ${thread_flag}"
+           break 3
+         fi
+-      done
++      else
++        for compiler in ${cmake_c_compilers}; do
++          echo "Checking whether '${compiler} ${cmake_c_flags} ${std_flag} ${thread_flag}' works." >> cmake_bootstrap.log 2>&1
++          if cmake_try_run "${compiler}" "${cmake_c_flags} ${std_flag} ${thread_flag}" \
++            "${TMPFILE}.c" >> cmake_bootstrap.log 2>&1; then
++            cmake_c_compiler="${compiler}"
++            cmake_c_flags="${cmake_c_flags} ${std_flag} ${thread_flag}"
++            break 4
++          fi
++        done
++      fi
+     done
+   done
+ done
+@@ -1071,8 +1079,6 @@ cmake_cxx_compiler=
+ # If CC is set, use that for compiler, otherwise use list of known compilers
+ if [ -n "${cmake_toolchain}" ]; then
+   eval cmake_cxx_compilers="\${cmake_toolchain_${cmake_toolchain}_CXX}"
+-elif [ -n "${CXX}" ]; then
+-  cmake_cxx_compilers="${CXX}"
+ else
+   cmake_cxx_compilers="${CMAKE_KNOWN_CXX_COMPILERS}"
+ fi
+@@ -1112,17 +1118,28 @@ int main()
+ ' > "${TMPFILE}.cxx"
+ for std in 17 14 11; do
+   std_flags="`cmake_extract_standard_flags \"${cmake_toolchain}\" CXX \"${std}\"`"
+-  for compiler in ${cmake_cxx_compilers}; do
+-    for std_flag in '' $std_flags; do
+-      for thread_flag in '' $thread_flags; do
+-        echo "Checking whether '${compiler} ${cmake_cxx_flags} ${std_flag} ${thread_flag}' works." >> cmake_bootstrap.log 2>&1
+-        if cmake_try_run "${compiler}" "${cmake_cxx_flags} ${std_flag} ${thread_flag}" \
++  for std_flag in '' $std_flags; do
++    for thread_flag in '' $thread_flags; do
++      # If CXX is set, use that for compiler, otherwise use list of known compilers
++      if test -n "${CXX}" && test -z "${cmake_toolchain}"; then
++        echo "Checking whether '${CXX} ${cmake_cxx_flags} ${std_flag} ${thread_flag}' works." >> cmake_bootstrap.log 2>&1
++        if cmake_try_run "${CXX}" "${cmake_cxx_flags} ${std_flag} ${thread_flag}" \
+           "${TMPFILE}.cxx" >> cmake_bootstrap.log 2>&1; then
+-          cmake_cxx_compiler="${compiler}"
++          cmake_cxx_compiler="${CXX}"
+           cmake_cxx_flags="${cmake_cxx_flags} ${std_flag} ${thread_flag} "
+           break 3
+         fi
+-      done
++      else
++        for compiler in ${cmake_cxx_compilers}; do
++          echo "Checking whether '${compiler} ${cmake_cxx_flags} ${std_flag} ${thread_flag}' works." >> cmake_bootstrap.log 2>&1
++          if cmake_try_run "${compiler}" "${cmake_cxx_flags} ${std_flag} ${thread_flag}" \
++            "${TMPFILE}.cxx" >> cmake_bootstrap.log 2>&1; then
++            cmake_cxx_compiler="${compiler}"
++            cmake_cxx_flags="${cmake_cxx_flags} ${std_flag} ${thread_flag} "
++            break 4
++          fi
++        done
++      fi
+     done
+   done
+ done
+-- 
+2.32.1 (Apple Git-133)
+
