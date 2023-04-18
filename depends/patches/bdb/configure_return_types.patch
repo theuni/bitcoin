@@ -1,0 +1,62 @@
+From 7d5fa400e7dff904e049dccbea281e8cb38d04af Mon Sep 17 00:00:00 2001
+From: Cory Fields <cory-nospam-@coryfields.com>
+Date: Tue, 18 Apr 2023 15:51:04 +0000
+Subject: [PATCH] build: use return type for main in checks
+
+---
+ dist/aclocal/clock.m4    | 2 +-
+ dist/aclocal/mutex.m4    | 4 ++--
+ dist/aclocal/sequence.m4 | 2 +-
+ 3 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/dist/aclocal/clock.m4 b/dist/aclocal/clock.m4
+index a978ffa..8d7ac7f 100644
+--- a/dist/aclocal/clock.m4
++++ b/dist/aclocal/clock.m4
+@@ -21,7 +21,7 @@ esac
+ AC_CACHE_CHECK([for clock_gettime monotonic clock], db_cv_clock_monotonic, [
+ AC_TRY_RUN([
+ #include <sys/time.h>
+-main() {
++int main() {
+ 	struct timespec t;
+ 	return (clock_gettime(CLOCK_MONOTONIC, &t) != 0);
+ }], db_cv_clock_monotonic=yes, db_cv_clock_monotonic=no,
+diff --git a/dist/aclocal/mutex.m4 b/dist/aclocal/mutex.m4
+index e2fa95a..67184e0 100644
+--- a/dist/aclocal/mutex.m4
++++ b/dist/aclocal/mutex.m4
+@@ -4,7 +4,7 @@
+ AC_DEFUN(AM_PTHREADS_SHARED, [
+ AC_TRY_RUN([
+ #include <pthread.h>
+-main() {
++int main() {
+ 	pthread_cond_t cond;
+ 	pthread_mutex_t mutex;
+ 	pthread_condattr_t condattr;
+@@ -46,7 +46,7 @@ AC_TRY_LINK([
+ AC_DEFUN(AM_PTHREADS_PRIVATE, [
+ AC_TRY_RUN([
+ #include <pthread.h>
+-main() {
++int main() {
+ 	pthread_cond_t cond;
+ 	pthread_mutex_t mutex;
+ 	pthread_condattr_t condattr;
+diff --git a/dist/aclocal/sequence.m4 b/dist/aclocal/sequence.m4
+index c2f0109..e516d1b 100644
+--- a/dist/aclocal/sequence.m4
++++ b/dist/aclocal/sequence.m4
+@@ -43,7 +43,7 @@ AC_DEFUN(AM_SEQUENCE_CONFIGURE, [
+ 	# test, which won't test for the appropriate printf format strings.
+ 	if test "$db_cv_build_sequence" = "yes"; then
+ 		AC_TRY_RUN([
+-		main() {
++		int main() {
+ 			$db_cv_seq_type l;
+ 			unsigned $db_cv_seq_type u;
+ 			char buf@<:@100@:>@;
+-- 
+2.25.1
+

@@ -1,0 +1,251 @@
+From 674ff6c70bb62a6fd9e7f12b0ce8898b1e2e2c3a Mon Sep 17 00:00:00 2001
+From: Cory Fields <cory-nospam-@coryfields.com>
+Date: Tue, 18 Apr 2023 16:20:20 +0000
+Subject: [PATCH] build: don't call exit() without the proper include
+
+---
+ dist/aclocal/mutex.m4 | 52 +++++++++++++++++++++----------------------
+ 1 file changed, 25 insertions(+), 27 deletions(-)
+
+diff --git a/dist/aclocal/mutex.m4 b/dist/aclocal/mutex.m4
+index 67184e0..60aa53c 100644
+--- a/dist/aclocal/mutex.m4
++++ b/dist/aclocal/mutex.m4
+@@ -9,7 +9,7 @@ int main() {
+ 	pthread_mutex_t mutex;
+ 	pthread_condattr_t condattr;
+ 	pthread_mutexattr_t mutexattr;
+-	exit (
++	return (
+ 	pthread_condattr_init(&condattr) ||
+ 	pthread_condattr_setpshared(&condattr, PTHREAD_PROCESS_SHARED) ||
+ 	pthread_mutexattr_init(&mutexattr) ||
+@@ -29,7 +29,7 @@ AC_TRY_LINK([
+ 	pthread_mutex_t mutex;
+ 	pthread_condattr_t condattr;
+ 	pthread_mutexattr_t mutexattr;
+-	exit (
++	return (
+ 	pthread_condattr_init(&condattr) ||
+ 	pthread_condattr_setpshared(&condattr, PTHREAD_PROCESS_SHARED) ||
+ 	pthread_mutexattr_init(&mutexattr) ||
+@@ -51,7 +51,7 @@ int main() {
+ 	pthread_mutex_t mutex;
+ 	pthread_condattr_t condattr;
+ 	pthread_mutexattr_t mutexattr;
+-	exit (
++	return (
+ 	pthread_condattr_init(&condattr) ||
+ 	pthread_mutexattr_init(&mutexattr) ||
+ 	pthread_cond_init(&cond, &condattr) ||
+@@ -69,7 +69,7 @@ AC_TRY_LINK([
+ 	pthread_mutex_t mutex;
+ 	pthread_condattr_t condattr;
+ 	pthread_mutexattr_t mutexattr;
+-	exit (
++	return (
+ 	pthread_condattr_init(&condattr) ||
+ 	pthread_mutexattr_init(&mutexattr) ||
+ 	pthread_cond_init(&cond, &condattr) ||
+@@ -163,7 +163,7 @@ if test "$db_cv_mutex" = no; then
+ 		static lwp_cond_t ci = SHAREDCV;
+ 		lwp_mutex_t mutex = mi;
+ 		lwp_cond_t cond = ci;
+-		exit (
++		return (
+ 		_lwp_mutex_lock(&mutex) ||
+ 		_lwp_mutex_unlock(&mutex));
+ 	], [db_cv_mutex=Solaris/lwp])
+@@ -178,7 +178,7 @@ if test "$db_cv_mutex" = no; then
+ 		mutex_t mutex;
+ 		cond_t cond;
+ 		int type = USYNC_PROCESS;
+-		exit (
++		return (
+ 		mutex_init(&mutex, type, NULL) ||
+ 		cond_init(&cond, type, NULL) ||
+ 		mutex_lock(&mutex) ||
+@@ -193,7 +193,7 @@ if test "$db_cv_mutex" = no; then
+ 		mutex_t mutex;
+ 		cond_t cond;
+ 		int type = USYNC_PROCESS;
+-		exit (
++		return (
+ 		mutex_init(&mutex, type, NULL) ||
+ 		cond_init(&cond, type, NULL) ||
+ 		mutex_lock(&mutex) ||
+@@ -213,7 +213,7 @@ if test "$db_cv_mutex" = no; then
+ 	# x86/gcc: FreeBSD, NetBSD, BSD/OS, Linux
+ 	AC_TRY_COMPILE(,[
+ 	#if (defined(i386) || defined(__i386__)) && defined(__GNUC__)
+-		exit(0);
++		;
+ 	#else
+ 		FAIL TO COMPILE/LINK
+ 	#endif
+@@ -222,7 +222,7 @@ if test "$db_cv_mutex" = no; then
+ 	# x86_64/gcc: FreeBSD, NetBSD, BSD/OS, Linux
+ 	AC_TRY_COMPILE(,[
+ 	#if (defined(x86_64) || defined(__x86_64__)) && defined(__GNUC__)
+-		exit(0);
++		;
+ 	#else
+ 		FAIL TO COMPILE/LINK
+ 	#endif
+@@ -245,7 +245,7 @@ if test "$db_cv_mutex" = no; then
+ 	AC_TRY_COMPILE(,[
+ 	#if defined(__sparc__) && defined(__GNUC__)
+ 		asm volatile ("membar #StoreStore|#StoreLoad|#LoadStore");
+-		exit(0);
++		;
+ 	#else
+ 		FAIL TO COMPILE/LINK
+ 	#endif
+@@ -287,7 +287,6 @@ AC_TRY_LINK([
+ 	msem_init(&x, 0);
+ 	msem_lock(&x, 0);
+ 	msem_unlock(&x, 0);
+-	exit(0);
+ #else
+ 	FAIL TO COMPILE/LINK
+ #endif
+@@ -304,7 +303,6 @@ AC_TRY_LINK([
+ 	msem_init(&x, 0);
+ 	msem_lock(&x, 0);
+ 	msem_unlock(&x, 0);
+-	exit(0);
+ ], [db_cv_mutex=UNIX/msem_init])
+ fi
+ 
+@@ -326,7 +324,7 @@ fi
+ if test "$db_cv_mutex" = no; then
+ AC_TRY_COMPILE(,[
+ #if defined(__USLC__)
+-	exit(0);
++	;
+ #else
+ 	FAIL TO COMPILE/LINK
+ #endif
+@@ -383,7 +381,7 @@ fi
+ if test "$db_cv_mutex" = no; then
+ AC_TRY_COMPILE(,[
+ #if defined(__alpha) && defined(__DECC)
+-	exit(0);
++	;
+ #else
+ 	FAIL TO COMPILE/LINK
+ #endif
+@@ -394,7 +392,7 @@ fi
+ if test "$db_cv_mutex" = no; then
+ AC_TRY_COMPILE(,[
+ #if defined(__alpha) && defined(__GNUC__)
+-	exit(0);
++	;
+ #else
+ 	FAIL TO COMPILE/LINK
+ #endif
+@@ -405,7 +403,7 @@ fi
+ if test "$db_cv_mutex" = no; then
+ AC_TRY_COMPILE(,[
+ #if defined(__arm__) && defined(__GNUC__)
+-	exit(0);
++	;
+ #else
+ 	FAIL TO COMPILE/LINK
+ #endif
+@@ -416,7 +414,7 @@ fi
+ if test "$db_cv_mutex" = no; then
+ AC_TRY_COMPILE(,[
+ #if (defined(__mips) || defined(__mips__)) && defined(__GNUC__)
+-	exit(0);
++	;
+ #else
+ 	FAIL TO COMPILE/LINK
+ #endif
+@@ -427,7 +425,7 @@ fi
+ if test "$db_cv_mutex" = no; then
+ AC_TRY_COMPILE(,[
+ #if (defined(__hppa) || defined(__hppa__)) && defined(__GNUC__)
+-	exit(0);
++	;
+ #else
+ 	FAIL TO COMPILE/LINK
+ #endif
+@@ -438,7 +436,7 @@ fi
+ if test "$db_cv_mutex" = no; then
+ AC_TRY_COMPILE(,[
+ #if (defined(__powerpc__) || defined(__ppc__)) && defined(__GNUC__)
+-	exit(0);
++	;
+ #else
+ 	FAIL TO COMPILE/LINK
+ #endif
+@@ -449,7 +447,7 @@ fi
+ if test "$db_cv_mutex" = no; then
+ AC_TRY_COMPILE(,[
+ #if (defined(mc68020) || defined(sun3)) && defined(__GNUC__)
+-	exit(0);
++	;
+ #else
+ 	FAIL TO COMPILE/LINK
+ #endif
+@@ -460,7 +458,7 @@ fi
+ if test "$db_cv_mutex" = no; then
+ AC_TRY_COMPILE(,[
+ #if defined(__MVS__) && defined(__IBMC__)
+-	exit(0);
++	;
+ #else
+ 	FAIL TO COMPILE/LINK
+ #endif
+@@ -471,7 +469,7 @@ fi
+ if test "$db_cv_mutex" = no; then
+ AC_TRY_COMPILE(,[
+ #if defined(__s390__) && defined(__GNUC__)
+-	exit(0);
++	;
+ #else
+ 	FAIL TO COMPILE/LINK
+ #endif
+@@ -482,7 +480,7 @@ fi
+ if test "$db_cv_mutex" = no; then
+ AC_TRY_COMPILE(,[
+ #if defined(__ia64) && defined(__GNUC__)
+-	exit(0);
++	;
+ #else
+ 	FAIL TO COMPILE/LINK
+ #endif
+@@ -493,7 +491,7 @@ fi
+ if test "$db_cv_mutex" = no; then
+ AC_TRY_COMPILE(,[
+ #if defined(_UTS)
+-	exit(0);
++	;
+ #else
+ 	FAIL TO COMPILE/LINK
+ #endif
+@@ -814,9 +812,9 @@ fi
+ if test "$db_cv_atomic" = no; then
+ 	AC_TRY_COMPILE(,[
+ 	#if ((defined(i386) || defined(__i386__)) && defined(__GNUC__))
+-		exit(0);
++		;
+ 	#elif ((defined(x86_64) || defined(__x86_64__)) && defined(__GNUC__))
+-		exit(0);
++		;
+ 	#else
+ 		FAIL TO COMPILE/LINK
+ 	#endif
+@@ -827,7 +825,7 @@ if test "$db_cv_atomic" = no; then
+ AC_TRY_LINK([
+ #include <sys/atomic.h>],[
+ 	volatile unsigned val = 1;
+-	exit (atomic_inc_uint_nv(&val) != 2 ||
++	return (atomic_inc_uint_nv(&val) != 2 ||
+ 	      atomic_dec_uint_nv(&val) != 1 ||
+ 	      atomic_cas_32(&val, 1, 3) != 3);
+ ], [db_cv_atomic="solaris/atomic"])
+-- 
+2.25.1
+
