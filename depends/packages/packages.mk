@@ -1,6 +1,6 @@
 packages:=
 
-native_packages = native_cmake
+native_packages = native_cmake native_pkgconfig
 
 boost_packages = boost
 
