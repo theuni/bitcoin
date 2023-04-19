@@ -1,5 +1,6 @@
 packages:=
 
+native_packages = native_pkgconfig
 boost_packages = boost
 
 libevent_packages = libevent
