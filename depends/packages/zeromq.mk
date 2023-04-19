@@ -3,19 +3,16 @@ $(package)_version=4.3.5
 $(package)_download_path=https://github.com/zeromq/libzmq/releases/download/v$($(package)_version)/
 $(package)_file_name=$(package)-$($(package)_version).tar.gz
 $(package)_sha256_hash=6653ef5910f17954861fe72332e68b03ca6e4d9c7160eb3a8de5a5a913bfab43
+$(package)_dependencies=native_cmake
 $(package)_patches=remove_libstd_link.patch
+$(package)_build_subdir=build
 
 define $(package)_set_vars
-  $(package)_config_opts = --without-docs --disable-shared --disable-valgrind
-  $(package)_config_opts += --disable-perf --disable-curve-keygen --disable-curve --disable-libbsd
-  $(package)_config_opts += --without-libsodium --without-libgssapi_krb5 --without-pgm --without-norm --without-vmci
-  $(package)_config_opts += --disable-libunwind --disable-radix-tree --without-gcov --disable-dependency-tracking
-  $(package)_config_opts += --disable-Werror --disable-drafts --enable-option-checking
-  $(package)_config_opts_linux=--with-pic
-  $(package)_config_opts_freebsd=--with-pic
-  $(package)_config_opts_netbsd=--with-pic
-  $(package)_config_opts_openbsd=--with-pic
-  $(package)_config_opts_android=--with-pic
+  $(package)_config_opts = -DZMQ_BUILD_TESTS=OFF -DWITH_PERF_TOOL=OFF -DWITH_LIBSODIUM=OFF
+  $(package)_config_opts += -DWITH_LIBBSD=OFF -DENABLE_CURVE=OFF -DENABLE_CPACK=OFF
+  $(package)_config_opts += -DBUILD_SHARED=OFF -DBUILD_TESTS=OFF -DZMQ_BUILD_TESTS=OFF
+  $(package)_config_opts += -DWITH_DOCS=OFF
+  $(package)_config_opts += -DCMAKE_POSITION_INDEPENDENT_CODE=ON
 endef
 
 define $(package)_preprocess_cmds
@@ -23,17 +20,15 @@ define $(package)_preprocess_cmds
 endef
 
 define $(package)_config_cmds
-  ./autogen.sh && \
-  cp -f $(BASEDIR)/config.guess $(BASEDIR)/config.sub config && \
-  $($(package)_autoconf)
+   $($(package)_cmake) -S .. -B .
 endef
 
 define $(package)_build_cmds
-  $(MAKE) src/libzmq.la
+  $(MAKE)
 endef
 
 define $(package)_stage_cmds
-  $(MAKE) DESTDIR=$($(package)_staging_dir) install-libLTLIBRARIES install-includeHEADERS install-pkgconfigDATA
+  $(MAKE) DESTDIR=$($(package)_staging_dir) install
 endef
 
 define $(package)_postprocess_cmds
