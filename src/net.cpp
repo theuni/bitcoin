@@ -2859,6 +2859,10 @@ void CConnman::PushMessage(CNode* pnode, CSerializedNetMsg&& msg)
 {
     AssertLockNotHeld(m_total_bytes_sent_mutex);
     size_t nMessageSize = msg.data.size();
+    if (nMessageSize > MAX_PROTOCOL_MESSAGE_LENGTH) {
+      LogPrint(BCLog::NET, "refusing to send oversized %s (%d bytes) peer=%d\n", msg.m_type, nMessageSize, pnode->GetId());
+      return;
+    }
     LogPrint(BCLog::NET, "sending %s (%d bytes) peer=%d\n", msg.m_type, nMessageSize, pnode->GetId());
     if (gArgs.GetBoolArg("-capturemessages", false)) {
         CaptureMessage(pnode->addr, msg.m_type, msg.data, /*is_incoming=*/false);
