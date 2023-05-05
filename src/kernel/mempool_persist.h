@@ -19,7 +19,7 @@ bool DumpMempool(const CTxMemPool& pool, const fs::path& dump_path,
                  bool skip_file_commit = false);
 
 /** Load the mempool from disk. */
-bool LoadMempool(CTxMemPool& pool, const fs::path& load_path,
+MaybeEarlyExit<bool> LoadMempool(CTxMemPool& pool, const fs::path& load_path,
                  CChainState& active_chainstate,
                  fsbridge::FopenFn mockable_fopen_function = fsbridge::fopen);
 

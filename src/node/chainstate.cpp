@@ -25,7 +25,7 @@
 #include <vector>
 
 namespace node {
-ChainstateLoadResult LoadChainstate(ChainstateManager& chainman, const CacheSizes& cache_sizes,
+MaybeEarlyExit<node::ChainstateLoadResult> LoadChainstate(ChainstateManager& chainman, const CacheSizes& cache_sizes,
                                     const ChainstateLoadOptions& options)
 {
     auto is_coinsview_empty = [&](CChainState* chainstate) EXCLUSIVE_LOCKS_REQUIRED(::cs_main) {
@@ -72,7 +72,7 @@ ChainstateLoadResult LoadChainstate(ChainstateManager& chainman, const CacheSize
     // block file from disk.
     // Note that it also sets fReindex global based on the disk flag!
     // From here on, fReindex and options.reindex values may be different!
-    if (!chainman.LoadBlockIndex()) {
+    EXIT_OR_IF_NOT(chainman.LoadBlockIndex()) {
         if (options.check_interrupt && options.check_interrupt()) return ChainstateLoadResult{ChainstateLoadStatus::INTERRUPTED, {}};
         return ChainstateLoadResult{ChainstateLoadStatus::FAILURE, _("Error loading block database")};
     }
@@ -95,7 +95,7 @@ ChainstateLoadResult LoadChainstate(ChainstateManager& chainman, const CacheSize
     // (otherwise we use the one already on disk).
     // This is called again in ThreadImport after the reindex completes.
     if (!fReindex) {
-        if (!chainman.ActiveChainstate().LoadGenesisBlock()) {
+        EXIT_OR_IF_NOT(chainman.ActiveChainstate().LoadGenesisBlock()) {
             return ChainstateLoadResult{ChainstateLoadStatus::FAILURE, _("Error initializing block database")};
         }
     }
@@ -151,7 +151,7 @@ ChainstateLoadResult LoadChainstate(ChainstateManager& chainman, const CacheSize
     return ChainstateLoadResult{ChainstateLoadStatus::SUCCESS, {}};
 }
 
-ChainstateLoadResult VerifyLoadedChainstate(ChainstateManager& chainman, const ChainstateLoadOptions& options)
+MaybeEarlyExit<node::ChainstateLoadResult> VerifyLoadedChainstate(ChainstateManager& chainman, const ChainstateLoadOptions& options)
 {
     auto is_coinsview_empty = [&](CChainState* chainstate) EXCLUSIVE_LOCKS_REQUIRED(::cs_main) {
         return options.reindex || options.reindex_chainstate || chainstate->CoinsTip().GetBestBlock().IsNull();
@@ -168,7 +168,7 @@ ChainstateLoadResult VerifyLoadedChainstate(ChainstateManager& chainman, const C
                                                          "Only rebuild the block database if you are sure that your computer's date and time are correct")};
             }
 
-            if (!CVerifyDB().VerifyDB(
+            EXIT_OR_IF_NOT(CVerifyDB().VerifyDB(
                     *chainstate, chainman.GetConsensus(), chainstate->CoinsDB(),
                     options.check_level,
                     options.check_blocks)) {
