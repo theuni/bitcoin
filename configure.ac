@@ -83,6 +83,9 @@ case $host in
      lt_cv_prog_compiler_pic="-DPIC"
      lt_cv_prog_compiler_pic_CXX="-DPIC"
   ;;
+  *darwin*)
+     lt_cv_apple_cc_single_mod=yes
+  ;;
 esac
 
 AC_ARG_WITH([seccomp],
