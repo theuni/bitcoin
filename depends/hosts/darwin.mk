@@ -62,7 +62,7 @@ $(foreach TOOL,$(llvm_TOOLS),$(eval darwin_$(TOOL) = $$(build_prefix)/bin/$$(hos
 #         Explicitly point to our binaries (e.g. LLVM) so that they are
 #         ensured to be found and preferred over other possibilities.
 #
-#     -stdlib=libc++ -stdlib++-isystem$(OSX_SDK)/usr/include/c++/v1
+#     -stdlib++-isystem$(OSX_SDK)/usr/include/c++/v1
 #
 #         Forces clang to use the libc++ headers from our SDK and completely
 #         forget about the libc++ headers from the standard directories
@@ -106,7 +106,6 @@ darwin_CXX=env -u C_INCLUDE_PATH -u CPLUS_INCLUDE_PATH \
              $(clangxx_prog) --target=$(host) -mmacosx-version-min=$(OSX_MIN_VERSION) \
                -B$(build_prefix)/bin -mlinker-version=$(LD64_VERSION) \
                -isysroot$(OSX_SDK) \
-               -stdlib=libc++ \
                -stdlib++-isystem$(OSX_SDK)/usr/include/c++/v1 \
                -Xclang -internal-externc-isystem -Xclang $(clang_resource_dir)/include \
                -Xclang -internal-externc-isystem -Xclang $(OSX_SDK)/usr/include
