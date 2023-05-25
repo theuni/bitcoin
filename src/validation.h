@@ -1041,7 +1041,11 @@ public:
     //! Otherwise, revert to using the ibd chainstate and shutdown.
     SnapshotCompletionResult MaybeCompleteSnapshotValidation(
         std::function<void(bilingual_str)> shutdown_fnc =
-            [](bilingual_str msg) { AbortNode(msg.original, msg); })
+            [](bilingual_str msg) { 
+              // Disable temporarily because the transform plugin can't figure this out.
+              // AbortNode(msg.original, msg);
+            }
+            )
         EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
 
     //! The most-work chain.
