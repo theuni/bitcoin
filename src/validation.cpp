@@ -5778,10 +5778,11 @@ bool ChainstateManager::ValidatedSnapshotCleanup()
                                    const fs::filesystem_error& err) {
         LogPrintf("%s: error renaming file (%s): %s\n",
                 __func__, fs::PathToString(p_old), err.what());
-        AbortNode(strprintf(
-            "Rename of '%s' -> '%s' failed. "
-            "Cannot clean up the background chainstate leveldb directory.",
-            fs::PathToString(p_old), fs::PathToString(p_new)));
+        auto abort_string = strprintf(
+             "Rename of '%s' -> '%s' failed. "
+             "Cannot clean up the background chainstate leveldb directory.",
+             fs::PathToString(p_old), fs::PathToString(p_new));
+        AbortNode(std::move(abort_string));
     };
 
     try {
