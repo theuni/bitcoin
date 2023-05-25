@@ -68,9 +68,9 @@ struct ChainstateLoadResult{
  *
  *  LoadChainstate returns a (status code, error string) tuple.
  */
-ChainstateLoadResult LoadChainstate(ChainstateManager& chainman, const CacheSizes& cache_sizes,
+MaybeEarlyExit<node::ChainstateLoadResult> LoadChainstate(ChainstateManager& chainman, const CacheSizes& cache_sizes,
                                     const ChainstateLoadOptions& options);
-ChainstateLoadResult VerifyLoadedChainstate(ChainstateManager& chainman, const ChainstateLoadOptions& options);
+MaybeEarlyExit<node::ChainstateLoadResult> VerifyLoadedChainstate(ChainstateManager& chainman, const ChainstateLoadOptions& options);
 } // namespace node
 
 #endif // BITCOIN_NODE_CHAINSTATE_H

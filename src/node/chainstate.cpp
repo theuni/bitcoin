@@ -31,7 +31,7 @@
 namespace node {
 // Complete initialization of chainstates after the initial call has been made
 // to ChainstateManager::InitializeChainstate().
-static ChainstateLoadResult CompleteChainstateInitialization(
+static MaybeEarlyExit<node::ChainstateLoadResult> CompleteChainstateInitialization(
     ChainstateManager& chainman,
     const CacheSizes& cache_sizes,
     const ChainstateLoadOptions& options) EXCLUSIVE_LOCKS_REQUIRED(::cs_main)
@@ -61,7 +61,7 @@ static ChainstateLoadResult CompleteChainstateInitialization(
     // block file from disk.
     // Note that it also sets fReindex global based on the disk flag!
     // From here on, fReindex and options.reindex values may be different!
-    if (!chainman.LoadBlockIndex()) {
+    EXIT_OR_IF_NOT(chainman.LoadBlockIndex()) {
         if (options.check_interrupt && options.check_interrupt()) return ChainstateLoadResult{ChainstateLoadStatus::INTERRUPTED, {}};
         return ChainstateLoadResult{ChainstateLoadStatus::FAILURE, _("Error loading block database")};
     }
@@ -84,7 +84,7 @@ static ChainstateLoadResult CompleteChainstateInitialization(
     // (otherwise we use the one already on disk).
     // This is called again in ThreadImport after the reindex completes.
     if (!fReindex) {
-        if (!chainman.ActiveChainstate().LoadGenesisBlock()) {
+        EXIT_OR_IF_NOT(chainman.ActiveChainstate().LoadGenesisBlock()) {
             return ChainstateLoadResult{ChainstateLoadStatus::FAILURE, _("Error initializing block database")};
         }
     }
@@ -155,12 +155,12 @@ static ChainstateLoadResult CompleteChainstateInitialization(
     // Now that chainstates are loaded and we're able to flush to
     // disk, rebalance the coins caches to desired levels based
     // on the condition of each chainstate.
-    chainman.MaybeRebalanceCaches();
+    MAYBE_EXIT(chainman.MaybeRebalanceCaches());
 
     return ChainstateLoadResult{ChainstateLoadStatus::SUCCESS, {}};
 }
 
-ChainstateLoadResult LoadChainstate(ChainstateManager& chainman, const CacheSizes& cache_sizes,
+MaybeEarlyExit<node::ChainstateLoadResult> LoadChainstate(ChainstateManager& chainman, const CacheSizes& cache_sizes,
                                     const ChainstateLoadOptions& options)
 {
     if (!chainman.AssumedValidBlock().IsNull()) {
@@ -189,7 +189,7 @@ ChainstateLoadResult LoadChainstate(ChainstateManager& chainman, const CacheSize
     // Load a chain created from a UTXO snapshot, if any exist.
     chainman.DetectSnapshotChainstate(options.mempool);
 
-    ChainstateLoadResult init_result = CompleteChainstateInitialization(chainman, cache_sizes, options);
+    EXIT_OR_DECL(ChainstateLoadResult init_result, CompleteChainstateInitialization(chainman, cache_sizes, options));
     if (init_result.m_status != ChainstateLoadStatus::SUCCESS) {
         return init_result;
     }
@@ -202,14 +202,14 @@ ChainstateLoadResult LoadChainstate(ChainstateManager& chainman, const CacheSize
     // snapshot is actually validated? Because this entails unusual
     // filesystem operations to move leveldb data directories around, and that seems
     // too risky to do in the middle of normal runtime.
-    auto snapshot_completion = chainman.MaybeCompleteSnapshotValidation();
+    EXIT_OR_DECL(auto snapshot_completion, chainman.MaybeCompleteSnapshotValidation());
 
     if (snapshot_completion == SnapshotCompletionResult::SKIPPED) {
         // do nothing; expected case
     } else if (snapshot_completion == SnapshotCompletionResult::SUCCESS) {
         LogPrintf("[snapshot] cleaning up unneeded background chainstate, then reinitializing\n");
-        if (!chainman.ValidatedSnapshotCleanup()) {
-            AbortNode("Background chainstate cleanup failed unexpectedly.");
+        EXIT_OR_IF_NOT(chainman.ValidatedSnapshotCleanup()) {
+            MAYBE_EXIT(AbortNode("Background chainstate cleanup failed unexpectedly."));
         }
 
         // Because ValidatedSnapshotCleanup() has torn down chainstates with
@@ -225,7 +225,7 @@ ChainstateLoadResult LoadChainstate(ChainstateManager& chainman, const CacheSize
         // for the fully validated chainstate.
         chainman.ActiveChainstate().UnloadBlockIndex();
 
-        init_result = CompleteChainstateInitialization(chainman, cache_sizes, options);
+        EXIT_OR_ASSIGN(init_result , CompleteChainstateInitialization(chainman, cache_sizes, options));
         if (init_result.m_status != ChainstateLoadStatus::SUCCESS) {
             return init_result;
         }
@@ -238,7 +238,7 @@ ChainstateLoadResult LoadChainstate(ChainstateManager& chainman, const CacheSize
     return ChainstateLoadResult{ChainstateLoadStatus::SUCCESS, {}};
 }
 
-ChainstateLoadResult VerifyLoadedChainstate(ChainstateManager& chainman, const ChainstateLoadOptions& options)
+MaybeEarlyExit<node::ChainstateLoadResult> VerifyLoadedChainstate(ChainstateManager& chainman, const ChainstateLoadOptions& options)
 {
     auto is_coinsview_empty = [&](Chainstate* chainstate) EXCLUSIVE_LOCKS_REQUIRED(::cs_main) {
         return options.reindex || options.reindex_chainstate || chainstate->CoinsTip().GetBestBlock().IsNull();
@@ -255,10 +255,10 @@ ChainstateLoadResult VerifyLoadedChainstate(ChainstateManager& chainman, const C
                                                          "Only rebuild the block database if you are sure that your computer's date and time are correct")};
             }
 
-            VerifyDBResult result = CVerifyDB().VerifyDB(
+            EXIT_OR_DECL(VerifyDBResult result, CVerifyDB().VerifyDB(
                 *chainstate, chainman.GetConsensus(), chainstate->CoinsDB(),
                 options.check_level,
-                options.check_blocks);
+                options.check_blocks));
             switch (result) {
             case VerifyDBResult::SUCCESS:
             case VerifyDBResult::SKIPPED_MISSING_BLOCKS:

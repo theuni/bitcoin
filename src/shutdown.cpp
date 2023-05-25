@@ -20,7 +20,7 @@
 #include <condition_variable>
 #endif
 
-bool AbortNode(const std::string& strMessage, bilingual_str user_message)
+MaybeEarlyExit<bool> AbortNode(const std::string& strMessage, bilingual_str user_message)
 {
     SetMiscWarning(Untranslated(strMessage));
     LogPrintf("*** %s\n", strMessage);
