@@ -66,6 +66,7 @@ struct CNodeStateStats {
     bool m_bip152_highbandwidth_to;
     bool m_bip152_highbandwidth_from;
     std::string cleanSubVer;
+    std::string m_addr_local;
 };
 
 struct PeerManagerInfo {

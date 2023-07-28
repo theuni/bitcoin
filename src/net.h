@@ -161,7 +161,7 @@ enum
 };
 
 /** Returns a local address that we should advertise to this peer. */
-std::optional<CService> GetLocalAddrForPeer(CNode& node);
+std::optional<CService> GetLocalAddrForPeer(CNode& node, const CService& addr_local);
 
 bool AddLocal(const CService& addr, int nScore = LOCAL_NONE);
 bool AddLocal(const CNetAddr& addr, int nScore = LOCAL_NONE);
@@ -207,8 +207,6 @@ public:
     NetPermissionFlags m_permission_flags;
     std::chrono::microseconds m_last_ping_time;
     std::chrono::microseconds m_min_ping_time;
-    // Our address, as reported by the peer
-    std::string addrLocal;
     // Address of this peer
     CAddress addr;
     // Bind address of our side of the connection
@@ -808,13 +806,9 @@ public:
         return m_greatest_common_version;
     }
 
-    CService GetAddrLocal() const EXCLUSIVE_LOCKS_REQUIRED(!m_addr_local_mutex);
-    //! May not be called more than once
-    void SetAddrLocal(const CService& addrLocalIn) EXCLUSIVE_LOCKS_REQUIRED(!m_addr_local_mutex);
-
     void CloseSocketDisconnect() EXCLUSIVE_LOCKS_REQUIRED(!m_sock_mutex);
 
-    void CopyStats(CNodeStats& stats) EXCLUSIVE_LOCKS_REQUIRED(!m_subver_mutex, !m_addr_local_mutex, !cs_vSend, !cs_vRecv);
+    void CopyStats(CNodeStats& stats) EXCLUSIVE_LOCKS_REQUIRED(!cs_vSend, !cs_vRecv);
 
     std::string ConnectionTypeAsString() const { return ::ConnectionTypeAsString(m_conn_type); }
 
@@ -851,10 +845,6 @@ private:
     Mutex m_msg_process_queue_mutex;
     std::list<CNetMessage> m_msg_process_queue GUARDED_BY(m_msg_process_queue_mutex);
     size_t m_msg_process_queue_size GUARDED_BY(m_msg_process_queue_mutex){0};
-
-    // Our address, as reported by the peer
-    CService m_addr_local GUARDED_BY(m_addr_local_mutex);
-    mutable Mutex m_addr_local_mutex;
 
     mapMsgTypeSize mapSendBytesPerMsgType GUARDED_BY(cs_vSend);
     mapMsgTypeSize mapRecvBytesPerMsgType GUARDED_BY(cs_vRecv);

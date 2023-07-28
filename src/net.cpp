@@ -229,33 +229,32 @@ static int GetnScore(const CService& addr)
 }
 
 // Is our peer's addrLocal potentially useful as an external IP source?
-[[nodiscard]] static bool IsPeerAddrLocalGood(CNode *pnode)
+[[nodiscard]] static bool IsPeerAddrLocalGood(CNode *pnode, const CService& addr_local)
 {
-    CService addrLocal = pnode->GetAddrLocal();
-    return fDiscover && pnode->addr.IsRoutable() && addrLocal.IsRoutable() &&
-           g_reachable_nets.Contains(addrLocal);
+    return fDiscover && pnode->addr.IsRoutable() && addr_local.IsRoutable() &&
+           g_reachable_nets.Contains(addr_local);
 }
 
-std::optional<CService> GetLocalAddrForPeer(CNode& node)
+std::optional<CService> GetLocalAddrForPeer(CNode& node, const CService& addr_local)
 {
     CService addrLocal{GetLocalAddress(node)};
     // If discovery is enabled, sometimes give our peer the address it
     // tells us that it sees us as in case it has a better idea of our
     // address than we do.
     FastRandomContext rng;
-    if (IsPeerAddrLocalGood(&node) && (!addrLocal.IsRoutable() ||
+    if (IsPeerAddrLocalGood(&node, addr_local) && (!addrLocal.IsRoutable() ||
          rng.randbits((GetnScore(addrLocal) > LOCAL_MANUAL) ? 3 : 1) == 0))
     {
         if (IsInboundConn(node.m_conn_type)) {
             // For inbound connections, assume both the address and the port
             // as seen from the peer.
-            addrLocal = CService{node.GetAddrLocal()};
+            addrLocal = addr_local;
         } else {
             // For outbound connections, assume just the address as seen from
             // the peer and leave the port in `addrLocal` as returned by
             // `GetLocalAddress()` above. The peer has no way to observe our
             // listening port when we have initiated the connection.
-            addrLocal.SetIP(node.GetAddrLocal());
+            addrLocal.SetIP(addr_local);
         }
     }
     if (addrLocal.IsRoutable()) {
@@ -580,21 +579,6 @@ void CConnman::AddWhitelistPermissionFlags(NetPermissionFlags& flags, const CNet
     }
 }
 
-CService CNode::GetAddrLocal() const
-{
-    AssertLockNotHeld(m_addr_local_mutex);
-    LOCK(m_addr_local_mutex);
-    return m_addr_local;
-}
-
-void CNode::SetAddrLocal(const CService& addrLocalIn) {
-    AssertLockNotHeld(m_addr_local_mutex);
-    LOCK(m_addr_local_mutex);
-    if (Assume(!m_addr_local.IsValid())) { // Addr local can only be set once during version msg processing
-        m_addr_local = addrLocalIn;
-    }
-}
-
 Network CNode::ConnectedThroughNetwork() const
 {
     return m_inbound_onion ? NET_ONION : addr.GetNetClass();
@@ -635,10 +619,6 @@ void CNode::CopyStats(CNodeStats& stats)
     X(m_permission_flags);
 
     X(m_last_ping_time);
-
-    // Leave string empty if addrLocal invalid (not filled in yet)
-    CService addrLocalUnlocked = GetAddrLocal();
-    stats.addrLocal = addrLocalUnlocked.IsValid() ? addrLocalUnlocked.ToStringAddrPort() : "";
 
     X(m_conn_type);
 }
