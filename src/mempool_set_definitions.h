@@ -233,11 +233,32 @@ typedef boost::multi_index_container<
     >
 > indexed_disconnected_transactions;
 
+struct DisconnectedTransactionsIteratorImpl {
+    indexed_disconnected_transactions::index<insertion_order>::type::iterator impl;
+    operator indexed_disconnected_transactions::index<insertion_order>::type::iterator&() {
+        return impl;
+    }
+
+    operator const indexed_disconnected_transactions::index<insertion_order>::type::iterator&() const {
+        return impl;
+    }
+
+    auto operator*() const -> decltype(*impl) {
+        return *impl;
+    }
+};
+
+struct IndexedDisconnectedTransactionsImpl {
+    MempoolMultiIndex::indexed_disconnected_transactions impl;
+};
+
+
 } // namespace MempoolMultiIndex
 
 struct SetEntriesImpl {
     MempoolMultiIndex::setEntries impl;
 };
+
 
 
 #endif // BITCOIN_SET_DEFINITIONS_H
