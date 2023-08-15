@@ -316,7 +316,7 @@ static void entryToJSON(const CTxMemPool& pool, UniValue& info, const CTxMemPool
     info.pushKV("depends", depends);
 
     UniValue spent(UniValue::VARR);
-    const CTxMemPool::txiter& it = pool.mapTx.find(tx.GetHash());
+    const MempoolMultiIndex::raw_txiter& it = pool.mapTx.find(tx.GetHash());
     const CTxMemPoolEntry::Children& children = it->GetMemPoolChildrenConst();
     for (const CTxMemPoolEntry& child : children) {
         spent.push_back(child.GetTx().GetHash().ToString());
@@ -461,7 +461,7 @@ static RPCHelpMan getmempoolancestors()
     const CTxMemPool& mempool = EnsureAnyMemPool(request.context);
     LOCK(mempool.cs);
 
-    CTxMemPool::txiter it = mempool.mapTx.find(hash);
+    MempoolMultiIndex::raw_txiter it = mempool.mapTx.find(hash);
     if (it == mempool.mapTx.end()) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Transaction not in mempool");
     }
@@ -470,7 +470,7 @@ static RPCHelpMan getmempoolancestors()
 
     if (!fVerbose) {
         UniValue o(UniValue::VARR);
-        for (CTxMemPool::txiter ancestorIt : ancestors) {
+        for (MempoolMultiIndex::raw_txiter ancestorIt : ancestors) {
             o.push_back(ancestorIt->GetTx().GetHash().ToString());
         }
         return o;
@@ -522,19 +522,20 @@ static RPCHelpMan getmempooldescendants()
     const CTxMemPool& mempool = EnsureAnyMemPool(request.context);
     LOCK(mempool.cs);
 
-    CTxMemPool::txiter it = mempool.mapTx.find(hash);
+    MempoolMultiIndex::raw_txiter it = mempool.mapTx.find(hash);
     if (it == mempool.mapTx.end()) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Transaction not in mempool");
     }
 
     CTxMemPool::setEntries setDescendants;
-    mempool.CalculateDescendants(it, setDescendants);
+    MempoolMultiIndex::txiter iter{it};
+    mempool.CalculateDescendants(iter, setDescendants);
     // CTxMemPool::CalculateDescendants will include the given tx
     setDescendants.erase(it);
 
     if (!fVerbose) {
         UniValue o(UniValue::VARR);
-        for (CTxMemPool::txiter descendantIt : setDescendants) {
+        for (MempoolMultiIndex::raw_txiter descendantIt : setDescendants) {
             o.push_back(descendantIt->GetTx().GetHash().ToString());
         }
 
@@ -574,7 +575,7 @@ static RPCHelpMan getmempoolentry()
     const CTxMemPool& mempool = EnsureAnyMemPool(request.context);
     LOCK(mempool.cs);
 
-    CTxMemPool::txiter it = mempool.mapTx.find(hash);
+    MempoolMultiIndex::raw_txiter it = mempool.mapTx.find(hash);
     if (it == mempool.mapTx.end()) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Transaction not in mempool");
     }

@@ -208,9 +208,33 @@ typedef boost::multi_index_container<
     >
 > indexed_transaction_set;
 
-using txiter = indexed_transaction_set::nth_index<0>::type::const_iterator;
+typedef indexed_transaction_set::nth_index<0>::type::const_iterator raw_txiter;
 
-typedef std::set<txiter, CompareIteratorByHash> setEntries;
+struct txiter {
+    raw_txiter impl;
+
+    txiter(const raw_txiter& inner_impl)
+        : impl(inner_impl) {}
+
+    txiter(raw_txiter&& inner_impl)
+        : impl(std::move(inner_impl)) {}
+
+    operator raw_txiter&() {
+        return impl;
+    }
+
+    operator const raw_txiter&() const {
+        return impl;
+    }
+
+    auto operator*() const -> decltype(*impl) {
+        return *impl;
+    }
+};
+
+typedef std::set<raw_txiter, CompareIteratorByHash> setEntries;
+
+typedef std::map<raw_txiter, setEntries, CompareIteratorByHash> cacheMap;
 
 
 // multi_index tag names

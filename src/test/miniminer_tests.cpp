@@ -141,9 +141,9 @@ BOOST_FIXTURE_TEST_CASE(miniminer_1p1c, TestChain100Setup)
     };
     std::map<uint256, TxDimensions> tx_dims;
     for (const auto& tx : all_transactions) {
-        const auto it = pool.GetIter(tx->GetHash()).value();
-        tx_dims.emplace(tx->GetHash(), TxDimensions{it->GetTxSize(), it->GetModifiedFee(),
-                                              CFeeRate(it->GetModifiedFee(), it->GetTxSize())});
+        auto it = pool.GetIter(tx->GetHash()).value();
+        tx_dims.emplace(tx->GetHash(), TxDimensions{it->impl->GetTxSize(), it->impl->GetModifiedFee(),
+                                              CFeeRate(it->impl->GetModifiedFee(), it->impl->GetTxSize())});
     }
 
     const std::vector<CFeeRate> various_normal_feerates({CFeeRate(0), CFeeRate(500), CFeeRate(999),
@@ -433,10 +433,13 @@ BOOST_FIXTURE_TEST_CASE(calculate_cluster, TestChain100Setup)
         lasttx = tx;
     }
     const auto cluster_500tx = pool.GatherClusters({lasttx->GetHash()});
-    CTxMemPool::setEntries cluster_500tx_set{cluster_500tx.begin(), cluster_500tx.end()};
+    CTxMemPool::setEntries cluster_500tx_set;
+    for (const auto& uptr : cluster_500tx) {
+        cluster_500tx_set.insert(uptr->impl);
+    }
     BOOST_CHECK_EQUAL(cluster_500tx.size(), cluster_500tx_set.size());
     const auto vec_iters_500 = pool.GetIterVec(chain_txids);
-    for (const auto& iter : vec_iters_500) BOOST_CHECK(cluster_500tx_set.count(iter));
+    for (const auto& iter : vec_iters_500) BOOST_CHECK(cluster_500tx_set.count(iter->impl));
 
     // GatherClusters stops at 500 transactions.
     const auto tx_501 = make_tx({COutPoint{lasttx->GetHash(), 0}}, /*num_outputs=*/1);
@@ -462,14 +465,17 @@ BOOST_FIXTURE_TEST_CASE(calculate_cluster, TestChain100Setup)
         zigzag_txids.push_back(txc->GetHash());
     }
     const auto vec_iters_zigzag = pool.GetIterVec(zigzag_txids);
-    // It doesn't matter which tx we calculate cluster for, everybody is in it.
+    // // It doesn't matter which tx we calculate cluster for, everybody is in it.
     const std::vector<size_t> indices{0, 22, 72, zigzag_txids.size() - 1};
     for (const auto index : indices) {
         const auto cluster = pool.GatherClusters({zigzag_txids[index]});
         BOOST_CHECK_EQUAL(cluster.size(), zigzag_txids.size());
-        CTxMemPool::setEntries clusterset{cluster.begin(), cluster.end()};
+        CTxMemPool::setEntries clusterset;
+        for (const auto& uptr : cluster) {
+            clusterset.insert(uptr->impl);
+        }
         BOOST_CHECK_EQUAL(cluster.size(), clusterset.size());
-        for (const auto& iter : vec_iters_zigzag) BOOST_CHECK(clusterset.count(iter));
+        for (const auto& iter : vec_iters_zigzag) BOOST_CHECK(clusterset.count(iter->impl));
     }
 }
 
