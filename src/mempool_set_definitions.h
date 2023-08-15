@@ -232,9 +232,23 @@ struct txiter {
     }
 };
 
-typedef std::set<raw_txiter, CompareIteratorByHash> setEntries;
+typedef std::set<raw_txiter, CompareIteratorByHash> raw_setEntries;
 
-typedef std::map<raw_txiter, setEntries, CompareIteratorByHash> cacheMap;
+struct setEntries {
+    raw_setEntries impl;
+
+    setEntries(const raw_setEntries& inner_impl)
+        : impl(inner_impl) {}
+    
+    setEntries(raw_setEntries&& inner_impl)
+        : impl(std::move(inner_impl)) {}
+
+    setEntries()
+        : impl{} {}
+};
+
+
+typedef std::map<raw_txiter, raw_setEntries, CompareIteratorByHash> cacheMap;
 
 
 // multi_index tag names

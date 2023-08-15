@@ -433,7 +433,7 @@ BOOST_FIXTURE_TEST_CASE(calculate_cluster, TestChain100Setup)
         lasttx = tx;
     }
     const auto cluster_500tx = pool.GatherClusters({lasttx->GetHash()});
-    CTxMemPool::setEntries cluster_500tx_set;
+    MempoolMultiIndex::raw_setEntries cluster_500tx_set;
     for (const auto& uptr : cluster_500tx) {
         cluster_500tx_set.insert(uptr->impl);
     }
@@ -470,7 +470,7 @@ BOOST_FIXTURE_TEST_CASE(calculate_cluster, TestChain100Setup)
     for (const auto index : indices) {
         const auto cluster = pool.GatherClusters({zigzag_txids[index]});
         BOOST_CHECK_EQUAL(cluster.size(), zigzag_txids.size());
-        CTxMemPool::setEntries clusterset;
+        MempoolMultiIndex::raw_setEntries clusterset;
         for (const auto& uptr : cluster) {
             clusterset.insert(uptr->impl);
         }

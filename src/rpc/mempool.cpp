@@ -470,13 +470,13 @@ static RPCHelpMan getmempoolancestors()
 
     if (!fVerbose) {
         UniValue o(UniValue::VARR);
-        for (MempoolMultiIndex::raw_txiter ancestorIt : ancestors) {
+        for (MempoolMultiIndex::raw_txiter ancestorIt : ancestors->impl) {
             o.push_back(ancestorIt->GetTx().GetHash().ToString());
         }
         return o;
     } else {
         UniValue o(UniValue::VOBJ);
-        for (CTxMemPool::txiter ancestorIt : ancestors) {
+        for (CTxMemPool::txiter ancestorIt : ancestors->impl) {
             const CTxMemPoolEntry &e = *ancestorIt;
             const uint256& _hash = e.GetTx().GetHash();
             UniValue info(UniValue::VOBJ);
@@ -527,9 +527,10 @@ static RPCHelpMan getmempooldescendants()
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Transaction not in mempool");
     }
 
-    CTxMemPool::setEntries setDescendants;
+    MempoolMultiIndex::raw_setEntries setDescendants;
     MempoolMultiIndex::txiter iter{it};
-    mempool.CalculateDescendants(iter, setDescendants);
+    MempoolMultiIndex::setEntries descendants{setDescendants};
+    mempool.CalculateDescendants(iter, descendants);
     // CTxMemPool::CalculateDescendants will include the given tx
     setDescendants.erase(it);
 
