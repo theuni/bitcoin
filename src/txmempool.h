@@ -232,7 +232,8 @@ public:
      */
     mutable RecursiveMutex cs;
     using indexed_transaction_set = MempoolMultiIndex::indexed_transaction_set;
-    indexed_transaction_set mapTx GUARDED_BY(cs);
+    using MapTxImpl = MempoolMultiIndex::MapTxImpl;
+    std::unique_ptr<MapTxImpl> mapTx GUARDED_BY(cs);
 
     using txiter = MempoolMultiIndex::txiter;
     using setEntries = MempoolMultiIndex::setEntries;
@@ -498,11 +499,7 @@ public:
      */
     void SetLoadTried(bool load_tried);
 
-    unsigned long size() const
-    {
-        LOCK(cs);
-        return mapTx.size();
-    }
+    unsigned long size() const;
 
     uint64_t GetTotalTxSize() const EXCLUSIVE_LOCKS_REQUIRED(cs)
     {
@@ -516,21 +513,10 @@ public:
         return m_total_fee;
     }
 
-    bool exists(const GenTxid& gtxid) const
-    {
-        LOCK(cs);
-        if (gtxid.IsWtxid()) {
-            return (mapTx.get<index_by_wtxid>().count(gtxid.GetHash()) != 0);
-        }
-        return (mapTx.count(gtxid.GetHash()) != 0);
-    }
+    bool exists(const GenTxid& gtxid) const;
 
     CTransactionRef get(const uint256& hash) const;
-    std::unique_ptr<txiter> get_iter_from_wtxid(const uint256& wtxid) const EXCLUSIVE_LOCKS_REQUIRED(cs)
-    {
-        AssertLockHeld(cs);
-        return std::make_unique<txiter>(mapTx.project<0>(mapTx.get<index_by_wtxid>().find(wtxid)));
-    }
+    std::unique_ptr<txiter> get_iter_from_wtxid(const uint256& wtxid) const EXCLUSIVE_LOCKS_REQUIRED(cs);
     TxMempoolInfo info(const GenTxid& gtxid) const;
     std::vector<TxMempoolInfo> infoAll() const;
 
