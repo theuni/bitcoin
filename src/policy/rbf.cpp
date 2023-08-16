@@ -6,6 +6,7 @@
 
 #include <consensus/amount.h>
 #include <kernel/mempool_entry.h>
+#include <mempool_set_definitions.h>
 #include <policy/feerate.h>
 #include <primitives/transaction.h>
 #include <sync.h>

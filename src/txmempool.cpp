@@ -32,6 +32,9 @@
 #include <string_view>
 #include <utility>
 
+using MempoolMultiIndex::cacheMap;
+using MempoolMultiIndex::indexed_transaction_set;
+using MempoolMultiIndex::MapTxImpl;
 using MempoolMultiIndex::raw_setEntries;
 using MempoolMultiIndex::raw_txiter;
 using MempoolMultiIndex::setEntries;
@@ -54,8 +57,40 @@ bool TestLockPointValidity(CChain& active_chain, const LockPoints& lp)
     return true;
 }
 
-void CTxMemPool::UpdateForDescendants(txiter& updateIt, cacheMap& cachedDescendants,
-                                      const std::set<uint256>& setExclude, std::set<uint256>& descendants_to_remove)
+/** UpdateForDescendants is used by UpdateTransactionsFromBlock to update
+ *  the descendants for a single transaction that has been added to the
+ *  mempool but may have child transactions in the mempool, eg during a
+ *  chain reorg.
+ *
+ * @pre CTxMemPoolEntry::m_children is correct for the given tx and all
+ *      descendants.
+ * @pre cachedDescendants is an accurate cache where each entry has all
+ *      descendants of the corresponding key, including those that should
+ *      be removed for violation of ancestor limits.
+ * @post if updateIt has any non-excluded descendants, cachedDescendants has
+ *       a new cache line for updateIt.
+ * @post descendants_to_remove has a new entry for any descendant which exceeded
+ *       ancestor limits relative to updateIt.
+ *
+ * @param[in] updateIt the entry to update for its descendants
+ * @param[in,out] cachedDescendants a cache where each line corresponds to all
+ *     descendants. It will be updated with the descendants of the transaction
+ *     being updated, so that future invocations don't need to walk the same
+ *     transaction again, if encountered in another transaction chain.
+ * @param[in] setExclude the set of descendant transactions in the mempool
+ *     that must not be accounted for (because any descendants in setExclude
+ *     were added to the mempool after the transaction being updated and hence
+ *     their state is already reflected in the parent state).
+ * @param[out] descendants_to_remove Populated with the txids of entries that
+ *     exceed ancestor limits. It's the responsibility of the caller to
+ *     removeRecursive them.
+ */
+static void UpdateForDescendants(txiter& updateIt,
+                                 cacheMap& cachedDescendants,
+                                 const std::set<uint256>& setExclude,
+                                 std::set<uint256>& descendants_to_remove,
+                                 std::unique_ptr<MapTxImpl>& mapTx,
+                                 const CTxMemPool::Limits& m_limits) EXCLUSIVE_LOCKS_REQUIRED(CTxMemPool::cs)
 {
     CTxMemPoolEntry::Children stageEntries, descendants;
     stageEntries = updateIt.impl->GetMemPoolChildrenConst();
@@ -149,7 +184,7 @@ void CTxMemPool::UpdateTransactionsFromBlock(const std::vector<uint256>& vHashes
                 }
             }
         } // release epoch guard for UpdateForDescendants
-        UpdateForDescendants(it, mapMemPoolDescendantsToUpdate, setAlreadyIncluded, descendants_to_remove);
+        UpdateForDescendants(it, mapMemPoolDescendantsToUpdate, setAlreadyIncluded, descendants_to_remove, mapTx, m_limits);
     }
 
     for (const auto& txid : descendants_to_remove) {
@@ -412,6 +447,8 @@ CTxMemPool::CTxMemPool(const Options& opts)
 {
 }
 
+CTxMemPool::~CTxMemPool() = default;
+
 bool CTxMemPool::isSpent(const COutPoint& outpoint) const
 {
     LOCK(cs);
@@ -533,6 +570,11 @@ void CTxMemPool::removeUnchecked(txiter& tx_it, MemPoolRemovalReason reason)
     mapTx->impl.erase(it);
     nTransactionsUpdated++;
     if (minerPolicyEstimator) {minerPolicyEstimator->removeTx(hash, false);}
+}
+
+bool CTxMemPool::visited(const txiter& it) const
+{
+    return m_epoch.visited(it.impl->m_epoch_marker);
 }
 
 // Calculates descendants of entry that are not already in setDescendants, and adds to
@@ -669,7 +711,7 @@ namespace {
 class DepthAndScoreComparator
 {
 public:
-    bool operator()(const CTxMemPool::indexed_transaction_set::const_iterator& a, const CTxMemPool::indexed_transaction_set::const_iterator& b)
+    bool operator()(const indexed_transaction_set::const_iterator& a, const indexed_transaction_set::const_iterator& b)
     {
         uint64_t counta = a->GetCountWithAncestors();
         uint64_t countb = b->GetCountWithAncestors();
@@ -681,15 +723,15 @@ public:
 };
 } // namespace
 
-static std::vector<CTxMemPool::indexed_transaction_set::const_iterator> GetSortedDepthAndScore(
+static std::vector<indexed_transaction_set::const_iterator> GetSortedDepthAndScore(
     const std::unique_ptr<MempoolMultiIndex::MapTxImpl>& mapTx, RecursiveMutex& cs) EXCLUSIVE_LOCKS_REQUIRED(cs)
 {
-    std::vector<MempoolMultiIndex::indexed_transaction_set::const_iterator> iters;
+    std::vector<indexed_transaction_set::const_iterator> iters;
     AssertLockHeld(cs);
 
     iters.reserve(mapTx->impl.size());
 
-    for (MempoolMultiIndex::indexed_transaction_set::iterator mi = mapTx->impl.begin(); mi != mapTx->impl.end(); ++mi) {
+    for (indexed_transaction_set::iterator mi = mapTx->impl.begin(); mi != mapTx->impl.end(); ++mi) {
         iters.push_back(mi);
     }
     std::sort(iters.begin(), iters.end(), DepthAndScoreComparator());
@@ -835,7 +877,7 @@ void CTxMemPool::queryHashes(std::vector<uint256>& vtxid) const
     }
 }
 
-static TxMempoolInfo GetInfo(CTxMemPool::indexed_transaction_set::const_iterator it) {
+static TxMempoolInfo GetInfo(indexed_transaction_set::const_iterator it) {
     return TxMempoolInfo{it->GetSharedTx(), it->GetTime(), it->GetFee(), it->GetTxSize(), it->GetModifiedFee() - it->GetFee()};
 }
 
@@ -1496,7 +1538,7 @@ void CTxMemPool::addPackageTxs(int& nPackagesSelected,
     // Keep track of entries that failed inclusion, to avoid duplicate work
     raw_setEntries failedTx;
 
-    CTxMemPool::indexed_transaction_set::index<ancestor_score>::type::iterator mi = mapTx->impl.get<ancestor_score>().begin();
+    indexed_transaction_set::index<ancestor_score>::type::iterator mi = mapTx->impl.get<ancestor_score>().begin();
     raw_txiter iter;
 
     // Limit the number of attempts to add transactions to the block when it is

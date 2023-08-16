@@ -8,7 +8,14 @@
 #include <kernel/mempool_entry.h>
 #include <util/hasher.h>
 
+#include <atomic>
+#include <map>
+#include <optional>
 #include <set>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 /* This file should only be included in implemetation (.cpp) files. */
 

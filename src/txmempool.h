@@ -23,7 +23,6 @@
 #include <indirectmap.h>
 #include <kernel/cs_main.h>
 #include <kernel/mempool_entry.h>
-#include <mempool_set_definitions.h>
 #include <node/block_template.h>
 #include <policy/feerate.h>
 #include <policy/packages.h>
@@ -34,14 +33,6 @@
 #include <util/hasher.h>
 #include <util/result.h>
 
-#include <boost/multi_index/hashed_index.hpp>
-#include <boost/multi_index/identity.hpp>
-#include <boost/multi_index/indexed_by.hpp>
-#include <boost/multi_index/ordered_index.hpp>
-#include <boost/multi_index/sequenced_index.hpp>
-#include <boost/multi_index/tag.hpp>
-#include <boost/multi_index_container.hpp>
-
 class CBlockIndex;
 class CChain;
 class Chainstate;
@@ -51,7 +42,10 @@ namespace MempoolMultiIndex {
 struct txiter;
 struct IndexedDisconnectedTransactionsImpl;
 struct DisconnectedTransactionsIteratorImpl;
-}
+struct MapTxImpl;
+struct setEntries;
+} // namespace MempoolMultiIndex
+struct SetEntriesImpl;
 #endif
 
 /** Fake height value used in Coin to signify they are only in the memory pool (since 0.8) */
@@ -231,7 +225,6 @@ public:
      * the mempool is consistent with the new chain tip and fully populated.
      */
     mutable RecursiveMutex cs;
-    using indexed_transaction_set = MempoolMultiIndex::indexed_transaction_set;
     using MapTxImpl = MempoolMultiIndex::MapTxImpl;
     std::unique_ptr<MapTxImpl> mapTx GUARDED_BY(cs);
 
@@ -243,7 +236,6 @@ public:
 
     uint64_t CalculateDescendantMaximum(txiter& entry) const EXCLUSIVE_LOCKS_REQUIRED(cs);
 private:
-    using cacheMap = MempoolMultiIndex::cacheMap;
 
     void UpdateParent(txiter& entry, txiter& parent, bool add) EXCLUSIVE_LOCKS_REQUIRED(cs);
     void UpdateChild(txiter& entry, txiter& child, bool add) EXCLUSIVE_LOCKS_REQUIRED(cs);
@@ -295,6 +287,8 @@ public:
      * in the pool.
      */
     explicit CTxMemPool(const Options& opts);
+
+    ~CTxMemPool();
 
     /**
      * If sanity-checking is turned on, check makes sure the pool is
@@ -570,36 +564,6 @@ public:
                                    bool fPrintPriority) const EXCLUSIVE_LOCKS_REQUIRED(cs);
 
 private:
-    /** UpdateForDescendants is used by UpdateTransactionsFromBlock to update
-     *  the descendants for a single transaction that has been added to the
-     *  mempool but may have child transactions in the mempool, eg during a
-     *  chain reorg.
-     *
-     * @pre CTxMemPoolEntry::m_children is correct for the given tx and all
-     *      descendants.
-     * @pre cachedDescendants is an accurate cache where each entry has all
-     *      descendants of the corresponding key, including those that should
-     *      be removed for violation of ancestor limits.
-     * @post if updateIt has any non-excluded descendants, cachedDescendants has
-     *       a new cache line for updateIt.
-     * @post descendants_to_remove has a new entry for any descendant which exceeded
-     *       ancestor limits relative to updateIt.
-     *
-     * @param[in] updateIt the entry to update for its descendants
-     * @param[in,out] cachedDescendants a cache where each line corresponds to all
-     *     descendants. It will be updated with the descendants of the transaction
-     *     being updated, so that future invocations don't need to walk the same
-     *     transaction again, if encountered in another transaction chain.
-     * @param[in] setExclude the set of descendant transactions in the mempool
-     *     that must not be accounted for (because any descendants in setExclude
-     *     were added to the mempool after the transaction being updated and hence
-     *     their state is already reflected in the parent state).
-     * @param[out] descendants_to_remove Populated with the txids of entries that
-     *     exceed ancestor limits. It's the responsibility of the caller to
-     *     removeRecursive them.
-     */
-    void UpdateForDescendants(txiter& updateIt, cacheMap& cachedDescendants,
-                              const std::set<uint256>& setExclude, std::set<uint256>& descendants_to_remove) EXCLUSIVE_LOCKS_REQUIRED(cs);
     /** Update ancestors of hash to add/remove it as a descendant transaction. */
     void UpdateAncestorsOf(bool add, txiter& hash, setEntries &setAncestors) EXCLUSIVE_LOCKS_REQUIRED(cs);
     /** Set ancestor state for an entry */
@@ -629,10 +593,7 @@ public:
      * triggered.
      *
      */
-    bool visited(const txiter& it) const EXCLUSIVE_LOCKS_REQUIRED(cs, m_epoch)
-    {
-        return m_epoch.visited(it.impl->m_epoch_marker);
-    }
+    bool visited(const txiter& it) const EXCLUSIVE_LOCKS_REQUIRED(cs, m_epoch);
 
     bool visited(std::optional<std::unique_ptr<txiter>> it) const EXCLUSIVE_LOCKS_REQUIRED(cs, m_epoch)
     {
