@@ -236,7 +236,7 @@ public:
 
     using txiter = MempoolMultiIndex::txiter;
     using setEntries = MempoolMultiIndex::setEntries;
-    std::vector<std::pair<uint256, txiter>> vTxHashes GUARDED_BY(cs); //!< All tx witness hashes/entries in mapTx, in random order
+    std::vector<std::pair<uint256, std::unique_ptr<txiter>>> vTxHashes GUARDED_BY(cs); //!< All tx witness hashes/entries in mapTx, in random order
 
     using Limits = kernel::MemPoolLimits;
 
