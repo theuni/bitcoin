@@ -625,6 +625,8 @@ libbitcoin_consensus_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_consensus_a_SOURCES = \
   arith_uint256.cpp \
   arith_uint256.h \
+  compat/endian_internal.h \
+  compat/endian_internal.cpp \
   consensus/amount.h \
   consensus/merkle.cpp \
   consensus/merkle.h \
@@ -923,6 +925,7 @@ libbitcoinkernel_la_SOURCES = \
   chain.cpp \
   clientversion.cpp \
   coins.cpp \
+  compat/endian_internal.cpp \
   compressor.cpp \
   consensus/merkle.cpp \
   consensus/tx_check.cpp \
