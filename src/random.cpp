@@ -5,6 +5,7 @@
 
 #include <random.h>
 
+#include <crypto/common.h>
 #include <compat/cpuid.h>
 #include <crypto/sha256.h>
 #include <crypto/sha512.h>
@@ -26,6 +27,7 @@
 #else
 #include <fcntl.h>
 #include <sys/time.h>
+#include <unistd.h>
 #endif
 
 #if defined(HAVE_GETRANDOM) || (defined(HAVE_GETENTROPY_RAND) && defined(MAC_OSX))
@@ -602,6 +604,17 @@ std::vector<B> FastRandomContext::randbytes(size_t len)
 template std::vector<unsigned char> FastRandomContext::randbytes(size_t);
 template std::vector<std::byte> FastRandomContext::randbytes(size_t);
 
+uint64_t FastRandomContext::randrange(uint64_t range) noexcept
+{
+    assert(range);
+    --range;
+    int bits = CountBits(range);
+    while (true) {
+        uint64_t ret = randbits(bits);
+        if (ret <= range) return ret;
+    }
+}
+
 void FastRandomContext::fillrand(Span<std::byte> output)
 {
     if (requires_seed) RandomSeed();
@@ -677,6 +690,14 @@ FastRandomContext& FastRandomContext::operator=(FastRandomContext&& from) noexce
     from.requires_seed = true;
     from.bitbuf_size = 0;
     return *this;
+}
+
+uint64_t FastRandomContext::rand64() noexcept
+{
+    if (requires_seed) RandomSeed();
+    unsigned char buf[8];
+    rng.Keystream(buf, 8);
+    return ReadLE64(buf);
 }
 
 void RandomInit()

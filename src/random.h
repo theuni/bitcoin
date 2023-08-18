@@ -7,7 +7,6 @@
 #define BITCOIN_RANDOM_H
 
 #include <crypto/chacha20.h>
-#include <crypto/common.h>
 #include <span.h>
 #include <uint256.h>
 
@@ -172,13 +171,7 @@ public:
     FastRandomContext& operator=(FastRandomContext&& from) noexcept;
 
     /** Generate a random 64-bit integer. */
-    uint64_t rand64() noexcept
-    {
-        if (requires_seed) RandomSeed();
-        unsigned char buf[8];
-        rng.Keystream(buf, 8);
-        return ReadLE64(buf);
-    }
+    uint64_t rand64() noexcept;
 
     /** Generate a random (bits)-bit integer. */
     uint64_t randbits(int bits) noexcept
@@ -199,16 +192,7 @@ public:
     /** Generate a random integer in the range [0..range).
      * Precondition: range > 0.
      */
-    uint64_t randrange(uint64_t range) noexcept
-    {
-        assert(range);
-        --range;
-        int bits = CountBits(range);
-        while (true) {
-            uint64_t ret = randbits(bits);
-            if (ret <= range) return ret;
-        }
-    }
+    uint64_t randrange(uint64_t range) noexcept;
 
     /** Generate random bytes. */
     template <typename B = unsigned char>
