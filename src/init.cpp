@@ -95,6 +95,7 @@
 #include <condition_variable>
 #include <cstdint>
 #include <cstdio>
+#include <cmath>
 #include <fstream>
 #include <functional>
 #include <set>
