@@ -5,6 +5,7 @@
 
 #include <uint256.h>
 
+#include <crypto/common.h>
 #include <util/strencodings.h>
 
 template <unsigned int BITS>
@@ -57,17 +58,25 @@ std::string base_blob<BITS>::ToString() const
     return (GetHex());
 }
 
+template <unsigned int BITS>
+uint64_t base_blob<BITS>::GetUint64(int pos) const
+{
+    return ReadLE64(m_data.data() + pos * 8);
+}
+
 // Explicit instantiations for base_blob<160>
 template std::string base_blob<160>::GetHex() const;
 template std::string base_blob<160>::ToString() const;
 template void base_blob<160>::SetHex(const char*);
 template void base_blob<160>::SetHex(const std::string&);
+template uint64_t base_blob<160>::GetUint64(int pos) const;
 
 // Explicit instantiations for base_blob<256>
 template std::string base_blob<256>::GetHex() const;
 template std::string base_blob<256>::ToString() const;
 template void base_blob<256>::SetHex(const char*);
 template void base_blob<256>::SetHex(const std::string&);
+template uint64_t base_blob<256>::GetUint64(int pos) const;
 
 const uint256 uint256::ZERO(0);
 const uint256 uint256::ONE(1);
