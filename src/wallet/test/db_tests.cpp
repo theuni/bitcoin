@@ -4,6 +4,10 @@
 
 #include <boost/test/unit_test.hpp>
 
+#if defined(HAVE_CONFIG_H)
+#include <config/bitcoin-config.h>
+#endif
+
 #include <test/util/setup_common.h>
 #include <util/check.h>
 #include <util/fs.h>
