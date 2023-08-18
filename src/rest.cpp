@@ -8,6 +8,7 @@
 #include <blockfilter.h>
 #include <chain.h>
 #include <chainparams.h>
+#include <clientversion.h>
 #include <core_io.h>
 #include <httpserver.h>
 #include <index/blockfilterindex.h>

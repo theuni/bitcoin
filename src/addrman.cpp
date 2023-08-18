@@ -6,6 +6,7 @@
 #include <addrman.h>
 #include <addrman_impl.h>
 
+#include <clientversion.h>
 #include <hash.h>
 #include <logging.h>
 #include <logging/timer.h>
