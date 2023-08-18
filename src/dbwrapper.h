@@ -6,12 +6,12 @@
 #define BITCOIN_DBWRAPPER_H
 
 #include <attributes.h>
-#include <clientversion.h>
 #include <serialize.h>
 #include <span.h>
 #include <streams.h>
 #include <util/check.h>
 #include <util/fs.h>
+#include <version.h>
 
 #include <cstddef>
 #include <exception>
@@ -167,7 +167,7 @@ public:
 
     template<typename V> bool GetValue(V& value) {
         try {
-            CDataStream ssValue{GetValueImpl(), SER_DISK, CLIENT_VERSION};
+            CDataStream ssValue{GetValueImpl(), SER_DISK, PROTOCOL_VERSION};
             ssValue.Xor(dbwrapper_private::GetObfuscateKey(parent));
             ssValue >> value;
         } catch (const std::exception&) {
@@ -229,7 +229,7 @@ public:
             return false;
         }
         try {
-            CDataStream ssValue{MakeByteSpan(*strValue), SER_DISK, CLIENT_VERSION};
+            CDataStream ssValue{MakeByteSpan(*strValue), SER_DISK, PROTOCOL_VERSION};
             ssValue.Xor(obfuscate_key);
             ssValue >> value;
         } catch (const std::exception&) {
