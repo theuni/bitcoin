@@ -7,7 +7,6 @@
 #define BITCOIN_SCRIPT_SCRIPT_H
 
 #include <attributes.h>
-#include <crypto/common.h>
 #include <prevector.h>
 #include <serialize.h>
 
@@ -460,34 +459,7 @@ public:
         return *this;
     }
 
-    CScript& operator<<(const std::vector<unsigned char>& b) LIFETIMEBOUND
-    {
-        if (b.size() < OP_PUSHDATA1)
-        {
-            insert(end(), (unsigned char)b.size());
-        }
-        else if (b.size() <= 0xff)
-        {
-            insert(end(), OP_PUSHDATA1);
-            insert(end(), (unsigned char)b.size());
-        }
-        else if (b.size() <= 0xffff)
-        {
-            insert(end(), OP_PUSHDATA2);
-            uint8_t _data[2];
-            WriteLE16(_data, b.size());
-            insert(end(), _data, _data + sizeof(_data));
-        }
-        else
-        {
-            insert(end(), OP_PUSHDATA4);
-            uint8_t _data[4];
-            WriteLE32(_data, b.size());
-            insert(end(), _data, _data + sizeof(_data));
-        }
-        insert(end(), b.begin(), b.end());
-        return *this;
-    }
+    CScript& operator<<(const std::vector<unsigned char>& b) LIFETIMEBOUND;
 
     bool GetOp(const_iterator& pc, opcodetype& opcodeRet, std::vector<unsigned char>& vchRet) const
     {

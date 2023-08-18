@@ -5,6 +5,7 @@
 
 #include <script/script.h>
 
+#include <crypto/common.h>
 #include <util/strencodings.h>
 
 #include <string>
@@ -148,6 +149,35 @@ std::string GetOpName(opcodetype opcode)
     default:
         return "OP_UNKNOWN";
     }
+}
+
+CScript& CScript::operator<<(const std::vector<unsigned char>& b)
+{
+    if (b.size() < OP_PUSHDATA1)
+    {
+        insert(end(), (unsigned char)b.size());
+    }
+    else if (b.size() <= 0xff)
+    {
+        insert(end(), OP_PUSHDATA1);
+        insert(end(), (unsigned char)b.size());
+    }
+    else if (b.size() <= 0xffff)
+    {
+        insert(end(), OP_PUSHDATA2);
+        uint8_t _data[2];
+        WriteLE16(_data, b.size());
+        insert(end(), _data, _data + sizeof(_data));
+    }
+    else
+    {
+        insert(end(), OP_PUSHDATA4);
+        uint8_t _data[4];
+        WriteLE32(_data, b.size());
+        insert(end(), _data, _data + sizeof(_data));
+    }
+    insert(end(), b.begin(), b.end());
+    return *this;
 }
 
 unsigned int CScript::GetSigOpCount(bool fAccurate) const
