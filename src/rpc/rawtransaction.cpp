@@ -9,6 +9,7 @@
 #include <consensus/amount.h>
 #include <consensus/validation.h>
 #include <core_io.h>
+#include <crypto/common.h>
 #include <index/txindex.h>
 #include <key_io.h>
 #include <node/blockstorage.h>

@@ -16,6 +16,7 @@
 #include <common/args.h>
 #include <compat/compat.h>
 #include <consensus/consensus.h>
+#include <crypto/common.h>
 #include <crypto/sha256.h>
 #include <i2p.h>
 #include <logging.h>

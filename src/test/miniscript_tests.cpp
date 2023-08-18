@@ -11,6 +11,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <core_io.h>
+#include <crypto/common.h>
 #include <hash.h>
 #include <pubkey.h>
 #include <uint256.h>
