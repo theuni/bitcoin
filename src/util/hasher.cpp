@@ -2,6 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include <crypto/common.h>
 #include <crypto/siphash.h>
 #include <random.h>
 #include <span.h>
@@ -19,4 +20,14 @@ SaltedSipHasher::SaltedSipHasher() : m_k0(GetRand<uint64_t>()), m_k1(GetRand<uin
 size_t SaltedSipHasher::operator()(const Span<const unsigned char>& script) const
 {
     return CSipHasher(m_k0, m_k1).Write(script).Finalize();
+}
+
+size_t FilterHeaderHasher::operator()(const uint256& hash) const
+{
+    return ReadLE64(hash.begin());
+}
+
+size_t BlockHasher::operator()(const uint256& hash) const
+{
+    return ReadLE64(hash.begin());
 }

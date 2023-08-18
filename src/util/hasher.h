@@ -5,7 +5,6 @@
 #ifndef BITCOIN_UTIL_HASHER_H
 #define BITCOIN_UTIL_HASHER_H
 
-#include <crypto/common.h>
 #include <crypto/siphash.h>
 #include <primitives/transaction.h>
 #include <uint256.h>
@@ -54,7 +53,7 @@ public:
 
 struct FilterHeaderHasher
 {
-    size_t operator()(const uint256& hash) const { return ReadLE64(hash.begin()); }
+    size_t operator()(const uint256& hash) const;
 };
 
 /**
@@ -83,7 +82,7 @@ struct BlockHasher
     // this used to call `GetCheapHash()` in uint256, which was later moved; the
     // cheap hash function simply calls ReadLE64() however, so the end result is
     // identical
-    size_t operator()(const uint256& hash) const { return ReadLE64(hash.begin()); }
+    size_t operator()(const uint256& hash) const;
 };
 
 class SaltedSipHasher
