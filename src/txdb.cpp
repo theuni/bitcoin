@@ -34,7 +34,9 @@ static constexpr uint8_t DB_TXINDEX_BLOCK{'T'};
 util::Result<void> CheckLegacyTxindex(CBlockTreeDB& block_tree_db)
 {
     CBlockLocator ignored{};
-    if (block_tree_db.Read(DB_TXINDEX_BLOCK, ignored)) {
+    const CBlockLocator::SerParams ser_params{CBlockLocator::hashing_type::no};
+    auto wrapper = WithParams(ser_params, ignored);
+    if (block_tree_db.Read(DB_TXINDEX_BLOCK, wrapper)) {
         return util::Error{_("The -txindex upgrade started by a previous version cannot be completed. Restart with the previous version or run a full -reindex.")};
     }
     bool txindex_legacy_flag{false};

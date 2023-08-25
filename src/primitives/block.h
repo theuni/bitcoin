@@ -118,16 +118,26 @@ public:
  */
 struct CBlockLocator
 {
+    enum class hashing_type
+    {
+        no,
+        yes
+    };
+    struct SerParams {
+        const hashing_type value;
+        bool is_hashing() const { return value == hashing_type::yes; }
+    };
+
     std::vector<uint256> vHave;
 
     CBlockLocator() {}
 
     explicit CBlockLocator(std::vector<uint256>&& have) : vHave(std::move(have)) {}
 
-    SERIALIZE_METHODS(CBlockLocator, obj)
+    SERIALIZE_METHODS_PARAMS(CBlockLocator, obj, SerParams, params)
     {
-        int nVersion = s.GetVersion();
-        if (!(s.GetType() & SER_GETHASH))
+        int nVersion = 0;
+        if (!params.is_hashing())
             READWRITE(nVersion);
         READWRITE(obj.vHave);
     }

@@ -56,7 +56,9 @@ BaseIndex::DB::DB(const fs::path& path, size_t n_cache_size, bool f_memory, bool
 
 bool BaseIndex::DB::ReadBestBlock(CBlockLocator& locator) const
 {
-    bool success = Read(DB_BEST_BLOCK, locator);
+    const CBlockLocator::SerParams ser_params{CBlockLocator::hashing_type::no};
+    auto wrapper = WithParams(ser_params, locator);
+    bool success = Read(DB_BEST_BLOCK, wrapper);
     if (!success) {
         locator.SetNull();
     }
@@ -65,7 +67,8 @@ bool BaseIndex::DB::ReadBestBlock(CBlockLocator& locator) const
 
 void BaseIndex::DB::WriteBestBlock(CDBBatch& batch, const CBlockLocator& locator)
 {
-    batch.Write(DB_BEST_BLOCK, locator);
+    const CBlockLocator::SerParams ser_params{CBlockLocator::hashing_type::no};
+    batch.Write(DB_BEST_BLOCK, WithParams(ser_params, locator));
 }
 
 BaseIndex::BaseIndex(std::unique_ptr<interfaces::Chain> chain, std::string name)

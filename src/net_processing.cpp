@@ -2628,7 +2628,8 @@ bool PeerManagerImpl::MaybeSendGetHeaders(CNode& pfrom, const CBlockLocator& loc
     // Only allow a new getheaders message to go out if we don't have a recent
     // one already in-flight
     if (current_time - peer.m_last_getheaders_timestamp > HEADERS_RESPONSE_TIME) {
-        m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::GETHEADERS, locator, uint256()));
+        const CBlockLocator::SerParams ser_params{CBlockLocator::hashing_type::no};
+        m_connman.PushMessage(&pfrom, msgMaker.Make(NetMsgType::GETHEADERS, WithParams(ser_params, locator), uint256()));
         peer.m_last_getheaders_timestamp = current_time;
         return true;
     }
@@ -3877,7 +3878,9 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
     if (msg_type == NetMsgType::GETBLOCKS) {
         CBlockLocator locator;
         uint256 hashStop;
-        vRecv >> locator >> hashStop;
+
+        const CBlockLocator::SerParams ser_params{CBlockLocator::hashing_type::no};
+        vRecv >> WithParams(ser_params, locator) >> hashStop;
 
         if (locator.vHave.size() > MAX_LOCATOR_SZ) {
             LogPrint(BCLog::NET, "getblocks locator size %lld > %d, disconnect peer=%d\n", locator.vHave.size(), MAX_LOCATOR_SZ, pfrom.GetId());
@@ -3992,7 +3995,9 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
     if (msg_type == NetMsgType::GETHEADERS) {
         CBlockLocator locator;
         uint256 hashStop;
-        vRecv >> locator >> hashStop;
+
+        const CBlockLocator::SerParams ser_params{CBlockLocator::hashing_type::no};
+        vRecv >> WithParams(ser_params, locator) >> hashStop;
 
         if (locator.vHave.size() > MAX_LOCATOR_SZ) {
             LogPrint(BCLog::NET, "getheaders locator size %lld > %d, disconnect peer=%d\n", locator.vHave.size(), MAX_LOCATOR_SZ, pfrom.GetId());
