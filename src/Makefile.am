@@ -6,11 +6,13 @@
 print-%: FORCE
 	@echo '$*'='$($*)'
 
+DEFAULT_INCLUDES =
+
 DIST_SUBDIRS = secp256k1
 
 AM_LDFLAGS = $(LIBTOOL_LDFLAGS) $(HARDENED_LDFLAGS) $(GPROF_LDFLAGS) $(SANITIZER_LDFLAGS) $(LTO_LDFLAGS) $(CORE_LDFLAGS)
 AM_CXXFLAGS = $(DEBUG_CXXFLAGS) $(HARDENED_CXXFLAGS) $(WARN_CXXFLAGS) $(NOWARN_CXXFLAGS) $(ERROR_CXXFLAGS) $(GPROF_CXXFLAGS) $(SANITIZER_CXXFLAGS) $(LTO_CXXFLAGS) $(CORE_CXXFLAGS)
-AM_CPPFLAGS = $(DEBUG_CPPFLAGS) $(HARDENED_CPPFLAGS) $(CORE_CPPFLAGS)
+AM_CPPFLAGS = -I. -I$(top_builddir)/src/config $(DEBUG_CPPFLAGS) $(HARDENED_CPPFLAGS) $(CORE_CPPFLAGS)
 AM_LIBTOOLFLAGS = --preserve-dup-deps
 PTHREAD_FLAGS = $(PTHREAD_CFLAGS) $(PTHREAD_LIBS)
 EXTRA_LIBRARIES =
@@ -886,11 +888,10 @@ bitcoin_util_LDADD = \
   $(LIBBITCOIN_CRYPTO) \
   $(LIBSECP256K1)
 #
-
 # bitcoin-chainstate binary #
 bitcoin_chainstate_SOURCES = bitcoin-chainstate.cpp
-bitcoin_chainstate_CPPFLAGS = $(AM_CPPFLAGS) -UBITCOIN_CONFIG_H
-bitcoin_chainstate_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+bitcoin_chainstate_CPPFLAGS = -Ikernel-headers
+bitcoin_chainstate_CXXFLAGS =
 
 bitcoin_chainstate_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(PTHREAD_FLAGS) $(LIBTOOL_APP_LDFLAGS) -static
 bitcoin_chainstate_LDADD = $(LIBBITCOINKERNEL)
@@ -997,6 +998,101 @@ libbitcoinkernel_la_SOURCES = \
   validationinterface.cpp \
   versionbits.cpp \
   warnings.cpp
+
+KERNEL_INCLUDES = ./arith_uint256.h \
+attributes.h \
+chain.h \
+coins.h \
+compressor.h \
+core_io.h \
+core_memusage.h \
+dbwrapper.h \
+deploymentstatus.h \
+flatfile.h \
+hash.h \
+indirectmap.h \
+memusage.h \
+netaddress.h \
+prevector.h \
+protocol.h \
+pubkey.h \
+random.h \
+scheduler.h \
+serialize.h \
+span.h \
+streams.h \
+sync.h \
+threadsafety.h \
+tinyformat.h \
+txdb.h \
+txmempool.h \
+uint256.h \
+validation.h \
+validationinterface.h \
+versionbits.h \
+version.h \
+compat/compat.h \
+compat/endian_internal.h \
+consensus/amount.h \
+consensus/consensus.h \
+consensus/params.h \
+consensus/validation.h \
+crypto/chacha20.h \
+crypto/ripemd160.h \
+crypto/sha256.h \
+crypto/siphash.h \
+kernel/blockmanager_opts.h \
+kernel/chainparams.h \
+kernel/chainstatemanager_opts.h \
+kernel/checks.h \
+kernel/context.h \
+kernel/cs_main.h \
+kernel/mempool_entry.h \
+kernel/mempool_limits.h \
+kernel/mempool_options.h \
+kernel/notifications_interface.h \
+kernel/validation_cache_sizes.h \
+node/blockstorage.h \
+node/block_template.h \
+node/caches.h \
+node/chainstate.h \
+policy/feerate.h \
+policy/packages.h \
+policy/policy.h \
+policy/settings.h \
+primitives/block.h \
+primitives/transaction.h \
+script/interpreter.h \
+script/script_error.h \
+script/script.h \
+script/sigcache.h \
+script/standard.h \
+support/allocators \
+support/cleanse.h \
+support/allocators/pool.h \
+support/allocators/zeroafterfree.h \
+util/chaintype.h \
+util/check.h \
+util/epochguard.h \
+util/fs.h \
+util/hasher.h \
+util/hash_type.h \
+util/macros.h \
+util/overflow.h \
+util/result.h \
+util/signalinterrupt.h \
+util/spanparsing.h \
+util/strencodings.h \
+util/string.h \
+util/thread.h \
+util/time.h \
+util/tokenpipe.h \
+util/translation.h
+
+copy-kernel-headers:
+	@$(MKDIR_P) kernel-headers
+	cp -rf --parents $(KERNEL_INCLUDES) kernel-headers
+
 
 # Required for obj/build.h to be generated first.
 # More details: https://www.gnu.org/software/automake/manual/html_node/Built-Sources-Example.html
