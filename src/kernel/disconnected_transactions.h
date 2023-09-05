@@ -28,11 +28,13 @@
  * still-unconfirmed transactions at the end.
  */
 struct DisconnectedBlockTransactions {
+private:
     uint64_t cachedInnerUsage = 0;
     std::list<CTransactionRef> queuedTx;
     using Queue = decltype(queuedTx);
     std::unordered_map<uint256, Queue::iterator, SaltedTxidHasher> iters_by_txid;
 
+public:
     // It's almost certainly a logic bug if we don't clear out queuedTx before
     // destruction, as we add to it while disconnecting blocks, and then we
     // need to re-process remaining transactions to ensure mempool consistency.
@@ -75,11 +77,16 @@ struct DisconnectedBlockTransactions {
     }
 
     // Remove the first entry and update memory usage.
-    void remove_first()
+    CTransactionRef take_first()
     {
-        cachedInnerUsage -= RecursiveDynamicUsage(queuedTx.front());
-        iters_by_txid.erase(queuedTx.front()->GetHash());
-        queuedTx.pop_front();
+        CTransactionRef ret;
+        if (!queuedTx.empty()) {
+            ret = queuedTx.front();
+            cachedInnerUsage -= RecursiveDynamicUsage(queuedTx.front());
+            iters_by_txid.erase(queuedTx.front()->GetHash());
+            queuedTx.pop_front();
+        }
+        return ret;
     }
 
     void clear()
@@ -87,6 +94,11 @@ struct DisconnectedBlockTransactions {
         cachedInnerUsage = 0;
         iters_by_txid.clear();
         queuedTx.clear();
+    }
+    std::list<CTransactionRef> take() {
+        std::list<CTransactionRef> ret = queuedTx;
+        clear();
+        return ret;
     }
 };
 
