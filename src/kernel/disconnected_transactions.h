@@ -79,14 +79,14 @@ public:
     // Remove the first entry and update memory usage.
     CTransactionRef take_first()
     {
-        CTransactionRef ret;
+        CTransactionRef first_tx;
         if (!queuedTx.empty()) {
-            ret = queuedTx.front();
-            cachedInnerUsage -= RecursiveDynamicUsage(queuedTx.front());
-            iters_by_txid.erase(queuedTx.front()->GetHash());
+            first_tx = queuedTx.front();
+            cachedInnerUsage -= RecursiveDynamicUsage(first_tx);
+            iters_by_txid.erase(first_tx->GetHash());
             queuedTx.pop_front();
         }
-        return ret;
+        return first_tx;
     }
 
     void clear()
@@ -96,7 +96,7 @@ public:
         queuedTx.clear();
     }
     std::list<CTransactionRef> take() {
-        std::list<CTransactionRef> ret = queuedTx;
+        std::list<CTransactionRef> ret = std::move(queuedTx);
         clear();
         return ret;
     }
