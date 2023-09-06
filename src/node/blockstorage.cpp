@@ -12,6 +12,7 @@
 #include <hash.h>
 #include <kernel/chainparams.h>
 #include <logging.h>
+#include <messageheader.h>
 #include <pow.h>
 #include <reverse_iterator.h>
 #include <signet.h>

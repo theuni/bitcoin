@@ -200,6 +200,7 @@ BITCOIN_CORE_H = \
   mapport.h \
   memusage.h \
   merkleblock.h \
+  messageheader.h \
   net.h \
   net_permissions.h \
   net_processing.h \

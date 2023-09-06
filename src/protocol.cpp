@@ -6,6 +6,7 @@
 #include <protocol.h>
 
 #include <common/system.h>
+#include <messageheader.h>
 
 #include <atomic>
 

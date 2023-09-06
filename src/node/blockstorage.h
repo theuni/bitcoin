@@ -11,7 +11,7 @@
 #include <kernel/blockmanager_opts.h>
 #include <kernel/chainparams.h>
 #include <kernel/cs_main.h>
-#include <protocol.h>
+#include <messageheader.h>
 #include <sync.h>
 #include <util/fs.h>
 #include <util/hasher.h>

@@ -17,42 +17,6 @@
 #include <limits>
 #include <string>
 
-/** Message header.
- * (4) message start.
- * (12) command.
- * (4) size.
- * (4) checksum.
- */
-class CMessageHeader
-{
-public:
-    static constexpr size_t MESSAGE_START_SIZE = 4;
-    static constexpr size_t COMMAND_SIZE = 12;
-    static constexpr size_t MESSAGE_SIZE_SIZE = 4;
-    static constexpr size_t CHECKSUM_SIZE = 4;
-    static constexpr size_t MESSAGE_SIZE_OFFSET = MESSAGE_START_SIZE + COMMAND_SIZE;
-    static constexpr size_t CHECKSUM_OFFSET = MESSAGE_SIZE_OFFSET + MESSAGE_SIZE_SIZE;
-    static constexpr size_t HEADER_SIZE = MESSAGE_START_SIZE + COMMAND_SIZE + MESSAGE_SIZE_SIZE + CHECKSUM_SIZE;
-    typedef unsigned char MessageStartChars[MESSAGE_START_SIZE];
-
-    explicit CMessageHeader() = default;
-
-    /** Construct a P2P message header from message-start characters, a command and the size of the message.
-     * @note Passing in a `pszCommand` longer than COMMAND_SIZE will result in a run-time assertion error.
-     */
-    CMessageHeader(const MessageStartChars& pchMessageStartIn, const char* pszCommand, unsigned int nMessageSizeIn);
-
-    std::string GetCommand() const;
-    bool IsCommandValid() const;
-
-    SERIALIZE_METHODS(CMessageHeader, obj) { READWRITE(obj.pchMessageStart, obj.pchCommand, obj.nMessageSize, obj.pchChecksum); }
-
-    char pchMessageStart[MESSAGE_START_SIZE]{};
-    char pchCommand[COMMAND_SIZE]{};
-    uint32_t nMessageSize{std::numeric_limits<uint32_t>::max()};
-    uint8_t pchChecksum[CHECKSUM_SIZE]{};
-};
-
 /**
  * Bitcoin protocol message types. When adding new message types, don't forget
  * to update allNetMessageTypes in protocol.cpp.

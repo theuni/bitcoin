@@ -7,9 +7,9 @@
 #define BITCOIN_KERNEL_CHAINPARAMS_H
 
 #include <consensus/params.h>
+#include <messageheader.h>
 #include <netaddress.h>
 #include <primitives/block.h>
-#include <protocol.h>
 #include <uint256.h>
 #include <util/chaintype.h>
 #include <util/hash_type.h>
