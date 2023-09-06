@@ -12,7 +12,7 @@ constexpr size_t BLOCK_VTX_COUNT{4000};
 constexpr size_t BLOCK_VTX_COUNT_10PERCENT{400};
 static constexpr unsigned int MAX_DISCONNECTED_TX_POOL_SIZE_TEST = 20000;
 
-using BlockTxns = decltype(CBlock::vtx);
+using BlockTxns = CBlock;
 
 /** Reorg where 1 block is disconnected and 2 blocks are connected. */
 struct ReorgTxns {
@@ -31,7 +31,8 @@ static BlockTxns CreateRandomTransactions(size_t num_txns)
     // Ensure every transaction has a different txid by having each one spend the previous one.
     static uint256 prevout_hash{uint256::ZERO};
 
-    BlockTxns txns;
+    BlockTxns block;
+    auto& txns = block.vtx;
     txns.reserve(num_txns);
     // Simplest spk for every tx
     CScript spk = CScript() << OP_TRUE;
@@ -45,7 +46,7 @@ static BlockTxns CreateRandomTransactions(size_t num_txns)
         txns.emplace_back(ptx);
         prevout_hash = ptx->GetHash();
     }
-    return txns;
+    return block;
 }
 
 /** Creates 2 blocks with BLOCK_VTX_COUNT transactions each. There will be num_not_shared
@@ -58,13 +59,13 @@ static ReorgTxns CreateBlocks(size_t num_not_shared)
 
     // Create different sets of transactions...
     auto disconnected_block_txns{CreateRandomTransactions(/*num_txns=*/num_not_shared)};
-    std::copy(shared_txns.begin(), shared_txns.end(), std::back_inserter(disconnected_block_txns));
+    std::copy(shared_txns.vtx.begin(), shared_txns.vtx.end(), std::back_inserter(disconnected_block_txns.vtx));
 
     auto connected_block_txns{CreateRandomTransactions(/*num_txns=*/num_not_shared)};
-    std::copy(shared_txns.begin(), shared_txns.end(), std::back_inserter(connected_block_txns));
+    std::copy(shared_txns.vtx.begin(), shared_txns.vtx.end(), std::back_inserter(connected_block_txns.vtx));
 
-    assert(disconnected_block_txns.size() == BLOCK_VTX_COUNT);
-    assert(connected_block_txns.size() == BLOCK_VTX_COUNT);
+    assert(disconnected_block_txns.vtx.size() == BLOCK_VTX_COUNT);
+    assert(connected_block_txns.vtx.size() == BLOCK_VTX_COUNT);
 
     return ReorgTxns{/*disconnected_txns=*/disconnected_block_txns,
                      /*connected_txns_1=*/connected_block_txns,
@@ -76,15 +77,14 @@ static void Reorg(const ReorgTxns& reorg)
 {
     DisconnectedBlockTransactions disconnectpool{MAX_DISCONNECTED_TX_POOL_SIZE_TEST};
     // Disconnect block
-    for (auto it = reorg.disconnected_txns.rbegin(); it != reorg.disconnected_txns.rend(); ++it) {
-        disconnectpool.addTransaction(*it);
-    }
+    auto removed = disconnectpool.addTransactionsForBlock(reorg.disconnected_txns);
+    assert(removed.empty());
     assert(disconnectpool.size() == BLOCK_VTX_COUNT);
 
-    disconnectpool.removeForBlock(reorg.connected_txns_1);
+    disconnectpool.removeForBlock(reorg.connected_txns_1.vtx);
     assert(disconnectpool.size() == BLOCK_VTX_COUNT - reorg.num_shared);
 
-    disconnectpool.removeForBlock(reorg.connected_txns_2);
+    disconnectpool.removeForBlock(reorg.connected_txns_2.vtx);
     // No change in the transactions
     assert(disconnectpool.size() == BLOCK_VTX_COUNT - reorg.num_shared);
 
