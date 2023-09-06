@@ -100,6 +100,14 @@ public:
         clear();
         return ret;
     }
+    size_t size() const
+    {
+        return queuedTx.size();
+    }
+    bool empty() const
+    {
+        return queuedTx.empty();
+    }
 };
 
 #endif // BITCOIN_KERNEL_DISCONNECTED_TRANSACTIONS_H

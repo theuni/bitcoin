@@ -78,19 +78,19 @@ static void Reorg(const ReorgTxns& reorg)
     for (auto it = reorg.disconnected_txns.rbegin(); it != reorg.disconnected_txns.rend(); ++it) {
         disconnectpool.addTransaction(*it);
     }
-    assert(disconnectpool.queuedTx.size() == BLOCK_VTX_COUNT);
+    assert(disconnectpool.size() == BLOCK_VTX_COUNT);
 
     disconnectpool.removeForBlock(reorg.connected_txns_1);
-    assert(disconnectpool.queuedTx.size() == BLOCK_VTX_COUNT - reorg.num_shared);
+    assert(disconnectpool.size() == BLOCK_VTX_COUNT - reorg.num_shared);
 
     disconnectpool.removeForBlock(reorg.connected_txns_2);
     // No change in the transactions
-    assert(disconnectpool.queuedTx.size() == BLOCK_VTX_COUNT - reorg.num_shared);
+    assert(disconnectpool.size() == BLOCK_VTX_COUNT - reorg.num_shared);
 
     // Pop transactions until empty, similar to when re-adding transactions to mempool. This is
     // also necessary to clear the data structures before destruction of disconnectpool.
-    while (!disconnectpool.queuedTx.empty()) {
-        disconnectpool.remove_first();
+    while (!disconnectpool.empty()) {
+        disconnectpool.take_first();
     }
 }
 
