@@ -2722,14 +2722,10 @@ bool Chainstate::DisconnectTip(BlockValidationState& state, DisconnectedBlockTra
 
     if (disconnectpool && m_mempool) {
         // Save transactions to re-add to mempool at end of reorg
-        for (auto it = block.vtx.rbegin(); it != block.vtx.rend(); ++it) {
-            disconnectpool->addTransaction(*it);
-        }
-        while (disconnectpool->DynamicMemoryUsage() > MAX_DISCONNECTED_TX_POOL_SIZE * 1000) {
+        auto dropped = disconnectpool->addTransactionsForBlock(block);
+        for (auto&& ptx : dropped) {
             // Drop the earliest entry, and remove its children from the mempool.
-            if (auto ptx = disconnectpool->take_first()) {
-                m_mempool->removeRecursive(*ptx, MemPoolRemovalReason::REORG);
-            }
+            m_mempool->removeRecursive(*ptx, MemPoolRemovalReason::REORG);
         }
     }
 

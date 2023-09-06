@@ -61,6 +61,20 @@ public:
         cachedInnerUsage += RecursiveDynamicUsage(tx);
     }
 
+    [[nodiscard]] std::list<CTransactionRef> addTransactionsForBlock(const CBlock& block)
+    {
+        iters_by_txid.reserve(block.vtx.size());
+        for (auto it = block.vtx.rbegin(); it != block.vtx.rend(); ++it) {
+            addTransaction(*it);
+        }
+        std::list<CTransactionRef> dropped;
+        while (DynamicMemoryUsage() > m_allowed_mem_usage * 1000) {
+            // Drop the earliest entry, and remove its children from the mempool.
+            dropped.push_back(take_first());
+        }
+        return dropped;
+    }
+
     // Remove entries that are in this block.
     void removeForBlock(const std::vector<CTransactionRef>& vtx)
     {
