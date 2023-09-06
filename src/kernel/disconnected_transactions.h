@@ -35,18 +35,6 @@ private:
     using Queue = decltype(queuedTx);
     std::unordered_map<uint256, Queue::iterator, SaltedTxidHasher> iters_by_txid;
 
-public:
-    // It's almost certainly a logic bug if we don't clear out queuedTx before
-    // destruction, as we add to it while disconnecting blocks, and then we
-    // need to re-process remaining transactions to ensure mempool consistency.
-    // For now, assert() that we've emptied out this object on destruction.
-    // This assert() can always be removed if the reorg-processing code were
-    // to be refactored such that this assumption is no longer true (for
-    // instance if there was some other way we cleaned up the mempool after a
-    // reorg, besides draining this object).
-    ~DisconnectedBlockTransactions() { assert(queuedTx.empty()); }
-
-    DisconnectedBlockTransactions(unsigned int allowed_mem_usage) : m_allowed_mem_usage(allowed_mem_usage){}
 
     size_t DynamicMemoryUsage() const {
         // std::list has 3 pointers per entry
@@ -60,6 +48,18 @@ public:
         iters_by_txid.emplace(tx->GetHash(), it);
         cachedInnerUsage += RecursiveDynamicUsage(tx);
     }
+public:
+    // It's almost certainly a logic bug if we don't clear out queuedTx before
+    // destruction, as we add to it while disconnecting blocks, and then we
+    // need to re-process remaining transactions to ensure mempool consistency.
+    // For now, assert() that we've emptied out this object on destruction.
+    // This assert() can always be removed if the reorg-processing code were
+    // to be refactored such that this assumption is no longer true (for
+    // instance if there was some other way we cleaned up the mempool after a
+    // reorg, besides draining this object).
+    ~DisconnectedBlockTransactions() { assert(queuedTx.empty()); }
+
+    DisconnectedBlockTransactions(unsigned int allowed_mem_usage) : m_allowed_mem_usage(allowed_mem_usage){}
 
     [[nodiscard]] std::list<CTransactionRef> addTransactionsForBlock(const CBlock& block)
     {
