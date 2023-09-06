@@ -29,6 +29,7 @@
  */
 struct DisconnectedBlockTransactions {
 private:
+    const unsigned int m_allowed_mem_usage;
     uint64_t cachedInnerUsage = 0;
     std::list<CTransactionRef> queuedTx;
     using Queue = decltype(queuedTx);
@@ -44,6 +45,8 @@ public:
     // instance if there was some other way we cleaned up the mempool after a
     // reorg, besides draining this object).
     ~DisconnectedBlockTransactions() { assert(queuedTx.empty()); }
+
+    DisconnectedBlockTransactions(unsigned int allowed_mem_usage) : m_allowed_mem_usage(allowed_mem_usage){}
 
     size_t DynamicMemoryUsage() const {
         // std::list has 3 pointers per entry

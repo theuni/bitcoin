@@ -10,6 +10,7 @@
 
 constexpr size_t BLOCK_VTX_COUNT{4000};
 constexpr size_t BLOCK_VTX_COUNT_10PERCENT{400};
+static constexpr unsigned int MAX_DISCONNECTED_TX_POOL_SIZE_TEST = 20000;
 
 using BlockTxns = decltype(CBlock::vtx);
 
@@ -73,7 +74,7 @@ static ReorgTxns CreateBlocks(size_t num_not_shared)
 
 static void Reorg(const ReorgTxns& reorg)
 {
-    DisconnectedBlockTransactions disconnectpool;
+    DisconnectedBlockTransactions disconnectpool{MAX_DISCONNECTED_TX_POOL_SIZE_TEST};
     // Disconnect block
     for (auto it = reorg.disconnected_txns.rbegin(); it != reorg.disconnected_txns.rend(); ++it) {
         disconnectpool.addTransaction(*it);
