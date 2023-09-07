@@ -129,6 +129,7 @@ BITCOIN_CORE_H = \
   blockencodings.h \
   blockfilter.h \
   chain.h \
+  chainmagic.h \
   chainparams.h \
   chainparamsbase.h \
   chainparamsseeds.h \
