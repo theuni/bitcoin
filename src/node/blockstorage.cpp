@@ -69,8 +69,10 @@ bool BlockTreeDB::WriteBatchSync(const std::vector<std::pair<int, const CBlockFi
         batch.Write(std::make_pair(DB_BLOCK_FILES, file), *info);
     }
     batch.Write(DB_LAST_BLOCK, nLastFile);
+    const CDiskBlockIndex::SerParams ser_params{CDiskBlockIndex::hashing_type::no};
     for (const CBlockIndex* bi : blockinfo) {
-        batch.Write(std::make_pair(DB_BLOCK_INDEX, bi->GetBlockHash()), CDiskBlockIndex{bi});
+        auto wrapper = WithParams(ser_params, CDiskBlockIndex{bi});
+        batch.Write(std::make_pair(DB_BLOCK_INDEX, bi->GetBlockHash()), wrapper);
     }
     return WriteBatch(batch, true);
 }
@@ -102,7 +104,9 @@ bool BlockTreeDB::LoadBlockIndexGuts(const Consensus::Params& consensusParams, s
         std::pair<uint8_t, uint256> key;
         if (pcursor->GetKey(key) && key.first == DB_BLOCK_INDEX) {
             CDiskBlockIndex diskindex;
-            if (pcursor->GetValue(diskindex)) {
+            const CDiskBlockIndex::SerParams ser_params{CDiskBlockIndex::hashing_type::no};
+            auto wrapper = WithParams(ser_params, diskindex);
+            if (pcursor->GetValue(wrapper)) {
                 // Construct block index object
                 CBlockIndex* pindexNew = insertBlockIndex(diskindex.ConstructBlockHash());
                 pindexNew->pprev          = insertBlockIndex(diskindex.hashPrev);

@@ -174,14 +174,17 @@ bool WalletBatch::EraseWatchOnly(const CScript &dest)
 
 bool WalletBatch::WriteBestBlock(const CBlockLocator& locator)
 {
-    WriteIC(DBKeys::BESTBLOCK, CBlockLocator()); // Write empty block locator so versions that require a merkle branch automatically rescan
-    return WriteIC(DBKeys::BESTBLOCK_NOMERKLE, locator);
+    const CBlockLocator::SerParams ser_params{CBlockLocator::hashing_type::no};
+    WriteIC(DBKeys::BESTBLOCK, WithParams(ser_params, CBlockLocator())); // Write empty block locator so versions that require a merkle branch automatically rescan
+    return WriteIC(DBKeys::BESTBLOCK_NOMERKLE, WithParams(ser_params, locator));
 }
 
 bool WalletBatch::ReadBestBlock(CBlockLocator& locator)
 {
-    if (m_batch->Read(DBKeys::BESTBLOCK, locator) && !locator.vHave.empty()) return true;
-    return m_batch->Read(DBKeys::BESTBLOCK_NOMERKLE, locator);
+    const CBlockLocator::SerParams ser_params{CBlockLocator::hashing_type::no};
+    auto wrapper = WithParams(ser_params, locator);
+    if (m_batch->Read(DBKeys::BESTBLOCK, wrapper) && !locator.vHave.empty()) return true;
+    return m_batch->Read(DBKeys::BESTBLOCK_NOMERKLE, wrapper);
 }
 
 bool WalletBatch::WriteOrderPosNext(int64_t nOrderPosNext)

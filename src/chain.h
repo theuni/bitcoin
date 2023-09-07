@@ -389,6 +389,17 @@ const CBlockIndex* LastCommonAncestor(const CBlockIndex* pa, const CBlockIndex* 
 class CDiskBlockIndex : public CBlockIndex
 {
 public:
+
+    enum class hashing_type
+    {
+        no,
+        yes
+    };
+    struct SerParams {
+        const hashing_type value;
+        bool is_hashing() const { return value == hashing_type::yes; }
+    };
+
     uint256 hashPrev;
 
     CDiskBlockIndex()
@@ -401,11 +412,12 @@ public:
         hashPrev = (pprev ? pprev->GetBlockHash() : uint256());
     }
 
-    SERIALIZE_METHODS(CDiskBlockIndex, obj)
+    SERIALIZE_METHODS_PARAMS(CDiskBlockIndex, obj, SerParams, params)
     {
         LOCK(::cs_main);
-        int _nVersion = s.GetVersion();
-        if (!(s.GetType() & SER_GETHASH)) READWRITE(VARINT_MODE(_nVersion, VarIntMode::NONNEGATIVE_SIGNED));
+        int _nVersion = 0;
+        if (!params.is_hashing())
+            READWRITE(VARINT_MODE(_nVersion, VarIntMode::NONNEGATIVE_SIGNED));
 
         READWRITE(VARINT_MODE(obj.nHeight, VarIntMode::NONNEGATIVE_SIGNED));
         READWRITE(VARINT(obj.nStatus));
