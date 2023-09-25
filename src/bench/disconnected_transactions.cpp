@@ -33,8 +33,8 @@ static BlockTxns CreateRandomTransactions(size_t num_txns)
     BlockTxns txns;
     txns.reserve(num_txns);
     // Simplest spk for every tx
-    CScript spk = CScript() << OP_TRUE;
-    for (uint32_t i = 0; i < num_txns; ++i) {
+    CScript spk{CScript() << OP_TRUE};
+    for (uint32_t i{0}; i < num_txns; ++i) {
         CMutableTransaction tx;
         tx.vin.emplace_back(CTxIn{COutPoint{prevout_hash, 0}});
         tx.vout.emplace_back(CTxOut{CENT, spk});
@@ -75,7 +75,7 @@ static void Reorg(const ReorgTxns& reorg)
 {
     DisconnectedBlockTransactions disconnectpool{MAX_DISCONNECTED_TX_POOL_SIZE * 1000};
     // Disconnect block
-    const auto evicted = disconnectpool.AddTransactionsFromBlock(reorg.disconnected_txns);
+    const auto evicted{disconnectpool.AddTransactionsFromBlock(reorg.disconnected_txns)};
     assert(evicted.empty());
 
     // Connect first block

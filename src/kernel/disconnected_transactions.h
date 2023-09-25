@@ -15,7 +15,7 @@
 #include <vector>
 
 /** Maximum kilobytes for transactions to store for processing during reorg */
-static const unsigned int MAX_DISCONNECTED_TX_POOL_SIZE = 20'000;
+static const unsigned int MAX_DISCONNECTED_TX_POOL_SIZE{20'000};
 /**
  * DisconnectedBlockTransactions
 
@@ -40,7 +40,7 @@ class DisconnectedBlockTransactions {
 private:
     /** Cached dynamic memory usage for the CTransactions (memory for the shared pointers is
      * included in the container calculations). */
-    uint64_t cachedInnerUsage = 0;
+    uint64_t cachedInnerUsage{0};
     const size_t m_max_mem_usage;
     std::list<CTransactionRef> queuedTx;
     using TxList = decltype(queuedTx);
@@ -91,8 +91,8 @@ public:
     [[nodiscard]] std::vector<CTransactionRef> AddTransactionsFromBlock(const std::vector<CTransactionRef>& vtx)
     {
         iters_by_txid.reserve(iters_by_txid.size() + vtx.size());
-        for (auto block_it = vtx.rbegin(); block_it != vtx.rend(); ++block_it) {
-            auto it = queuedTx.insert(queuedTx.end(), *block_it);
+        for (auto block_it{vtx.rbegin()}; block_it != vtx.rend(); ++block_it) {
+            auto it{queuedTx.insert(queuedTx.end(), *block_it)};
             iters_by_txid.emplace((*block_it)->GetHash(), it);
             cachedInnerUsage += RecursiveDynamicUsage(**block_it);
         }
@@ -107,9 +107,9 @@ public:
             return;
         }
         for (const auto& tx : vtx) {
-            auto iter = iters_by_txid.find(tx->GetHash());
+            auto iter{iters_by_txid.find(tx->GetHash())};
             if (iter != iters_by_txid.end()) {
-                auto list_iter = iter->second;
+                auto list_iter{iter->second};
                 iters_by_txid.erase(iter);
                 cachedInnerUsage -= RecursiveDynamicUsage(**list_iter);
                 queuedTx.erase(list_iter);
@@ -129,7 +129,7 @@ public:
     /** Clear all data structures and return the list of transactions. */
     std::list<CTransactionRef> take()
     {
-        std::list<CTransactionRef> ret = std::move(queuedTx);
+        std::list<CTransactionRef> ret{std::move(queuedTx)};
         clear();
         return ret;
     }

@@ -302,8 +302,8 @@ void Chainstate::MaybeUpdateMempoolForReorg(
         // Iterate disconnectpool in reverse, so that we add transactions
         // back to the mempool starting with the earliest transaction that had
         // been previously seen in a block.
-        const auto queuedTx = disconnectpool.take();
-        auto it = queuedTx.rbegin();
+        const auto queuedTx{disconnectpool.take()};
+        auto it{queuedTx.rbegin()};
         while (it != queuedTx.rend()) {
             // ignore validation errors in resurrected transactions
             if (!fAddToMempool || (*it)->IsCoinBase() ||
