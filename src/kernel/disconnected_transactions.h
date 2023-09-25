@@ -14,8 +14,8 @@
 #include <unordered_map>
 #include <vector>
 
-/** Maximum kilobytes for transactions to store for processing during reorg */
-static const unsigned int MAX_DISCONNECTED_TX_POOL_SIZE{20'000};
+/** Maximum bytes for transactions to store for processing during reorg */
+static const unsigned int MAX_DISCONNECTED_TX_POOL_BYTES{20'000'000};
 /**
  * DisconnectedBlockTransactions
 
@@ -41,6 +41,7 @@ class DisconnectedBlockTransactions
     /** Cached dynamic memory usage for the CTransactions (memory for the shared pointers is
      * included in the container calculations). */
     uint64_t cachedInnerUsage{0};
+    /* Maximum allowed total DynamicMemoryUsage, in bytes. To be enforced in AddTransactionsFromBlock.  */
     const size_t m_max_mem_usage;
     std::list<CTransactionRef> queuedTx;
     using TxList = decltype(queuedTx);
