@@ -15,9 +15,9 @@
 #include <map>
 #include <memory>
 #include <set>
-#include <vector>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 
 namespace memusage
@@ -149,16 +149,15 @@ static inline size_t DynamicUsage(const std::shared_ptr<X>& p)
     return p ? MallocUsage(sizeof(X)) + MallocUsage(sizeof(stl_shared_counter)) : 0;
 }
 
-template<typename X>
-struct list_node
-{
+template <typename X>
+struct list_node {
 private:
     void* ptr_next;
     void* ptr_prev;
     X x;
 };
 
-template<typename X>
+template <typename X>
 static inline size_t DynamicUsage(const std::list<X>& l)
 {
     return MallocUsage(sizeof(list_node<X>)) * l.size();

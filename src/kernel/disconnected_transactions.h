@@ -36,8 +36,8 @@ static const unsigned int MAX_DISCONNECTED_TX_POOL_SIZE{20'000};
  * of the list. After trimming, transactions can be re-added to the mempool from the back of the
  * list to the front without running into missing inputs.
  */
-class DisconnectedBlockTransactions {
-private:
+class DisconnectedBlockTransactions
+{
     /** Cached dynamic memory usage for the CTransactions (memory for the shared pointers is
      * included in the container calculations). */
     uint64_t cachedInnerUsage{0};
@@ -71,13 +71,15 @@ public:
     // to be refactored such that this assumption is no longer true (for
     // instance if there was some other way we cleaned up the mempool after a
     // reorg, besides draining this object).
-    ~DisconnectedBlockTransactions() {
+    ~DisconnectedBlockTransactions()
+    {
         assert(queuedTx.empty());
         assert(iters_by_txid.empty());
         assert(cachedInnerUsage == 0);
     }
 
-    size_t DynamicMemoryUsage() const {
+    size_t DynamicMemoryUsage() const
+    {
         return cachedInnerUsage + memusage::DynamicUsage(iters_by_txid) + memusage::DynamicUsage(queuedTx);
     }
 
