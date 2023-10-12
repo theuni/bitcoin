@@ -22,14 +22,6 @@
 #include <util/hasher.h>
 #include <util/result.h>
 
-#include <boost/multi_index/hashed_index.hpp>
-#include <boost/multi_index/identity.hpp>
-#include <boost/multi_index/indexed_by.hpp>
-#include <boost/multi_index/ordered_index.hpp>
-#include <boost/multi_index/sequenced_index.hpp>
-#include <boost/multi_index/tag.hpp>
-#include <boost/multi_index_container.hpp>
-
 #include <atomic>
 #include <map>
 #include <optional>
@@ -79,6 +71,19 @@ struct mempoolentry_wtxid
     }
 };
 
+class MempoolEntryHasher
+{
+public:
+    size_t operator()(const CTxMemPoolEntry& entry) const {
+        return entry.GetTx().GetHash().GetUint64(0);
+    }
+};
+
+
+struct mempool_iters;
+
+using mempool_storage = std::unordered_map<CTxMemPoolEntry, std::unique_ptr<mempool_iters>, MempoolEntryHasher>;
+using mempool_storage_iterator = mempool_storage::const_iterator;
 
 /** \class CompareTxMemPoolEntryByDescendantScore
  *
@@ -87,6 +92,7 @@ struct mempoolentry_wtxid
 class CompareTxMemPoolEntryByDescendantScore
 {
 public:
+    bool operator()(const mempool_storage_iterator& a, const mempool_storage_iterator& b) const;
     bool operator()(const CTxMemPoolEntry& a, const CTxMemPoolEntry& b) const
     {
         double a_mod_fee, a_size, b_mod_fee, b_size;
@@ -132,6 +138,7 @@ public:
 class CompareTxMemPoolEntryByScore
 {
 public:
+    bool operator()(const mempool_storage_iterator& a, const mempool_storage_iterator& b) const;
     bool operator()(const CTxMemPoolEntry& a, const CTxMemPoolEntry& b) const
     {
         double f1 = (double)a.GetFee() * b.GetTxSize();
@@ -146,6 +153,7 @@ public:
 class CompareTxMemPoolEntryByEntryTime
 {
 public:
+    bool operator()(const mempool_storage_iterator& a, const mempool_storage_iterator& b) const;
     bool operator()(const CTxMemPoolEntry& a, const CTxMemPoolEntry& b) const
     {
         return a.GetTime() < b.GetTime();
@@ -159,6 +167,7 @@ public:
 class CompareTxMemPoolEntryByAncestorFee
 {
 public:
+    bool operator()(const mempool_storage_iterator& a, const mempool_storage_iterator& b) const;
     template<typename T>
     bool operator()(const T& a, const T& b) const
     {
@@ -195,6 +204,8 @@ public:
         }
     }
 };
+
+struct mempool_iters;
 
 // Multi_index tag names
 struct descendant_score {};
@@ -300,6 +311,16 @@ struct TxMempoolInfo
  */
 class CTxMemPool
 {
+public:
+    using mempool_storage = std::unordered_map<CTxMemPoolEntry, std::unique_ptr<mempool_iters>, MempoolEntryHasher>;
+    using mempool_storage_iterator = mempool_storage::const_iterator;
+    std::unordered_map<uint256, mempool_storage_iterator, SaltedTxidHasher> iters_by_txid;
+    std::unordered_map<uint256, mempool_storage_iterator, SaltedTxidHasher> iters_by_wtxid;
+    std::set<mempool_storage_iterator, CompareTxMemPoolEntryByDescendantScore> iters_by_fee_rate;
+    std::set<mempool_storage_iterator, CompareTxMemPoolEntryByEntryTime> iters_by_entry_time;
+    std::set<mempool_storage_iterator, CompareTxMemPoolEntryByAncestorFee> iters_by_ancestor_fee_rate;
+
+    using indexed_transaction_set = std::unordered_map<CTxMemPoolEntry, std::unique_ptr<mempool_iters>, MempoolEntryHasher>;
 protected:
     const int m_check_ratio; //!< Value n means that 1 times in n we check.
     std::atomic<unsigned int> nTransactionsUpdated{0}; //!< Used by getblocktemplate to trigger CreateNewBlock() invocation
@@ -325,41 +346,18 @@ protected:
 
     CFeeRate GetMinFee(size_t sizelimit) const;
 
+    struct CompareMempoolIteratorByHash {
+        bool operator()(const mempool_storage_iterator& a, const mempool_storage_iterator& b) const
+        {
+            return a->first.GetTx().GetHash() < b->first.GetTx().GetHash();
+        }
+    };
+
 public:
 
-    static const int ROLLING_FEE_HALFLIFE = 60 * 60 * 12; // public only for testing
 
-    typedef boost::multi_index_container<
-        CTxMemPoolEntry,
-        boost::multi_index::indexed_by<
-            // sorted by txid
-            boost::multi_index::hashed_unique<mempoolentry_txid, SaltedTxidHasher>,
-            // sorted by wtxid
-            boost::multi_index::hashed_unique<
-                boost::multi_index::tag<index_by_wtxid>,
-                mempoolentry_wtxid,
-                SaltedTxidHasher
-            >,
-            // sorted by fee rate
-            boost::multi_index::ordered_non_unique<
-                boost::multi_index::tag<descendant_score>,
-                boost::multi_index::identity<CTxMemPoolEntry>,
-                CompareTxMemPoolEntryByDescendantScore
-            >,
-            // sorted by entry time
-            boost::multi_index::ordered_non_unique<
-                boost::multi_index::tag<entry_time>,
-                boost::multi_index::identity<CTxMemPoolEntry>,
-                CompareTxMemPoolEntryByEntryTime
-            >,
-            // sorted by fee rate with ancestors
-            boost::multi_index::ordered_non_unique<
-                boost::multi_index::tag<ancestor_score>,
-                boost::multi_index::identity<CTxMemPoolEntry>,
-                CompareTxMemPoolEntryByAncestorFee
-            >
-        >
-    > indexed_transaction_set;
+
+    static const int ROLLING_FEE_HALFLIFE = 60 * 60 * 12; // public only for testing
 
     /**
      * This mutex needs to be locked when accessing `mapTx` or other members
@@ -391,18 +389,21 @@ public:
     mutable RecursiveMutex cs;
     indexed_transaction_set mapTx GUARDED_BY(cs);
 
-    using txiter = indexed_transaction_set::nth_index<0>::type::const_iterator;
+    using txiter = indexed_transaction_set::const_iterator;
     std::vector<std::pair<uint256, txiter>> vTxHashes GUARDED_BY(cs); //!< All tx witness hashes/entries in mapTx, in random order
 
-    typedef std::set<txiter, CompareIteratorByHash> setEntries;
+    typedef std::set<txiter, CompareMempoolIteratorByHash> setEntries;
 
     using Limits = kernel::MemPoolLimits;
 
     uint64_t CalculateDescendantMaximum(txiter entry) const EXCLUSIVE_LOCKS_REQUIRED(cs);
 private:
-    typedef std::map<txiter, setEntries, CompareIteratorByHash> cacheMap;
+    typedef std::map<txiter, setEntries, CompareMempoolIteratorByHash> cacheMap;
 
 
+    void ModifyDescendantState(txiter entry, int32_t modifySize, CAmount modifyFee, int64_t modifyCount);
+    void ModifyAncestorState(txiter entry, int32_t modifySize, CAmount modifyFee, int64_t modifyCount, int64_t modifySigOps);
+    void ModifyFee(txiter entry, CAmount fee_diff);
     void UpdateParent(txiter entry, txiter parent, bool add) EXCLUSIVE_LOCKS_REQUIRED(cs);
     void UpdateChild(txiter entry, txiter child, bool add) EXCLUSIVE_LOCKS_REQUIRED(cs);
 
@@ -539,6 +540,8 @@ public:
      *  that any in-mempool descendants have their ancestor state updated.
      */
     void RemoveStaged(setEntries& stage, bool updateDescendants, MemPoolRemovalReason reason) EXCLUSIVE_LOCKS_REQUIRED(cs);
+
+    void UpdateLockPoints(txiter iter, const LockPoints& lp);
 
     /** UpdateTransactionsFromBlock is called when adding transactions from a
      * disconnected block back to the mempool, new mempool entries may have
@@ -679,16 +682,17 @@ public:
     {
         LOCK(cs);
         if (gtxid.IsWtxid()) {
-            return (mapTx.get<index_by_wtxid>().count(gtxid.GetHash()) != 0);
+            return (iters_by_wtxid.count(gtxid.GetHash()) != 0);
         }
-        return (mapTx.count(gtxid.GetHash()) != 0);
+        return (iters_by_txid.count(gtxid.GetHash()) != 0);
     }
 
     CTransactionRef get(const uint256& hash) const;
     txiter get_iter_from_wtxid(const uint256& wtxid) const EXCLUSIVE_LOCKS_REQUIRED(cs)
     {
         AssertLockHeld(cs);
-        return mapTx.project<0>(mapTx.get<index_by_wtxid>().find(wtxid));
+        auto it = iters_by_wtxid.find(wtxid);
+        return it->second;
     }
     TxMempoolInfo info(const GenTxid& gtxid) const;
 
@@ -794,10 +798,7 @@ public:
      * triggered.
      *
      */
-    bool visited(const txiter it) const EXCLUSIVE_LOCKS_REQUIRED(cs, m_epoch)
-    {
-        return m_epoch.visited(it->m_epoch_marker);
-    }
+    bool visited(const txiter it) const EXCLUSIVE_LOCKS_REQUIRED(cs, m_epoch);
 
     bool visited(std::optional<txiter> it) const EXCLUSIVE_LOCKS_REQUIRED(cs, m_epoch)
     {
@@ -805,6 +806,12 @@ public:
         return !it || visited(*it);
     }
 };
+
+
+//bool CompareTxMemPoolEntryByEntryTime::operator()(const mempool_storage_iterator& a, const mempool_storage_iterator& b) const;
+//{
+//    return a->first.GetTime() < b->first.GetTime();
+//}
 
 /**
  * CCoinsView that brings transactions from a mempool into view.

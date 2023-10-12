@@ -35,12 +35,12 @@ RBFTransactionState IsRBFOptIn(const CTransaction& tx, const CTxMemPool& pool)
 
     // If all the inputs have nSequence >= maxint-1, it still might be
     // signaled for RBF if any unconfirmed parents have signaled.
-    const CTxMemPoolEntry entry{*pool.mapTx.find(tx.GetHash())};
+    const CTxMemPoolEntry entry{pool.iters_by_txid.find(tx.GetHash())->second->first};
     auto ancestors{pool.AssumeCalculateMemPoolAncestors(__func__, entry, CTxMemPool::Limits::NoLimits(),
                                                         /*fSearchForParents=*/false)};
 
     for (CTxMemPool::txiter it : ancestors) {
-        if (SignalsOptInRBF(it->GetTx())) {
+        if (SignalsOptInRBF(it->first.GetTx())) {
             return RBFTransactionState::REPLACEABLE_BIP125;
         }
     }
@@ -62,7 +62,7 @@ std::optional<std::string> GetEntriesForConflicts(const CTransaction& tx,
     const uint256 txid = tx.GetHash();
     uint64_t nConflictingCount = 0;
     for (const auto& mi : iters_conflicting) {
-        nConflictingCount += mi->GetCountWithDescendants();
+        nConflictingCount += mi->first.GetCountWithDescendants();
         // Rule #5: don't consider replacing more than MAX_REPLACEMENT_CANDIDATES
         // entries from the mempool. This potentially overestimates the number of actual
         // descendants (i.e. if multiple conflicts share a descendant, it will be counted multiple
@@ -88,7 +88,7 @@ std::optional<std::string> HasNoNewUnconfirmed(const CTransaction& tx,
     AssertLockHeld(pool.cs);
     std::set<uint256> parents_of_conflicts;
     for (const auto& mi : iters_conflicting) {
-        for (const CTxIn& txin : mi->GetTx().vin) {
+        for (const CTxIn& txin : mi->first.GetTx().vin) {
             parents_of_conflicts.insert(txin.prevout.hash);
         }
     }
@@ -118,7 +118,7 @@ std::optional<std::string> EntriesAndTxidsDisjoint(const CTxMemPool::setEntries&
                                                    const uint256& txid)
 {
     for (CTxMemPool::txiter ancestorIt : ancestors) {
-        const uint256& hashAncestor = ancestorIt->GetTx().GetHash();
+        const uint256& hashAncestor = ancestorIt->first.GetTx().GetHash();
         if (direct_conflicts.count(hashAncestor)) {
             return strprintf("%s spends conflicting transaction %s",
                              txid.ToString(),
@@ -143,7 +143,7 @@ std::optional<std::string> PaysMoreThanConflicts(const CTxMemPool::setEntries& i
         // descendants. While that does mean high feerate children are ignored when deciding whether
         // or not to replace, we do require the replacement to pay more overall fees too, mitigating
         // most cases.
-        CFeeRate original_feerate(mi->GetModifiedFee(), mi->GetTxSize());
+        CFeeRate original_feerate(mi->first.GetModifiedFee(), mi->first.GetTxSize());
         if (replacement_feerate <= original_feerate) {
             return strprintf("rejecting replacement %s; new feerate %s <= old feerate %s",
                              txid.ToString(),
