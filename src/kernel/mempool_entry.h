@@ -46,7 +46,7 @@ struct CompareIteratorByHash {
     template <typename T>
     bool operator()(const T& a, const T& b) const
     {
-        return a->GetTx().GetHash() < b->GetTx().GetHash();
+        return a->first.GetTx().GetHash() < b->first.GetTx().GetHash();
     }
 };
 

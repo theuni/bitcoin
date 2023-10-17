@@ -807,6 +807,13 @@ public:
     }
 };
 
+struct mempool_iters
+{
+    decltype(CTxMemPool::iters_by_fee_rate)::iterator iter_by_fee_rate;
+    decltype(CTxMemPool::iters_by_entry_time)::iterator iter_by_entry_time;
+    decltype(CTxMemPool::iters_by_ancestor_fee_rate)::iterator iter_by_ancestor_fee_rate;
+};
+
 
 //bool CompareTxMemPoolEntryByEntryTime::operator()(const mempool_storage_iterator& a, const mempool_storage_iterator& b) const;
 //{

@@ -47,7 +47,7 @@ MiniMiner::MiniMiner(const CTxMemPool& mempool, const std::vector<COutPoint>& ou
             CTxMemPool::setEntries descendants;
             mempool.CalculateDescendants(mempool.GetIter(ptx->GetHash()).value(), descendants);
             for (const auto& desc_txiter : descendants) {
-                m_to_be_replaced.insert(desc_txiter->GetTx().GetHash());
+                m_to_be_replaced.insert(desc_txiter->first.GetTx().GetHash());
             }
         }
     }
@@ -71,11 +71,11 @@ MiniMiner::MiniMiner(const CTxMemPool& mempool, const std::vector<COutPoint>& ou
 
     // Add every entry to m_entries_by_txid and m_entries, except the ones that will be replaced.
     for (const auto& txiter : cluster) {
-        if (!m_to_be_replaced.count(txiter->GetTx().GetHash())) {
-            auto [mapiter, success] = m_entries_by_txid.emplace(txiter->GetTx().GetHash(), MiniMinerMempoolEntry(txiter));
+        if (!m_to_be_replaced.count(txiter->first.GetTx().GetHash())) {
+            auto [mapiter, success] = m_entries_by_txid.emplace(txiter->first.GetTx().GetHash(), MiniMinerMempoolEntry(txiter));
             m_entries.push_back(mapiter);
         } else {
-            auto outpoints_it = m_requested_outpoints_by_txid.find(txiter->GetTx().GetHash());
+            auto outpoints_it = m_requested_outpoints_by_txid.find(txiter->first.GetTx().GetHash());
             if (outpoints_it != m_requested_outpoints_by_txid.end()) {
                 // This UTXO is the output of a to-be-replaced transaction. Bump fee is 0; spending
                 // this UTXO is impossible as it will no longer exist after the replacement.
@@ -89,7 +89,7 @@ MiniMiner::MiniMiner(const CTxMemPool& mempool, const std::vector<COutPoint>& ou
 
     // Build the m_descendant_set_by_txid cache.
     for (const auto& txiter : cluster) {
-        const auto& txid = txiter->GetTx().GetHash();
+        const auto& txid = txiter->first.GetTx().GetHash();
         // Cache descendants for future use. Unlike the real mempool, a descendant MiniMinerMempoolEntry
         // will not exist without its ancestor MiniMinerMempoolEntry, so these sets won't be invalidated.
         std::vector<MockEntryMap::iterator> cached_descendants;
@@ -98,7 +98,7 @@ MiniMiner::MiniMiner(const CTxMemPool& mempool, const std::vector<COutPoint>& ou
         mempool.CalculateDescendants(txiter, descendants);
         Assume(descendants.count(txiter) > 0);
         for (const auto& desc_txiter : descendants) {
-            const auto txid_desc = desc_txiter->GetTx().GetHash();
+            const auto txid_desc = desc_txiter->first.GetTx().GetHash();
             const bool remove_desc{m_to_be_replaced.count(txid_desc) > 0};
             auto desc_it{m_entries_by_txid.find(txid_desc)};
             Assume((desc_it == m_entries_by_txid.end()) == remove_desc);

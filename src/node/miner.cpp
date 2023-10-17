@@ -213,7 +213,7 @@ bool BlockAssembler::TestPackage(uint64_t packageSize, int64_t packageSigOpsCost
 bool BlockAssembler::TestPackageTransactions(const CTxMemPool::setEntries& package) const
 {
     for (CTxMemPool::txiter it : package) {
-        if (!IsFinalTx(it->GetTx(), nHeight, m_lock_time_cutoff)) {
+        if (!IsFinalTx(it->first.GetTx(), nHeight, m_lock_time_cutoff)) {
             return false;
         }
     }
@@ -222,20 +222,20 @@ bool BlockAssembler::TestPackageTransactions(const CTxMemPool::setEntries& packa
 
 void BlockAssembler::AddToBlock(CTxMemPool::txiter iter)
 {
-    pblocktemplate->block.vtx.emplace_back(iter->GetSharedTx());
-    pblocktemplate->vTxFees.push_back(iter->GetFee());
-    pblocktemplate->vTxSigOpsCost.push_back(iter->GetSigOpCost());
-    nBlockWeight += iter->GetTxWeight();
+    pblocktemplate->block.vtx.emplace_back(iter->first.GetSharedTx());
+    pblocktemplate->vTxFees.push_back(iter->first.GetFee());
+    pblocktemplate->vTxSigOpsCost.push_back(iter->first.GetSigOpCost());
+    nBlockWeight += iter->first.GetTxWeight();
     ++nBlockTx;
-    nBlockSigOpsCost += iter->GetSigOpCost();
-    nFees += iter->GetFee();
+    nBlockSigOpsCost += iter->first.GetSigOpCost();
+    nFees += iter->first.GetFee();
     inBlock.insert(iter);
 
     bool fPrintPriority = gArgs.GetBoolArg("-printpriority", DEFAULT_PRINTPRIORITY);
     if (fPrintPriority) {
         LogPrintf("fee rate %s txid %s\n",
-                  CFeeRate(iter->GetModifiedFee(), iter->GetTxSize()).ToString(),
-                  iter->GetTx().GetHash().ToString());
+                  CFeeRate(iter->first.GetModifiedFee(), iter->first.GetTxSize()).ToString(),
+                  iter->first.GetTx().GetHash().ToString());
     }
 }
 
@@ -300,7 +300,7 @@ void BlockAssembler::addPackageTxs(const CTxMemPool& mempool, int& nPackagesSele
     // Keep track of entries that failed inclusion, to avoid duplicate work
     CTxMemPool::setEntries failedTx;
 
-    CTxMemPool::indexed_transaction_set::index<ancestor_score>::type::iterator mi = mempool.mapTx.get<ancestor_score>().begin();
+    auto mi = mempool.iters_by_ancestor_fee_rate.begin();
     CTxMemPool::txiter iter;
 
     // Limit the number of attempts to add transactions to the block when it is
@@ -309,7 +309,7 @@ void BlockAssembler::addPackageTxs(const CTxMemPool& mempool, int& nPackagesSele
     const int64_t MAX_CONSECUTIVE_FAILURES = 1000;
     int64_t nConsecutiveFailed = 0;
 
-    while (mi != mempool.mapTx.get<ancestor_score>().end() || !mapModifiedTx.empty()) {
+    while (mi != mempool.iters_by_ancestor_fee_rate.end() || !mapModifiedTx.empty()) {
         // First try to find a new transaction in mapTx to evaluate.
         //
         // Skip entries in mapTx that are already in a block or are present
@@ -323,8 +323,8 @@ void BlockAssembler::addPackageTxs(const CTxMemPool& mempool, int& nPackagesSele
         // cached size/sigops/fee values that are not actually correct.
         /** Return true if given transaction from mapTx has already been evaluated,
          * or if the transaction's cached data in mapTx is incorrect. */
-        if (mi != mempool.mapTx.get<ancestor_score>().end()) {
-            auto it = mempool.mapTx.project<0>(mi);
+        if (mi != mempool.iters_by_ancestor_fee_rate.end()) {
+            auto it = *mi;
             assert(it != mempool.mapTx.end());
             if (mapModifiedTx.count(it) || inBlock.count(it) || failedTx.count(it)) {
                 ++mi;
@@ -336,20 +336,20 @@ void BlockAssembler::addPackageTxs(const CTxMemPool& mempool, int& nPackagesSele
         // the next entry from mapTx, or the best from mapModifiedTx?
         bool fUsingModified = false;
 
-        modtxscoreiter modit = mapModifiedTx.get<ancestor_score>().begin();
-        if (mi == mempool.mapTx.get<ancestor_score>().end()) {
+        auto modit = mempool.iters_by_ancestor_fee_rate.begin();
+        if (mi == mempool.iters_by_ancestor_fee_rate.end()) {
             // We're out of entries in mapTx; use the entry from mapModifiedTx
-            iter = modit->iter;
+            iter = *modit;
             fUsingModified = true;
         } else {
             // Try to compare the mapTx entry to the mapModifiedTx entry
-            iter = mempool.mapTx.project<0>(mi);
-            if (modit != mapModifiedTx.get<ancestor_score>().end() &&
-                    CompareTxMemPoolEntryByAncestorFee()(*modit, CTxMemPoolModifiedEntry(iter))) {
+            iter = *mi;
+            if (modit != mempool.iters_by_ancestor_fee_rate.end() &&
+                    CompareTxMemPoolEntryByAncestorFee()(CTxMemPoolModifiedEntry(*modit), CTxMemPoolModifiedEntry(iter))) {
                 // The best entry in mapModifiedTx has higher score
                 // than the one from mapTx.
                 // Switch which transaction (package) to consider
-                iter = modit->iter;
+                iter = *modit;
                 fUsingModified = true;
             } else {
                 // Either no entry in mapModifiedTx, or it's worse than mapTx.
@@ -362,13 +362,13 @@ void BlockAssembler::addPackageTxs(const CTxMemPool& mempool, int& nPackagesSele
         // contain anything that is inBlock.
         assert(!inBlock.count(iter));
 
-        uint64_t packageSize = iter->GetSizeWithAncestors();
-        CAmount packageFees = iter->GetModFeesWithAncestors();
-        int64_t packageSigOpsCost = iter->GetSigOpCostWithAncestors();
+        uint64_t packageSize = iter->first.GetSizeWithAncestors();
+        CAmount packageFees = iter->first.GetModFeesWithAncestors();
+        int64_t packageSigOpsCost = iter->first.GetSigOpCostWithAncestors();
         if (fUsingModified) {
-            packageSize = modit->nSizeWithAncestors;
-            packageFees = modit->nModFeesWithAncestors;
-            packageSigOpsCost = modit->nSigOpCostWithAncestors;
+            packageSize = (*modit)->first.GetSizeWithAncestors();
+            packageFees = (*modit)->first.GetModFeesWithAncestors();
+            packageSigOpsCost = (*modit)->first.GetSigOpCostWithAncestors();
         }
 
         if (packageFees < m_options.blockMinFeeRate.GetFee(packageSize)) {
@@ -381,7 +381,8 @@ void BlockAssembler::addPackageTxs(const CTxMemPool& mempool, int& nPackagesSele
                 // Since we always look at the best entry in mapModifiedTx,
                 // we must erase failed entries so that we can consider the
                 // next best entry on the next loop iteration
-                mapModifiedTx.get<ancestor_score>().erase(modit);
+                //mapModifiedTx.get<ancestor_score>().erase(modit);
+                // TODO
                 failedTx.insert(iter);
             }
 
@@ -395,7 +396,7 @@ void BlockAssembler::addPackageTxs(const CTxMemPool& mempool, int& nPackagesSele
             continue;
         }
 
-        auto ancestors{mempool.AssumeCalculateMemPoolAncestors(__func__, *iter, CTxMemPool::Limits::NoLimits(), /*fSearchForParents=*/false)};
+        auto ancestors{mempool.AssumeCalculateMemPoolAncestors(__func__, iter->first, CTxMemPool::Limits::NoLimits(), /*fSearchForParents=*/false)};
 
         onlyUnconfirmed(ancestors);
         ancestors.insert(iter);
@@ -403,7 +404,8 @@ void BlockAssembler::addPackageTxs(const CTxMemPool& mempool, int& nPackagesSele
         // Test if all tx's are Final
         if (!TestPackageTransactions(ancestors)) {
             if (fUsingModified) {
-                mapModifiedTx.get<ancestor_score>().erase(modit);
+                // TODO
+                //mapModifiedTx.get<ancestor_score>().erase(modit);
                 failedTx.insert(iter);
             }
             continue;

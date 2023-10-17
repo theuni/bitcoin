@@ -31,13 +31,6 @@
 #include <string_view>
 #include <utility>
 
-struct mempool_iters
-{
-    decltype(CTxMemPool::iters_by_fee_rate)::iterator iter_by_fee_rate;
-    decltype(CTxMemPool::iters_by_entry_time)::iterator iter_by_entry_time;
-    decltype(CTxMemPool::iters_by_ancestor_fee_rate)::iterator iter_by_ancestor_fee_rate;
-};
-
 bool TestLockPointValidity(CChain& active_chain, const LockPoints& lp)
 {
     AssertLockHeld(cs_main);

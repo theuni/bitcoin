@@ -46,16 +46,16 @@ struct CTxMemPoolModifiedEntry {
     explicit CTxMemPoolModifiedEntry(CTxMemPool::txiter entry)
     {
         iter = entry;
-        nSizeWithAncestors = entry->GetSizeWithAncestors();
-        nModFeesWithAncestors = entry->GetModFeesWithAncestors();
-        nSigOpCostWithAncestors = entry->GetSigOpCostWithAncestors();
+        nSizeWithAncestors = entry->first.GetSizeWithAncestors();
+        nModFeesWithAncestors = entry->first.GetModFeesWithAncestors();
+        nSigOpCostWithAncestors = entry->first.GetSigOpCostWithAncestors();
     }
 
-    CAmount GetModifiedFee() const { return iter->GetModifiedFee(); }
+    CAmount GetModifiedFee() const { return iter->first.GetModifiedFee(); }
     uint64_t GetSizeWithAncestors() const { return nSizeWithAncestors; }
     CAmount GetModFeesWithAncestors() const { return nModFeesWithAncestors; }
-    size_t GetTxSize() const { return iter->GetTxSize(); }
-    const CTransaction& GetTx() const { return iter->GetTx(); }
+    size_t GetTxSize() const { return iter->first.GetTxSize(); }
+    const CTransaction& GetTx() const { return iter->first.GetTx(); }
 
     CTxMemPool::txiter iter;
     uint64_t nSizeWithAncestors;
@@ -89,8 +89,8 @@ struct modifiedentry_iter {
 struct CompareTxIterByAncestorCount {
     bool operator()(const CTxMemPool::txiter& a, const CTxMemPool::txiter& b) const
     {
-        if (a->GetCountWithAncestors() != b->GetCountWithAncestors()) {
-            return a->GetCountWithAncestors() < b->GetCountWithAncestors();
+        if (a->first.GetCountWithAncestors() != b->first.GetCountWithAncestors()) {
+            return a->first.GetCountWithAncestors() < b->first.GetCountWithAncestors();
         }
         return CompareIteratorByHash()(a, b);
     }
@@ -122,9 +122,9 @@ struct update_for_parent_inclusion
 
     void operator() (CTxMemPoolModifiedEntry &e)
     {
-        e.nModFeesWithAncestors -= iter->GetModifiedFee();
-        e.nSizeWithAncestors -= iter->GetTxSize();
-        e.nSigOpCostWithAncestors -= iter->GetSigOpCost();
+        e.nModFeesWithAncestors -= iter->first.GetModifiedFee();
+        e.nSizeWithAncestors -= iter->first.GetTxSize();
+        e.nSigOpCostWithAncestors -= iter->first.GetSigOpCost();
     }
 
     CTxMemPool::txiter iter;

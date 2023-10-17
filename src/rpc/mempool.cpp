@@ -315,8 +315,14 @@ static void entryToJSON(const CTxMemPool& pool, UniValue& info, const CTxMemPool
     info.pushKV("depends", depends);
 
     UniValue spent(UniValue::VARR);
-    const CTxMemPool::txiter& it = pool.mapTx.find(tx.GetHash());
-    const CTxMemPoolEntry::Children& children = it->GetMemPoolChildrenConst();
+
+    auto txid_it = pool.iters_by_txid.find(tx.GetHash());
+    if (txid_it == pool.iters_by_txid.end()) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Transaction not in mempool");
+    }
+
+    const CTxMemPool::txiter& it = txid_it->second;
+    const CTxMemPoolEntry::Children& children = it->first.GetMemPoolChildrenConst();
     for (const CTxMemPoolEntry& child : children) {
         spent.push_back(child.GetTx().GetHash().ToString());
     }
@@ -344,10 +350,10 @@ UniValue MempoolToJSON(const CTxMemPool& pool, bool verbose, bool include_mempoo
         }
         LOCK(pool.cs);
         UniValue o(UniValue::VOBJ);
-        for (const CTxMemPoolEntry& e : pool.mapTx) {
-            const uint256& hash = e.GetTx().GetHash();
+        for (const auto iter : pool.iters_by_txid) {
+            const uint256& hash = iter.second->first.GetTx().GetHash();
             UniValue info(UniValue::VOBJ);
-            entryToJSON(pool, info, e);
+            entryToJSON(pool, info, iter.second->first);
             // Mempool has unique entries so there is no advantage in using
             // UniValue::pushKV, which checks if the key already exists in O(N).
             // UniValue::pushKVEnd is used instead which currently is O(1).
@@ -460,23 +466,24 @@ static RPCHelpMan getmempoolancestors()
     const CTxMemPool& mempool = EnsureAnyMemPool(request.context);
     LOCK(mempool.cs);
 
-    CTxMemPool::txiter it = mempool.mapTx.find(hash);
-    if (it == mempool.mapTx.end()) {
+    auto txid_it = mempool.iters_by_txid.find(hash);
+    if (txid_it == mempool.iters_by_txid.end()) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Transaction not in mempool");
     }
+    CTxMemPool::txiter it = txid_it->second;
 
-    auto ancestors{mempool.AssumeCalculateMemPoolAncestors(__func__, *it, CTxMemPool::Limits::NoLimits(), /*fSearchForParents=*/false)};
+    auto ancestors{mempool.AssumeCalculateMemPoolAncestors(__func__, it->first, CTxMemPool::Limits::NoLimits(), /*fSearchForParents=*/false)};
 
     if (!fVerbose) {
         UniValue o(UniValue::VARR);
         for (CTxMemPool::txiter ancestorIt : ancestors) {
-            o.push_back(ancestorIt->GetTx().GetHash().ToString());
+            o.push_back(ancestorIt->first.GetTx().GetHash().ToString());
         }
         return o;
     } else {
         UniValue o(UniValue::VOBJ);
         for (CTxMemPool::txiter ancestorIt : ancestors) {
-            const CTxMemPoolEntry &e = *ancestorIt;
+            const CTxMemPoolEntry &e = ancestorIt->first;
             const uint256& _hash = e.GetTx().GetHash();
             UniValue info(UniValue::VOBJ);
             entryToJSON(mempool, info, e);
@@ -521,11 +528,11 @@ static RPCHelpMan getmempooldescendants()
     const CTxMemPool& mempool = EnsureAnyMemPool(request.context);
     LOCK(mempool.cs);
 
-    CTxMemPool::txiter it = mempool.mapTx.find(hash);
-    if (it == mempool.mapTx.end()) {
+    auto txid_it = mempool.iters_by_txid.find(hash);
+    if (txid_it == mempool.iters_by_txid.end()) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Transaction not in mempool");
     }
-
+    auto it = txid_it->second;
     CTxMemPool::setEntries setDescendants;
     mempool.CalculateDescendants(it, setDescendants);
     // CTxMemPool::CalculateDescendants will include the given tx
@@ -534,14 +541,14 @@ static RPCHelpMan getmempooldescendants()
     if (!fVerbose) {
         UniValue o(UniValue::VARR);
         for (CTxMemPool::txiter descendantIt : setDescendants) {
-            o.push_back(descendantIt->GetTx().GetHash().ToString());
+            o.push_back(descendantIt->first.GetTx().GetHash().ToString());
         }
 
         return o;
     } else {
         UniValue o(UniValue::VOBJ);
         for (CTxMemPool::txiter descendantIt : setDescendants) {
-            const CTxMemPoolEntry &e = *descendantIt;
+            const CTxMemPoolEntry &e = descendantIt->first;
             const uint256& _hash = e.GetTx().GetHash();
             UniValue info(UniValue::VOBJ);
             entryToJSON(mempool, info, e);
@@ -573,12 +580,12 @@ static RPCHelpMan getmempoolentry()
     const CTxMemPool& mempool = EnsureAnyMemPool(request.context);
     LOCK(mempool.cs);
 
-    CTxMemPool::txiter it = mempool.mapTx.find(hash);
-    if (it == mempool.mapTx.end()) {
+    auto it = mempool.iters_by_txid.find(hash);
+    if (it == mempool.iters_by_txid.end()) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Transaction not in mempool");
     }
 
-    const CTxMemPoolEntry &e = *it;
+    const CTxMemPoolEntry &e = it->second->first;
     UniValue info(UniValue::VOBJ);
     entryToJSON(mempool, info, e);
     return info;

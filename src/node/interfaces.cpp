@@ -647,7 +647,7 @@ public:
         if (!m_node.mempool) return false;
         LOCK(m_node.mempool->cs);
         auto it = m_node.mempool->GetIter(txid);
-        return it && (*it)->GetCountWithDescendants() > 1;
+        return it && (*it)->first.GetCountWithDescendants() > 1;
     }
     bool broadcastTransaction(const CTransactionRef& tx,
         const CAmount& max_tx_fee,
@@ -804,8 +804,8 @@ public:
     {
         if (!m_node.mempool) return;
         LOCK2(::cs_main, m_node.mempool->cs);
-        for (const CTxMemPoolEntry& entry : m_node.mempool->mapTx) {
-            notifications.transactionAddedToMempool(entry.GetSharedTx());
+        for (const auto it : m_node.mempool->iters_by_txid) {
+            notifications.transactionAddedToMempool(it.second->first.GetSharedTx());
         }
     }
     bool hasAssumedValidChain() override

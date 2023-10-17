@@ -92,6 +92,7 @@
 
 #include <algorithm>
 #include <condition_variable>
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <fstream>

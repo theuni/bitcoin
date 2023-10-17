@@ -27,11 +27,11 @@ class MiniMinerMempoolEntry
 
 public:
     explicit MiniMinerMempoolEntry(CTxMemPool::txiter entry) :
-        fee_individual{entry->GetModifiedFee()},
-        tx{entry->GetSharedTx()},
-        vsize_individual(entry->GetTxSize()),
-        fee_with_ancestors{entry->GetModFeesWithAncestors()},
-        vsize_with_ancestors(entry->GetSizeWithAncestors())
+        fee_individual{entry->first.GetModifiedFee()},
+        tx{entry->first.GetSharedTx()},
+        vsize_individual(entry->first.GetTxSize()),
+        fee_with_ancestors{entry->first.GetModFeesWithAncestors()},
+        vsize_with_ancestors(entry->first.GetSizeWithAncestors())
     { }
 
     CAmount GetModifiedFee() const { return fee_individual; }
