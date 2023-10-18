@@ -98,15 +98,18 @@ bool CompareTxMemPoolEntryByDescendantScore::operator()(const mempool_storage_it
 
 void CTxMemPool::ModifyDescendantState(txiter iter, int32_t modifySize, CAmount modifyFee, int64_t modifyCount)
 {
+
     auto fee_rate_nh = iters_by_fee_rate.extract(iter->second->iter_by_fee_rate);
     auto entry_time_nh = iters_by_fee_rate.extract(iter->second->iter_by_entry_time);
     auto ancestor_fee_rate_nh = iters_by_fee_rate.extract(iter->second->iter_by_ancestor_fee_rate);
 
     auto txid_it = iters_by_txid.find(iter->first.GetTx().GetHash());
-    auto wtxid_it = iters_by_txid.find(iter->first.GetTx().GetHash());
+    auto wtxid_it = iters_by_wtxid.find(iter->first.GetTx().GetWitnessHash());
     auto nh = mapTx.extract(iter);
     nh.key().UpdateDescendantState(modifySize, modifyFee, modifyCount);
-    auto inserted = mapTx.insert(std::move(nh)).position;
+    auto insert_result = mapTx.insert(std::move(nh));
+    assert(insert_result.inserted);
+    auto inserted = insert_result.position;
 
     txid_it->second = inserted;
     wtxid_it->second = inserted;
@@ -121,16 +124,24 @@ void CTxMemPool::ModifyDescendantState(txiter iter, int32_t modifySize, CAmount 
 
 void CTxMemPool::ModifyAncestorState(txiter iter, int32_t modifySize, CAmount modifyFee, int64_t modifyCount, int64_t modifySigOps)
 {
+
     auto fee_rate_nh = iters_by_fee_rate.extract(iter->second->iter_by_fee_rate);
+    assert(fee_rate_nh);
     auto entry_time_nh = iters_by_fee_rate.extract(iter->second->iter_by_entry_time);
+    assert(fee_rate_nh);
     auto ancestor_fee_rate_nh = iters_by_fee_rate.extract(iter->second->iter_by_ancestor_fee_rate);
+    assert(fee_rate_nh);
 
     auto txid_it = iters_by_txid.find(iter->first.GetTx().GetHash());
-    auto wtxid_it = iters_by_txid.find(iter->first.GetTx().GetHash());
+    assert(txid_it != iters_by_txid.end());
+    auto wtxid_it = iters_by_wtxid.find(iter->first.GetTx().GetWitnessHash());
+    assert(wtxid_it != iters_by_wtxid.end());
+
     auto nh = mapTx.extract(iter);
     nh.key().UpdateAncestorState(modifySize, modifyFee, modifyCount, modifySigOps);
-
-    auto inserted = mapTx.insert(std::move(nh)).position;
+    auto insert_result = mapTx.insert(std::move(nh));
+    assert(insert_result.inserted);
+    auto inserted = insert_result.position;
 
     txid_it->second = inserted;
     wtxid_it->second = inserted;
@@ -141,17 +152,19 @@ void CTxMemPool::ModifyAncestorState(txiter iter, int32_t modifySize, CAmount mo
     inserted->second->iter_by_fee_rate = iters_by_fee_rate.insert(std::move(fee_rate_nh)).position;
     inserted->second->iter_by_entry_time = iters_by_entry_time.insert(std::move(entry_time_nh)).position;
     inserted->second->iter_by_ancestor_fee_rate = iters_by_ancestor_fee_rate.insert(std::move(ancestor_fee_rate_nh)).position;
+
 }
 
 
 void CTxMemPool::ModifyFee(txiter iter, CAmount fee_diff)
 {
+
     auto fee_rate_nh = iters_by_fee_rate.extract(iter->second->iter_by_fee_rate);
     auto entry_time_nh = iters_by_fee_rate.extract(iter->second->iter_by_entry_time);
     auto ancestor_fee_rate_nh = iters_by_fee_rate.extract(iter->second->iter_by_ancestor_fee_rate);
 
     auto txid_it = iters_by_txid.find(iter->first.GetTx().GetHash());
-    auto wtxid_it = iters_by_txid.find(iter->first.GetTx().GetHash());
+    auto wtxid_it = iters_by_wtxid.find(iter->first.GetTx().GetWitnessHash());
     auto nh = mapTx.extract(iter);
     nh.key().UpdateModifiedFee(fee_diff);
 
@@ -166,6 +179,7 @@ void CTxMemPool::ModifyFee(txiter iter, CAmount fee_diff)
     inserted->second->iter_by_fee_rate = iters_by_fee_rate.insert(std::move(fee_rate_nh)).position;
     inserted->second->iter_by_entry_time = iters_by_entry_time.insert(std::move(entry_time_nh)).position;
     inserted->second->iter_by_ancestor_fee_rate = iters_by_ancestor_fee_rate.insert(std::move(ancestor_fee_rate_nh)).position;
+
 }
 
 bool CTxMemPool::visited(const txiter it) const
@@ -175,16 +189,20 @@ bool CTxMemPool::visited(const txiter it) const
 
 void CTxMemPool::UpdateLockPoints(txiter iter, const LockPoints& lp)
 {
+
     auto fee_rate_nh = iters_by_fee_rate.extract(iter->second->iter_by_fee_rate);
     auto entry_time_nh = iters_by_fee_rate.extract(iter->second->iter_by_entry_time);
     auto ancestor_fee_rate_nh = iters_by_fee_rate.extract(iter->second->iter_by_ancestor_fee_rate);
 
     auto txid_it = iters_by_txid.find(iter->first.GetTx().GetHash());
-    auto wtxid_it = iters_by_txid.find(iter->first.GetTx().GetHash());
+    auto wtxid_it = iters_by_wtxid.find(iter->first.GetTx().GetWitnessHash());
     auto nh = mapTx.extract(iter);
+    assert(nh);
     nh.key().UpdateLockPoints(lp);
 
-    auto inserted = mapTx.insert(std::move(nh)).position;
+    auto inserted_result = mapTx.insert(std::move(nh));
+    auto inserted = inserted_result.position;
+    assert(inserted_result.inserted);
 
     txid_it->second = inserted;
     wtxid_it->second = inserted;
@@ -195,6 +213,7 @@ void CTxMemPool::UpdateLockPoints(txiter iter, const LockPoints& lp)
     inserted->second->iter_by_fee_rate = iters_by_fee_rate.insert(std::move(fee_rate_nh)).position;
     inserted->second->iter_by_entry_time = iters_by_entry_time.insert(std::move(entry_time_nh)).position;
     inserted->second->iter_by_ancestor_fee_rate = iters_by_ancestor_fee_rate.insert(std::move(ancestor_fee_rate_nh)).position;
+
 }
 
 void CTxMemPool::UpdateForDescendants(txiter updateIt, cacheMap& cachedDescendants,
@@ -457,6 +476,7 @@ void CTxMemPool::UpdateEntryForAncestors(txiter it, const setEntries &setAncesto
         updateFee += ancestorIt->first.GetModifiedFee();
         updateSigOpsCost += ancestorIt->first.GetSigOpCost();
     }
+    assert(it->second);
     ModifyAncestorState(it, updateSize, updateFee, updateCount, updateSigOpsCost);
 }
 
@@ -583,10 +603,13 @@ void CTxMemPool::addUnchecked(const CTxMemPoolEntry &entry, setEntries &setAnces
     // Used by AcceptToMemoryPool(), which DOES do
     // all the appropriate checks.
 
-    auto newit = mapTx.emplace(entry, std::make_unique<mempool_iters>()).first;
+    auto emplaced = mapTx.emplace(entry, std::make_unique<mempool_iters>());
+    auto newit = emplaced.first;
+    assert(emplaced.second);
     const auto& inserted = newit->second;
+    assert(inserted);
     iters_by_txid.emplace(entry.GetTx().GetHash(), newit);
-    iters_by_wtxid.emplace(entry.GetTx().GetHash(), newit);
+    iters_by_wtxid.emplace(entry.GetTx().GetWitnessHash(), newit);
     inserted->iter_by_fee_rate = iters_by_fee_rate.insert(newit).first;
     inserted->iter_by_entry_time = iters_by_entry_time.insert(newit).first;
     inserted->iter_by_ancestor_fee_rate = iters_by_ancestor_fee_rate.insert(newit).first;
@@ -1241,7 +1264,7 @@ int CTxMemPool::Expire(std::chrono::seconds time)
     AssertLockHeld(cs);
     auto it = iters_by_entry_time.begin();
     setEntries toremove;
-    while (it != iters_by_entry_time.end() && (*it)->first.GetTime() < time) {
+    while (it != iters_by_entry_time.end() && *it != nullptr && (*it)->first.GetTime() < time) {
         toremove.insert(*it);
         it++;
     }
