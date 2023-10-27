@@ -143,8 +143,8 @@ BOOST_FIXTURE_TEST_CASE(miniminer_1p1c, TestChain100Setup)
     std::map<uint256, TxDimensions> tx_dims;
     for (const auto& tx : all_transactions) {
         const auto it = pool.GetIter(tx->GetHash()).value();
-        tx_dims.emplace(tx->GetHash(), TxDimensions{it->GetTxSize(), it->GetModifiedFee(),
-                                              CFeeRate(it->GetModifiedFee(), it->GetTxSize())});
+        tx_dims.emplace(tx->GetHash(), TxDimensions{it->first.GetTxSize(), it->first.GetModifiedFee(),
+                                              CFeeRate(it->first.GetModifiedFee(), it->first.GetTxSize())});
     }
 
     const std::vector<CFeeRate> various_normal_feerates({CFeeRate(0), CFeeRate(500), CFeeRate(999),
@@ -357,14 +357,14 @@ BOOST_FIXTURE_TEST_CASE(miniminer_overlap, TestChain100Setup)
     BOOST_CHECK(tx2_feerate > tx3_feerate);
     const auto tx3_anc_feerate = CFeeRate(low_fee + med_fee + high_fee + high_fee, tx_vsizes[0] + tx_vsizes[1] + tx_vsizes[2] + tx_vsizes[3]);
     const auto tx3_iter = pool.GetIter(tx3->GetHash());
-    BOOST_CHECK(tx3_anc_feerate == CFeeRate(tx3_iter.value()->GetModFeesWithAncestors(), tx3_iter.value()->GetSizeWithAncestors()));
+    BOOST_CHECK(tx3_anc_feerate == CFeeRate(tx3_iter.value()->first.GetModFeesWithAncestors(), tx3_iter.value()->first.GetSizeWithAncestors()));
     const auto tx4_feerate = CFeeRate(high_fee, tx_vsizes[4]);
     const auto tx6_anc_feerate = CFeeRate(high_fee + low_fee + med_fee, tx_vsizes[4] + tx_vsizes[5] + tx_vsizes[6]);
     const auto tx6_iter = pool.GetIter(tx6->GetHash());
-    BOOST_CHECK(tx6_anc_feerate == CFeeRate(tx6_iter.value()->GetModFeesWithAncestors(), tx6_iter.value()->GetSizeWithAncestors()));
+    BOOST_CHECK(tx6_anc_feerate == CFeeRate(tx6_iter.value()->first.GetModFeesWithAncestors(), tx6_iter.value()->first.GetSizeWithAncestors()));
     const auto tx7_anc_feerate = CFeeRate(high_fee + low_fee + high_fee, tx_vsizes[4] + tx_vsizes[5] + tx_vsizes[7]);
     const auto tx7_iter = pool.GetIter(tx7->GetHash());
-    BOOST_CHECK(tx7_anc_feerate == CFeeRate(tx7_iter.value()->GetModFeesWithAncestors(), tx7_iter.value()->GetSizeWithAncestors()));
+    BOOST_CHECK(tx7_anc_feerate == CFeeRate(tx7_iter.value()->first.GetModFeesWithAncestors(), tx7_iter.value()->first.GetSizeWithAncestors()));
     BOOST_CHECK(tx4_feerate > tx6_anc_feerate);
     BOOST_CHECK(tx4_feerate > tx7_anc_feerate);
 

@@ -98,14 +98,14 @@ BOOST_FIXTURE_TEST_CASE(rbf_helper_functions, TestChain100Setup)
     const auto entry7 = pool.GetIter(tx7->GetHash()).value();
     const auto entry8 = pool.GetIter(tx8->GetHash()).value();
 
-    BOOST_CHECK_EQUAL(entry1->GetFee(), normal_fee);
-    BOOST_CHECK_EQUAL(entry2->GetFee(), normal_fee);
-    BOOST_CHECK_EQUAL(entry3->GetFee(), low_fee);
-    BOOST_CHECK_EQUAL(entry4->GetFee(), high_fee);
-    BOOST_CHECK_EQUAL(entry5->GetFee(), low_fee);
-    BOOST_CHECK_EQUAL(entry6->GetFee(), low_fee);
-    BOOST_CHECK_EQUAL(entry7->GetFee(), high_fee);
-    BOOST_CHECK_EQUAL(entry8->GetFee(), high_fee);
+    BOOST_CHECK_EQUAL(entry1->first.GetFee(), normal_fee);
+    BOOST_CHECK_EQUAL(entry2->first.GetFee(), normal_fee);
+    BOOST_CHECK_EQUAL(entry3->first.GetFee(), low_fee);
+    BOOST_CHECK_EQUAL(entry4->first.GetFee(), high_fee);
+    BOOST_CHECK_EQUAL(entry5->first.GetFee(), low_fee);
+    BOOST_CHECK_EQUAL(entry6->first.GetFee(), low_fee);
+    BOOST_CHECK_EQUAL(entry7->first.GetFee(), high_fee);
+    BOOST_CHECK_EQUAL(entry8->first.GetFee(), high_fee);
 
     CTxMemPool::setEntries set_12_normal{entry1, entry2};
     CTxMemPool::setEntries set_34_cpfp{entry3, entry4};
@@ -118,19 +118,19 @@ BOOST_FIXTURE_TEST_CASE(rbf_helper_functions, TestChain100Setup)
     // Tests for PaysMoreThanConflicts
     // These tests use feerate, not absolute fee.
     BOOST_CHECK(PaysMoreThanConflicts(/*iters_conflicting=*/set_12_normal,
-                                      /*replacement_feerate=*/CFeeRate(entry1->GetModifiedFee() + 1, entry1->GetTxSize() + 2),
+                                      /*replacement_feerate=*/CFeeRate(entry1->first.GetModifiedFee() + 1, entry1->first.GetTxSize() + 2),
                                       /*txid=*/unused_txid).has_value());
     // Replacement must be strictly greater than the originals.
-    BOOST_CHECK(PaysMoreThanConflicts(set_12_normal, CFeeRate(entry1->GetModifiedFee(), entry1->GetTxSize()), unused_txid).has_value());
-    BOOST_CHECK(PaysMoreThanConflicts(set_12_normal, CFeeRate(entry1->GetModifiedFee() + 1, entry1->GetTxSize()), unused_txid) == std::nullopt);
+    BOOST_CHECK(PaysMoreThanConflicts(set_12_normal, CFeeRate(entry1->first.GetModifiedFee(), entry1->first.GetTxSize()), unused_txid).has_value());
+    BOOST_CHECK(PaysMoreThanConflicts(set_12_normal, CFeeRate(entry1->first.GetModifiedFee() + 1, entry1->first.GetTxSize()), unused_txid) == std::nullopt);
     // These tests use modified fees (including prioritisation), not base fees.
-    BOOST_CHECK(PaysMoreThanConflicts({entry5}, CFeeRate(entry5->GetModifiedFee() + 1, entry5->GetTxSize()), unused_txid) == std::nullopt);
-    BOOST_CHECK(PaysMoreThanConflicts({entry6}, CFeeRate(entry6->GetFee() + 1, entry6->GetTxSize()), unused_txid).has_value());
-    BOOST_CHECK(PaysMoreThanConflicts({entry6}, CFeeRate(entry6->GetModifiedFee() + 1, entry6->GetTxSize()), unused_txid) == std::nullopt);
+    BOOST_CHECK(PaysMoreThanConflicts({entry5}, CFeeRate(entry5->first.GetModifiedFee() + 1, entry5->first.GetTxSize()), unused_txid) == std::nullopt);
+    BOOST_CHECK(PaysMoreThanConflicts({entry6}, CFeeRate(entry6->first.GetFee() + 1, entry6->first.GetTxSize()), unused_txid).has_value());
+    BOOST_CHECK(PaysMoreThanConflicts({entry6}, CFeeRate(entry6->first.GetModifiedFee() + 1, entry6->first.GetTxSize()), unused_txid) == std::nullopt);
     // PaysMoreThanConflicts checks individual feerate, not ancestor feerate. This test compares
     // replacement_feerate and entry4's feerate, which are the same. The replacement_feerate is
     // considered too low even though entry4 has a low ancestor feerate.
-    BOOST_CHECK(PaysMoreThanConflicts(set_34_cpfp, CFeeRate(entry4->GetModifiedFee(), entry4->GetTxSize()), unused_txid).has_value());
+    BOOST_CHECK(PaysMoreThanConflicts(set_34_cpfp, CFeeRate(entry4->first.GetModifiedFee(), entry4->first.GetTxSize()), unused_txid).has_value());
 
     // Tests for EntriesAndTxidsDisjoint
     BOOST_CHECK(EntriesAndTxidsDisjoint(empty_set, {tx1->GetHash()}, unused_txid) == std::nullopt);

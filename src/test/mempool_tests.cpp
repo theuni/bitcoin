@@ -12,6 +12,7 @@
 
 #include <boost/test/unit_test.hpp>
 #include <vector>
+#include <cmath>
 
 BOOST_FIXTURE_TEST_SUITE(mempool_tests, TestingSetup)
 
@@ -115,14 +116,23 @@ BOOST_AUTO_TEST_CASE(MempoolRemoveTest)
     BOOST_CHECK_EQUAL(testPool.size(), 0U);
 }
 
-template <typename name>
-static void CheckSort(CTxMemPool& pool, std::vector<std::string>& sortedOrder) EXCLUSIVE_LOCKS_REQUIRED(pool.cs)
+static void CheckDescendantSort(CTxMemPool& pool, std::vector<std::string>& sortedOrder) EXCLUSIVE_LOCKS_REQUIRED(pool.cs)
 {
     BOOST_CHECK_EQUAL(pool.size(), sortedOrder.size());
-    typename CTxMemPool::indexed_transaction_set::index<name>::type::iterator it = pool.mapTx.get<name>().begin();
+    auto it = pool.iters_by_fee_rate.begin();
     int count = 0;
-    for (; it != pool.mapTx.get<name>().end(); ++it, ++count) {
-        BOOST_CHECK_EQUAL(it->GetTx().GetHash().ToString(), sortedOrder[count]);
+    for (; it != pool.iters_by_fee_rate.end(); ++it, ++count) {
+        BOOST_CHECK_EQUAL((*it)->first.GetTx().GetHash().ToString(), sortedOrder[count]);
+    }
+}
+
+static void CheckAncestorSort(CTxMemPool& pool, std::vector<std::string>& sortedOrder) EXCLUSIVE_LOCKS_REQUIRED(pool.cs)
+{
+    BOOST_CHECK_EQUAL(pool.size(), sortedOrder.size());
+    auto it = pool.iters_by_ancestor_fee_rate.begin();
+    int count = 0;
+    for (; it != pool.iters_by_ancestor_fee_rate.end(); ++it, ++count) {
+        BOOST_CHECK_EQUAL((*it)->first.GetTx().GetHash().ToString(), sortedOrder[count]);
     }
 }
 
@@ -176,7 +186,7 @@ BOOST_AUTO_TEST_CASE(MempoolIndexingTest)
     sortedOrder[2] = tx1.GetHash().ToString(); // 10000
     sortedOrder[3] = tx4.GetHash().ToString(); // 15000
     sortedOrder[4] = tx2.GetHash().ToString(); // 20000
-    CheckSort<descendant_score>(pool, sortedOrder);
+    CheckDescendantSort(pool, sortedOrder);
 
     /* low fee but with high fee child */
     /* tx6 -> tx7 -> tx8, tx9 -> tx10 */
@@ -188,10 +198,10 @@ BOOST_AUTO_TEST_CASE(MempoolIndexingTest)
     BOOST_CHECK_EQUAL(pool.size(), 6U);
     // Check that at this point, tx6 is sorted low
     sortedOrder.insert(sortedOrder.begin(), tx6.GetHash().ToString());
-    CheckSort<descendant_score>(pool, sortedOrder);
+    CheckDescendantSort(pool, sortedOrder);
 
     CTxMemPool::setEntries setAncestors;
-    setAncestors.insert(pool.mapTx.find(tx6.GetHash()));
+    setAncestors.insert((pool.iters_by_txid.find(tx6.GetHash()))->second);
     CMutableTransaction tx7 = CMutableTransaction();
     tx7.vin.resize(1);
     tx7.vin[0].prevout = COutPoint(tx6.GetHash(), 0);
@@ -213,7 +223,7 @@ BOOST_AUTO_TEST_CASE(MempoolIndexingTest)
     sortedOrder.erase(sortedOrder.begin());
     sortedOrder.push_back(tx6.GetHash().ToString());
     sortedOrder.push_back(tx7.GetHash().ToString());
-    CheckSort<descendant_score>(pool, sortedOrder);
+    CheckDescendantSort(pool, sortedOrder);
 
     /* low fee child of tx7 */
     CMutableTransaction tx8 = CMutableTransaction();
@@ -223,12 +233,12 @@ BOOST_AUTO_TEST_CASE(MempoolIndexingTest)
     tx8.vout.resize(1);
     tx8.vout[0].scriptPubKey = CScript() << OP_11 << OP_EQUAL;
     tx8.vout[0].nValue = 10 * COIN;
-    setAncestors.insert(pool.mapTx.find(tx7.GetHash()));
+    setAncestors.insert((pool.iters_by_txid.find(tx7.GetHash()))->second);
     pool.addUnchecked(entry.Fee(0LL).Time(NodeSeconds{2s}).FromTx(tx8), setAncestors);
 
     // Now tx8 should be sorted low, but tx6/tx both high
     sortedOrder.insert(sortedOrder.begin(), tx8.GetHash().ToString());
-    CheckSort<descendant_score>(pool, sortedOrder);
+    CheckDescendantSort(pool, sortedOrder);
 
     /* low fee child of tx7 */
     CMutableTransaction tx9 = CMutableTransaction();
@@ -243,12 +253,12 @@ BOOST_AUTO_TEST_CASE(MempoolIndexingTest)
     // tx9 should be sorted low
     BOOST_CHECK_EQUAL(pool.size(), 9U);
     sortedOrder.insert(sortedOrder.begin(), tx9.GetHash().ToString());
-    CheckSort<descendant_score>(pool, sortedOrder);
+    CheckDescendantSort(pool, sortedOrder);
 
     std::vector<std::string> snapshotOrder = sortedOrder;
 
-    setAncestors.insert(pool.mapTx.find(tx8.GetHash()));
-    setAncestors.insert(pool.mapTx.find(tx9.GetHash()));
+    setAncestors.insert((pool.iters_by_txid.find(tx8.GetHash()))->second);
+    setAncestors.insert((pool.iters_by_txid.find(tx9.GetHash()))->second);
     /* tx10 depends on tx8 and tx9 and has a high fee*/
     CMutableTransaction tx10 = CMutableTransaction();
     tx10.vin.resize(2);
@@ -285,17 +295,17 @@ BOOST_AUTO_TEST_CASE(MempoolIndexingTest)
     sortedOrder.insert(sortedOrder.begin()+5, tx9.GetHash().ToString());
     sortedOrder.insert(sortedOrder.begin()+6, tx8.GetHash().ToString());
     sortedOrder.insert(sortedOrder.begin()+7, tx10.GetHash().ToString()); // tx10 is just before tx6
-    CheckSort<descendant_score>(pool, sortedOrder);
+    CheckDescendantSort(pool, sortedOrder);
 
     // there should be 10 transactions in the mempool
     BOOST_CHECK_EQUAL(pool.size(), 10U);
 
     // Now try removing tx10 and verify the sort order returns to normal
-    pool.removeRecursive(pool.mapTx.find(tx10.GetHash())->GetTx(), REMOVAL_REASON_DUMMY);
-    CheckSort<descendant_score>(pool, snapshotOrder);
+    pool.removeRecursive(pool.iters_by_txid.find(tx10.GetHash())->second->first.GetTx(), REMOVAL_REASON_DUMMY);
+    CheckDescendantSort(pool, snapshotOrder);
 
-    pool.removeRecursive(pool.mapTx.find(tx9.GetHash())->GetTx(), REMOVAL_REASON_DUMMY);
-    pool.removeRecursive(pool.mapTx.find(tx8.GetHash())->GetTx(), REMOVAL_REASON_DUMMY);
+    pool.removeRecursive(pool.iters_by_txid.find(tx9.GetHash())->second->first.GetTx(), REMOVAL_REASON_DUMMY);
+    pool.removeRecursive(pool.iters_by_txid.find(tx8.GetHash())->second->first.GetTx(), REMOVAL_REASON_DUMMY);
 }
 
 BOOST_AUTO_TEST_CASE(MempoolAncestorIndexingTest)
@@ -357,7 +367,7 @@ BOOST_AUTO_TEST_CASE(MempoolAncestorIndexingTest)
     }
     sortedOrder[4] = tx3.GetHash().ToString(); // 0
 
-    CheckSort<ancestor_score>(pool, sortedOrder);
+    CheckAncestorSort(pool, sortedOrder);
 
     /* low fee parent with high fee child */
     /* tx6 (0) -> tx7 (high) */
@@ -375,7 +385,7 @@ BOOST_AUTO_TEST_CASE(MempoolAncestorIndexingTest)
     else
         sortedOrder.insert(sortedOrder.end()-1,tx6.GetHash().ToString());
 
-    CheckSort<ancestor_score>(pool, sortedOrder);
+    CheckAncestorSort(pool, sortedOrder);
 
     CMutableTransaction tx7 = CMutableTransaction();
     tx7.vin.resize(1);
@@ -392,7 +402,7 @@ BOOST_AUTO_TEST_CASE(MempoolAncestorIndexingTest)
     pool.addUnchecked(entry.Fee(fee).FromTx(tx7));
     BOOST_CHECK_EQUAL(pool.size(), 7U);
     sortedOrder.insert(sortedOrder.begin()+1, tx7.GetHash().ToString());
-    CheckSort<ancestor_score>(pool, sortedOrder);
+    CheckAncestorSort(pool, sortedOrder);
 
     /* after tx6 is mined, tx7 should move up in the sort */
     std::vector<CTransactionRef> vtx;
@@ -406,7 +416,7 @@ BOOST_AUTO_TEST_CASE(MempoolAncestorIndexingTest)
     else
         sortedOrder.erase(sortedOrder.end()-2);
     sortedOrder.insert(sortedOrder.begin(), tx7.GetHash().ToString());
-    CheckSort<ancestor_score>(pool, sortedOrder);
+    CheckAncestorSort(pool, sortedOrder);
 
     // High-fee parent, low-fee child
     // tx7 -> tx8
@@ -423,7 +433,7 @@ BOOST_AUTO_TEST_CASE(MempoolAncestorIndexingTest)
     // but the transaction's own feerate is lower
     pool.addUnchecked(entry.Fee(5000LL).FromTx(tx8));
     sortedOrder.insert(sortedOrder.end()-1, tx8.GetHash().ToString());
-    CheckSort<ancestor_score>(pool, sortedOrder);
+    CheckAncestorSort(pool, sortedOrder);
 }
 
 
