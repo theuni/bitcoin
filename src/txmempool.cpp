@@ -100,8 +100,8 @@ void CTxMemPool::ModifyDescendantState(txiter iter, int32_t modifySize, CAmount 
 {
 
     auto fee_rate_nh = iters_by_fee_rate.extract(iter->second->iter_by_fee_rate);
-    auto entry_time_nh = iters_by_fee_rate.extract(iter->second->iter_by_entry_time);
-    auto ancestor_fee_rate_nh = iters_by_fee_rate.extract(iter->second->iter_by_ancestor_fee_rate);
+    auto entry_time_nh = iters_by_entry_time.extract(iter->second->iter_by_entry_time);
+    auto ancestor_fee_rate_nh = iters_by_ancestor_fee_rate.extract(iter->second->iter_by_ancestor_fee_rate);
 
     auto txid_it = iters_by_txid.find(iter->first.GetTx().GetHash());
     auto wtxid_it = iters_by_wtxid.find(iter->first.GetTx().GetWitnessHash());
@@ -117,9 +117,9 @@ void CTxMemPool::ModifyDescendantState(txiter iter, int32_t modifySize, CAmount 
     entry_time_nh.value() = inserted;
     ancestor_fee_rate_nh.value() = inserted;
 
-    inserted->second->iter_by_fee_rate = iters_by_fee_rate.insert(std::move(fee_rate_nh)).position;
-    inserted->second->iter_by_entry_time = iters_by_entry_time.insert(std::move(entry_time_nh)).position;
-    inserted->second->iter_by_ancestor_fee_rate = iters_by_ancestor_fee_rate.insert(std::move(ancestor_fee_rate_nh)).position;
+    inserted->second->iter_by_fee_rate = iters_by_fee_rate.insert(std::move(fee_rate_nh));
+    inserted->second->iter_by_entry_time = iters_by_entry_time.insert(std::move(entry_time_nh));
+    inserted->second->iter_by_ancestor_fee_rate = iters_by_ancestor_fee_rate.insert(std::move(ancestor_fee_rate_nh));
 }
 
 void CTxMemPool::ModifyAncestorState(txiter iter, int32_t modifySize, CAmount modifyFee, int64_t modifyCount, int64_t modifySigOps)
@@ -127,9 +127,9 @@ void CTxMemPool::ModifyAncestorState(txiter iter, int32_t modifySize, CAmount mo
 
     auto fee_rate_nh = iters_by_fee_rate.extract(iter->second->iter_by_fee_rate);
     assert(fee_rate_nh);
-    auto entry_time_nh = iters_by_fee_rate.extract(iter->second->iter_by_entry_time);
+    auto entry_time_nh = iters_by_entry_time.extract(iter->second->iter_by_entry_time);
     assert(fee_rate_nh);
-    auto ancestor_fee_rate_nh = iters_by_fee_rate.extract(iter->second->iter_by_ancestor_fee_rate);
+    auto ancestor_fee_rate_nh = iters_by_ancestor_fee_rate.extract(iter->second->iter_by_ancestor_fee_rate);
     assert(fee_rate_nh);
 
     auto txid_it = iters_by_txid.find(iter->first.GetTx().GetHash());
@@ -149,9 +149,9 @@ void CTxMemPool::ModifyAncestorState(txiter iter, int32_t modifySize, CAmount mo
     entry_time_nh.value() = inserted;
     ancestor_fee_rate_nh.value() = inserted;
 
-    inserted->second->iter_by_fee_rate = iters_by_fee_rate.insert(std::move(fee_rate_nh)).position;
-    inserted->second->iter_by_entry_time = iters_by_entry_time.insert(std::move(entry_time_nh)).position;
-    inserted->second->iter_by_ancestor_fee_rate = iters_by_ancestor_fee_rate.insert(std::move(ancestor_fee_rate_nh)).position;
+    inserted->second->iter_by_fee_rate = iters_by_fee_rate.insert(std::move(fee_rate_nh));
+    inserted->second->iter_by_entry_time = iters_by_entry_time.insert(std::move(entry_time_nh));
+    inserted->second->iter_by_ancestor_fee_rate = iters_by_ancestor_fee_rate.insert(std::move(ancestor_fee_rate_nh));
 
 }
 
@@ -160,25 +160,26 @@ void CTxMemPool::ModifyFee(txiter iter, CAmount fee_diff)
 {
 
     auto fee_rate_nh = iters_by_fee_rate.extract(iter->second->iter_by_fee_rate);
-    auto entry_time_nh = iters_by_fee_rate.extract(iter->second->iter_by_entry_time);
-    auto ancestor_fee_rate_nh = iters_by_fee_rate.extract(iter->second->iter_by_ancestor_fee_rate);
+    auto entry_time_nh = iters_by_entry_time.extract(iter->second->iter_by_entry_time);
+    auto ancestor_fee_rate_nh = iters_by_ancestor_fee_rate.extract(iter->second->iter_by_ancestor_fee_rate);
 
     auto txid_it = iters_by_txid.find(iter->first.GetTx().GetHash());
     auto wtxid_it = iters_by_wtxid.find(iter->first.GetTx().GetWitnessHash());
     auto nh = mapTx.extract(iter);
     nh.key().UpdateModifiedFee(fee_diff);
 
-    auto inserted = mapTx.insert(std::move(nh)).position;
-
+    auto insert_result = mapTx.insert(std::move(nh));
+    auto inserted = insert_result.position;
+    assert(insert_result.inserted);
     txid_it->second = inserted;
     wtxid_it->second = inserted;
     fee_rate_nh.value() = inserted;
     entry_time_nh.value() = inserted;
     ancestor_fee_rate_nh.value() = inserted;
 
-    inserted->second->iter_by_fee_rate = iters_by_fee_rate.insert(std::move(fee_rate_nh)).position;
-    inserted->second->iter_by_entry_time = iters_by_entry_time.insert(std::move(entry_time_nh)).position;
-    inserted->second->iter_by_ancestor_fee_rate = iters_by_ancestor_fee_rate.insert(std::move(ancestor_fee_rate_nh)).position;
+    inserted->second->iter_by_fee_rate = iters_by_fee_rate.insert(std::move(fee_rate_nh));
+    inserted->second->iter_by_entry_time = iters_by_entry_time.insert(std::move(entry_time_nh));
+    inserted->second->iter_by_ancestor_fee_rate = iters_by_ancestor_fee_rate.insert(std::move(ancestor_fee_rate_nh));
 
 }
 
@@ -191,8 +192,8 @@ void CTxMemPool::UpdateLockPoints(txiter iter, const LockPoints& lp)
 {
 
     auto fee_rate_nh = iters_by_fee_rate.extract(iter->second->iter_by_fee_rate);
-    auto entry_time_nh = iters_by_fee_rate.extract(iter->second->iter_by_entry_time);
-    auto ancestor_fee_rate_nh = iters_by_fee_rate.extract(iter->second->iter_by_ancestor_fee_rate);
+    auto entry_time_nh = iters_by_entry_time.extract(iter->second->iter_by_entry_time);
+    auto ancestor_fee_rate_nh = iters_by_ancestor_fee_rate.extract(iter->second->iter_by_ancestor_fee_rate);
 
     auto txid_it = iters_by_txid.find(iter->first.GetTx().GetHash());
     auto wtxid_it = iters_by_wtxid.find(iter->first.GetTx().GetWitnessHash());
@@ -210,9 +211,9 @@ void CTxMemPool::UpdateLockPoints(txiter iter, const LockPoints& lp)
     entry_time_nh.value() = inserted;
     ancestor_fee_rate_nh.value() = inserted;
 
-    inserted->second->iter_by_fee_rate = iters_by_fee_rate.insert(std::move(fee_rate_nh)).position;
-    inserted->second->iter_by_entry_time = iters_by_entry_time.insert(std::move(entry_time_nh)).position;
-    inserted->second->iter_by_ancestor_fee_rate = iters_by_ancestor_fee_rate.insert(std::move(ancestor_fee_rate_nh)).position;
+    inserted->second->iter_by_fee_rate = iters_by_fee_rate.insert(std::move(fee_rate_nh));
+    inserted->second->iter_by_entry_time = iters_by_entry_time.insert(std::move(entry_time_nh));
+    inserted->second->iter_by_ancestor_fee_rate = iters_by_ancestor_fee_rate.insert(std::move(ancestor_fee_rate_nh));
 
 }
 
@@ -610,9 +611,9 @@ void CTxMemPool::addUnchecked(const CTxMemPoolEntry &entry, setEntries &setAnces
     assert(inserted);
     iters_by_txid.emplace(entry.GetTx().GetHash(), newit);
     iters_by_wtxid.emplace(entry.GetTx().GetWitnessHash(), newit);
-    inserted->iter_by_fee_rate = iters_by_fee_rate.insert(newit).first;
-    inserted->iter_by_entry_time = iters_by_entry_time.insert(newit).first;
-    inserted->iter_by_ancestor_fee_rate = iters_by_ancestor_fee_rate.insert(newit).first;
+    inserted->iter_by_fee_rate = iters_by_fee_rate.insert(newit);
+    inserted->iter_by_entry_time = iters_by_entry_time.insert(newit);
+    inserted->iter_by_ancestor_fee_rate = iters_by_ancestor_fee_rate.insert(newit);
 
 
     // Update transaction for any feeDelta created by PrioritiseTransaction
@@ -872,7 +873,7 @@ void CTxMemPool::check(const CCoinsViewCache& active_coins_tip, int64_t spendhei
         CTxMemPoolEntry::Parents setParentCheck;
         for (const CTxIn &txin : tx.vin) {
             // Check that every mempool transaction's inputs refer to available coins, or other mempool tx's.
-            auto it2 = iters_by_txid.find(tx.GetHash());
+            auto it2 = iters_by_txid.find(txin.prevout.hash);
             if (it2 != iters_by_txid.end()) {
 
                 const CTransaction& tx2 = it2->second->first.GetTx();
@@ -1264,7 +1265,7 @@ int CTxMemPool::Expire(std::chrono::seconds time)
     AssertLockHeld(cs);
     auto it = iters_by_entry_time.begin();
     setEntries toremove;
-    while (it != iters_by_entry_time.end() && *it != nullptr && (*it)->first.GetTime() < time) {
+    while (it != iters_by_entry_time.end() && (*it)->first.GetTime() < time) {
         toremove.insert(*it);
         it++;
     }

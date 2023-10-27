@@ -174,7 +174,7 @@ public:
 
     mutable size_t vTxHashesIdx; //!< Index in mempool's vTxHashes
     mutable Epoch::Marker m_epoch_marker; //!< epoch when last touched, useful for graph algorithms
-    bool operator==(const CTxMemPoolEntry& rhs) const { return tx == rhs.tx; }
+    bool operator==(const CTxMemPoolEntry& rhs) const { return GetTx().GetHash() == rhs.GetTx().GetHash(); }
 };
 
 #endif // BITCOIN_KERNEL_MEMPOOL_ENTRY_H

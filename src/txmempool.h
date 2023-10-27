@@ -316,9 +316,9 @@ public:
     using mempool_storage_iterator = mempool_storage::const_iterator;
     std::unordered_map<uint256, mempool_storage_iterator, SaltedTxidHasher> iters_by_txid;
     std::unordered_map<uint256, mempool_storage_iterator, SaltedTxidHasher> iters_by_wtxid;
-    std::set<mempool_storage_iterator, CompareTxMemPoolEntryByDescendantScore> iters_by_fee_rate;
-    std::set<mempool_storage_iterator, CompareTxMemPoolEntryByEntryTime> iters_by_entry_time;
-    std::set<mempool_storage_iterator, CompareTxMemPoolEntryByAncestorFee> iters_by_ancestor_fee_rate;
+    std::multiset<mempool_storage_iterator, CompareTxMemPoolEntryByDescendantScore> iters_by_fee_rate;
+    std::multiset<mempool_storage_iterator, CompareTxMemPoolEntryByEntryTime> iters_by_entry_time;
+    std::multiset<mempool_storage_iterator, CompareTxMemPoolEntryByAncestorFee> iters_by_ancestor_fee_rate;
 
     using indexed_transaction_set = std::unordered_map<CTxMemPoolEntry, std::unique_ptr<mempool_iters>, MempoolEntryHasher>;
 protected:
