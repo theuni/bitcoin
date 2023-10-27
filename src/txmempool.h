@@ -401,9 +401,9 @@ private:
     typedef std::map<txiter, setEntries, CompareMempoolIteratorByHash> cacheMap;
 
 
-    void ModifyDescendantState(txiter entry, int32_t modifySize, CAmount modifyFee, int64_t modifyCount);
-    void ModifyAncestorState(txiter entry, int32_t modifySize, CAmount modifyFee, int64_t modifyCount, int64_t modifySigOps);
-    void ModifyFee(txiter entry, CAmount fee_diff);
+    void ModifyDescendantState(txiter entry, int32_t modifySize, CAmount modifyFee, int64_t modifyCount) EXCLUSIVE_LOCKS_REQUIRED(cs);
+    void ModifyAncestorState(txiter entry, int32_t modifySize, CAmount modifyFee, int64_t modifyCount, int64_t modifySigOps) EXCLUSIVE_LOCKS_REQUIRED(cs);
+    void ModifyFee(txiter entry, CAmount fee_diff) EXCLUSIVE_LOCKS_REQUIRED(cs);
     void UpdateParent(txiter entry, txiter parent, bool add) EXCLUSIVE_LOCKS_REQUIRED(cs);
     void UpdateChild(txiter entry, txiter child, bool add) EXCLUSIVE_LOCKS_REQUIRED(cs);
 
@@ -541,7 +541,7 @@ public:
      */
     void RemoveStaged(setEntries& stage, bool updateDescendants, MemPoolRemovalReason reason) EXCLUSIVE_LOCKS_REQUIRED(cs);
 
-    void UpdateLockPoints(txiter iter, const LockPoints& lp);
+    void UpdateLockPoints(txiter iter, const LockPoints& lp) EXCLUSIVE_LOCKS_REQUIRED(cs);
 
     /** UpdateTransactionsFromBlock is called when adding transactions from a
      * disconnected block back to the mempool, new mempool entries may have
