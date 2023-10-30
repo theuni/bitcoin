@@ -704,7 +704,7 @@ void CTxMemPool::removeUnchecked(txiter it, MemPoolRemovalReason reason)
         vTxHashes.clear();
 
     iters_by_txid.erase(hash);
-    iters_by_wtxid.erase(hash);
+    iters_by_wtxid.erase(it->first.GetTx().GetWitnessHash());
     iters_by_fee_rate.erase(it->second->iter_by_fee_rate);
     iters_by_entry_time.erase(it->second->iter_by_entry_time);
     iters_by_ancestor_fee_rate.erase(it->second->iter_by_ancestor_fee_rate);
