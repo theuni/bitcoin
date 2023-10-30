@@ -1094,7 +1094,7 @@ void CTxMemPool::PrioritiseTransaction(const uint256& hash, const CAmount& nFeeD
         delta = SaturatingAdd(delta, nFeeDelta);
         auto it = iters_by_txid.find(hash);
         if (it != iters_by_txid.end()) {
-            ModifyFee(it->second, delta);
+            ModifyFee(it->second, nFeeDelta);
             // Now update all ancestors' modified fees with descendants
             auto ancestors{AssumeCalculateMemPoolAncestors(__func__, it->second->first, Limits::NoLimits(), /*fSearchForParents=*/false)};
             for (txiter ancestorIt : ancestors) {
