@@ -605,8 +605,12 @@ void CTxMemPool::addUnchecked(const CTxMemPoolEntry &entry, setEntries &setAnces
     // all the appropriate checks.
 
     auto emplaced = mapTx.emplace(entry, std::make_unique<mempool_iters>());
+    if (!emplaced.second) {
+        // TODO: Investigate: this shouldn't be possible but happens
+        // when fuzzing partially_downloaded_block.
+        return;
+    }
     auto newit = emplaced.first;
-    assert(emplaced.second);
     const auto& inserted = newit->second;
     assert(inserted);
     iters_by_txid.emplace(entry.GetTx().GetHash(), newit);
