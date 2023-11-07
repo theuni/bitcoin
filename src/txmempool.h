@@ -99,6 +99,8 @@ public:
         double f2 = a_size * b_mod_fee;
 
         if (f1 == f2) {
+            if (a.GetTime() == b.GetTime())
+                return b.GetTx().GetHash() < a.GetTx().GetHash();
             return a.GetTime() >= b.GetTime();
         }
         return f1 < f2;
@@ -148,6 +150,8 @@ class CompareTxMemPoolEntryByEntryTime
 public:
     bool operator()(const CTxMemPoolEntry& a, const CTxMemPoolEntry& b) const
     {
+        if(a.GetTime() == b.GetTime())
+            return b.GetTx().GetHash() < a.GetTx().GetHash();
         return a.GetTime() < b.GetTime();
     }
 };
@@ -341,13 +345,13 @@ public:
                 SaltedTxidHasher
             >,
             // sorted by fee rate
-            boost::multi_index::ordered_non_unique<
+            boost::multi_index::ordered_unique<
                 boost::multi_index::tag<descendant_score>,
                 boost::multi_index::identity<CTxMemPoolEntry>,
                 CompareTxMemPoolEntryByDescendantScore
             >,
             // sorted by entry time
-            boost::multi_index::ordered_non_unique<
+            boost::multi_index::ordered_unique<
                 boost::multi_index::tag<entry_time>,
                 boost::multi_index::identity<CTxMemPoolEntry>,
                 CompareTxMemPoolEntryByEntryTime
