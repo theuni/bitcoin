@@ -11,6 +11,7 @@
 #include <script/interpreter.h>
 #include <streams.h>
 #include <test/util/transaction_utils.h>
+#include <version.h>
 
 #include <array>
 

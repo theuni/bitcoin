@@ -17,6 +17,7 @@
 #include <uint256.h>
 #include <util/translation.h>
 #include <util/vector.h>
+#include <version.h>
 
 typedef std::vector<unsigned char> valtype;
 

@@ -11,6 +11,7 @@
 #include <test/util/txmempool.h>
 
 #include <test/util/setup_common.h>
+#include <version.h>
 
 #include <boost/test/unit_test.hpp>
 

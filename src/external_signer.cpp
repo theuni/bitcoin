@@ -8,6 +8,7 @@
 #include <psbt.h>
 #include <util/strencodings.h>
 #include <external_signer.h>
+#include <version.h>
 
 #include <algorithm>
 #include <stdexcept>

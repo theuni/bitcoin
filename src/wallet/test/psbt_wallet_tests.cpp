@@ -5,6 +5,7 @@
 #include <key_io.h>
 #include <util/bip32.h>
 #include <util/strencodings.h>
+#include <version.h>
 #include <wallet/wallet.h>
 
 #include <boost/test/unit_test.hpp>

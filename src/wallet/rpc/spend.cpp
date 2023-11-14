@@ -13,6 +13,7 @@
 #include <util/rbf.h>
 #include <util/translation.h>
 #include <util/vector.h>
+#include <version.h>
 #include <wallet/coincontrol.h>
 #include <wallet/feebumper.h>
 #include <wallet/fees.h>

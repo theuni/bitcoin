@@ -15,6 +15,7 @@
 #include <qt/optionsmodel.h>
 #include <util/fs.h>
 #include <util/strencodings.h>
+#include <version.h>
 
 #include <fstream>
 #include <iostream>

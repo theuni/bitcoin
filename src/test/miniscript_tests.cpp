@@ -21,6 +21,7 @@
 #include <script/miniscript.h>
 #include <script/script_error.h>
 #include <script/signingprovider.h>
+#include <version.h>
 
 namespace {
 

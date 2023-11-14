@@ -11,6 +11,7 @@
 #include <streams.h>
 #include <util/chaintype.h>
 #include <validation.h>
+#include <version.h>
 
 // These are the two major time-sinks which happen after we have fully received
 // a block off the wire, but before we can relay the block on to peers using

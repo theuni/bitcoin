@@ -7,6 +7,7 @@
 #include <test/util/setup_common.h>
 #include <util/fs.h>
 #include <util/strencodings.h>
+#include <version.h>
 
 #include <boost/test/unit_test.hpp>
 

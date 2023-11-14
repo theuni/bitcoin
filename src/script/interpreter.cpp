@@ -11,6 +11,7 @@
 #include <pubkey.h>
 #include <script/script.h>
 #include <uint256.h>
+#include <version.h>
 
 typedef std::vector<unsigned char> valtype;
 
