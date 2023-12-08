@@ -10,6 +10,7 @@
 #include <compat/endian.h>
 
 #include <algorithm>
+#include <bit>
 #include <cstdint>
 #include <cstring>
 #include <ios>
@@ -57,27 +58,27 @@ template<typename Stream> inline void ser_writedata8(Stream &s, uint8_t obj)
 }
 template<typename Stream> inline void ser_writedata16(Stream &s, uint16_t obj)
 {
-    obj = htole16(obj);
+    if constexpr (std::endian::native == std::endian::big) obj = htole16(obj);
     s.write(AsBytes(Span{&obj, 1}));
 }
 template<typename Stream> inline void ser_writedata16be(Stream &s, uint16_t obj)
 {
-    obj = htobe16(obj);
+    if constexpr (std::endian::native != std::endian::big) obj = htobe16(obj);
     s.write(AsBytes(Span{&obj, 1}));
 }
 template<typename Stream> inline void ser_writedata32(Stream &s, uint32_t obj)
 {
-    obj = htole32(obj);
+    if constexpr (std::endian::native == std::endian::big) obj = htole32(obj);
     s.write(AsBytes(Span{&obj, 1}));
 }
 template<typename Stream> inline void ser_writedata32be(Stream &s, uint32_t obj)
 {
-    obj = htobe32(obj);
+    if constexpr (std::endian::native != std::endian::big) obj = htobe32(obj);
     s.write(AsBytes(Span{&obj, 1}));
 }
 template<typename Stream> inline void ser_writedata64(Stream &s, uint64_t obj)
 {
-    obj = htole64(obj);
+    if constexpr (std::endian::native == std::endian::big) obj = htole64(obj);
     s.write(AsBytes(Span{&obj, 1}));
 }
 template<typename Stream> inline uint8_t ser_readdata8(Stream &s)
@@ -90,31 +91,36 @@ template<typename Stream> inline uint16_t ser_readdata16(Stream &s)
 {
     uint16_t obj;
     s.read(AsWritableBytes(Span{&obj, 1}));
-    return le16toh(obj);
+    if constexpr (std::endian::native == std::endian::big) return le16toh(obj);
+        else return obj;
 }
 template<typename Stream> inline uint16_t ser_readdata16be(Stream &s)
 {
     uint16_t obj;
     s.read(AsWritableBytes(Span{&obj, 1}));
-    return be16toh(obj);
+    if constexpr (std::endian::native != std::endian::big) return be16toh(obj);
+        else return obj;
 }
 template<typename Stream> inline uint32_t ser_readdata32(Stream &s)
 {
     uint32_t obj;
     s.read(AsWritableBytes(Span{&obj, 1}));
-    return le32toh(obj);
+    if constexpr (std::endian::native == std::endian::big) return le32toh(obj);
+        else return obj;
 }
 template<typename Stream> inline uint32_t ser_readdata32be(Stream &s)
 {
     uint32_t obj;
     s.read(AsWritableBytes(Span{&obj, 1}));
-    return be32toh(obj);
+    if constexpr (std::endian::native != std::endian::big) return be32toh(obj);
+        else return obj;
 }
 template<typename Stream> inline uint64_t ser_readdata64(Stream &s)
 {
     uint64_t obj;
     s.read(AsWritableBytes(Span{&obj, 1}));
-    return le64toh(obj);
+    if constexpr (std::endian::native == std::endian::big) return le64toh(obj);
+        else return obj;
 }
 
 
@@ -557,11 +563,17 @@ struct CustomUintFormatter
     {
         if (v < 0 || v > MAX) throw std::ios_base::failure("CustomUintFormatter value out of range");
         if (BigEndian) {
-            uint64_t raw = htobe64(v);
-            s.write(AsBytes(Span{&raw, 1}).last(Bytes));
+            if constexpr (std::endian::native == std::endian::big) s.write(AsBytes(Span{&v, 1}).last(Bytes));
+            else {
+                uint64_t raw = htobe64(v);
+                s.write(AsBytes(Span{&raw, 1}).last(Bytes));
+            }
         } else {
-            uint64_t raw = htole64(v);
-            s.write(AsBytes(Span{&raw, 1}).first(Bytes));
+            if constexpr (std::endian::native != std::endian::big) s.write(AsBytes(Span{&v, 1}).last(Bytes));
+            else {
+                uint64_t raw = htole64(v);
+                s.write(AsBytes(Span{&raw, 1}).first(Bytes));
+            }
         }
     }
 
@@ -572,10 +584,12 @@ struct CustomUintFormatter
         uint64_t raw = 0;
         if (BigEndian) {
             s.read(AsWritableBytes(Span{&raw, 1}).last(Bytes));
-            v = static_cast<I>(be64toh(raw));
+            if constexpr (std::endian::native != std::endian::big) v = static_cast<I>(be64toh(raw));
+                else v = static_cast<I>(raw);
         } else {
             s.read(AsWritableBytes(Span{&raw, 1}).first(Bytes));
-            v = static_cast<I>(le64toh(raw));
+            if constexpr (std::endian::native == std::endian::big) v = static_cast<I>(le64toh(raw));
+                else v = static_cast<I>(raw);
         }
     }
 };
