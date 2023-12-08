@@ -5,55 +5,55 @@
 #ifndef BITCOIN_COMPAT_BYTESWAP_H
 #define BITCOIN_COMPAT_BYTESWAP_H
 
-#if defined(HAVE_CONFIG_H)
-#include <config/bitcoin-config.h>
-#endif
-
 #include <cstdint>
+#include <cstdlib>
 
-#if defined(HAVE_BYTESWAP_H)
-#include <byteswap.h>
-#endif
-
-#if defined(MAC_OSX)
-
-#include <libkern/OSByteOrder.h>
-#define bswap_16(x) OSSwapInt16(x)
-#define bswap_32(x) OSSwapInt32(x)
-#define bswap_64(x) OSSwapInt64(x)
-
+static inline uint16_t internal_bswap_16(uint16_t x)
+{
+#if defined(__GNUC__) || defined(__clang__)
+    return __builtin_bswap16(x);
+#elif defined(_MSC_VER)
+    return _byteswap_ushort(x);
 #else
-// Non-MacOS / non-Darwin
-
-#if HAVE_DECL_BSWAP_16 == 0
-inline uint16_t bswap_16(uint16_t x)
-{
-    return (x >> 8) | (x << 8);
+    return \
+  ((__uint16_t) ((((x) >> 8) & 0xff) | (((x) & 0xff) << 8)));
+#endif
 }
-#endif // HAVE_DECL_BSWAP16 == 0
 
-#if HAVE_DECL_BSWAP_32 == 0
-inline uint32_t bswap_32(uint32_t x)
+static inline uint32_t internal_bswap_32(uint32_t x)
 {
-    return (((x & 0xff000000U) >> 24) | ((x & 0x00ff0000U) >>  8) |
-            ((x & 0x0000ff00U) <<  8) | ((x & 0x000000ffU) << 24));
+#if defined(__GNUC__) || defined(__clang__)
+    return __builtin_bswap32(x);
+#elif defined(_MSC_VER)
+    return _byteswap_ulong(x);
+#else
+    return \
+  ((((x) & 0xff000000u) >> 24) | (((x) & 0x00ff0000u) >> 8) \
+   | (((x) & 0x0000ff00u) << 8) | (((x) & 0x000000ffu) << 24));
+#endif
 }
-#endif // HAVE_DECL_BSWAP32 == 0
 
-#if HAVE_DECL_BSWAP_64 == 0
-inline uint64_t bswap_64(uint64_t x)
+static inline uint64_t internal_bswap_64(uint64_t x)
 {
-     return (((x & 0xff00000000000000ull) >> 56)
-          | ((x & 0x00ff000000000000ull) >> 40)
-          | ((x & 0x0000ff0000000000ull) >> 24)
-          | ((x & 0x000000ff00000000ull) >> 8)
-          | ((x & 0x00000000ff000000ull) << 8)
-          | ((x & 0x0000000000ff0000ull) << 24)
-          | ((x & 0x000000000000ff00ull) << 40)
-          | ((x & 0x00000000000000ffull) << 56));
+#if defined(__GNUC__) || defined(__clang__)
+    return __builtin_bswap64(x);
+#elif defined(_MSC_VER)
+    return _byteswap_uint64(x);
+#else
+    return \
+  ((((x) & 0xff00000000000000ull) >> 56)    \
+   | (((x) & 0x00ff000000000000ull) >> 40)  \
+   | (((x) & 0x0000ff0000000000ull) >> 24)  \
+   | (((x) & 0x000000ff00000000ull) >> 8)   \
+   | (((x) & 0x00000000ff000000ull) << 8)   \
+   | (((x) & 0x0000000000ff0000ull) << 24)  \
+   | (((x) & 0x000000000000ff00ull) << 40)  \
+   | (((x) & 0x00000000000000ffull) << 56));
+#endif
 }
-#endif // HAVE_DECL_BSWAP64 == 0
 
-#endif // defined(MAC_OSX)
+#define bswap_16 internal_bswap_16
+#define bswap_32 internal_bswap_32
+#define bswap_64 internal_bswap_64
 
 #endif // BITCOIN_COMPAT_BYTESWAP_H
