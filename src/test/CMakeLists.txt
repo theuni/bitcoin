@@ -14,6 +14,24 @@ generate_header_from_json(data/tx_invalid.json)
 generate_header_from_json(data/tx_valid.json)
 generate_header_from_raw(data/asmap.raw)
 
+if(BUILD_BITCOINCONSENSUS_LIB)
+add_executable(test_bitcoin_consensus
+  main.cpp
+  consensus_api_tests.cpp
+  ../script/bitcoinconsensus.cpp
+  ../support/cleanse.cpp
+)
+
+target_link_libraries(test_bitcoin_consensus
+  PRIVATE
+    core
+    bitcoin_consensus_sources
+    bitcoin_crypto_sources
+    test_util
+    secp256k1
+)
+endif()
+
 add_executable(test_bitcoin
   main.cpp
   $<TARGET_OBJECTS:bitcoin_consensus>
@@ -143,7 +161,6 @@ target_link_libraries(test_bitcoin
   bitcoin_cli
   bitcoin_node
   minisketch
-  $<TARGET_NAME_IF_EXISTS:bitcoinconsensus>
   Boost::headers
 )
 
