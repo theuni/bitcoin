@@ -16,7 +16,7 @@ generate_header_from_raw(data/asmap.raw)
 
 add_executable(test_bitcoin
   main.cpp
-  $<TARGET_OBJECTS:bitcoin_consensus>
+  ../script/bitcoinconsensus.cpp
   ${CMAKE_CURRENT_BINARY_DIR}/data/asmap.raw.h
   ${CMAKE_CURRENT_BINARY_DIR}/data/base58_encode_decode.json.h
   ${CMAKE_CURRENT_BINARY_DIR}/data/bip341_wallet_vectors.json.h
@@ -143,7 +143,6 @@ target_link_libraries(test_bitcoin
   bitcoin_cli
   bitcoin_node
   minisketch
-  $<TARGET_NAME_IF_EXISTS:bitcoinconsensus>
   Boost::headers
 )
 
@@ -173,8 +172,6 @@ if(ENABLE_WALLET)
     target_sources(test_bitcoin PRIVATE ../wallet/test/db_tests.cpp)
   endif()
 endif()
-
-make_bitcoinconsensus_dll_available(test_bitcoin)
 
 install(TARGETS test_bitcoin
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
