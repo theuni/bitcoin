@@ -191,8 +191,7 @@ add_threads_if_needed()
 include(AddBoostIfNeeded)
 add_boost_if_needed()
 
-include(AddLibeventIfNeeded)
-add_libevent_if_needed()
+find_package(Libevent REQUIRED)
 
 include(cmake/introspection.cmake)
 

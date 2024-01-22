@@ -83,7 +83,7 @@ add_library(bitcoin_common STATIC EXCLUDE_FROM_ALL
   common/run_command.cpp
   common/settings.cpp
   common/system.cpp
-  $<$<TARGET_EXISTS:libevent::libevent>:common/url.cpp>
+  $<$<TARGET_EXISTS:libevent::core>:common/url.cpp>
   compressor.cpp
   core_read.cpp
   core_write.cpp
@@ -127,7 +127,7 @@ target_link_libraries(bitcoin_common
     univalue
     secp256k1
     Boost::headers
-    $<TARGET_NAME_IF_EXISTS:libevent::libevent>
+    $<TARGET_NAME_IF_EXISTS:libevent::core>
 )
 
 
@@ -256,8 +256,8 @@ target_link_libraries(bitcoin_node
     minisketch
     univalue
     Boost::headers
-    libevent::libevent
-    $<TARGET_NAME_IF_EXISTS:PkgConfig::libevent_pthreads>
+    libevent::extra
+    $<TARGET_NAME_IF_EXISTS:libevent::pthreads>
     $<TARGET_NAME_IF_EXISTS:NATPMP::NATPMP>
     $<TARGET_NAME_IF_EXISTS:MiniUPnPc::MiniUPnPc>
     $<TARGET_NAME_IF_EXISTS:bitcoin_zmq>
@@ -298,7 +298,7 @@ if(BUILD_CLI)
     bitcoin_cli
     bitcoin_common
     bitcoin_util
-    libevent::libevent
+    libevent::extra
   )
   list(APPEND installable_targets bitcoin-cli)
 endif()
