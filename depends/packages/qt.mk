@@ -133,6 +133,7 @@ $(package)_config_opts_darwin += -no-opengl
 $(package)_config_opts_darwin += -pch
 $(package)_config_opts_darwin += -no-feature-corewlan
 $(package)_config_opts_darwin += -no-freetype
+$(package)_config_opts_darwin += -no-pkg-config
 $(package)_config_opts_darwin += QMAKE_MACOSX_DEPLOYMENT_TARGET=$(OSX_MIN_VERSION)
 
 ifneq ($(build_os),darwin)
