@@ -5,6 +5,10 @@
 #ifndef BITCOIN_INTERFACES_WALLET_H
 #define BITCOIN_INTERFACES_WALLET_H
 
+#if defined(HAVE_CONFIG_H)
+#include <config/bitcoin-config.h>
+#endif
+
 #include <addresstype.h>
 #include <consensus/amount.h>
 #include <interfaces/chain.h>
