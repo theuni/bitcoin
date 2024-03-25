@@ -5,8 +5,11 @@
 #ifndef BITCOIN_UTIL_TRACE_H
 #define BITCOIN_UTIL_TRACE_H
 
-#if defined(HAVE_CONFIG_H)
-#include <config/bitcoin-config.h>
+#if __has_include(<sys/sdt.h>)
+#  include <sys/sdt.h>
+#  ifdef DTRACE_PROBE
+#    define ENABLE_TRACING
+#  endif
 #endif
 
 #ifdef ENABLE_TRACING
