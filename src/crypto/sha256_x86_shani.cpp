@@ -6,7 +6,7 @@
 // Written and placed in public domain by Jeffrey Walton.
 // Based on code from Intel, and by Sean Gulley for the miTLS project.
 
-#if defined(ENABLE_X86_SHANI) && !defined(DISABLE_OPTIMIZED_SHA256)
+#if !defined(DISABLE_OPTIMIZED_SHA256_X86_SHANI) && !defined(DISABLE_OPTIMIZED_SHA256)
 
 #include <stdint.h>
 #include <immintrin.h>

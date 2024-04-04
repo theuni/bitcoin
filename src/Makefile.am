@@ -47,22 +47,31 @@ LIBBITCOIN_WALLET=libbitcoin_wallet.a
 LIBBITCOIN_WALLET_TOOL=libbitcoin_wallet_tool.a
 endif
 
+LIBBITCOIN_CRYPTO_CPPFLAGS=
 LIBBITCOIN_CRYPTO = $(LIBBITCOIN_CRYPTO_BASE)
 if ENABLE_SSE41
 LIBBITCOIN_CRYPTO_SSE41 = crypto/libbitcoin_crypto_sse41.la
 LIBBITCOIN_CRYPTO += $(LIBBITCOIN_CRYPTO_SSE41)
+else
+LIBBITCOIN_CRYPTO_CPPFLAGS += -DDISABLE_OPTIMIZED_SHA256_SSE41
 endif
 if ENABLE_AVX2
 LIBBITCOIN_CRYPTO_AVX2 = crypto/libbitcoin_crypto_avx2.la
 LIBBITCOIN_CRYPTO += $(LIBBITCOIN_CRYPTO_AVX2)
+else
+LIBBITCOIN_CRYPTO_CPPFLAGS += -DDISABLE_OPTIMIZED_SHA256_AVX2
 endif
 if ENABLE_X86_SHANI
 LIBBITCOIN_CRYPTO_X86_SHANI = crypto/libbitcoin_crypto_x86_shani.la
 LIBBITCOIN_CRYPTO += $(LIBBITCOIN_CRYPTO_X86_SHANI)
+else
+LIBBITCOIN_CRYPTO_CPPFLAGS += -DDISABLE_OPTIMIZED_SHA256_X86_SHANI
 endif
 if ENABLE_ARM_SHANI
 LIBBITCOIN_CRYPTO_ARM_SHANI = crypto/libbitcoin_crypto_arm_shani.la
 LIBBITCOIN_CRYPTO += $(LIBBITCOIN_CRYPTO_ARM_SHANI)
+else
+LIBBITCOIN_CRYPTO_CPPFLAGS += -DDISABLE_OPTIMIZED_SHA256_ARM_SHANI
 endif
 noinst_LTLIBRARIES += $(LIBBITCOIN_CRYPTO)
 
@@ -547,7 +556,7 @@ libbitcoin_wallet_tool_a_SOURCES = \
 # crypto_base contains the unspecialized (unoptimized) versions of our
 # crypto functions. Functions that require custom compiler flags and/or
 # runtime opt-in are omitted.
-crypto_libbitcoin_crypto_base_la_CPPFLAGS = $(AM_CPPFLAGS)
+crypto_libbitcoin_crypto_base_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBBITCOIN_CRYPTO_CPPFLAGS)
 
 # Specify -static in both CXXFLAGS and LDFLAGS so libtool will only build a
 # static version of this library. We don't need a dynamic version, and a dynamic
@@ -594,7 +603,6 @@ crypto_libbitcoin_crypto_sse41_la_LDFLAGS = $(AM_LDFLAGS) -static
 crypto_libbitcoin_crypto_sse41_la_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) -static
 crypto_libbitcoin_crypto_sse41_la_CPPFLAGS = $(AM_CPPFLAGS)
 crypto_libbitcoin_crypto_sse41_la_CXXFLAGS += $(SSE41_CXXFLAGS)
-crypto_libbitcoin_crypto_sse41_la_CPPFLAGS += -DENABLE_SSE41
 crypto_libbitcoin_crypto_sse41_la_SOURCES = crypto/sha256_sse41.cpp
 
 # See explanation for -static in crypto_libbitcoin_crypto_base_la's LDFLAGS and
@@ -603,7 +611,6 @@ crypto_libbitcoin_crypto_avx2_la_LDFLAGS = $(AM_LDFLAGS) -static
 crypto_libbitcoin_crypto_avx2_la_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) -static
 crypto_libbitcoin_crypto_avx2_la_CPPFLAGS = $(AM_CPPFLAGS)
 crypto_libbitcoin_crypto_avx2_la_CXXFLAGS += $(AVX2_CXXFLAGS)
-crypto_libbitcoin_crypto_avx2_la_CPPFLAGS += -DENABLE_AVX2
 crypto_libbitcoin_crypto_avx2_la_SOURCES = crypto/sha256_avx2.cpp
 
 # See explanation for -static in crypto_libbitcoin_crypto_base_la's LDFLAGS and
@@ -612,7 +619,6 @@ crypto_libbitcoin_crypto_x86_shani_la_LDFLAGS = $(AM_LDFLAGS) -static
 crypto_libbitcoin_crypto_x86_shani_la_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) -static
 crypto_libbitcoin_crypto_x86_shani_la_CPPFLAGS = $(AM_CPPFLAGS)
 crypto_libbitcoin_crypto_x86_shani_la_CXXFLAGS += $(X86_SHANI_CXXFLAGS)
-crypto_libbitcoin_crypto_x86_shani_la_CPPFLAGS += -DENABLE_X86_SHANI
 crypto_libbitcoin_crypto_x86_shani_la_SOURCES = crypto/sha256_x86_shani.cpp
 
 # See explanation for -static in crypto_libbitcoin_crypto_base_la's LDFLAGS and
@@ -621,7 +627,6 @@ crypto_libbitcoin_crypto_arm_shani_la_LDFLAGS = $(AM_LDFLAGS) -static
 crypto_libbitcoin_crypto_arm_shani_la_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) -static
 crypto_libbitcoin_crypto_arm_shani_la_CPPFLAGS = $(AM_CPPFLAGS)
 crypto_libbitcoin_crypto_arm_shani_la_CXXFLAGS += $(ARM_SHANI_CXXFLAGS)
-crypto_libbitcoin_crypto_arm_shani_la_CPPFLAGS += -DENABLE_ARM_SHANI
 crypto_libbitcoin_crypto_arm_shani_la_SOURCES = crypto/sha256_arm_shani.cpp
 #
 

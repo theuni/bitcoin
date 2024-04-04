@@ -2,7 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#if defined(ENABLE_SSE41) && !defined(DISABLE_OPTIMIZED_SHA256)
+#if !defined(DISABLE_OPTIMIZED_SHA256_SSE41) && !defined(DISABLE_OPTIMIZED_SHA256)
 
 #include <stdint.h>
 #include <immintrin.h>
