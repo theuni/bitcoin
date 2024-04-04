@@ -2,10 +2,6 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#if defined(HAVE_CONFIG_H)
-#include <config/bitcoin-config.h>
-#endif
-
 #include <crypto/sha256.h>
 #include <crypto/common.h>
 
@@ -20,7 +16,7 @@
 #include <asm/hwcap.h>
 #endif
 
-#if defined(MAC_OSX) && !defined(DISABLE_OPTIMIZED_SHA256_ARM_SHANI)
+#if defined(__APPLE__) && !defined(DISABLE_OPTIMIZED_SHA256_ARM_SHANI)
 #include <sys/types.h>
 #include <sys/sysctl.h>
 #endif
@@ -670,7 +666,7 @@ std::string SHA256AutoDetect(sha256_implementation::UseImplementation use_implem
 #endif
 #endif
 
-#if defined(MAC_OSX)
+#if defined(__APPLE__)
         int val = 0;
         size_t len = sizeof(val);
         if (sysctlbyname("hw.optional.arm.FEAT_SHA256", &val, &len, nullptr, 0) == 0) {
