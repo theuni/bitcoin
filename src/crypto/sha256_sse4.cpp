@@ -8,7 +8,7 @@
 #include <cstdlib>
 #include <stdint.h>
 
-#if (defined(__x86_64__) || defined(__amd64__)) && !defined(DISABLE_OPTIMIZED_SHA256)
+#if ((defined(__x86_64__) || defined(__amd64__))) && !defined(DISABLE_OPTIMIZED_SHA256_SSE4) && !defined(DISABLE_OPTIMIZED_SHA256)
 
 namespace sha256_sse4
 {

@@ -25,7 +25,7 @@
 #include <sys/sysctl.h>
 #endif
 
-#if defined(__x86_64__) || defined(__amd64__) || defined(__i386__)
+#if (defined(__x86_64__) || defined(__amd64__)) && !defined(DISABLE_OPTIMIZED_SHA256_SSE4)
 namespace sha256_sse4
 {
 void Transform(uint32_t* s, const unsigned char* chunk, size_t blocks);
@@ -635,7 +635,7 @@ std::string SHA256AutoDetect(sha256_implementation::UseImplementation use_implem
 #endif
 
     if (have_sse4) {
-#if defined(__x86_64__) || defined(__amd64__)
+#if (defined(__x86_64__) || defined(__amd64__)) && !defined(DISABLE_OPTIMIZED_SHA256_SSE4)
         Transform = sha256_sse4::Transform;
         TransformD64 = TransformD64Wrapper<sha256_sse4::Transform>;
         ret = "sse4(1way)";
