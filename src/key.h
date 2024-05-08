@@ -28,6 +28,8 @@ constexpr static size_t ECDH_SECRET_SIZE = CSHA256::OUTPUT_SIZE;
 // Used to represent ECDH shared secret (ECDH_SECRET_SIZE bytes)
 using ECDHSecret = std::array<std::byte, ECDH_SECRET_SIZE>;
 
+class KeyPair;
+
 /** An encapsulated private key. */
 class CKey
 {
@@ -203,6 +205,8 @@ public:
     ECDHSecret ComputeBIP324ECDHSecret(const EllSwiftPubKey& their_ellswift,
                                        const EllSwiftPubKey& our_ellswift,
                                        bool initiating) const;
+
+    KeyPair ComputeKeyPair(const uint256* merkle_root) const;
 };
 
 CKey GenerateRandomKey(bool compressed = true) noexcept;
@@ -234,6 +238,19 @@ struct CExtKey {
     [[nodiscard]] bool Derive(CExtKey& out, unsigned int nChild) const;
     CExtPubKey Neuter() const;
     void SetSeed(Span<const std::byte> seed);
+};
+
+class KeyPair
+{
+public:
+    friend KeyPair CKey::ComputeKeyPair(const uint256* merkle_root) const;
+    [[nodiscard]] bool GetKey(CKey& key) const;
+    [[nodiscard]] bool SignSchnorr(const uint256& hash, Span<unsigned char> sig, const uint256& aux) const;
+private:
+    KeyPair(const CKey& key, const uint256* merkle_root);
+
+    using KeyType = std::array<unsigned char, 96>;
+    secure_unique_ptr<KeyType> m_keydata;
 };
 
 /** Initialize the elliptic curve support. May not be called twice without calling ECC_Stop first. */
