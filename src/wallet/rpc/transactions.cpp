@@ -390,7 +390,7 @@ static void ListTransactions(const CWallet& wallet, const CWalletTx& wtx, int nM
             }
             entry.pushKV("amount", ValueFromAmount(r.amount));
             if (address_book_entry) {
-                entry.pushKV("label", label);
+                entry.pushKV("label", std::move(label));
             }
             entry.pushKV("vout", r.vout);
             entry.pushKV("abandoned", wtx.isAbandoned());

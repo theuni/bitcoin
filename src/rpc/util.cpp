@@ -1367,8 +1367,8 @@ void PushWarnings(const std::vector<bilingual_str>& warnings, UniValue& obj)
 UniValue GetNodeWarnings(bool use_deprecated)
 {
     if (use_deprecated) {
-        const auto all_warnings{GetWarnings()};
-        return all_warnings.empty() ? "" : all_warnings.back().original;
+        auto all_warnings{GetWarnings()};
+        return all_warnings.empty() ? "" : std::move(all_warnings.back().original);
     }
 
     UniValue warnings{UniValue::VARR};

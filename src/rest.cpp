@@ -630,7 +630,7 @@ static bool rest_deploymentinfo(const std::any& context, HTTPRequest* req, const
                 return RESTERR(req, HTTP_BAD_REQUEST, "Block not found");
             }
 
-            jsonRequest.params.push_back(hash_str);
+            jsonRequest.params.push_back(std::move(hash_str));
         }
 
         req->WriteHeader("Content-Type", "application/json");
@@ -923,7 +923,7 @@ static bool rest_getutxos(const std::any& context, HTTPRequest* req, const std::
         // use more or less the same output as mentioned in Bip64
         objGetUTXOResponse.pushKV("chainHeight", active_height);
         objGetUTXOResponse.pushKV("chaintipHash", active_hash.GetHex());
-        objGetUTXOResponse.pushKV("bitmap", bitmapStringRepresentation);
+        objGetUTXOResponse.pushKV("bitmap", std::move(bitmapStringRepresentation));
 
         UniValue utxos(UniValue::VARR);
         for (const CCoin& coin : outs) {

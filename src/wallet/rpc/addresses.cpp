@@ -571,7 +571,7 @@ RPCHelpMan getaddressinfo()
     UniValue ret(UniValue::VOBJ);
 
     std::string currentAddress = EncodeDestination(dest);
-    ret.pushKV("address", currentAddress);
+    ret.pushKV("address", std::move(currentAddress));
 
     CScript scriptPubKey = GetScriptForDestination(dest);
     ret.pushKV("scriptPubKey", HexStr(scriptPubKey));
@@ -601,7 +601,7 @@ RPCHelpMan getaddressinfo()
     if (desc_spk_man) {
         std::string desc_str;
         if (desc_spk_man->GetDescriptorString(desc_str, /*priv=*/false)) {
-            ret.pushKV("parent_desc", desc_str);
+            ret.pushKV("parent_desc", std::move(desc_str));
         }
     }
 
@@ -747,8 +747,9 @@ RPCHelpMan listlabels()
     std::set<std::string> label_set = pwallet->ListAddrBookLabels(purpose);
 
     UniValue ret(UniValue::VARR);
-    for (const std::string& name : label_set) {
-        ret.push_back(name);
+    for (auto it = label_set.begin(); it != label_set.end(); ++it) {
+        std::string& name = label_set.extract(it).value();
+        ret.push_back(std::move(name));
     }
 
     return ret;

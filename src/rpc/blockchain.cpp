@@ -1221,7 +1221,7 @@ static void SoftForkDescPushBack(const CBlockIndex* blockindex, UniValue& softfo
         for (const bool s : signals) {
             sig.push_back(s ? '#' : '-');
         }
-        bip9.pushKV("signalling", sig);
+        bip9.pushKV("signalling", std::move(sig));
     }
 
     UniValue rv(UniValue::VOBJ);
@@ -1496,7 +1496,7 @@ static RPCHelpMan getchaintips()
             // No clue.
             status = "unknown";
         }
-        obj.pushKV("status", status);
+        obj.pushKV("status", std::move(status));
 
         res.push_back(std::move(obj));
     }
@@ -2259,7 +2259,7 @@ static RPCHelpMan scantxoutset()
             unspent.pushKV("txid", outpoint.hash.GetHex());
             unspent.pushKV("vout", (int32_t)outpoint.n);
             unspent.pushKV("scriptPubKey", HexStr(txo.scriptPubKey));
-            unspent.pushKV("desc", descriptors[txo.scriptPubKey]);
+            unspent.pushKV("desc", std::move(descriptors.extract(txo.scriptPubKey).mapped()));
             unspent.pushKV("amount", ValueFromAmount(txo.nValue));
             unspent.pushKV("coinbase", coin.IsCoinBase());
             unspent.pushKV("height", (int32_t)coin.nHeight);

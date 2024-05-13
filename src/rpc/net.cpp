@@ -102,8 +102,8 @@ static UniValue GetServicesNames(ServiceFlags services)
 {
     UniValue servicesNames(UniValue::VARR);
 
-    for (const auto& flag : serviceFlagsToStr(services)) {
-        servicesNames.push_back(flag);
+    for (auto& flag : serviceFlagsToStr(services)) {
+        servicesNames.push_back(std::move(flag));
     }
 
     return servicesNames;
@@ -202,7 +202,7 @@ static RPCHelpMan getpeerinfo()
 
     UniValue ret(UniValue::VARR);
 
-    for (const CNodeStats& stats : vstats) {
+    for (CNodeStats& stats : vstats) {
         UniValue obj(UniValue::VOBJ);
         CNodeStateStats statestats;
         bool fStateStats = peerman.GetNodeStateStats(stats.nodeid, statestats);
@@ -215,12 +215,12 @@ static RPCHelpMan getpeerinfo()
             continue;
         }
         obj.pushKV("id", stats.nodeid);
-        obj.pushKV("addr", stats.m_addr_name);
+        obj.pushKV("addr", std::move(stats.m_addr_name));
         if (stats.addrBind.IsValid()) {
             obj.pushKV("addrbind", stats.addrBind.ToStringAddrPort());
         }
         if (!(stats.addrLocal.empty())) {
-            obj.pushKV("addrlocal", stats.addrLocal);
+            obj.pushKV("addrlocal", std::move(stats.addrLocal));
         }
         obj.pushKV("network", GetNetworkName(stats.m_network));
         if (stats.m_mapped_as != 0) {
@@ -251,7 +251,7 @@ static RPCHelpMan getpeerinfo()
         // Use the sanitized form of subver here, to avoid tricksy remote peers from
         // corrupting or modifying the JSON output by putting special characters in
         // their ver message.
-        obj.pushKV("subver", stats.cleanSubVer);
+        obj.pushKV("subver", std::move(stats.cleanSubVer));
         obj.pushKV("inbound", stats.fInbound);
         obj.pushKV("bip152_hb_to", stats.m_bip152_highbandwidth_to);
         obj.pushKV("bip152_hb_from", stats.m_bip152_highbandwidth_from);
@@ -289,7 +289,7 @@ static RPCHelpMan getpeerinfo()
         obj.pushKV("bytesrecv_per_msg", std::move(recvPerMsgType));
         obj.pushKV("connection_type", ConnectionTypeAsString(stats.m_conn_type));
         obj.pushKV("transport_protocol_type", TransportTypeAsString(stats.m_transport_type));
-        obj.pushKV("session_id", stats.m_session_id);
+        obj.pushKV("session_id", std::move(stats.m_session_id));
 
         ret.push_back(std::move(obj));
     }
@@ -387,8 +387,8 @@ static RPCHelpMan addconnection()
         throw std::runtime_error("addconnection is for regression testing (-regtest mode) only.");
     }
 
-    const std::string address = request.params[0].get_str();
-    const std::string conn_type_in{TrimString(request.params[1].get_str())};
+    std::string address = request.params[0].get_str();
+    std::string conn_type_in{TrimString(request.params[1].get_str())};
     ConnectionType conn_type{};
     if (conn_type_in == "outbound-full-relay") {
         conn_type = ConnectionType::OUTBOUND_FULL_RELAY;
@@ -416,8 +416,8 @@ static RPCHelpMan addconnection()
     }
 
     UniValue info(UniValue::VOBJ);
-    info.pushKV("address", address);
-    info.pushKV("connection_type", conn_type_in);
+    info.pushKV("address", std::move(address));
+    info.pushKV("connection_type", std::move(conn_type_in));
 
     return info;
 },

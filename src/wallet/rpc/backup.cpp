@@ -1820,9 +1820,9 @@ RPCHelpMan listdescriptors()
     });
 
     UniValue descriptors(UniValue::VARR);
-    for (const WalletDescInfo& info : wallet_descriptors) {
+    for (WalletDescInfo& info : wallet_descriptors) {
         UniValue spk(UniValue::VOBJ);
-        spk.pushKV("desc", info.descriptor);
+        spk.pushKV("desc", std::move(info.descriptor));
         spk.pushKV("timestamp", info.creation_time);
         spk.pushKV("active", info.active);
         if (info.internal.has_value()) {

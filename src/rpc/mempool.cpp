@@ -306,9 +306,9 @@ static void entryToJSON(const CTxMemPool& pool, UniValue& info, const CTxMemPool
     }
 
     UniValue depends(UniValue::VARR);
-    for (const std::string& dep : setDepends)
-    {
-        depends.push_back(dep);
+    for (auto it = setDepends.begin(); it != setDepends.end(); ++ it) {
+        std::string& dep = setDepends.extract(it).value();
+        depends.push_back(std::move(dep));
     }
 
     info.pushKV("depends", std::move(depends));
@@ -958,7 +958,7 @@ static RPCHelpMan submitpackage()
             }
 
             UniValue rpc_result{UniValue::VOBJ};
-            rpc_result.pushKV("package_msg", package_msg);
+            rpc_result.pushKV("package_msg", std::move(package_msg));
             UniValue tx_result_map{UniValue::VOBJ};
             std::set<uint256> replaced_txids;
             for (const auto& tx : txns) {

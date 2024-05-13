@@ -66,7 +66,7 @@ static RPCHelpMan validateaddress()
             ret.pushKV("isvalid", isValid);
             if (isValid) {
                 std::string currentAddress = EncodeDestination(dest);
-                ret.pushKV("address", currentAddress);
+                ret.pushKV("address", std::move(currentAddress));
 
                 CScript scriptPubKey = GetScriptForDestination(dest);
                 ret.pushKV("scriptPubKey", HexStr(scriptPubKey));
@@ -77,7 +77,7 @@ static RPCHelpMan validateaddress()
                 UniValue error_indices(UniValue::VARR);
                 for (int i : error_locations) error_indices.push_back(i);
                 ret.pushKV("error_locations", std::move(error_indices));
-                ret.pushKV("error", error_msg);
+                ret.pushKV("error", std::move(error_msg));
             }
 
             return ret;

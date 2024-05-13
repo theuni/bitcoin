@@ -319,7 +319,7 @@ static RPCHelpMan setwalletflag()
         throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Wallet flag is already set to %s: %s", value ? "true" : "false", flag_str));
     }
 
-    res.pushKV("flag_name", flag_str);
+    res.pushKV("flag_name", std::move(flag_str));
     res.pushKV("flag_state", value);
 
     if (value) {
@@ -628,10 +628,10 @@ static RPCHelpMan upgradewallet()
     obj.pushKV("previous_version", previous_version);
     obj.pushKV("current_version", current_version);
     if (!result.empty()) {
-        obj.pushKV("result", result);
+        obj.pushKV("result", std::move(result));
     } else {
         CHECK_NONFATAL(!error.empty());
-        obj.pushKV("error", error.original);
+        obj.pushKV("error", std::move(error.original));
     }
     return obj;
 },
@@ -801,7 +801,7 @@ static RPCHelpMan migratewallet()
             }
 
             UniValue r{UniValue::VOBJ};
-            r.pushKV("wallet_name", res->wallet_name);
+            r.pushKV("wallet_name", std::move(res->wallet_name));
             if (res->watchonly_wallet) {
                 r.pushKV("watchonly_name", res->watchonly_wallet->GetName());
             }
@@ -1017,7 +1017,7 @@ static RPCHelpMan createwalletdescriptor()
                 std::string desc_str;
                 bool ok = spkm.get().GetDescriptorString(desc_str, false);
                 CHECK_NONFATAL(ok);
-                descs.push_back(desc_str);
+                descs.push_back(std::move(desc_str));
             }
             UniValue out{UniValue::VOBJ};
             out.pushKV("descs", std::move(descs));

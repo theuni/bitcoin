@@ -126,7 +126,7 @@ static UniValue FinishTransaction(const std::shared_ptr<CWallet> pwallet, const 
         if (add_to_wallet && !psbt_opt_in) {
             pwallet->CommitTransaction(tx, {}, /*orderForm=*/{});
         } else {
-            result.pushKV("hex", hex);
+            result.pushKV("hex", std::move(hex));
         }
     }
     result.pushKV("complete", complete);
@@ -1169,8 +1169,8 @@ static RPCHelpMan bumpfee_helper(std::string method_name)
     result.pushKV("origfee", ValueFromAmount(old_fee));
     result.pushKV("fee", ValueFromAmount(new_fee));
     UniValue result_errors(UniValue::VARR);
-    for (const bilingual_str& error : errors) {
-        result_errors.push_back(error.original);
+    for (bilingual_str& error : errors) {
+        result_errors.push_back(std::move(error.original));
     }
     result.pushKV("errors", std::move(result_errors));
 

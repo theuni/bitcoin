@@ -1541,11 +1541,11 @@ static RPCHelpMan finalizepsbt()
     if (complete && extract) {
         ssTx << TX_WITH_WITNESS(mtx);
         result_str = HexStr(ssTx);
-        result.pushKV("hex", result_str);
+        result.pushKV("hex", std::move(result_str));
     } else {
         ssTx << psbtx;
         result_str = EncodeBase64(ssTx.str());
-        result.pushKV("psbt", result_str);
+        result.pushKV("psbt", std::move(result_str));
     }
     result.pushKV("complete", complete);
 
@@ -1909,7 +1909,7 @@ static RPCHelpMan analyzepsbt()
     }
     result.pushKV("next", PSBTRoleName(psbta.next));
     if (!psbta.error.empty()) {
-        result.pushKV("error", psbta.error);
+        result.pushKV("error", std::move(psbta.error));
     }
 
     return result;

@@ -49,10 +49,10 @@ static RPCHelpMan enumeratesigners()
             try {
                 std::vector<ExternalSigner> signers;
                 ExternalSigner::Enumerate(command, signers, chain);
-                for (const ExternalSigner& signer : signers) {
+                for (ExternalSigner& signer : signers) {
                     UniValue signer_res = UniValue::VOBJ;
-                    signer_res.pushKV("fingerprint", signer.m_fingerprint);
-                    signer_res.pushKV("name", signer.m_name);
+                    signer_res.pushKV("fingerprint", std::move(signer.m_fingerprint));
+                    signer_res.pushKV("name", std::move(signer.m_name));
                     signers_res.push_back(std::move(signer_res));
                 }
             } catch (const std::exception& e) {
