@@ -441,6 +441,7 @@ static inline JSONRPCRequest transformNamedArguments(const JSONRPCRequest& in, c
                 if (options.exists(fr->first)) {
                     throw JSONRPCError(RPC_INVALID_PARAMETER, "Parameter " + fr->first + " specified multiple times");
                 }
+                // TODO
                 options.pushKVEnd(fr->first, *fr->second);
                 argsIn.erase(fr);
             }
@@ -468,6 +469,7 @@ static inline JSONRPCRequest transformNamedArguments(const JSONRPCRequest& in, c
             if (!options.empty()) {
                 throw JSONRPCError(RPC_INVALID_PARAMETER, "Parameter " + fr->first + " conflicts with parameter " + options.getKeys().front());
             }
+            //TODO
             out.params.push_back(*fr->second);
             argsIn.erase(fr);
         }
@@ -489,6 +491,7 @@ static inline JSONRPCRequest transformNamedArguments(const JSONRPCRequest& in, c
         UniValue named_args{std::move(out.params)};
         out.params = *positional_args.mapped();
         for (size_t i{out.params.size()}; i < named_args.size(); ++i) {
+            // TODO
             out.params.push_back(named_args[i]);
         }
     }
@@ -565,6 +568,7 @@ UniValue CRPCTable::dumpArgMap(const JSONRPCRequest& args_request) const
         UniValue result;
         if (ExecuteCommands(cmd.second, request, result)) {
             for (const auto& values : result.getValues()) {
+                // TODO
                 ret.push_back(values);
             }
         }

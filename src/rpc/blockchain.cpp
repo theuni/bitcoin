@@ -2016,6 +2016,7 @@ static RPCHelpMan getblockstats()
         if (value.isNull()) {
             throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Invalid selected statistic '%s'", stat));
         }
+        // TODO
         ret.pushKV(stat, value);
     }
     return ret;

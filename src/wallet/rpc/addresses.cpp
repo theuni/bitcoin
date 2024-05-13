@@ -413,6 +413,7 @@ public:
             subobj.pushKV("address", EncodeDestination(embedded));
             subobj.pushKV("scriptPubKey", HexStr(subscript));
             // Always report the pubkey at the top level, so that `getnewaddress()['pubkey']` always works.
+            // TODO
             if (subobj.exists("pubkey")) obj.pushKV("pubkey", subobj["pubkey"]);
             obj.pushKV("embedded", std::move(subobj));
         } else if (which_type == TxoutType::MULTISIG) {

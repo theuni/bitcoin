@@ -102,6 +102,7 @@ bool RemoveWalletSetting(interfaces::Chain& chain, const std::string& wallet_nam
     if (!setting_value.isArray()) return true;
     common::SettingsValue new_value(common::SettingsValue::VARR);
     for (const common::SettingsValue& value : setting_value.getValues()) {
+        // TODO
         if (!value.isStr() || value.get_str() != wallet_name) new_value.push_back(value);
     }
     if (new_value.size() == setting_value.size()) return true;

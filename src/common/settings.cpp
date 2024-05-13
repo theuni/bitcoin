@@ -130,6 +130,7 @@ bool WriteSettings(const fs::path& path,
                                                 "is running, as any changes might be ignored or overwritten.", PACKAGE_NAME));
     // Push settings values
     for (const auto& value : values) {
+        // TODO
         out.pushKVEnd(value.first, value.second);
     }
     std::ofstream file;

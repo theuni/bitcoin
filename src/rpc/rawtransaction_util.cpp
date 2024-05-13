@@ -90,6 +90,7 @@ UniValue NormalizeOutputs(const UniValue& outputs_in)
             if (output.size() != 1) {
                 throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, key-value pair must contain exactly one key");
             }
+            // TODO
             outputs_dict.pushKVs(output);
         }
         outputs = std::move(outputs_dict);

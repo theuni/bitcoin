@@ -1406,6 +1406,7 @@ RPCHelpMan importmulti()
                 // the result stand unmodified. Otherwise replace the result
                 // with an error message.
                 if (scannedTime <= GetImportTimestamp(request, now) || results.at(i).exists("error")) {
+                    // TODO
                     response.push_back(results.at(i));
                 } else {
                     UniValue result = UniValue(UniValue::VOBJ);
@@ -1706,6 +1707,7 @@ RPCHelpMan importdescriptors()
                 // the result stand unmodified. Otherwise replace the result
                 // with an error message.
                 if (scanned_time <= GetImportTimestamp(request, now) || results.at(i).exists("error")) {
+                    // TODO
                     response.push_back(results.at(i));
                 } else {
                     UniValue result = UniValue(UniValue::VOBJ);

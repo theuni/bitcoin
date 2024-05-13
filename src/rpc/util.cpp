@@ -183,6 +183,7 @@ std::string HelpExampleRpcNamed(const std::string& methodname, const RPCArgList&
 {
     UniValue params(UniValue::VOBJ);
     for (const auto& param: args) {
+        // TODO
         params.pushKV(param.first, param.second);
     }
 
@@ -1353,6 +1354,7 @@ std::vector<CScript> EvalDescriptorStringOrObject(const UniValue& scanobject, Fl
 void PushWarnings(const UniValue& warnings, UniValue& obj)
 {
     if (warnings.empty()) return;
+    // TODO
     obj.pushKV("warnings", warnings);
 }
 

@@ -42,7 +42,9 @@ static void InterpretFeeEstimationInstructions(const UniValue& conf_target, cons
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Pass conf_target and estimate_mode either as arguments or in the options object, but not both");
         }
     } else {
+        // TODO
         options.pushKV("conf_target", conf_target);
+        // TODO
         options.pushKV("estimate_mode", estimate_mode);
     }
     if (options.exists("fee_rate")) {
@@ -50,6 +52,7 @@ static void InterpretFeeEstimationInstructions(const UniValue& conf_target, cons
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Pass the fee_rate either as an argument, or in the options object, but not both");
         }
     } else {
+        // TODO
         options.pushKV("fee_rate", fee_rate);
     }
     if (!options["conf_target"].isNull() && (options["estimate_mode"].isNull() || (options["estimate_mode"].get_str() == "unset"))) {
@@ -302,6 +305,7 @@ RPCHelpMan sendtoaddress()
 
     UniValue address_amounts(UniValue::VOBJ);
     const std::string address = request.params[0].get_str();
+    // TODO
     address_amounts.pushKV(address, request.params[1]);
     std::vector<CRecipient> recipients = CreateRecipients(
             ParseOutputs(address_amounts),
@@ -715,6 +719,7 @@ static void SetOptionsInputWeights(const UniValue& inputs, UniValue& options)
     UniValue weights(UniValue::VARR);
     for (const UniValue& input : inputs.getValues()) {
         if (input.exists("weight")) {
+            // TODO
             weights.push_back(input);
         }
     }
@@ -1391,6 +1396,7 @@ RPCHelpMan sendall()
                     recipient_key_value_pairs.push_back(std::move(rkvp));
                     addresses_without_amount.insert(recipient.get_str());
                 } else {
+                    // TODO
                     recipient_key_value_pairs.push_back(recipient);
                 }
             }
