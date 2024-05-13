@@ -1206,9 +1206,9 @@ static UniValue ProcessImport(CWallet& wallet, const UniValue& data, const int64
         }
 
         result.pushKV("success", UniValue(true));
-    } catch (const UniValue& e) {
+    } catch (UniValue e) {
         result.pushKV("success", UniValue(false));
-        result.pushKV("error", e);
+        result.pushKV("error", std::move(e));
     } catch (...) {
         result.pushKV("success", UniValue(false));
 
@@ -1369,16 +1369,17 @@ RPCHelpMan importmulti()
 
         for (const UniValue& data : requests.getValues()) {
             const int64_t timestamp = std::max(GetImportTimestamp(data, now), minimumTimestamp);
-            const UniValue result = ProcessImport(*pwallet, data, timestamp);
-            response.push_back(result);
-
-            if (!fRescan) {
-                continue;
-            }
+            UniValue result = ProcessImport(*pwallet, data, timestamp);
 
             // If at least one request was successful then allow rescan.
             if (result["success"].get_bool()) {
                 fRunScan = true;
+            }
+
+            response.push_back(std::move(result));
+
+            if (!fRescan) {
+                continue;
             }
 
             // Get the lowest timestamp.
@@ -1565,9 +1566,9 @@ static UniValue ProcessDescriptorImport(CWallet& wallet, const UniValue& data, c
         }
 
         result.pushKV("success", UniValue(true));
-    } catch (const UniValue& e) {
+    } catch (UniValue e) {
         result.pushKV("success", UniValue(false));
-        result.pushKV("error", e);
+        result.pushKV("error", std::move(e));
     }
     PushWarnings(warnings, result);
     return result;
@@ -1665,17 +1666,19 @@ RPCHelpMan importdescriptors()
         for (const UniValue& request : requests.getValues()) {
             // This throws an error if "timestamp" doesn't exist
             const int64_t timestamp = std::max(GetImportTimestamp(request, now), minimum_timestamp);
-            const UniValue result = ProcessDescriptorImport(*pwallet, request, timestamp);
-            response.push_back(result);
-
-            if (lowest_timestamp > timestamp ) {
-                lowest_timestamp = timestamp;
-            }
+            UniValue result = ProcessDescriptorImport(*pwallet, request, timestamp);
 
             // If we know the chain tip, and at least one request was successful then allow rescan
             if (!rescan && result["success"].get_bool()) {
                 rescan = true;
             }
+
+            response.push_back(std::move(result));
+
+            if (lowest_timestamp > timestamp ) {
+                lowest_timestamp = timestamp;
+            }
+
         }
         pwallet->ConnectScriptPubKeyManNotifiers();
     }
@@ -1827,16 +1830,16 @@ RPCHelpMan listdescriptors()
             UniValue range(UniValue::VARR);
             range.push_back(info.range->first);
             range.push_back(info.range->second - 1);
-            spk.pushKV("range", range);
+            spk.pushKV("range", std::move(range));
             spk.pushKV("next", info.next_index);
             spk.pushKV("next_index", info.next_index);
         }
-        descriptors.push_back(spk);
+        descriptors.push_back(std::move(spk));
     }
 
     UniValue response(UniValue::VOBJ);
     response.pushKV("wallet_name", wallet->GetName());
-    response.pushKV("descriptors", descriptors);
+    response.pushKV("descriptors", std::move(descriptors));
 
     return response;
 },
