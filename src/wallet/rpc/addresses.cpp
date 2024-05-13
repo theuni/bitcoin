@@ -689,7 +689,7 @@ RPCHelpMan getaddressesbylabel()
             // which currently is O(1).
             UniValue value(UniValue::VOBJ);
             value.pushKV("purpose", _purpose ? PurposeToString(*_purpose) : "unknown");
-            ret.pushKVEnd(address, std::move(value));
+            ret.pushKVEnd(std::move(address), std::move(value));
         }
     });
 

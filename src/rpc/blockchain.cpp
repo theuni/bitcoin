@@ -2011,13 +2011,14 @@ static RPCHelpMan getblockstats()
     }
 
     UniValue ret(UniValue::VOBJ);
-    for (const std::string& stat : stats) {
+    for (auto it = stats.begin(); it != stats.end(); ++it) {
+        std::string& stat = stats.extract(it).value();
         const UniValue& value = ret_all[stat];
         if (value.isNull()) {
             throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Invalid selected statistic '%s'", stat));
         }
         // TODO
-        ret.pushKV(stat, value);
+        ret.pushKV(std::move(stat), value);
     }
     return ret;
 },
