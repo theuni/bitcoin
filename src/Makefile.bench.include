@@ -55,6 +55,7 @@ bench_bench_bitcoin_SOURCES = \
   bench/streams_findbyte.cpp \
   bench/strencodings.cpp \
   bench/util_time.cpp \
+  bench/univalue.cpp \
   bench/verify_script.cpp \
   bench/xor.cpp
 
