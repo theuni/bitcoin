@@ -1038,12 +1038,14 @@ void CTxMemPool::RemoveStaged(setEntries &stage, bool updateDescendants, MemPool
 int CTxMemPool::Expire(std::chrono::seconds time)
 {
     AssertLockHeld(cs);
+
     auto it = mapTx.get<entry_time>().begin();
     setEntries toremove;
-    while (it != mapTx.get<entry_time>().end() && it->GetTime() < time) {
-        toremove.insert(mapTx.project<0>(it));
+    while (it != mapTx.get<entry_time>().end() && (*it)->GetTime() < time) {
+        toremove.insert(*it);
         it++;
     }
+
     setEntries stage;
     for (const_txiter removeit : toremove) {
         CalculateDescendants(removeit, stage);
@@ -1124,13 +1126,13 @@ void CTxMemPool::TrimToSize(size_t sizelimit, std::vector<COutPoint>* pvNoSpends
         // "minimum reasonable fee rate" (ie some value under which we consider txn
         // to have 0 fee). This way, we don't allow txn to enter mempool with feerate
         // equal to txn which were removed with no block in between.
-        CFeeRate removed(it->GetModFeesWithDescendants(), it->GetSizeWithDescendants());
+        CFeeRate removed((*it)->GetModFeesWithDescendants(), (*it)->GetSizeWithDescendants());
         removed += m_opts.incremental_relay_feerate;
         trackPackageRemoved(removed);
         maxFeeRateRemoved = std::max(maxFeeRateRemoved, removed);
 
         setEntries stage;
-        CalculateDescendants(mapTx.project<0>(it), stage);
+        CalculateDescendants(*it, stage);
         nTxnRemoved += stage.size();
 
         std::vector<CTransaction> txn;

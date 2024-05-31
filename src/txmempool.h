@@ -304,13 +304,13 @@ class MempoolContainer
 public:
     using entry_type = CTxMemPoolEntry;
     using list_type = std::list<entry_type>;
-    using iterator_type = list_type::const_iterator;
-
+    using const_iterator = list_type::const_iterator;
+    using iterator = list_type::iterator;
 private:
     class DescendantScore
     {
     public:
-        bool operator()(const iterator_type& a_it, const iterator_type& b_it) const
+        bool operator()(const const_iterator& a_it, const const_iterator& b_it) const
         {
             const auto& a = *a_it;
             const auto& b = *b_it;
@@ -350,7 +350,7 @@ private:
     class EntryTime
     {
     public:
-        bool operator()(const iterator_type& a, const iterator_type& b) const
+        bool operator()(const const_iterator& a, const const_iterator& b) const
         {
             return a->GetTime() < b->GetTime();
         }
@@ -363,7 +363,7 @@ private:
     class AncestorFee
     {
     public:
-        bool operator()(const iterator_type& a_it, const iterator_type& b_it) const
+        bool operator()(const const_iterator& a_it, const const_iterator& b_it) const
         {
             const auto& a = *a_it;
             const auto& b = *b_it;
@@ -401,12 +401,13 @@ private:
         }
     };
 public:
-    using txid_map_type = std::unordered_map<uint256, iterator_type, SaltedTxidHasher>;
-    using wtxid_map_type = std::unordered_map<uint256, iterator_type, SaltedTxidHasher>;
-    using descendent_order_type = std::set<iterator_type, DescendantScore>;
-    using time_order_type = std::set<iterator_type, EntryTime>;
-    using ancestor_order_type = std::set<iterator_type, AncestorFee>;
+    using txid_map_type = std::unordered_map<uint256, const_iterator, SaltedTxidHasher>;
+    using wtxid_map_type = std::unordered_map<uint256, const_iterator, SaltedTxidHasher>;
+    using descendent_order_type = std::set<const_iterator, DescendantScore>;
+    using time_order_type = std::set<const_iterator, EntryTime>;
+    using ancestor_order_type = std::set<const_iterator, AncestorFee>;
 
+    using wtxid_iterator_type = wtxid_map_type::const_iterator;
     using descendent_order_iterator = descendent_order_type::const_iterator;
     using time_order_iterator = time_order_type::const_iterator;
     using ancestor_order_iterator = ancestor_order_type::const_iterator;
@@ -431,16 +432,23 @@ public:
             return m_wtxid_map;
         }
     }
+/*
     template <int to, typename T>
-    iterator_type project(T from) const
+    const_iterator project(const T& from) const
     {
         static_assert(to == 0);
-        if constexpr (std::is_same_v<T, descendent_order_iterator>)
-        {
-            return m_descendent_order.find(from);
+    //    if constexpr (std::is_same_v<T, descendent_order_iterator>) {
+   //         return m_descendent_order.find(from);
+   //     } else 
+        if constexpr (std::is_same_v<T, wtxid_iterator_type>) {
+            //TODO check
+            return m_wtxid_map.find(from->first)->second; 
+        } else if constexpr (std::is_same_v<T, time_order_iterator>) {
+            return m_time_order.find(from);
         }
-        return m_entries.end();
+        //return m_entries.end();
     }
+*/
     size_t size() const
     {
         return m_entries.size();
@@ -454,7 +462,7 @@ public:
         return m_txid_map.contains(gtxid.GetHash());
     }
     template <typename... Args>
-    iterator_type emplace(Args&&... args)
+    std::pair<const_iterator, bool> emplace(Args&&... args)
     {
         m_entries.emplace_back(std::forward<Args>(args)...);
         auto new_it = m_entries.end();
@@ -463,9 +471,9 @@ public:
         m_descendent_order.insert(new_it);
         m_time_order.insert(new_it);
         m_ancestor_order.insert(new_it);
-        return new_it;
+        return std::make_pair(new_it, true);
     }
-    iterator_type erase(iterator_type it)
+    const_iterator erase(const_iterator it)
     {
         m_txid_map.erase(it->GetTx().GetHash());
         m_wtxid_map.erase(it->GetTx().GetWitnessHash());
@@ -474,7 +482,7 @@ public:
         m_ancestor_order.insert(it);
         return m_entries.erase(it);
     }
-    iterator_type find(const uint256& hash)
+    const_iterator find(const uint256& hash) const
     {
         auto it = m_txid_map.find(hash);
         if (it == m_txid_map.end()) return m_entries.end();
@@ -482,16 +490,46 @@ public:
     }
 
     template <typename Callable>
-    void modify(iterator_type it, Callable&& func)
+    void modify(const_iterator it, Callable&& func) const
     {
-        func(*it);
+        func(const_cast<entry_type&>(*it));
     }
-    iterator_type iterator_to(const entry_type& entry) const
+
+    const_iterator iterator_to(const entry_type& entry) const
     {
         auto it = m_txid_map.find(entry.GetTx().GetHash());
         if (it == m_txid_map.end()) return m_entries.end();
         return it->second;
     }
+
+    size_t count(const uint256& hash) const
+    {
+        return m_txid_map.count(hash);
+    }
+    const_iterator begin() const
+    {
+        return m_entries.begin();
+    }
+    const_iterator end() const
+    {
+        return m_entries.end();
+    }
+    bool empty() const
+    {
+        return m_entries.empty();
+    }
+
+    const_iterator get_iter_from_wtxid(const uint256& wtxid) const
+    {
+        auto it = m_wtxid_map.find(wtxid);
+        return it->second;
+    }
+/*
+    const_iterator get_iter_from_entry_time(time_order_type::const_iterator it) const
+    {
+        return  m_time_order.find(it);
+    }
+*/
 };
 
 class CTxMemPool
@@ -552,11 +590,13 @@ public:
             >
         >
         {};
+/*
     typedef boost::multi_index_container<
         CTxMemPoolEntry,
         CTxMemPoolEntry_Indices
     > indexed_transaction_set;
-
+*/
+    using indexed_transaction_set = MempoolContainer;
     /**
      * This mutex needs to be locked when accessing `mapTx` or other members
      * that are guarded by it.
@@ -588,6 +628,7 @@ public:
     indexed_transaction_set mapTx GUARDED_BY(cs);
 
     using const_txiter = indexed_transaction_set::const_iterator;
+    using txiter = indexed_transaction_set::iterator;
     std::vector<CTransactionRef> txns_randomized GUARDED_BY(cs); //!< All transactions in mapTx, in random order
 
     typedef std::set<const_txiter, CompareIteratorByHash> setEntries;
@@ -874,7 +915,7 @@ public:
     const_txiter get_iter_from_wtxid(const uint256& wtxid) const EXCLUSIVE_LOCKS_REQUIRED(cs)
     {
         AssertLockHeld(cs);
-        return mapTx.project<0>(mapTx.get<index_by_wtxid>().find(wtxid));
+        return mapTx.get_iter_from_wtxid(wtxid);
     }
     TxMempoolInfo info(const GenTxid& gtxid) const;
 
