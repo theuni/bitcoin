@@ -432,23 +432,7 @@ public:
             return m_wtxid_map;
         }
     }
-/*
-    template <int to, typename T>
-    const_iterator project(const T& from) const
-    {
-        static_assert(to == 0);
-    //    if constexpr (std::is_same_v<T, descendent_order_iterator>) {
-   //         return m_descendent_order.find(from);
-   //     } else 
-        if constexpr (std::is_same_v<T, wtxid_iterator_type>) {
-            //TODO check
-            return m_wtxid_map.find(from->first)->second; 
-        } else if constexpr (std::is_same_v<T, time_order_iterator>) {
-            return m_time_order.find(from);
-        }
-        //return m_entries.end();
-    }
-*/
+
     size_t size() const
     {
         return m_entries.size();
@@ -464,8 +448,7 @@ public:
     template <typename... Args>
     std::pair<const_iterator, bool> emplace(Args&&... args)
     {
-        m_entries.emplace_back(std::forward<Args>(args)...);
-        auto new_it = m_entries.end();
+        auto new_it = m_entries.emplace(m_entries.end(), std::forward<Args>(args)...);
         m_txid_map.emplace(new_it->GetTx().GetHash(), new_it);
         m_wtxid_map.emplace(new_it->GetTx().GetWitnessHash(), new_it);
         m_descendent_order.insert(new_it);
@@ -497,8 +480,8 @@ public:
 
     const_iterator iterator_to(const entry_type& entry) const
     {
-        auto it = m_txid_map.find(entry.GetTx().GetHash());
-        if (it == m_txid_map.end()) return m_entries.end();
+        auto it = m_wtxid_map.find(entry.GetTx().GetWitnessHash());
+        if (it == m_wtxid_map.end()) return m_entries.end();
         return it->second;
     }
 
@@ -522,14 +505,9 @@ public:
     const_iterator get_iter_from_wtxid(const uint256& wtxid) const
     {
         auto it = m_wtxid_map.find(wtxid);
+        if(it == m_wtxid_map.end()) return m_entries.end();
         return it->second;
     }
-/*
-    const_iterator get_iter_from_entry_time(time_order_type::const_iterator it) const
-    {
-        return  m_time_order.find(it);
-    }
-*/
 };
 
 class CTxMemPool
