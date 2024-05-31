@@ -587,7 +587,7 @@ public:
     mutable RecursiveMutex cs;
     indexed_transaction_set mapTx GUARDED_BY(cs);
 
-    using const_txiter = indexed_transaction_set::const_iterator;
+    using const_txiter = const_txiter;
     std::vector<CTransactionRef> txns_randomized GUARDED_BY(cs); //!< All transactions in mapTx, in random order
 
     typedef std::set<const_txiter, CompareIteratorByHash> setEntries;
@@ -602,7 +602,7 @@ private:
     void UpdateParent(const_txiter entry, const_txiter parent, bool add) EXCLUSIVE_LOCKS_REQUIRED(cs);
     void UpdateChild(const_txiter entry, const_txiter child, bool add) EXCLUSIVE_LOCKS_REQUIRED(cs);
 
-    std::vector<indexed_transaction_set::const_iterator> GetSortedDepthAndScore() const EXCLUSIVE_LOCKS_REQUIRED(cs);
+    std::vector<const_txiter> GetSortedDepthAndScore() const EXCLUSIVE_LOCKS_REQUIRED(cs);
 
     /**
      * Track locally submitted transactions to periodically retry initial broadcast.
