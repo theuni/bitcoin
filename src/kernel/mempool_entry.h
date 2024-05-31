@@ -36,7 +36,7 @@ struct LockPoints {
 };
 
 struct CompareIteratorByHash {
-    // SFINAE for T where T is either a pointer type (e.g., a txiter) or a reference_wrapper<T>
+    // SFINAE for T where T is either a pointer type (e.g., a const_txiter) or a reference_wrapper<T>
     // (e.g. a wrapped CTxMemPoolEntry&)
     template <typename T>
     bool operator()(const std::reference_wrapper<T>& a, const std::reference_wrapper<T>& b) const

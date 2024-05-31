@@ -337,7 +337,7 @@ void Chainstate::MaybeUpdateMempoolForReorg(
     // If true, the tx would be invalid in the next block; remove this entry and all of its descendants.
     // Note that v3 rules are not applied here, so reorgs may cause violations of v3 inheritance or
     // topology restrictions.
-    const auto filter_final_and_mature = [&](CTxMemPool::txiter it)
+    const auto filter_final_and_mature = [&](CTxMemPool::const_txiter it)
         EXCLUSIVE_LOCKS_REQUIRED(m_mempool->cs, ::cs_main) {
         AssertLockHeld(m_mempool->cs);
         AssertLockHeld(::cs_main);
@@ -982,7 +982,7 @@ bool MemPoolAccept::PreChecks(ATMPArgs& args, Workspace& ws)
         // We don't bother incrementing m_limit_descendants by the full removal count as that limit never comes
         // into force here (as we're only adding a single transaction).
         assert(ws.m_iters_conflicting.size() == 1);
-        CTxMemPool::txiter conflict = *ws.m_iters_conflicting.begin();
+        CTxMemPool::const_txiter conflict = *ws.m_iters_conflicting.begin();
 
         maybe_rbf_limits.descendant_count += 1;
         maybe_rbf_limits.descendant_size_vbytes += conflict->GetSizeWithDescendants();
@@ -1110,7 +1110,7 @@ bool MemPoolAccept::ReplacementChecks(Workspace& ws)
 
     // Check if it's economically rational to mine this transaction rather than the ones it
     // replaces and pays for its own relay fees. Enforce Rules #3 and #4.
-    for (CTxMemPool::txiter it : m_subpackage.m_all_conflicts) {
+    for (CTxMemPool::const_txiter it : m_subpackage.m_all_conflicts) {
         m_subpackage.m_conflicting_fees += it->GetModifiedFee();
         m_subpackage.m_conflicting_size += it->GetTxSize();
     }
@@ -1216,7 +1216,7 @@ bool MemPoolAccept::Finalize(const ATMPArgs& args, Workspace& ws)
     std::unique_ptr<CTxMemPoolEntry>& entry = ws.m_entry;
 
     // Remove conflicting transactions from the mempool
-    for (CTxMemPool::txiter it : m_subpackage.m_all_conflicts)
+    for (CTxMemPool::const_txiter it : m_subpackage.m_all_conflicts)
     {
         LogPrint(BCLog::MEMPOOL, "replacing tx %s (wtxid=%s) with %s (wtxid=%s) for %s additional fees, %d delta bytes\n",
                 it->GetTx().GetHash().ToString(),

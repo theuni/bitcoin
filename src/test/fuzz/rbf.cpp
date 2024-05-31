@@ -152,8 +152,8 @@ FUZZ_TARGET(package_rbf, .init = initialize_package_rbf)
 
     // Calculate all conflicts:
     CTxMemPool::setEntries all_conflicts;
-    for (auto& txiter : direct_conflicts) {
-        pool.CalculateDescendants(txiter, all_conflicts);
+    for (auto& const_txiter : direct_conflicts) {
+        pool.CalculateDescendants(const_txiter, all_conflicts);
     }
 
     // Calculate the chunks for a replacement.
@@ -176,9 +176,9 @@ FUZZ_TARGET(package_rbf, .init = initialize_package_rbf)
         }
 
         FeeFrac replaced;
-        for (auto txiter : all_conflicts) {
-            replaced.fee += txiter->GetModifiedFee();
-            replaced.size += txiter->GetTxSize();
+        for (auto const_txiter : all_conflicts) {
+            replaced.fee += const_txiter->GetModifiedFee();
+            replaced.size += const_txiter->GetTxSize();
         }
         // The total fee & size of the new diagram minus replaced fee & size should be the total
         // fee & size of the old diagram minus replacement fee & size.

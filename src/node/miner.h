@@ -43,7 +43,7 @@ struct CBlockTemplate
 // Container for tracking updates to ancestor feerate as we include (parent)
 // transactions in a block
 struct CTxMemPoolModifiedEntry {
-    explicit CTxMemPoolModifiedEntry(CTxMemPool::txiter entry)
+    explicit CTxMemPoolModifiedEntry(CTxMemPool::const_txiter entry)
     {
         iter = entry;
         nSizeWithAncestors = entry->GetSizeWithAncestors();
@@ -57,26 +57,26 @@ struct CTxMemPoolModifiedEntry {
     size_t GetTxSize() const { return iter->GetTxSize(); }
     const CTransaction& GetTx() const { return iter->GetTx(); }
 
-    CTxMemPool::txiter iter;
+    CTxMemPool::const_txiter iter;
     uint64_t nSizeWithAncestors;
     CAmount nModFeesWithAncestors;
     int64_t nSigOpCostWithAncestors;
 };
 
-/** Comparator for CTxMemPool::txiter objects.
+/** Comparator for CTxMemPool::const_txiter objects.
  *  It simply compares the internal memory address of the CTxMemPoolEntry object
  *  pointed to. This means it has no meaning, and is only useful for using them
  *  as key in other indexes.
  */
 struct CompareCTxMemPoolIter {
-    bool operator()(const CTxMemPool::txiter& a, const CTxMemPool::txiter& b) const
+    bool operator()(const CTxMemPool::const_txiter& a, const CTxMemPool::const_txiter& b) const
     {
         return &(*a) < &(*b);
     }
 };
 
 struct modifiedentry_iter {
-    typedef CTxMemPool::txiter result_type;
+    typedef CTxMemPool::const_txiter result_type;
     result_type operator() (const CTxMemPoolModifiedEntry &entry) const
     {
         return entry.iter;
@@ -86,8 +86,8 @@ struct modifiedentry_iter {
 // A comparator that sorts transactions based on number of ancestors.
 // This is sufficient to sort an ancestor package in an order that is valid
 // to appear in a block.
-struct CompareTxIterByAncestorCount {
-    bool operator()(const CTxMemPool::txiter& a, const CTxMemPool::txiter& b) const
+struct Compareconst_txiterByAncestorCount {
+    bool operator()(const CTxMemPool::const_txiter& a, const CTxMemPool::const_txiter& b) const
     {
         if (a->GetCountWithAncestors() != b->GetCountWithAncestors()) {
             return a->GetCountWithAncestors() < b->GetCountWithAncestors();
@@ -122,7 +122,7 @@ typedef indexed_modified_transaction_set::index<ancestor_score>::type::iterator 
 
 struct update_for_parent_inclusion
 {
-    explicit update_for_parent_inclusion(CTxMemPool::txiter it) : iter(it) {}
+    explicit update_for_parent_inclusion(CTxMemPool::const_txiter it) : iter(it) {}
 
     void operator() (CTxMemPoolModifiedEntry &e)
     {
@@ -131,7 +131,7 @@ struct update_for_parent_inclusion
         e.nSigOpCostWithAncestors -= iter->GetSigOpCost();
     }
 
-    CTxMemPool::txiter iter;
+    CTxMemPool::const_txiter iter;
 };
 
 /** Generate a new block, without valid proof-of-work */
@@ -181,7 +181,7 @@ private:
     /** Clear the block's state and prepare for assembling a new block */
     void resetBlock();
     /** Add a tx to the block */
-    void AddToBlock(CTxMemPool::txiter iter);
+    void AddToBlock(CTxMemPool::const_txiter iter);
 
     // Methods for how to add transactions to a block.
     /** Add transactions based on feerate including unconfirmed ancestors
@@ -200,7 +200,7 @@ private:
       * only as an extra check in case of suboptimal node configuration */
     bool TestPackageTransactions(const CTxMemPool::setEntries& package) const;
     /** Sort the package in an order that is valid to appear in a block */
-    void SortForBlock(const CTxMemPool::setEntries& package, std::vector<CTxMemPool::txiter>& sortedEntries);
+    void SortForBlock(const CTxMemPool::setEntries& package, std::vector<CTxMemPool::const_txiter>& sortedEntries);
 };
 
 int64_t UpdateTime(CBlockHeader* pblock, const Consensus::Params& consensusParams, const CBlockIndex* pindexPrev);
