@@ -298,6 +298,202 @@ struct TxMempoolInfo
  * prevent these calculations from being too CPU intensive.
  *
  */
+
+class MempoolContainer
+{
+public:
+    using entry_type = CTxMemPoolEntry;
+    using list_type = std::list<entry_type>;
+    using iterator_type = list_type::const_iterator;
+
+private:
+    class DescendantScore
+    {
+    public:
+        bool operator()(const iterator_type& a_it, const iterator_type& b_it) const
+        {
+            const auto& a = *a_it;
+            const auto& b = *b_it;
+            double a_mod_fee, a_size, b_mod_fee, b_size;
+
+            GetModFeeAndSize(a, a_mod_fee, a_size);
+            GetModFeeAndSize(b, b_mod_fee, b_size);
+
+            // Avoid division by rewriting (a/b > c/d) as (a*d > c*b).
+            double f1 = a_mod_fee * b_size;
+            double f2 = a_size * b_mod_fee;
+
+            if (f1 == f2) {
+                return a.GetTime() >= b.GetTime();
+            }
+            return f1 < f2;
+        }
+
+        // Return the fee/size we're using for sorting this entry.
+        void GetModFeeAndSize(const CTxMemPoolEntry &a, double &mod_fee, double &size) const
+        {
+            // Compare feerate with descendants to feerate of the transaction, and
+            // return the fee/size for the max.
+            double f1 = (double)a.GetModifiedFee() * a.GetSizeWithDescendants();
+            double f2 = (double)a.GetModFeesWithDescendants() * a.GetTxSize();
+
+            if (f2 > f1) {
+                mod_fee = a.GetModFeesWithDescendants();
+                size = a.GetSizeWithDescendants();
+            } else {
+                mod_fee = a.GetModifiedFee();
+                size = a.GetTxSize();
+            }
+        }
+    };
+
+    class EntryTime
+    {
+    public:
+        bool operator()(const iterator_type& a, const iterator_type& b) const
+        {
+            return a->GetTime() < b->GetTime();
+        }
+    };
+
+/** \class CompareTxMemPoolEntryByAncestorScore
+ *
+ *  Sort an entry by min(score/size of entry's tx, score/size with all ancestors).
+ */
+    class AncestorFee
+    {
+    public:
+        bool operator()(const iterator_type& a_it, const iterator_type& b_it) const
+        {
+            const auto& a = *a_it;
+            const auto& b = *b_it;
+            double a_mod_fee, a_size, b_mod_fee, b_size;
+
+            GetModFeeAndSize(a, a_mod_fee, a_size);
+            GetModFeeAndSize(b, b_mod_fee, b_size);
+
+            // Avoid division by rewriting (a/b > c/d) as (a*d > c*b).
+            double f1 = a_mod_fee * b_size;
+            double f2 = a_size * b_mod_fee;
+
+            if (f1 == f2) {
+                return a.GetTx().GetHash() < b.GetTx().GetHash();
+            }
+            return f1 > f2;
+        }
+
+        // Return the fee/size we're using for sorting this entry.
+        template <typename T>
+        void GetModFeeAndSize(const T &a, double &mod_fee, double &size) const
+        {
+            // Compare feerate with ancestors to feerate of the transaction, and
+            // return the fee/size for the min.
+            double f1 = (double)a.GetModifiedFee() * a.GetSizeWithAncestors();
+            double f2 = (double)a.GetModFeesWithAncestors() * a.GetTxSize();
+
+            if (f1 > f2) {
+                mod_fee = a.GetModFeesWithAncestors();
+                size = a.GetSizeWithAncestors();
+            } else {
+                mod_fee = a.GetModifiedFee();
+                size = a.GetTxSize();
+            }
+        }
+    };
+public:
+    using txid_map_type = std::unordered_map<uint256, iterator_type, SaltedTxidHasher>;
+    using wtxid_map_type = std::unordered_map<uint256, iterator_type, SaltedTxidHasher>;
+    using descendent_order_type = std::set<iterator_type, DescendantScore>;
+    using time_order_type = std::set<iterator_type, EntryTime>;
+    using ancestor_order_type = std::set<iterator_type, AncestorFee>;
+
+    using descendent_order_iterator = descendent_order_type::const_iterator;
+    using time_order_iterator = time_order_type::const_iterator;
+    using ancestor_order_iterator = ancestor_order_type::const_iterator;
+private:
+    list_type m_entries;
+    txid_map_type m_txid_map;
+    wtxid_map_type m_wtxid_map;
+    descendent_order_type m_descendent_order;
+    time_order_type m_time_order;
+    ancestor_order_type m_ancestor_order;
+public:
+    template <typename Tag>
+    const auto& get() const
+    {
+        if constexpr (std::is_same_v<Tag, entry_time>) {
+            return m_time_order;
+        } else if constexpr (std::is_same_v<Tag, descendant_score>) {
+            return m_descendent_order;
+        } else if constexpr (std::is_same_v<Tag, ancestor_score>) {
+            return m_ancestor_order;
+        } else if constexpr (std::is_same_v<Tag, index_by_wtxid>) {
+            return m_wtxid_map;
+        }
+    }
+    template <int to, typename T>
+    iterator_type project(T from) const
+    {
+        static_assert(to == 0);
+        if constexpr (std::is_same_v<T, descendent_order_iterator>)
+        {
+            return m_descendent_order.find(from);
+        }
+        return m_entries.end();
+    }
+    size_t size() const
+    {
+        return m_entries.size();
+    }
+
+    bool exists(const GenTxid& gtxid) const
+    {
+        if (gtxid.IsWtxid()) {
+            return m_wtxid_map.contains(gtxid.GetHash());
+        }
+        return m_txid_map.contains(gtxid.GetHash());
+    }
+    template <typename... Args>
+    iterator_type emplace(Args&&... args)
+    {
+        m_entries.emplace_back(std::forward<Args>(args)...);
+        auto new_it = m_entries.end();
+        m_txid_map.emplace(new_it->GetTx().GetHash(), new_it);
+        m_wtxid_map.emplace(new_it->GetTx().GetWitnessHash(), new_it);
+        m_descendent_order.insert(new_it);
+        m_time_order.insert(new_it);
+        m_ancestor_order.insert(new_it);
+        return new_it;
+    }
+    iterator_type erase(iterator_type it)
+    {
+        m_txid_map.erase(it->GetTx().GetHash());
+        m_wtxid_map.erase(it->GetTx().GetWitnessHash());
+        m_descendent_order.erase(it);
+        m_time_order.insert(it);
+        m_ancestor_order.insert(it);
+        return m_entries.erase(it);
+    }
+    iterator_type find(const uint256& hash)
+    {
+        auto it = m_txid_map.find(hash);
+        if (it == m_txid_map.end()) return m_entries.end();
+        return it->second;
+    }
+
+    template <typename Callable>
+    void modify(iterator_type it, Callable&& func)
+    {
+        func(*it);
+    }
+    iterator_type iterator_to(const entry_type& entry) const
+    {
+        auto it = m_txid_map.find(entry.GetTx().GetHash());
+        if (it == m_txid_map.end()) return m_entries.end();
+        return it->second;
+    }
+};
+
 class CTxMemPool
 {
 protected:
