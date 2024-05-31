@@ -258,7 +258,7 @@ static int UpdatePackagesForAdded(const CTxMemPool& mempool,
                 continue;
             }
             ++nDescendantsUpdated;
-            modtxiter mit = mapModifiedTx.find(desc);
+            auto mit = mapModifiedTx.find(desc);
             if (mit == mapModifiedTx.end()) {
                 CTxMemPoolModifiedEntry modEntry(desc);
                 mit = mapModifiedTx.insert(modEntry).first;
@@ -336,7 +336,7 @@ void BlockAssembler::addPackageTxs(const CTxMemPool& mempool, int& nPackagesSele
         // the next entry from mapTx, or the best from mapModifiedTx?
         bool fUsingModified = false;
 
-        modtxscoreiter modit = mapModifiedTx.get<ancestor_score>().begin();
+        auto modit = mapModifiedTx.get<ancestor_score>().begin();
         if (mi == mempool.mapTx.get<ancestor_score>().end()) {
             // We're out of entries in mapTx; use the entry from mapModifiedTx
             iter = modit->iter;
