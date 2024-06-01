@@ -465,8 +465,8 @@ public:
         m_txid_map.erase(it->GetTx().GetHash());
         m_wtxid_map.erase(it->GetTx().GetWitnessHash());
         m_descendent_order.erase(it);
-        m_time_order.insert(it);
-        m_ancestor_order.insert(it);
+        m_time_order.erase(it);
+        m_ancestor_order.erase(it);
         return m_entries.erase(it);
     }
     const_iterator find(const uint256& hash) const
