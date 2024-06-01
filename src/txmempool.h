@@ -324,6 +324,8 @@ private:
             double f2 = a_size * b_mod_fee;
 
             if (f1 == f2) {
+                if (a.GetTime() == b.GetTime())
+                    return b.GetTx().GetHash() < a.GetTx().GetHash();
                 return a.GetTime() >= b.GetTime();
             }
             return f1 < f2;
@@ -352,6 +354,8 @@ private:
     public:
         bool operator()(const const_iterator& a, const const_iterator& b) const
         {
+            if(a->GetTime() == b->GetTime())
+                return b->GetTx().GetHash() < a->GetTx().GetHash();
             return a->GetTime() < b->GetTime();
         }
     };
