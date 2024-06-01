@@ -477,9 +477,15 @@ public:
     }
 
     template <typename Callable>
-    void modify(const_iterator it, Callable&& func) const
+    void modify(const_iterator it, Callable&& func)
     {
+        m_descendent_order.erase(it);
+        m_time_order.erase(it);
+        m_ancestor_order.erase(it);
         func(const_cast<entry_type&>(*it));
+        m_descendent_order.insert(it);
+        m_time_order.insert(it);
+        m_ancestor_order.insert(it);
     }
 
     const_iterator iterator_to(const entry_type& entry) const
