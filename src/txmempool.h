@@ -203,6 +203,7 @@ struct descendant_score {};
 struct entry_time {};
 struct ancestor_score {};
 struct index_by_wtxid {};
+struct modified_fee {};
 
 /**
  * Information about a mempool transaction.
@@ -476,16 +477,28 @@ public:
         return it->second;
     }
 
-    template <typename Callable>
+    template <typename Tag, typename Callable>
     void modify(const_iterator it, Callable&& func)
     {
-        m_descendent_order.erase(it);
-        m_time_order.erase(it);
-        m_ancestor_order.erase(it);
-        func(const_cast<entry_type&>(*it));
-        m_descendent_order.insert(it);
-        m_time_order.insert(it);
-        m_ancestor_order.insert(it);
+        if constexpr (std::is_same_v<Tag, descendant_score>) {
+            auto descendent_handle = m_descendent_order.extract(it);
+            func(const_cast<entry_type&>(*it));
+            m_descendent_order.insert(std::move(descendent_handle));
+        } else if (std::is_same_v<Tag, entry_time>) {
+            auto time_order_handle = m_time_order.extract(it);
+            func(const_cast<entry_type&>(*it));
+            m_time_order.insert(std::move(time_order_handle));
+        } else if (std::is_same_v<Tag, ancestor_score>) {
+            auto ancestor_handle = m_ancestor_order.extract(it);
+            func(const_cast<entry_type&>(*it));
+            m_ancestor_order.insert(std::move(ancestor_handle));
+        } else if constexpr (std::is_same_v<Tag, modified_fee>) {
+            auto descendent_handle = m_descendent_order.extract(it);
+            auto ancestor_handle = m_ancestor_order.extract(it);
+            func(const_cast<entry_type&>(*it));
+            m_descendent_order.insert(std::move(descendent_handle));
+            m_ancestor_order.insert(std::move(ancestor_handle));
+        }
     }
 
     const_iterator iterator_to(const entry_type& entry) const
