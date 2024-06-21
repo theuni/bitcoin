@@ -323,7 +323,7 @@ public:
                 0,
                 0,
             };
-            LogPrintf("Signet with challenge %s\n", HexStr(bin));
+            LogInstance().LogPrintf("Signet with challenge %s\n", HexStr(bin));
         }
 
         if (options.seeds) {
