@@ -19,6 +19,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <source_location>
 
 static const bool DEFAULT_LOGTIMEMICROS = false;
 static const bool DEFAULT_LOGIPS        = false;
@@ -82,6 +83,13 @@ namespace BCLog {
 
     class Logger
     {
+    public:
+        struct FormatWithLocation {
+            constexpr FormatWithLocation(const char* f, std::source_location l = std::source_location::current()) noexcept : fmt(f), loc(std::move(l)) {}
+
+            const char* fmt;
+            std::source_location loc;
+        };
     private:
         mutable StdMutex m_cs; // Can not use Mutex from sync.h because in debug mode it would cause a deadlock when a potential deadlock was detected
 
@@ -110,6 +118,22 @@ namespace BCLog {
 
         /** Slots that connect to the print signal */
         std::list<std::function<void(const std::string&)>> m_print_callbacks GUARDED_BY(m_cs) {};
+
+
+        template <typename... Args>
+        void LogPrintf_(const BCLog::LogFlags flag, const BCLog::Level level, FormatWithLocation loc, const Args&... args)
+        {
+            if (Enabled()) {
+                std::string log_msg;
+                try {
+                    log_msg = tfm::format(loc.fmt, args...);
+                } catch (tinyformat::format_error& fmterr) {
+                    /* Original format string will have newline so don't add one here */
+                    log_msg = "Error \"" + std::string(fmterr.what()) + "\" while formatting log message: " + loc.fmt;
+                }
+                LogPrintStr(log_msg, loc.loc.function_name(), loc.loc.file_name(), loc.loc.line(), flag, level);
+            }
+        }
 
     public:
         bool m_print_to_console = false;
@@ -199,6 +223,46 @@ namespace BCLog {
         static std::string LogLevelToStr(BCLog::Level level);
 
         bool DefaultShrinkDebugFile() const;
+
+        template <typename... Args>
+        void LogInfo(FormatWithLocation loc, Args&&... args) {
+            LogPrintf_(BCLog::LogFlags::ALL, BCLog::Level::Info, std::move(loc), std::forward<Args>(args)...);
+        }
+        template <typename... Args>
+        void LogWarning(FormatWithLocation loc, Args&&... args) {
+            LogPrintf_(BCLog::LogFlags::ALL, BCLog::Level::Warning, std::move(loc), std::forward<Args>(args)...);
+        }
+        template <typename... Args>
+        void LogError(FormatWithLocation loc, Args&&... args) {
+            LogPrintf_(BCLog::LogFlags::ALL, BCLog::Level::Error, std::move(loc), std::forward<Args>(args)...);
+        }
+        template <typename... Args>
+        void LogPrintf(FormatWithLocation loc, Args&&... args) {
+            LogInfo(std::move(loc), std::forward<Args>(args)...);
+        }
+        template <typename... Args>
+        void LogPrintfCategory(BCLog::LogFlags category, FormatWithLocation loc, Args&&... args) {
+            LogPrintf_(category, BCLog::Level::Info, std::move(loc), std::forward<Args>(args)...);
+        }
+        template <typename... Args>
+        void LogPrintLevel(BCLog::LogFlags category, const BCLog::Level level, FormatWithLocation loc, Args&&... args) {
+            if (WillLogCategoryLevel(category, level)) {
+                LogPrintf_(category, level, std::move(loc), std::forward<Args>(args)...);
+            }
+        }
+        template <typename... Args>
+        void LogPrint(BCLog::LogFlags category, FormatWithLocation loc, Args&&... args) {
+            LogPrintf_(category, BCLog::Level::Debug, std::move(loc), std::forward<Args>(args)...);
+        }
+
+        template <typename... Args>
+        void LogDebug(BCLog::LogFlags category, FormatWithLocation loc, Args&&... args) {
+            LogPrintLevel(category, BCLog::Level::Debug, std::move(loc), std::forward<Args>(args)...);
+        }
+        template <typename... Args>
+        void LogTrace(BCLog::LogFlags category, FormatWithLocation loc, Args&&... args) {
+            LogPrintLevel(category, BCLog::Level::Trace, std::move(loc), std::forward<Args>(args)...);
+        }
     };
 
 } // namespace BCLog
