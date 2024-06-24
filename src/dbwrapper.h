@@ -11,6 +11,7 @@
 #include <streams.h>
 #include <util/check.h>
 #include <util/fs.h>
+#include <logging.h>
 
 #include <cstddef>
 #include <exception>
@@ -45,6 +46,11 @@ struct DBParams {
     //! Passed-through options.
     DBOptions options{};
 };
+
+namespace leveldb
+{
+    class Status;
+}
 
 class dbwrapper_error : public std::runtime_error
 {
@@ -205,13 +211,15 @@ private:
     //! whether or not the database resides in memory
     bool m_is_memory;
 
+    BCLog::Logger& m_logger;
+
     std::optional<std::string> ReadImpl(Span<const std::byte> key) const;
     bool ExistsImpl(Span<const std::byte> key) const;
     size_t EstimateSizeImpl(Span<const std::byte> key1, Span<const std::byte> key2) const;
     auto& DBContext() const LIFETIMEBOUND { return *Assert(m_db_context); }
-
+    void HandleError(const leveldb::Status& status) const;
 public:
-    CDBWrapper(const DBParams& params);
+    CDBWrapper(const DBParams& params, BCLog::Logger& logger);
     ~CDBWrapper();
 
     CDBWrapper(const CDBWrapper&) = delete;

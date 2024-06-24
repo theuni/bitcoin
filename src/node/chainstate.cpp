@@ -46,7 +46,7 @@ static ChainstateLoadResult CompleteChainstateInitialization(
         .cache_bytes = static_cast<size_t>(cache_sizes.block_tree_db),
         .memory_only = options.block_tree_db_in_memory,
         .wipe_data = options.wipe_block_tree_db,
-        .options = chainman.m_options.block_tree_db});
+        .options = chainman.m_options.block_tree_db}, LogInstance());
 
     if (options.wipe_block_tree_db) {
         pblocktree->WriteReindexing(true);

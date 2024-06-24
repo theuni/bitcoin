@@ -41,22 +41,24 @@ bool DestroyDB(const std::string& path_str)
 
 /** Handle database error by throwing dbwrapper_error exception.
  */
-static void HandleError(const leveldb::Status& status)
+void CDBWrapper::HandleError(const leveldb::Status& status) const
 {
     if (status.ok())
         return;
     const std::string errmsg = "Fatal LevelDB error: " + status.ToString();
-    LogInstance().LogPrintf("%s\n", errmsg);
-    LogInstance().LogPrintf("You can use -debug=leveldb to get more complete diagnostic messages\n");
+    m_logger.LogPrintf("%s\n", errmsg);
+    m_logger.LogPrintf("You can use -debug=leveldb to get more complete diagnostic messages\n");
     throw dbwrapper_error(errmsg);
 }
 
 class CBitcoinLevelDBLogger : public leveldb::Logger {
+    BCLog::Logger& m_logger;
 public:
+    CBitcoinLevelDBLogger(BCLog::Logger& logger) : m_logger(logger){}
     // This code is adapted from posix_logger.h, which is why it is using vsprintf.
     // Please do not do this in normal code
     void Logv(const char * format, va_list ap) override {
-            if (!LogAcceptCategory(BCLog::LEVELDB, BCLog::Level::Debug)) {
+            if (!m_logger.WillLogCategoryLevel(BCLog::LEVELDB, BCLog::Level::Debug)) {
                 return;
             }
             char buffer[500];
@@ -100,7 +102,7 @@ public:
 
                 assert(p <= limit);
                 base[std::min(bufsize - 1, (int)(p - base))] = '\0';
-                LogInstance().LogPrintLevel(BCLog::LEVELDB, BCLog::Level::Debug, "%s", base); // NOLINT(bitcoin-unterminated-logprintf)
+                m_logger.LogPrintLevel(BCLog::LEVELDB, BCLog::Level::Debug, "%s", base); // NOLINT(bitcoin-unterminated-logprintf)
                 if (base != buffer) {
                     delete[] base;
                 }
@@ -109,7 +111,7 @@ public:
     }
 };
 
-static void SetMaxOpenFiles(leveldb::Options *options) {
+static void SetMaxOpenFiles(leveldb::Options *options, BCLog::Logger& logger) {
     // On most platforms the default setting of max_open_files (which is 1000)
     // is optimal. On Windows using a large file count is OK because the handles
     // do not interfere with select() loops. On 64-bit Unix hosts this value is
@@ -130,24 +132,24 @@ static void SetMaxOpenFiles(leveldb::Options *options) {
         options->max_open_files = 64;
     }
 #endif
-    LogInstance().LogPrint(BCLog::LEVELDB, "LevelDB using max_open_files=%d (default=%d)\n",
+    logger.LogPrint(BCLog::LEVELDB, "LevelDB using max_open_files=%d (default=%d)\n",
              options->max_open_files, default_open_files);
 }
 
-static leveldb::Options GetOptions(size_t nCacheSize)
+static leveldb::Options GetOptions(size_t nCacheSize, BCLog::Logger& logger)
 {
     leveldb::Options options;
     options.block_cache = leveldb::NewLRUCache(nCacheSize / 2);
     options.write_buffer_size = nCacheSize / 4; // up to two write buffers may be held in memory simultaneously
     options.filter_policy = leveldb::NewBloomFilterPolicy(10);
     options.compression = leveldb::kNoCompression;
-    options.info_log = new CBitcoinLevelDBLogger();
+    options.info_log = new CBitcoinLevelDBLogger(logger);
     if (leveldb::kMajorVersion > 1 || (leveldb::kMajorVersion == 1 && leveldb::kMinorVersion >= 16)) {
         // LevelDB versions before 1.16 consider short writes to be corruption. Only trigger error
         // on corruption in later versions.
         options.paranoid_checks = true;
     }
-    SetMaxOpenFiles(&options);
+    SetMaxOpenFiles(&options, logger);
     return options;
 }
 
@@ -218,27 +220,27 @@ struct LevelDBContext {
     leveldb::DB* pdb;
 };
 
-CDBWrapper::CDBWrapper(const DBParams& params)
-    : m_db_context{std::make_unique<LevelDBContext>()}, m_name{fs::PathToString(params.path.stem())}, m_path{params.path}, m_is_memory{params.memory_only}
+CDBWrapper::CDBWrapper(const DBParams& params, BCLog::Logger& logger)
+    : m_db_context{std::make_unique<LevelDBContext>()}, m_name{fs::PathToString(params.path.stem())}, m_path{params.path}, m_is_memory{params.memory_only}, m_logger(logger)
 {
     DBContext().penv = nullptr;
     DBContext().readoptions.verify_checksums = true;
     DBContext().iteroptions.verify_checksums = true;
     DBContext().iteroptions.fill_cache = false;
     DBContext().syncoptions.sync = true;
-    DBContext().options = GetOptions(params.cache_bytes);
+    DBContext().options = GetOptions(params.cache_bytes, m_logger);
     DBContext().options.create_if_missing = true;
     if (params.memory_only) {
         DBContext().penv = leveldb::NewMemEnv(leveldb::Env::Default());
         DBContext().options.env = DBContext().penv;
     } else {
         if (params.wipe_data) {
-            LogInstance().LogPrintf("Wiping LevelDB in %s\n", fs::PathToString(params.path));
+            m_logger.LogPrintf("Wiping LevelDB in %s\n", fs::PathToString(params.path));
             leveldb::Status result = leveldb::DestroyDB(fs::PathToString(params.path), DBContext().options);
             HandleError(result);
         }
         TryCreateDirectories(params.path);
-        LogInstance().LogPrintf("Opening LevelDB in %s\n", fs::PathToString(params.path));
+        m_logger.LogPrintf("Opening LevelDB in %s\n", fs::PathToString(params.path));
     }
     // PathToString() return value is safe to pass to leveldb open function,
     // because on POSIX leveldb passes the byte string directly to ::open(), and
@@ -246,12 +248,12 @@ CDBWrapper::CDBWrapper(const DBParams& params)
     // (see env_posix.cc and env_windows.cc).
     leveldb::Status status = leveldb::DB::Open(DBContext().options, fs::PathToString(params.path), &DBContext().pdb);
     HandleError(status);
-    LogInstance().LogPrintf("Opened LevelDB successfully\n");
+    m_logger.LogPrintf("Opened LevelDB successfully\n");
 
     if (params.options.force_compact) {
-        LogInstance().LogPrintf("Starting database compaction of %s\n", fs::PathToString(params.path));
+        m_logger.LogPrintf("Starting database compaction of %s\n", fs::PathToString(params.path));
         DBContext().pdb->CompactRange(nullptr, nullptr);
-        LogInstance().LogPrintf("Finished database compaction of %s\n", fs::PathToString(params.path));
+        m_logger.LogPrintf("Finished database compaction of %s\n", fs::PathToString(params.path));
     }
 
     // The base-case obfuscation key, which is a noop.
@@ -268,10 +270,10 @@ CDBWrapper::CDBWrapper(const DBParams& params)
         Write(OBFUSCATE_KEY_KEY, new_key);
         obfuscate_key = new_key;
 
-        LogInstance().LogPrintf("Wrote new obfuscate key for %s: %s\n", fs::PathToString(params.path), HexStr(obfuscate_key));
+        m_logger.LogPrintf("Wrote new obfuscate key for %s: %s\n", fs::PathToString(params.path), HexStr(obfuscate_key));
     }
 
-    LogInstance().LogPrintf("Using obfuscation key for %s: %s\n", fs::PathToString(params.path), HexStr(obfuscate_key));
+    m_logger.LogPrintf("Using obfuscation key for %s: %s\n", fs::PathToString(params.path), HexStr(obfuscate_key));
 }
 
 CDBWrapper::~CDBWrapper()
@@ -290,7 +292,7 @@ CDBWrapper::~CDBWrapper()
 
 bool CDBWrapper::WriteBatch(CDBBatch& batch, bool fSync)
 {
-    const bool log_memory = LogAcceptCategory(BCLog::LEVELDB, BCLog::Level::Debug);
+    const bool log_memory = m_logger.WillLogCategoryLevel(BCLog::LEVELDB, BCLog::Level::Debug);
     double mem_before = 0;
     if (log_memory) {
         mem_before = DynamicMemoryUsage() / 1024.0 / 1024;
@@ -299,7 +301,7 @@ bool CDBWrapper::WriteBatch(CDBBatch& batch, bool fSync)
     HandleError(status);
     if (log_memory) {
         double mem_after = DynamicMemoryUsage() / 1024.0 / 1024;
-        LogInstance().LogPrint(BCLog::LEVELDB, "WriteBatch memory usage: db=%s, before=%.1fMiB, after=%.1fMiB\n",
+        m_logger.LogPrint(BCLog::LEVELDB, "WriteBatch memory usage: db=%s, before=%.1fMiB, after=%.1fMiB\n",
                  m_name, mem_before, mem_after);
     }
     return true;
@@ -310,7 +312,7 @@ size_t CDBWrapper::DynamicMemoryUsage() const
     std::string memory;
     std::optional<size_t> parsed;
     if (!DBContext().pdb->GetProperty("leveldb.approximate-memory-usage", &memory) || !(parsed = ToIntegral<size_t>(memory))) {
-        LogInstance().LogPrint(BCLog::LEVELDB, "Failed to get approximate-memory-usage property\n");
+        m_logger.LogPrint(BCLog::LEVELDB, "Failed to get approximate-memory-usage property\n");
         return 0;
     }
     return parsed.value();
@@ -343,7 +345,7 @@ std::optional<std::string> CDBWrapper::ReadImpl(Span<const std::byte> key) const
     if (!status.ok()) {
         if (status.IsNotFound())
             return std::nullopt;
-        LogInstance().LogPrintf("LevelDB read failure: %s\n", status.ToString());
+        m_logger.LogPrintf("LevelDB read failure: %s\n", status.ToString());
         HandleError(status);
     }
     return strValue;
@@ -358,7 +360,7 @@ bool CDBWrapper::ExistsImpl(Span<const std::byte> key) const
     if (!status.ok()) {
         if (status.IsNotFound())
             return false;
-        LogInstance().LogPrintf("LevelDB read failure: %s\n", status.ToString());
+        m_logger.LogPrintf("LevelDB read failure: %s\n", status.ToString());
         HandleError(status);
     }
     return true;
