@@ -38,6 +38,7 @@ void ReadSigNetArgs(const ArgsManager& args, CChainParams::SigNetOptions& option
             throw std::runtime_error(strprintf("-signetchallenge must be hex, not '%s'.", signet_challenge[0]));
         }
         options.challenge.emplace(*val);
+        LogPrintf("Signet with challenge %s\n", HexStr(*val));
     }
 }
 
