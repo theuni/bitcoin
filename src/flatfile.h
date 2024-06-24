@@ -11,6 +11,11 @@
 #include <serialize.h>
 #include <util/fs.h>
 
+namespace BCLog
+{
+    class Logger;
+}
+
 struct FlatFilePos
 {
     int nFile{-1};
@@ -48,7 +53,7 @@ private:
     const fs::path m_dir;
     const char* const m_prefix;
     const size_t m_chunk_size;
-
+    BCLog::Logger& m_logger;
 public:
     /**
      * Constructor
@@ -57,7 +62,7 @@ public:
      * @param prefix A short prefix given to all file names.
      * @param chunk_size Disk space is pre-allocated in multiples of this amount.
      */
-    FlatFileSeq(fs::path dir, const char* prefix, size_t chunk_size);
+    FlatFileSeq(fs::path dir, const char* prefix, size_t chunk_size, BCLog::Logger& logger);
 
     /** Get the name of the file at the given position. */
     fs::path FileName(const FlatFilePos& pos) const;

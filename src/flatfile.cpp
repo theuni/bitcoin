@@ -10,10 +10,11 @@
 #include <tinyformat.h>
 #include <util/fs_helpers.h>
 
-FlatFileSeq::FlatFileSeq(fs::path dir, const char* prefix, size_t chunk_size) :
+FlatFileSeq::FlatFileSeq(fs::path dir, const char* prefix, size_t chunk_size, BCLog::Logger& logger) :
     m_dir(std::move(dir)),
     m_prefix(prefix),
-    m_chunk_size(chunk_size)
+    m_chunk_size(chunk_size),
+    m_logger(logger)
 {
     if (chunk_size == 0) {
         throw std::invalid_argument("chunk_size must be positive");
@@ -41,11 +42,11 @@ FILE* FlatFileSeq::Open(const FlatFilePos& pos, bool read_only)
     if (!file && !read_only)
         file = fsbridge::fopen(path, "wb+");
     if (!file) {
-        LogInstance().LogPrintf("Unable to open file %s\n", fs::PathToString(path));
+        m_logger.LogPrintf("Unable to open file %s\n", fs::PathToString(path));
         return nullptr;
     }
     if (pos.nPos && fseek(file, pos.nPos, SEEK_SET)) {
-        LogInstance().LogPrintf("Unable to seek to position %u of %s\n", pos.nPos, fs::PathToString(path));
+        m_logger.LogPrintf("Unable to seek to position %u of %s\n", pos.nPos, fs::PathToString(path));
         fclose(file);
         return nullptr;
     }
@@ -66,7 +67,7 @@ size_t FlatFileSeq::Allocate(const FlatFilePos& pos, size_t add_size, bool& out_
         if (CheckDiskSpace(m_dir, inc_size)) {
             FILE *file = Open(pos);
             if (file) {
-                LogInstance().LogPrint(BCLog::VALIDATION, "Pre-allocating up to position 0x%x in %s%05u.dat\n", new_size, m_prefix, pos.nFile);
+                m_logger.LogPrint(BCLog::VALIDATION, "Pre-allocating up to position 0x%x in %s%05u.dat\n", new_size, m_prefix, pos.nFile);
                 AllocateFileRange(file, pos.nPos, inc_size);
                 fclose(file);
                 return inc_size;
@@ -82,17 +83,17 @@ bool FlatFileSeq::Flush(const FlatFilePos& pos, bool finalize)
 {
     FILE* file = Open(FlatFilePos(pos.nFile, 0)); // Avoid fseek to nPos
     if (!file) {
-        LogInstance().LogError("%s: failed to open file %d\n", __func__, pos.nFile);
+        m_logger.LogError("%s: failed to open file %d\n", __func__, pos.nFile);
         return false;
     }
     if (finalize && !TruncateFile(file, pos.nPos)) {
         fclose(file);
-        LogInstance().LogError("%s: failed to truncate file %d\n", __func__, pos.nFile);
+        m_logger.LogError("%s: failed to truncate file %d\n", __func__, pos.nFile);
         return false;
     }
     if (!FileCommit(file)) {
         fclose(file);
-        LogInstance().LogError("%s: failed to commit file %d\n", __func__, pos.nFile);
+        m_logger.LogError("%s: failed to commit file %d\n", __func__, pos.nFile);
         return false;
     }
     DirectoryCommit(m_dir);
