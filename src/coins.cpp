@@ -353,15 +353,12 @@ const Coin& AccessByTxid(const CCoinsViewCache& view, const Txid& txid)
 }
 
 template <typename Func>
-static bool ExecuteBackedWrapper(Func func, const std::vector<std::function<void()>>& err_callbacks)
+static bool ExecuteBackedWrapper(Func func, const std::function<void(const std::runtime_error&)> err_callback)
 {
     try {
         return func();
     } catch(const std::runtime_error& e) {
-        for (const auto& f : err_callbacks) {
-            f();
-        }
-        LogInstance().LogError("Error reading from database: %s\n", e.what());
+        err_callback(e);
         // Starting the shutdown sequence and returning false to the caller would be
         // interpreted as 'entry not found' (as opposed to unable to read data), and
         // could lead to invalid interpretation. Just exit immediately, as we can't
@@ -371,9 +368,9 @@ static bool ExecuteBackedWrapper(Func func, const std::vector<std::function<void
 }
 
 bool CCoinsViewErrorCatcher::GetCoin(const COutPoint &outpoint, Coin &coin) const {
-    return ExecuteBackedWrapper([&]() { return CCoinsViewBacked::GetCoin(outpoint, coin); }, m_err_callbacks);
+    return ExecuteBackedWrapper([&]() { return CCoinsViewBacked::GetCoin(outpoint, coin); }, m_err_callback);
 }
 
 bool CCoinsViewErrorCatcher::HaveCoin(const COutPoint &outpoint) const {
-    return ExecuteBackedWrapper([&]() { return CCoinsViewBacked::HaveCoin(outpoint); }, m_err_callbacks);
+    return ExecuteBackedWrapper([&]() { return CCoinsViewBacked::HaveCoin(outpoint); }, m_err_callback);
 }

@@ -129,6 +129,13 @@ int main(int argc, char* argv[])
     cache_sizes.coins_db = 2 << 22;
     cache_sizes.coins = (450 << 20) - (2 << 20) - (2 << 22);
     node::ChainstateLoadOptions options;
+
+    options.coins_error_cb = [](const std::runtime_error& e) {
+        std::cerr << "Error reading from database:" << e.what();
+        // TODO: This matches init behavior but might not be fitting here.
+        std::abort();
+    };
+
     auto [status, error] = node::LoadChainstate(chainman, cache_sizes, options);
     if (status != node::ChainstateLoadStatus::SUCCESS) {
         std::cerr << "Failed to load Chain state from your datadir." << std::endl;

@@ -1570,10 +1570,12 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
         options.check_blocks = args.GetIntArg("-checkblocks", DEFAULT_CHECKBLOCKS);
         options.check_level = args.GetIntArg("-checklevel", DEFAULT_CHECKLEVEL);
         options.require_full_verification = args.IsArgSet("-checkblocks") || args.IsArgSet("-checklevel");
-        options.coins_error_cb = [] {
+        options.coins_error_cb =  [](const std::runtime_error& e) {
             uiInterface.ThreadSafeMessageBox(
                 _("Error reading from database, shutting down."),
                 "", CClientUIInterface::MSG_ERROR);
+            LogInstance().LogError("Error reading from database: %s\n", e.what());
+            std::abort();
         };
 
         uiInterface.InitMessage(_("Loading block index…").translated);

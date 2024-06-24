@@ -37,7 +37,7 @@ struct ChainstateLoadOptions {
     bool require_full_verification{true};
     int64_t check_blocks{DEFAULT_CHECKBLOCKS};
     int64_t check_level{DEFAULT_CHECKLEVEL};
-    std::function<void()> coins_error_cb;
+    std::function<void(const std::runtime_error&)> coins_error_cb;
 };
 
 //! Chainstate load status. Simple applications can just check for the success
