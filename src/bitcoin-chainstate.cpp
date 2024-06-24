@@ -42,6 +42,8 @@
 
 int main(int argc, char* argv[])
 {
+    BCLog::Logger logger;
+
     // SETUP: Argument parsing and handling
     if (argc != 2) {
         std::cerr
