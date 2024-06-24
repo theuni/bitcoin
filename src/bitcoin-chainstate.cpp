@@ -122,6 +122,7 @@ int main(int argc, char* argv[])
         .chainparams = chainman_opts.chainparams,
         .blocks_dir = abs_datadir / "blocks",
         .notifications = chainman_opts.notifications,
+        .logger = logger
     };
     util::SignalInterrupt interrupt;
     ChainstateManager chainman{interrupt, chainman_opts, blockman_opts};

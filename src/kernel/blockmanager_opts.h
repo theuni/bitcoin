@@ -10,6 +10,11 @@
 
 #include <cstdint>
 
+namespace BCLog
+{
+    class Logger;
+}
+
 class CChainParams;
 
 namespace kernel {
@@ -24,6 +29,7 @@ struct BlockManagerOpts {
     bool fast_prune{false};
     const fs::path blocks_dir;
     Notifications& notifications;
+    BCLog::Logger& logger;
 };
 
 } // namespace kernel

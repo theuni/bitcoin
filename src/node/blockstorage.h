@@ -58,7 +58,7 @@ public:
     void ReadReindexing(bool& fReindexing);
     bool WriteFlag(const std::string& name, bool fValue);
     bool ReadFlag(const std::string& name, bool& fValue);
-    bool LoadBlockIndexGuts(const Consensus::Params& consensusParams, std::function<CBlockIndex*(const uint256&)> insertBlockIndex, const util::SignalInterrupt& interrupt)
+    bool LoadBlockIndexGuts(const Consensus::Params& consensusParams, std::function<CBlockIndex*(const uint256&)> insertBlockIndex, const util::SignalInterrupt& interrupt, BCLog::Logger& logger)
         EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
 };
 } // namespace kernel
@@ -407,7 +407,7 @@ public:
     void CleanupBlockRevFiles() const;
 };
 
-void ImportBlocks(ChainstateManager& chainman, std::vector<fs::path> vImportFiles);
+void ImportBlocks(ChainstateManager& chainman, std::vector<fs::path> vImportFiles, BCLog::Logger& logger);
 } // namespace node
 
 #endif // BITCOIN_NODE_BLOCKSTORAGE_H
