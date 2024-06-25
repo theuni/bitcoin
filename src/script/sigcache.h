@@ -13,6 +13,11 @@
 #include <optional>
 #include <vector>
 
+namespace BCLog
+{
+    class Logger;
+}
+
 // DoS prevention: limit cache size to 32MiB (over 1000000 entries on 64-bit
 // systems). Due to how we count cache size, actual memory usage is slightly
 // more (~32.25 MiB)
@@ -32,6 +37,6 @@ public:
     bool VerifySchnorrSignature(Span<const unsigned char> sig, const XOnlyPubKey& pubkey, const uint256& sighash) const override;
 };
 
-[[nodiscard]] bool InitSignatureCache(size_t max_size_bytes);
+[[nodiscard]] bool InitSignatureCache(size_t max_size_bytes, BCLog::Logger& logger);
 
 #endif // BITCOIN_SCRIPT_SIGCACHE_H
