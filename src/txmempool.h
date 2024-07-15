@@ -101,6 +101,8 @@ public:
         double f2 = a_size * b_mod_fee;
 
         if (f1 == f2) {
+            if (a.GetTime() == b.GetTime())
+                return b.GetTx().GetHash() < a.GetTx().GetHash();
             return a.GetTime() >= b.GetTime();
         }
         return f1 < f2;
@@ -150,6 +152,8 @@ class CompareTxMemPoolEntryByEntryTime
 public:
     bool operator()(const CTxMemPoolEntry& a, const CTxMemPoolEntry& b) const
     {
+        if(a.GetTime() == b.GetTime())
+            return b.GetTx().GetHash() < a.GetTx().GetHash();
         return a.GetTime() < b.GetTime();
     }
 };
