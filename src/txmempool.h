@@ -17,6 +17,7 @@
 #include <policy/feerate.h>
 #include <policy/packages.h>
 #include <primitives/transaction.h>
+#include <rbtree.h>
 #include <sync.h>
 #include <util/epochguard.h>
 #include <util/hasher.h>
@@ -302,6 +303,125 @@ struct TxMempoolInfo
  * prevent these calculations from being too CPU intensive.
  *
  */
+
+class MempoolContainer
+{
+public:
+    using tree_type = rbtree<CTxMemPoolEntry, std::allocator<CTxMemPoolEntry>, CompareTxMemPoolEntryByDescendantScore, CompareTxMemPoolEntryByEntryTime, CompareTxMemPoolEntryByAncestorFee>;
+    using entry_type = CTxMemPoolEntry;
+    using const_iterator = tree_type::const_iterator;
+    using iterator = tree_type::iterator;
+
+    using txid_map_type = std::unordered_map<uint256, iterator, SaltedTxidHasher>;
+    using wtxid_map_type = std::unordered_map<uint256, iterator, SaltedTxidHasher>;
+
+private:
+    tree_type m_entries;
+    txid_map_type m_txid_map;
+    wtxid_map_type m_wtxid_map;
+public:
+    template <typename Tag>
+    auto get_begin_iterator() const
+    {
+        if constexpr (std::is_same_v<Tag, entry_time>) {
+            return m_entries.sort_begin<1>();
+        } else if constexpr (std::is_same_v<Tag, descendant_score>) {
+            return m_entries.sort_begin<0>();
+        } else if constexpr (std::is_same_v<Tag, ancestor_score>) {
+            return m_entries.sort_begin<2>();
+        }
+    }
+
+    template <typename Tag>
+    auto get_end_iterator() const
+    {
+        if constexpr (std::is_same_v<Tag, entry_time>) {
+            return m_entries.sort_end<1>();
+        } else if constexpr (std::is_same_v<Tag, descendant_score>) {
+            return m_entries.sort_end<0>();
+        } else if constexpr (std::is_same_v<Tag, ancestor_score>) {
+            return m_entries.sort_end<2>();
+        }
+    }
+
+    size_t size() const
+    {
+        return m_entries.size();
+    }
+
+    bool exists(const GenTxid& gtxid) const
+    {
+        if (gtxid.IsWtxid()) {
+            return m_wtxid_map.contains(gtxid.GetHash());
+        }
+        return m_txid_map.contains(gtxid.GetHash());
+    }
+
+    template <typename... Args>
+    std::pair<iterator, bool> emplace(Args&&... args)
+    {
+        auto ret = m_entries.emplace(std::forward<Args>(args)...);
+        auto new_it = ret.first;
+        m_txid_map.emplace(new_it->GetTx().GetHash(), new_it);
+        m_wtxid_map.emplace(new_it->GetTx().GetWitnessHash(), new_it);
+        return ret;
+    }
+    iterator erase(const_iterator it)
+    {
+        m_txid_map.erase(it->GetTx().GetHash());
+        m_wtxid_map.erase(it->GetTx().GetWitnessHash());
+        return m_entries.erase(it);
+    }
+    iterator find(const uint256& hash) const
+    {
+        auto it = m_txid_map.find(hash);
+        if (it == m_txid_map.end()) return m_entries.end();
+        return it->second;
+    }
+
+    template <typename Callable>
+    void modify(const_iterator it, Callable&& func)
+    {
+        m_entries.modify(it, std::forward<Callable>(func));
+    }
+
+    iterator iterator_to(const entry_type& entry) const
+    {
+        return m_entries.iterator_to(entry);
+    }
+
+    template <int I, int J>
+    iterator project(tree_type::sort_iterator<J>(it)) const
+    {
+        static_assert(I == 0);
+        return it;
+    }
+
+    size_t count(const uint256& hash) const
+    {
+        return m_txid_map.count(hash);
+    }
+    iterator begin() const
+    {
+        return m_entries.begin();
+    }
+    iterator end() const
+    {
+        return m_entries.end();
+    }
+    bool empty() const
+    {
+        return m_entries.size() == 0;
+    }
+
+    const_iterator get_iter_from_wtxid(const uint256& wtxid) const
+    {
+        auto it = m_wtxid_map.find(wtxid);
+        if(it == m_wtxid_map.end()) return m_entries.end();
+        return it->second;
+    }
+};
+
 class CTxMemPool
 {
 protected:
@@ -330,7 +450,7 @@ protected:
 public:
 
     static const int ROLLING_FEE_HALFLIFE = 60 * 60 * 12; // public only for testing
-
+/*
     typedef boost::multi_index_container<
         CTxMemPoolEntry,
         boost::multi_index::indexed_by<
@@ -362,7 +482,8 @@ public:
             >
         >
     > indexed_transaction_set;
-
+*/
+    using indexed_transaction_set = MempoolContainer;
     /**
      * This mutex needs to be locked when accessing `mapTx` or other members
      * that are guarded by it.
@@ -393,7 +514,7 @@ public:
     mutable RecursiveMutex cs;
     indexed_transaction_set mapTx GUARDED_BY(cs);
 
-    using txiter = indexed_transaction_set::nth_index<0>::type::const_iterator;
+    using txiter = indexed_transaction_set::const_iterator;
     std::vector<CTransactionRef> txns_randomized GUARDED_BY(cs); //!< All transactions in mapTx, in random order
 
     typedef std::set<txiter, CompareIteratorByHash> setEntries;
@@ -669,7 +790,7 @@ public:
     {
         LOCK(cs);
         if (gtxid.IsWtxid()) {
-            return (mapTx.get<index_by_wtxid>().count(gtxid.GetHash()) != 0);
+            return mapTx.get_iter_from_wtxid(gtxid.GetHash()) != mapTx.end();
         }
         return (mapTx.count(gtxid.GetHash()) != 0);
     }
@@ -680,7 +801,7 @@ public:
     txiter get_iter_from_wtxid(const uint256& wtxid) const EXCLUSIVE_LOCKS_REQUIRED(cs)
     {
         AssertLockHeld(cs);
-        return mapTx.project<0>(mapTx.get<index_by_wtxid>().find(wtxid));
+        return mapTx.get_iter_from_wtxid(wtxid);
     }
     TxMempoolInfo info(const GenTxid& gtxid) const;
 
