@@ -17,6 +17,7 @@
 #include <cstdint>
 #include <cstring>
 #include <limits>
+#include <memory_resource>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
@@ -405,7 +406,7 @@ private:
  * Tests in October 2015 showed use of this reduced dbcache memory usage by 23%
  *  and made an initial sync 13% faster.
  */
-typedef prevector<28, unsigned char> CScriptBase;
+typedef prevector<28, unsigned char, uint32_t, int32_t, std::pmr::polymorphic_allocator<unsigned char>> CScriptBase;
 
 bool GetScriptOp(CScriptBase::const_iterator& pc, CScriptBase::const_iterator end, opcodetype& opcodeRet, std::vector<unsigned char>* pvchRet);
 
