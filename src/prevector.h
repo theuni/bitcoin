@@ -186,12 +186,17 @@ private:
             }
         } else {
             if (!is_direct()) {
-                /* FIXME: Because malloc/realloc here won't call new_handler if allocation fails, assert
+                /* FIXME: Because malloc here won't call new_handler if allocation fails, assert
                     success. These should instead use an allocator or new/delete so that handlers
                     are called as necessary, but performance would be slightly degraded by doing so. */
-                _union.indirect_contents.indirect = static_cast<char*>(realloc(_union.indirect_contents.indirect, ((size_t)sizeof(T)) * new_capacity));
-                assert(_union.indirect_contents.indirect);
-                _union.indirect_contents.capacity = new_capacity;
+                if (_union.indirect_contents.capacity != new_capacity) {
+                    char* new_indirect = static_cast<char*>(malloc(((size_t)sizeof(T)) * new_capacity));
+                    assert(new_indirect);
+                    memcpy(new_indirect, _union.indirect_contents.indirect, std::min(size(), new_capacity) * sizeof(T));
+                    free(_union.indirect_contents.indirect);
+                    _union.indirect_contents.indirect = new_indirect;
+                    _union.indirect_contents.capacity = new_capacity;
+                }
             } else {
                 char* new_indirect = static_cast<char*>(malloc(((size_t)sizeof(T)) * new_capacity));
                 assert(new_indirect);
