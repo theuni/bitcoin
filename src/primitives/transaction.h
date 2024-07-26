@@ -23,6 +23,7 @@
 #include <tuple>
 #include <utility>
 #include <vector>
+#include <memory_resource>
 
 /** An outpoint - a combination of a transaction hash and an index n into its vout */
 class COutPoint
@@ -66,6 +67,7 @@ public:
 class CTxIn
 {
 public:
+    using allocator_type = std::pmr::polymorphic_allocator<>;
     COutPoint prevout;
     CScript scriptSig;
     uint32_t nSequence;
@@ -118,13 +120,21 @@ public:
      * 9 bits. */
     static const int SEQUENCE_LOCKTIME_GRANULARITY = 9;
 
-    CTxIn()
+    CTxIn(const CTxIn& rhs, const allocator_type& alloc = {}) : prevout{rhs.prevout}, scriptSig{rhs.scriptSig, alloc}, nSequence{rhs.nSequence}, scriptWitness{rhs.scriptWitness} {}
+    CTxIn(CTxIn&& rhs, const allocator_type& alloc = {}) : prevout{std::move(rhs.prevout)}, scriptSig{std::move(rhs.scriptSig), alloc}, nSequence{rhs.nSequence}, scriptWitness{std::move(rhs.scriptWitness)} {}
+
+    CTxIn& operator=(const CTxIn& rhs) = default;
+
+    CTxIn(const allocator_type& alloc = {}) : scriptSig{alloc}
     {
         nSequence = SEQUENCE_FINAL;
     }
 
-    explicit CTxIn(COutPoint prevoutIn, CScript scriptSigIn=CScript(), uint32_t nSequenceIn=SEQUENCE_FINAL);
-    CTxIn(Txid hashPrevTx, uint32_t nOut, CScript scriptSigIn=CScript(), uint32_t nSequenceIn=SEQUENCE_FINAL);
+    explicit CTxIn(COutPoint prevoutIn, const allocator_type& alloc);
+    explicit CTxIn(COutPoint prevoutIn, CScript scriptSigIn=CScript(), uint32_t nSequenceIn=SEQUENCE_FINAL, const allocator_type& alloc = {});
+    explicit CTxIn(COutPoint prevoutIn, CScript scriptSigIn=CScript(), const allocator_type& alloc = {});
+    CTxIn(Txid hashPrevTx, uint32_t nOut, CScript scriptSigIn=CScript(), uint32_t nSequenceIn=SEQUENCE_FINAL, const allocator_type& alloc = {});
+    CTxIn(Txid hashPrevTx, uint32_t nOut, const allocator_type& alloc);
 
     SERIALIZE_METHODS(CTxIn, obj) { READWRITE(obj.prevout, obj.scriptSig, obj.nSequence); }
 
@@ -149,15 +159,21 @@ public:
 class CTxOut
 {
 public:
+    using allocator_type = std::pmr::polymorphic_allocator<>;
     CAmount nValue;
     CScript scriptPubKey;
 
-    CTxOut()
+    CTxOut(const allocator_type& alloc = {}) : scriptPubKey{alloc}
     {
         SetNull();
     }
 
-    CTxOut(const CAmount& nValueIn, CScript scriptPubKeyIn);
+    CTxOut(const CTxOut& rhs, const allocator_type& alloc = {}) : nValue{rhs.nValue}, scriptPubKey{rhs.scriptPubKey, alloc} {}
+    CTxOut(CTxOut&& rhs, const allocator_type& alloc = {}) noexcept : nValue{rhs.nValue}, scriptPubKey{std::move(rhs.scriptPubKey), alloc} {}
+    CTxOut& operator=(const CTxOut& rhs) = default;
+    CTxOut& operator=(CTxOut&& rhs) = default;
+
+    CTxOut(const CAmount& nValueIn, CScript scriptPubKeyIn, const allocator_type& alloc = {});
 
     SERIALIZE_METHODS(CTxOut, obj) { READWRITE(obj.nValue, obj.scriptPubKey); }
 
@@ -288,15 +304,15 @@ inline CAmount CalculateOutputValue(const TxType& tx)
     return std::accumulate(tx.vout.cbegin(), tx.vout.cend(), CAmount{0}, [](CAmount sum, const auto& txout) { return sum + txout.nValue; });
 }
 
-
 /** The basic transaction that is broadcasted on the network and contained in
  * blocks.  A transaction can contain multiple inputs and outputs.
  */
 class CTransaction
 {
 public:
-    using txin_vec_type = std::vector<CTxIn>;
-    using txout_vec_type = std::vector<CTxOut>;
+    using allocator_type = std::pmr::polymorphic_allocator<>;
+    using txin_vec_type = std::pmr::vector<CTxIn>;
+    using txout_vec_type = std::pmr::vector<CTxOut>;
     // Default transaction version.
     static const uint32_t CURRENT_VERSION{2};
 
@@ -324,7 +340,7 @@ private:
 public:
     /** Convert a CMutableTransaction into a CTransaction. */
     explicit CTransaction(const CMutableTransaction& tx);
-    explicit CTransaction(CMutableTransaction&& tx);
+    explicit CTransaction(CMutableTransaction&& tx, const allocator_type& alloc = {});
 
     template <typename Stream>
     inline void Serialize(Stream& s) const {
@@ -334,9 +350,9 @@ public:
     /** This deserializing constructor is provided instead of an Unserialize method.
      *  Unserialize is not possible, since it would require overwriting const fields. */
     template <typename Stream>
-    CTransaction(deserialize_type, const TransactionSerParams& params, Stream& s) : CTransaction(CMutableTransaction(deserialize, params, s)) {}
+    CTransaction(deserialize_type, const TransactionSerParams& params, Stream& s, const allocator_type& alloc = {}) : CTransaction(CMutableTransaction(deserialize, params, s, alloc), alloc) {}
     template <typename Stream>
-    CTransaction(deserialize_type, Stream& s) : CTransaction(CMutableTransaction(deserialize, s)) {}
+    CTransaction(deserialize_type, Stream& s, const allocator_type& alloc = {}) : CTransaction(CMutableTransaction(deserialize, s, alloc), alloc) {}
 
     bool IsNull() const {
         return vin.empty() && vout.empty();
@@ -378,6 +394,7 @@ public:
 /** A mutable version of CTransaction. */
 struct CMutableTransaction
 {
+    using allocator_type = std::pmr::polymorphic_allocator<>;
     CTransaction::txin_vec_type vin;
     CTransaction::txout_vec_type vout;
 
@@ -398,12 +415,12 @@ struct CMutableTransaction
     }
 
     template <typename Stream>
-    CMutableTransaction(deserialize_type, const TransactionSerParams& params, Stream& s) {
+    CMutableTransaction(deserialize_type, const TransactionSerParams& params, Stream& s, const allocator_type& alloc = {}) : vin{alloc}, vout{alloc} {
         UnserializeTransaction(*this, s, params);
     }
 
     template <typename Stream>
-    CMutableTransaction(deserialize_type, Stream& s) {
+    CMutableTransaction(deserialize_type, Stream& s, const allocator_type& alloc = {}) : vin{alloc}, vout{alloc}{
         Unserialize(s);
     }
 
