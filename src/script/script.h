@@ -431,8 +431,10 @@ protected:
     }
 public:
     CScript() = default;
-    CScript(const_iterator pbegin, const_iterator pend) : CScriptBase(pbegin, pend) { }
-    CScript(std::vector<unsigned char>::const_iterator pbegin, std::vector<unsigned char>::const_iterator pend) : CScriptBase(pbegin, pend) { }
+
+    template <typename Iter>
+    CScript(Iter pbegin, Iter pend) : CScriptBase(pbegin, pend) { }
+
     CScript(const unsigned char* pbegin, const unsigned char* pend) : CScriptBase(pbegin, pend) { }
 
     SERIALIZE_METHODS(CScript, obj) { READWRITE(AsBase<CScriptBase>(obj)); }
