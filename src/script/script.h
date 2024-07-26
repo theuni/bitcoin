@@ -430,12 +430,18 @@ protected:
         return *this;
     }
 public:
-    CScript() = default;
+    CScript(const CScriptBase::allocator_type& alloc = {}) : CScriptBase(alloc) { }
 
     template <typename Iter>
-    CScript(Iter pbegin, Iter pend) : CScriptBase(pbegin, pend) { }
+    CScript(Iter pbegin, Iter pend, const CScriptBase::allocator_type& alloc = {}) : CScriptBase(pbegin, pend, alloc) { }
 
-    CScript(const unsigned char* pbegin, const unsigned char* pend) : CScriptBase(pbegin, pend) { }
+    CScript(const unsigned char* pbegin, const unsigned char* pend, const CScriptBase::allocator_type& alloc = {}) : CScriptBase(pbegin, pend, alloc) { }
+
+    CScript(const CScript& rhs, const CScriptBase::allocator_type& alloc = {}) : CScriptBase(rhs, alloc) {}
+    CScript(CScript&& rhs, const CScriptBase::allocator_type& alloc = {}) noexcept : CScriptBase(std::move(rhs), alloc) {}
+
+    CScript& operator=(const CScript& rhs) = default;
+    CScript& operator=(CScript&& rhs) = default;
 
     SERIALIZE_METHODS(CScript, obj) { READWRITE(AsBase<CScriptBase>(obj)); }
 
