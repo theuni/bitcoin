@@ -11,6 +11,8 @@
 #include <uint256.h>
 #include <util/time.h>
 
+#include <memory_resource>
+
 /** Nodes collect new transactions into a block, hash them into a hash tree,
  * and scan through nonce values to make the block's hash satisfy proof-of-work
  * requirements.  When they solve the proof-of-work, they broadcast the block
@@ -68,7 +70,7 @@ public:
 class CBlock : public CBlockHeader
 {
 public:
-    using block_txs_type = std::vector<CTransactionRef>;
+    using block_txs_type = std::pmr::vector<CTransactionRef>;
     // network and disk
     block_txs_type vtx;
 
@@ -77,7 +79,7 @@ public:
     mutable bool m_checked_witness_commitment{false}; // CheckWitnessCommitment()
     mutable bool m_checked_merkle_root{false};        // CheckMerkleRoot()
 
-    CBlock()
+    CBlock(const std::pmr::polymorphic_allocator<>& alloc = {}) : vtx{alloc}
     {
         SetNull();
     }
@@ -88,9 +90,30 @@ public:
         *(static_cast<CBlockHeader*>(this)) = header;
     }
 
-    SERIALIZE_METHODS(CBlock, obj)
+    template <typename Stream>
+    inline void Serialize(Stream& s) const {
+        s << AsBase<CBlockHeader>(*this);
+        s << vtx;
+    }
+
+    template <typename Stream>
+    void Unserialize(Stream& s)
     {
-        READWRITE(AsBase<CBlockHeader>(obj), obj.vtx);
+        s >> AsBase<CBlockHeader>(*this);
+        vtx.clear();
+        size_t size = ReadCompactSize(s);
+        size_t allocated = 0;
+        while (allocated < size) {
+            // For DoS prevention, do not blindly allocate as much as the stream claims to contain.
+            // Instead, allocate in 5MiB batches, so that an attacker actually needs to provide
+            // X MiB of data to make us allocate X+5 Mib.
+            static_assert(sizeof(block_txs_type::value_type) <= MAX_VECTOR_ALLOCATE, "Vector element size too large");
+            allocated = std::min(size, allocated + MAX_VECTOR_ALLOCATE / sizeof(block_txs_type::value_type));
+            vtx.reserve(allocated);
+            while (vtx.size() < allocated) {
+                vtx.emplace_back(std::allocate_shared<const CTransaction>(vtx.get_allocator(), deserialize, s));
+            }
+        }
     }
 
     void SetNull()
