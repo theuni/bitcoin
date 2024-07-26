@@ -410,7 +410,7 @@ CBlock TestChain100Setup::CreateAndProcessBlock(
     return block;
 }
 
-std::pair<CMutableTransaction, CAmount> TestChain100Setup::CreateValidTransaction(const std::vector<CTransactionRef>& input_transactions,
+std::pair<CMutableTransaction, CAmount> TestChain100Setup::CreateValidTransaction(const CBlock::block_txs_type& input_transactions,
                                                                                   const std::vector<COutPoint>& inputs,
                                                                                   int input_height,
                                                                                   const std::vector<CKey>& input_signing_keys,
@@ -475,7 +475,7 @@ std::pair<CMutableTransaction, CAmount> TestChain100Setup::CreateValidTransactio
     return {mempool_txn, current_fee};
 }
 
-CMutableTransaction TestChain100Setup::CreateValidMempoolTransaction(const std::vector<CTransactionRef>& input_transactions,
+CMutableTransaction TestChain100Setup::CreateValidMempoolTransaction(const CBlock::block_txs_type& input_transactions,
                                                                      const std::vector<COutPoint>& inputs,
                                                                      int input_height,
                                                                      const std::vector<CKey>& input_signing_keys,
@@ -510,9 +510,9 @@ CMutableTransaction TestChain100Setup::CreateValidMempoolTransaction(CTransactio
                                          /*submit=*/submit);
 }
 
-std::vector<CTransactionRef> TestChain100Setup::PopulateMempool(FastRandomContext& det_rand, size_t num_transactions, bool submit)
+CBlock::block_txs_type TestChain100Setup::PopulateMempool(FastRandomContext& det_rand, size_t num_transactions, bool submit)
 {
-    std::vector<CTransactionRef> mempool_transactions;
+    CBlock::block_txs_type mempool_transactions;
     std::deque<std::pair<COutPoint, CAmount>> unspent_prevouts;
     std::transform(m_coinbase_txns.begin(), m_coinbase_txns.end(), std::back_inserter(unspent_prevouts),
         [](const auto& tx){ return std::make_pair(COutPoint(tx->GetHash(), 0), tx->vout[0].nValue); });

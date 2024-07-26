@@ -10,6 +10,7 @@
 #include <key.h>
 #include <node/caches.h>
 #include <node/context.h> // IWYU pragma: export
+#include <primitives/block.h>
 #include <primitives/transaction.h>
 #include <pubkey.h>
 #include <stdexcept>
@@ -149,7 +150,7 @@ struct TestChain100Setup : public TestingSetup {
     * @param fee_output           The index of the output to take the fee from.
     * @return The transaction and the fee it pays
     */
-    std::pair<CMutableTransaction, CAmount> CreateValidTransaction(const std::vector<CTransactionRef>& input_transactions,
+    std::pair<CMutableTransaction, CAmount> CreateValidTransaction(const CBlock::block_txs_type& input_transactions,
                                                                    const std::vector<COutPoint>& inputs,
                                                                    int input_height,
                                                                    const std::vector<CKey>& input_signing_keys,
@@ -166,7 +167,7 @@ struct TestChain100Setup : public TestingSetup {
      * @param outputs              Transaction vout.
      * @param submit               Whether or not to submit to mempool
      */
-    CMutableTransaction CreateValidMempoolTransaction(const std::vector<CTransactionRef>& input_transactions,
+    CMutableTransaction CreateValidMempoolTransaction(const CBlock::block_txs_type& input_transactions,
                                                       const std::vector<COutPoint>& inputs,
                                                       int input_height,
                                                       const std::vector<CKey>& input_signing_keys,
@@ -203,7 +204,7 @@ struct TestChain100Setup : public TestingSetup {
      *                          When false, return them but don't submit them.
      * @returns A vector of transactions that can be submitted to the mempool.
      */
-    std::vector<CTransactionRef> PopulateMempool(FastRandomContext& det_rand, size_t num_transactions, bool submit);
+    CBlock::block_txs_type PopulateMempool(FastRandomContext& det_rand, size_t num_transactions, bool submit);
 
     /** Mock the mempool minimum feerate by adding a transaction and calling TrimToSize(0),
      * simulating the mempool "reaching capacity" and evicting by descendant feerate.  Note that
@@ -216,7 +217,7 @@ struct TestChain100Setup : public TestingSetup {
      */
     void MockMempoolMinFee(const CFeeRate& target_feerate);
 
-    std::vector<CTransactionRef> m_coinbase_txns; // For convenience, coinbase transactions
+    CBlock::block_txs_type m_coinbase_txns; // For convenience, coinbase transactions
     CKey coinbaseKey; // private/public key needed to spend coinbase transactions
 };
 

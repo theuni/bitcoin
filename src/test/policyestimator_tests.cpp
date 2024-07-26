@@ -50,7 +50,7 @@ BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
     CFeeRate baseRate(basefee, GetVirtualTransactionSize(CTransaction(tx)));
 
     // Create a fake block
-    std::vector<CTransactionRef> block;
+    CBlock::block_txs_type block;
     int blocknum = 0;
 
     // Loop through 200 blocks

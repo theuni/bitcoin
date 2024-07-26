@@ -46,7 +46,7 @@ size_t DisconnectedBlockTransactions::DynamicMemoryUsage() const
     return cachedInnerUsage + memusage::DynamicUsage(iters_by_txid) + memusage::DynamicUsage(queuedTx);
 }
 
-[[nodiscard]] std::vector<CTransactionRef> DisconnectedBlockTransactions::AddTransactionsFromBlock(const std::vector<CTransactionRef>& vtx)
+[[nodiscard]] std::vector<CTransactionRef> DisconnectedBlockTransactions::AddTransactionsFromBlock(const CBlock::block_txs_type& vtx)
 {
     iters_by_txid.reserve(iters_by_txid.size() + vtx.size());
     for (auto block_it = vtx.rbegin(); block_it != vtx.rend(); ++block_it) {
@@ -58,7 +58,7 @@ size_t DisconnectedBlockTransactions::DynamicMemoryUsage() const
     return LimitMemoryUsage();
 }
 
-void DisconnectedBlockTransactions::removeForBlock(const std::vector<CTransactionRef>& vtx)
+void DisconnectedBlockTransactions::removeForBlock(const CBlock::block_txs_type& vtx)
 {
     // Short-circuit in the common case of a block being added to the tip
     if (queuedTx.empty()) {

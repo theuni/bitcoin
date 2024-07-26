@@ -68,8 +68,9 @@ public:
 class CBlock : public CBlockHeader
 {
 public:
+    using block_txs_type = std::vector<CTransactionRef>;
     // network and disk
-    std::vector<CTransactionRef> vtx;
+    block_txs_type vtx;
 
     // Memory-only flags for caching expensive checks
     mutable bool fChecked;                            // CheckBlock()

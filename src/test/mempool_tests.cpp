@@ -399,7 +399,7 @@ BOOST_AUTO_TEST_CASE(MempoolAncestorIndexingTest)
     CheckSort<ancestor_score>(pool, sortedOrder);
 
     /* after tx6 is mined, tx7 should move up in the sort */
-    std::vector<CTransactionRef> vtx;
+    CBlock::block_txs_type vtx;
     vtx.push_back(MakeTransactionRef(tx6));
     pool.removeForBlock(vtx, 1);
 
@@ -556,7 +556,7 @@ BOOST_AUTO_TEST_CASE(MempoolSizeLimitTest)
     pool.addUnchecked(entry.Fee(1000LL).FromTx(tx5));
     pool.addUnchecked(entry.Fee(9000LL).FromTx(tx7));
 
-    std::vector<CTransactionRef> vtx;
+    CBlock::block_txs_type vtx;
     SetMockTime(42);
     SetMockTime(42 + CTxMemPool::ROLLING_FEE_HALFLIFE);
     BOOST_CHECK_EQUAL(pool.GetMinFee(1).GetFeePerK(), maxFeeRateRemoved.GetFeePerK() + 1000);

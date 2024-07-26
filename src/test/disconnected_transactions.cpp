@@ -15,7 +15,7 @@ BOOST_AUTO_TEST_CASE(disconnectpool_memory_limits)
     // Use the coinbase transactions from TestChain100Setup. It doesn't matter whether these
     // transactions would realistically be in a block together, they just need distinct txids and
     // uniform size for this test to work.
-    std::vector<CTransactionRef> block_vtx(m_coinbase_txns);
+    CBlock::block_txs_type block_vtx(m_coinbase_txns);
     BOOST_CHECK_EQUAL(block_vtx.size(), 100);
 
     // Roughly estimate sizes to sanity check that DisconnectedBlockTransactions::DynamicMemoryUsage
@@ -47,7 +47,7 @@ BOOST_AUTO_TEST_CASE(disconnectpool_memory_limits)
         DisconnectedBlockTransactions disconnectpool{MAP_1 + ENTRY_USAGE_ESTIMATE};
         // Add just 2 (and not all 100) transactions to keep the unordered map's hashtable overhead
         // to a minimum and avoid all (instead of all but 1) transactions getting evicted.
-        std::vector<CTransactionRef> two_txns({block_vtx.at(0), block_vtx.at(1)});
+        CBlock::block_txs_type two_txns({block_vtx.at(0), block_vtx.at(1)});
         auto evicted_txns{disconnectpool.AddTransactionsFromBlock(two_txns)};
         BOOST_CHECK(disconnectpool.DynamicMemoryUsage() <= MAP_1 + ENTRY_USAGE_ESTIMATE);
 

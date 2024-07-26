@@ -6,6 +6,7 @@
 #define BITCOIN_KERNEL_DISCONNECTED_TRANSACTIONS_H
 
 #include <primitives/transaction.h>
+#include <primitives/block.h>
 #include <util/hasher.h>
 
 #include <list>
@@ -61,10 +62,10 @@ public:
      * corresponding entry in iters_by_txid.
      * @returns vector of transactions that were evicted for size-limiting.
      */
-    [[nodiscard]] std::vector<CTransactionRef> AddTransactionsFromBlock(const std::vector<CTransactionRef>& vtx);
+    [[nodiscard]] std::vector<CTransactionRef> AddTransactionsFromBlock(const CBlock::block_txs_type& vtx);
 
     /** Remove any entries that are in this block. */
-    void removeForBlock(const std::vector<CTransactionRef>& vtx);
+    void removeForBlock(const CBlock::block_txs_type& vtx);
 
     size_t size() const { return queuedTx.size(); }
 
