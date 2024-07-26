@@ -180,25 +180,22 @@ private:
                 T* indirect = indirect_ptr(0);
                 T* src = indirect;
                 T* dst = direct_ptr(0);
+                size_type capacity = _union.indirect_contents.capacity;
                 memcpy(dst, src, size() * sizeof(T));
-                free(indirect);
+                std::allocator<T>().deallocate(reinterpret_cast<T*>(indirect), capacity);
                 _size -= N + 1;
             }
         } else {
             if (!is_direct()) {
-                /* FIXME: Because malloc here won't call new_handler if allocation fails, assert
-                    success. These should instead use an allocator or new/delete so that handlers
-                    are called as necessary, but performance would be slightly degraded by doing so. */
                 if (_union.indirect_contents.capacity != new_capacity) {
-                    char* new_indirect = static_cast<char*>(malloc(((size_t)sizeof(T)) * new_capacity));
-                    assert(new_indirect);
+                    char* new_indirect = reinterpret_cast<char*>(std::allocator<T>().allocate(new_capacity));
                     memcpy(new_indirect, _union.indirect_contents.indirect, std::min(size(), new_capacity) * sizeof(T));
-                    free(_union.indirect_contents.indirect);
+                    std::allocator<T>().deallocate(reinterpret_cast<T*>(_union.indirect_contents.indirect), _union.indirect_contents.capacity);
                     _union.indirect_contents.indirect = new_indirect;
                     _union.indirect_contents.capacity = new_capacity;
                 }
             } else {
-                char* new_indirect = static_cast<char*>(malloc(((size_t)sizeof(T)) * new_capacity));
+                char* new_indirect = reinterpret_cast<char*>(std::allocator<T>().allocate(new_capacity));
                 assert(new_indirect);
                 T* src = direct_ptr(0);
                 T* dst = reinterpret_cast<T*>(new_indirect);
@@ -290,7 +287,7 @@ public:
 
     prevector& operator=(prevector<N, T, Size, Diff>&& other) noexcept {
         if (!is_direct()) {
-            free(_union.indirect_contents.indirect);
+            std::allocator<T>().deallocate(reinterpret_cast<T*>(_union.indirect_contents.indirect), _union.indirect_contents.capacity);
         }
         _union = std::move(other._union);
         _size = other._size;
@@ -477,7 +474,7 @@ public:
 
     ~prevector() {
         if (!is_direct()) {
-            free(_union.indirect_contents.indirect);
+            std::allocator<T>().deallocate(reinterpret_cast<T*>(_union.indirect_contents.indirect), _union.indirect_contents.capacity);
             _union.indirect_contents.indirect = nullptr;
         }
     }
