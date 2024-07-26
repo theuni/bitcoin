@@ -700,8 +700,8 @@ template<typename Stream, typename C> void Unserialize(Stream& is, std::basic_st
 /**
  * prevector
  */
-template<typename Stream, unsigned int N, typename T> inline void Serialize(Stream& os, const prevector<N, T>& v);
-template<typename Stream, unsigned int N, typename T> inline void Unserialize(Stream& is, prevector<N, T>& v);
+template<typename Stream, unsigned int N, typename T, typename Size, typename Diff, typename Allocator> inline void Serialize(Stream& os, const prevector<N, T, Size, Diff, Allocator>& v);
+template<typename Stream, unsigned int N, typename T, typename Size, typename Diff, typename Allocator> inline void Unserialize(Stream& is, prevector<N, T, Size, Diff, Allocator>& v);
 
 /**
  * vector
@@ -804,8 +804,8 @@ void Unserialize(Stream& is, std::basic_string<C>& str)
 /**
  * prevector
  */
-template <typename Stream, unsigned int N, typename T>
-void Serialize(Stream& os, const prevector<N, T>& v)
+template <typename Stream, unsigned int N, typename T, typename Size, typename Diff, typename Allocator>
+void Serialize(Stream& os, const prevector<N, T, Size, Diff, Allocator>& v)
 {
     if constexpr (BasicByte<T>) { // Use optimized version for unformatted basic bytes
         WriteCompactSize(os, v.size());
@@ -816,8 +816,8 @@ void Serialize(Stream& os, const prevector<N, T>& v)
 }
 
 
-template <typename Stream, unsigned int N, typename T>
-void Unserialize(Stream& is, prevector<N, T>& v)
+template <typename Stream, unsigned int N, typename T, typename Size, typename Diff, typename Allocator>
+void Unserialize(Stream& is, prevector<N, T, Size, Diff, Allocator>& v)
 {
     if constexpr (BasicByte<T>) { // Use optimized version for unformatted basic bytes
         // Limit size per read so bogus size value won't cause out of memory

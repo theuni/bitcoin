@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <memory>
 #include <type_traits>
 #include <utility>
 
@@ -33,7 +34,7 @@
  *  The data type T must be movable by memmove/realloc(). Once we switch to C++,
  *  move constructors can be used instead.
  */
-template<unsigned int N, typename T, typename Size = uint32_t, typename Diff = int32_t>
+template<unsigned int N, typename T, typename Size = uint32_t, typename Diff = int32_t, typename Allocator = std::allocator<T>>
 class prevector {
     static_assert(std::is_trivially_copyable_v<T>);
 
@@ -45,6 +46,7 @@ public:
     typedef const value_type& const_reference;
     typedef value_type* pointer;
     typedef const value_type* const_pointer;
+    typedef Allocator allocator_type;
 
     class iterator {
         T* ptr{};
@@ -164,6 +166,7 @@ private:
 #pragma pack(pop)
     alignas(char*) direct_or_indirect _union = {};
     size_type _size = 0;
+    allocator_type m_alloc;
 
     static_assert(alignof(char*) % alignof(size_type) == 0 && sizeof(char*) % alignof(size_type) == 0, "size_type cannot have more restrictive alignment requirement than pointer");
     static_assert(alignof(char*) % alignof(T) == 0, "value_type T cannot have more restrictive alignment requirement than pointer");
@@ -182,20 +185,20 @@ private:
                 T* dst = direct_ptr(0);
                 size_type capacity = _union.indirect_contents.capacity;
                 memcpy(dst, src, size() * sizeof(T));
-                std::allocator<T>().deallocate(reinterpret_cast<T*>(indirect), capacity);
+                std::allocator_traits<allocator_type>::deallocate(m_alloc, indirect, capacity);
                 _size -= N + 1;
             }
         } else {
             if (!is_direct()) {
                 if (_union.indirect_contents.capacity != new_capacity) {
-                    char* new_indirect = reinterpret_cast<char*>(std::allocator<T>().allocate(new_capacity));
+                    char* new_indirect = reinterpret_cast<char*>(std::allocator_traits<allocator_type>::allocate(m_alloc, new_capacity));
                     memcpy(new_indirect, _union.indirect_contents.indirect, std::min(size(), new_capacity) * sizeof(T));
-                    std::allocator<T>().deallocate(reinterpret_cast<T*>(_union.indirect_contents.indirect), _union.indirect_contents.capacity);
+                    std::allocator_traits<allocator_type>::deallocate(m_alloc, reinterpret_cast<T*>(_union.indirect_contents.indirect), _union.indirect_contents.capacity);
                     _union.indirect_contents.indirect = new_indirect;
                     _union.indirect_contents.capacity = new_capacity;
                 }
             } else {
-                char* new_indirect = reinterpret_cast<char*>(std::allocator<T>().allocate(new_capacity));
+                char* new_indirect = reinterpret_cast<char*>(std::allocator_traits<allocator_type>::allocate(m_alloc, new_capacity));
                 assert(new_indirect);
                 T* src = direct_ptr(0);
                 T* dst = reinterpret_cast<T*>(new_indirect);
@@ -244,50 +247,94 @@ public:
         fill(item_ptr(0), first, last);
     }
 
-    prevector() = default;
+    prevector(const allocator_type& alloc = {}) : m_alloc(alloc) {}
 
-    explicit prevector(size_type n) {
+    explicit prevector(size_type n, const allocator_type& alloc = {})
+    : m_alloc{alloc}
+    {
         resize(n);
     }
 
-    explicit prevector(size_type n, const T& val) {
+    explicit prevector(size_type n, const T& val, const allocator_type& alloc = {})
+    : m_alloc{alloc}
+    {
         change_capacity(n);
         _size += n;
         fill(item_ptr(0), n, val);
     }
 
     template<typename InputIterator>
-    prevector(InputIterator first, InputIterator last) {
+    prevector(InputIterator first, InputIterator last, const allocator_type& alloc = {})
+    : m_alloc{alloc}
+    {
         size_type n = last - first;
         change_capacity(n);
         _size += n;
         fill(item_ptr(0), first, last);
     }
 
-    prevector(const prevector<N, T, Size, Diff>& other) {
+    prevector(const prevector<N, T, Size, Diff, Allocator>& other)
+    : m_alloc{std::allocator_traits<allocator_type>::select_on_container_copy_construction(other.m_alloc)}
+    {
         size_type n = other.size();
         change_capacity(n);
         _size += n;
         fill(item_ptr(0), other.begin(),  other.end());
     }
 
-    prevector(prevector<N, T, Size, Diff>&& other) noexcept
-        : _union(std::move(other._union)), _size(other._size)
+    prevector(const prevector<N, T, Size, Diff, Allocator>& other, const allocator_type& alloc)
+    : m_alloc{alloc}
+    {
+        size_type n = other.size();
+        change_capacity(n);
+        _size += n;
+        fill(item_ptr(0), other.begin(),  other.end());
+    }
+
+    prevector(prevector<N, T, Size, Diff, Allocator>&& other) noexcept
+        : _union(std::move(other._union)), _size(other._size), m_alloc(std::move(other.m_alloc))
     {
         other._size = 0;
     }
 
-    prevector& operator=(const prevector<N, T, Size, Diff>& other) {
+    prevector(prevector<N, T, Size, Diff, Allocator>&& other, const allocator_type& alloc) noexcept
+        : _union(std::move(other._union)), _size(other._size), m_alloc(alloc)
+    {
+        other._size = 0;
+    }
+
+    prevector& operator=(const prevector<N, T, Size, Diff, Allocator>& other) {
         if (&other == this) {
             return *this;
+        }
+        if constexpr (std::allocator_traits<allocator_type>::propagate_on_container_copy_assignment::value) {
+            if (m_alloc != other.m_alloc) {
+                if (!is_direct()) {
+                    std::allocator_traits<allocator_type>::deallocate(m_alloc, reinterpret_cast<T*>(_union.indirect_contents.indirect), _union.indirect_contents.capacity);
+                    _size = 0;
+                }
+                m_alloc = other.m_alloc;
+            }
         }
         assign(other.begin(), other.end());
         return *this;
     }
 
-    prevector& operator=(prevector<N, T, Size, Diff>&& other) noexcept {
-        if (!is_direct()) {
-            std::allocator<T>().deallocate(reinterpret_cast<T*>(_union.indirect_contents.indirect), _union.indirect_contents.capacity);
+    prevector& operator=(prevector<N, T, Size, Diff, Allocator>&& other) noexcept {
+        if constexpr (std::allocator_traits<allocator_type>::propagate_on_container_move_assignment::value)
+        {
+            if (!is_direct()) {
+                std::allocator_traits<allocator_type>::deallocate(m_alloc, reinterpret_cast<T*>(_union.indirect_contents.indirect), _union.indirect_contents.capacity);
+            }
+            m_alloc = std::move(other.m_alloc);
+        } else {
+            if (m_alloc != other.m_alloc) {
+                assign(other.begin(), other.end());
+                return *this;
+            }
+            if (!is_direct()) {
+                std::allocator_traits<allocator_type>::deallocate(m_alloc, reinterpret_cast<T*>(_union.indirect_contents.indirect), _union.indirect_contents.capacity);
+            }
         }
         _union = std::move(other._union);
         _size = other._size;
@@ -466,20 +513,23 @@ public:
         return *item_ptr(size() - 1);
     }
 
-    void swap(prevector<N, T, Size, Diff>& other) noexcept
+    void swap(prevector<N, T, Size, Diff, Allocator>& other) noexcept
     {
+        if constexpr (std::allocator_traits<allocator_type>::propagate_on_container_swap::value) {
+            std::swap(m_alloc, other.m_alloc);
+        }
         std::swap(_union, other._union);
         std::swap(_size, other._size);
     }
 
     ~prevector() {
         if (!is_direct()) {
-            std::allocator<T>().deallocate(reinterpret_cast<T*>(_union.indirect_contents.indirect), _union.indirect_contents.capacity);
+            std::allocator_traits<allocator_type>::deallocate(m_alloc, reinterpret_cast<T*>(_union.indirect_contents.indirect), _union.indirect_contents.capacity);
             _union.indirect_contents.indirect = nullptr;
         }
     }
 
-    bool operator==(const prevector<N, T, Size, Diff>& other) const {
+    bool operator==(const prevector<N, T, Size, Diff, Allocator>& other) const {
         if (other.size() != size()) {
             return false;
         }
@@ -496,11 +546,11 @@ public:
         return true;
     }
 
-    bool operator!=(const prevector<N, T, Size, Diff>& other) const {
+    bool operator!=(const prevector<N, T, Size, Diff, Allocator>& other) const {
         return !(*this == other);
     }
 
-    bool operator<(const prevector<N, T, Size, Diff>& other) const {
+    bool operator<(const prevector<N, T, Size, Diff, Allocator>& other) const {
         if (size() < other.size()) {
             return true;
         }
@@ -521,6 +571,11 @@ public:
             ++b2;
         }
         return false;
+    }
+
+    allocator_type get_allocator() const
+    {
+        return m_alloc;
     }
 
     size_t allocated_memory() const {

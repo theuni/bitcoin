@@ -90,8 +90,8 @@ static inline size_t DynamicUsage(const std::vector<X>& v)
     return MallocUsage(v.capacity() * sizeof(X));
 }
 
-template<unsigned int N, typename X, typename S, typename D>
-static inline size_t DynamicUsage(const prevector<N, X, S, D>& v)
+template<unsigned int N, typename X, typename S, typename D, typename A>
+static inline size_t DynamicUsage(const prevector<N, X, S, D, A>& v)
 {
     return MallocUsage(v.allocated_memory());
 }
