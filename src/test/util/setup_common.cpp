@@ -414,7 +414,7 @@ std::pair<CMutableTransaction, CAmount> TestChain100Setup::CreateValidTransactio
                                                                                   const std::vector<COutPoint>& inputs,
                                                                                   int input_height,
                                                                                   const std::vector<CKey>& input_signing_keys,
-                                                                                  const std::vector<CTxOut>& outputs,
+                                                                                  const CTransaction::txout_vec_type& outputs,
                                                                                   const std::optional<CFeeRate>& feerate,
                                                                                   const std::optional<uint32_t>& fee_output)
 {
@@ -479,7 +479,7 @@ CMutableTransaction TestChain100Setup::CreateValidMempoolTransaction(const std::
                                                                      const std::vector<COutPoint>& inputs,
                                                                      int input_height,
                                                                      const std::vector<CKey>& input_signing_keys,
-                                                                     const std::vector<CTxOut>& outputs,
+                                                                     const CTransaction::txout_vec_type& outputs,
                                                                      bool submit)
 {
     CMutableTransaction mempool_txn = CreateValidTransaction(input_transactions, inputs, input_height, input_signing_keys, outputs, std::nullopt, std::nullopt).first;

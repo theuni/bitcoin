@@ -167,7 +167,7 @@ struct PrecomputedTransactionData
     //! Whether the 3 fields above are initialized.
     bool m_bip143_segwit_ready = false;
 
-    std::vector<CTxOut> m_spent_outputs;
+    CTransaction::txout_vec_type m_spent_outputs;
     //! Whether m_spent_outputs is initialized.
     bool m_spent_outputs_ready = false;
 
@@ -181,7 +181,7 @@ struct PrecomputedTransactionData
      *                             regardless of what is in the inputs (used at signing
      *                             time, when the inputs aren't filled in yet). */
     template <class T>
-    void Init(const T& tx, std::vector<CTxOut>&& spent_outputs, bool force = false);
+    void Init(const T& tx, CTransaction::txout_vec_type&& spent_outputs, bool force = false);
 
     template <class T>
     explicit PrecomputedTransactionData(const T& tx);

@@ -30,7 +30,7 @@ FUZZ_TARGET(script_flags)
         unsigned int fuzzed_flags;
         ds >> fuzzed_flags;
 
-        std::vector<CTxOut> spent_outputs;
+        CTransaction::txout_vec_type spent_outputs;
         for (unsigned i = 0; i < tx.vin.size(); ++i) {
             CTxOut prevout;
             ds >> prevout;

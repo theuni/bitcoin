@@ -295,6 +295,8 @@ inline CAmount CalculateOutputValue(const TxType& tx)
 class CTransaction
 {
 public:
+    using txin_vec_type = std::vector<CTxIn>;
+    using txout_vec_type = std::vector<CTxOut>;
     // Default transaction version.
     static const uint32_t CURRENT_VERSION{2};
 
@@ -303,8 +305,8 @@ public:
     // actually immutable; deserialization and assignment are implemented,
     // and bypass the constness. This is safe, as they update the entire
     // structure, including the hash.
-    const std::vector<CTxIn> vin;
-    const std::vector<CTxOut> vout;
+    const txin_vec_type vin;
+    const txout_vec_type vout;
     const uint32_t version;
     const uint32_t nLockTime;
 
@@ -376,8 +378,9 @@ public:
 /** A mutable version of CTransaction. */
 struct CMutableTransaction
 {
-    std::vector<CTxIn> vin;
-    std::vector<CTxOut> vout;
+    CTransaction::txin_vec_type vin;
+    CTransaction::txout_vec_type vout;
+
     uint32_t version;
     uint32_t nLockTime;
 

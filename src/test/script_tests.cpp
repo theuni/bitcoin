@@ -1475,10 +1475,10 @@ static CMutableTransaction TxFromHex(const std::string& str)
     return tx;
 }
 
-static std::vector<CTxOut> TxOutsFromJSON(const UniValue& univalue)
+static CTransaction::txout_vec_type TxOutsFromJSON(const UniValue& univalue)
 {
     assert(univalue.isArray());
-    std::vector<CTxOut> prevouts;
+    CTransaction::txout_vec_type prevouts;
     for (size_t i = 0; i < univalue.size(); ++i) {
         CTxOut txout;
         SpanReader{ParseHex(univalue[i].get_str())} >> txout;
@@ -1531,7 +1531,7 @@ static void AssetTest(const UniValue& test, SignatureCache& signature_cache)
     BOOST_CHECK(test.isObject());
 
     CMutableTransaction mtx = TxFromHex(test["tx"].get_str());
-    const std::vector<CTxOut> prevouts = TxOutsFromJSON(test["prevouts"]);
+    const CTransaction::txout_vec_type prevouts = TxOutsFromJSON(test["prevouts"]);
     BOOST_CHECK(prevouts.size() == mtx.vin.size());
     size_t idx = test["index"].getInt<int64_t>();
     uint32_t test_flags{ParseScriptFlags(test["flags"].get_str())};
@@ -1542,7 +1542,7 @@ static void AssetTest(const UniValue& test, SignatureCache& signature_cache)
         mtx.vin[idx].scriptWitness = ScriptWitnessFromJSON(test["success"]["witness"]);
         CTransaction tx(mtx);
         PrecomputedTransactionData txdata;
-        txdata.Init(tx, std::vector<CTxOut>(prevouts));
+        txdata.Init(tx, CTransaction::txout_vec_type(prevouts));
         CachingTransactionSignatureChecker txcheck(&tx, idx, prevouts[idx].nValue, true, signature_cache, txdata);
 
         for (const auto flags : ALL_CONSENSUS_FLAGS) {
@@ -1560,7 +1560,7 @@ static void AssetTest(const UniValue& test, SignatureCache& signature_cache)
         mtx.vin[idx].scriptWitness = ScriptWitnessFromJSON(test["failure"]["witness"]);
         CTransaction tx(mtx);
         PrecomputedTransactionData txdata;
-        txdata.Init(tx, std::vector<CTxOut>(prevouts));
+        txdata.Init(tx, CTransaction::txout_vec_type(prevouts));
         CachingTransactionSignatureChecker txcheck(&tx, idx, prevouts[idx].nValue, true, signature_cache, txdata);
 
         for (const auto flags : ALL_CONSENSUS_FLAGS) {
@@ -1614,7 +1614,7 @@ BOOST_AUTO_TEST_CASE(bip341_keypath_test_vectors)
         auto txhex = ParseHex(vec["given"]["rawUnsignedTx"].get_str());
         CMutableTransaction tx;
         SpanReader{txhex} >> TX_WITH_WITNESS(tx);
-        std::vector<CTxOut> utxos;
+        CTransaction::txout_vec_type utxos;
         for (const auto& utxo_spent : vec["given"]["utxosSpent"].getValues()) {
             auto script_bytes = ParseHex(utxo_spent["scriptPubKey"].get_str());
             CScript script{script_bytes.begin(), script_bytes.end()};
@@ -1623,7 +1623,7 @@ BOOST_AUTO_TEST_CASE(bip341_keypath_test_vectors)
         }
 
         PrecomputedTransactionData txdata;
-        txdata.Init(tx, std::vector<CTxOut>{utxos}, true);
+        txdata.Init(tx, CTransaction::txout_vec_type{utxos}, true);
 
         BOOST_CHECK(txdata.m_bip341_taproot_ready);
         BOOST_CHECK_EQUAL(HexStr(txdata.m_spent_amounts_single_hash), vec["intermediary"]["hashAmounts"].get_str());

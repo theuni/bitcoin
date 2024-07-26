@@ -1066,7 +1066,7 @@ static RPCHelpMan bumpfee_helper(std::string method_name)
     coin_control.fAllowWatchOnly = pwallet->IsWalletFlagSet(WALLET_FLAG_DISABLE_PRIVATE_KEYS);
     // optional parameters
     coin_control.m_signal_bip125_rbf = true;
-    std::vector<CTxOut> outputs;
+    CTransaction::txout_vec_type outputs;
 
     std::optional<uint32_t> original_change_index;
 

@@ -790,7 +790,7 @@ bool SignTransaction(CMutableTransaction& mtx, const SigningProvider* keystore, 
     const CTransaction txConst(mtx);
 
     PrecomputedTransactionData txdata;
-    std::vector<CTxOut> spent_outputs;
+    CTransaction::txout_vec_type spent_outputs;
     for (unsigned int i = 0; i < mtx.vin.size(); ++i) {
         CTxIn& txin = mtx.vin[i];
         auto coin = coins.find(txin.prevout);

@@ -359,7 +359,7 @@ PrecomputedTransactionData PrecomputePSBTData(const PartiallySignedTransaction& 
 {
     const CMutableTransaction& tx = *psbt.tx;
     bool have_all_spent_outputs = true;
-    std::vector<CTxOut> utxos(tx.vin.size());
+    CTransaction::txout_vec_type utxos(tx.vin.size());
     for (size_t idx = 0; idx < tx.vin.size(); ++idx) {
         if (!psbt.GetInputUTXO(utxos[idx], idx)) have_all_spent_outputs = false;
     }
