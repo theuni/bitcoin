@@ -252,12 +252,12 @@ static int UpdatePackagesForAdded(const CTxMemPool& mempool,
                 continue;
             }
             ++nDescendantsUpdated;
-            modtxiter mit = mapModifiedTx.find(desc);
-            if (mit == mapModifiedTx.end()) {
+            modtxiter mit = mapModifiedTx.get<arbitrary_order>().find(desc);
+            if (mit == mapModifiedTx.get<arbitrary_order>().end()) {
                 CTxMemPoolModifiedEntry modEntry(desc);
-                mit = mapModifiedTx.insert(modEntry).first;
+                mit = mapModifiedTx.get<arbitrary_order>().insert(modEntry).first;
             }
-            mapModifiedTx.modify(mit, update_for_parent_inclusion(it));
+            mapModifiedTx.get<arbitrary_order>().modify(mit, update_for_parent_inclusion(it));
         }
     }
     return nDescendantsUpdated;
@@ -320,7 +320,7 @@ void BlockAssembler::addPackageTxs(const CTxMemPool& mempool, int& nPackagesSele
         if (mi != mempool.mapTx.get<ancestor_score>().end()) {
             auto it = mempool.mapTx.project<index_by_txid>(mi);
             assert(it != mempool.mapTx.get<index_by_txid>().end());
-            if (mapModifiedTx.count(it) || inBlock.count(it->GetSharedTx()->GetHash()) || failedTx.count(it->GetSharedTx()->GetHash())) {
+            if (mapModifiedTx.get<arbitrary_order>().count(it) || inBlock.count(it->GetSharedTx()->GetHash()) || failedTx.count(it->GetSharedTx()->GetHash())) {
                 ++mi;
                 continue;
             }
@@ -413,7 +413,7 @@ void BlockAssembler::addPackageTxs(const CTxMemPool& mempool, int& nPackagesSele
         for (size_t i = 0; i < sortedEntries.size(); ++i) {
             AddToBlock(sortedEntries[i]);
             // Erase from the modified set, if present
-            mapModifiedTx.erase(sortedEntries[i]);
+            mapModifiedTx.get<arbitrary_order>().erase(sortedEntries[i]);
         }
 
         ++nPackagesSelected;
