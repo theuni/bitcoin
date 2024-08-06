@@ -319,7 +319,7 @@ void BlockAssembler::addPackageTxs(const CTxMemPool& mempool, int& nPackagesSele
          * or if the transaction's cached data in mapTx is incorrect. */
         if (mi != mempool.mapTx.get<ancestor_score>().end()) {
             auto it = mempool.mapTx.project<0>(mi);
-            assert(it != mempool.mapTx.end());
+            assert(it != mempool.mapTx.get<index_by_txid>().end());
             if (mapModifiedTx.count(it) || inBlock.count(it->GetSharedTx()->GetHash()) || failedTx.count(it->GetSharedTx()->GetHash())) {
                 ++mi;
                 continue;
