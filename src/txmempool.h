@@ -204,6 +204,7 @@ public:
 struct descendant_score {};
 struct entry_time {};
 struct ancestor_score {};
+struct index_by_txid {};
 struct index_by_wtxid {};
 
 /**
@@ -333,7 +334,10 @@ public:
         CTxMemPoolEntry,
         boost::multi_index::indexed_by<
             // sorted by txid
-            boost::multi_index::hashed_unique<mempoolentry_txid, SaltedTxidHasher>,
+            boost::multi_index::hashed_unique<
+                boost::multi_index::tag<index_by_txid>,
+                mempoolentry_txid,
+                SaltedTxidHasher>,
             // sorted by wtxid
             boost::multi_index::hashed_unique<
                 boost::multi_index::tag<index_by_wtxid>,
