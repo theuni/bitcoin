@@ -679,7 +679,7 @@ public:
     txiter get_iter_from_wtxid(const uint256& wtxid) const EXCLUSIVE_LOCKS_REQUIRED(cs)
     {
         AssertLockHeld(cs);
-        return mapTx.project<0>(mapTx.get<index_by_wtxid>().find(wtxid));
+        return mapTx.project<index_by_txid>(mapTx.get<index_by_wtxid>().find(wtxid));
     }
     TxMempoolInfo info(const GenTxid& gtxid) const;
 

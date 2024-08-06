@@ -1054,7 +1054,7 @@ int CTxMemPool::Expire(std::chrono::seconds time)
     indexed_transaction_set::index<entry_time>::type::iterator it = mapTx.get<entry_time>().begin();
     setEntries toremove;
     while (it != mapTx.get<entry_time>().end() && it->GetTime() < time) {
-        toremove.insert(mapTx.project<0>(it));
+        toremove.insert(mapTx.project<index_by_txid>(it));
         it++;
     }
     setEntries stage;
@@ -1143,7 +1143,7 @@ void CTxMemPool::TrimToSize(size_t sizelimit, std::vector<COutPoint>* pvNoSpends
         maxFeeRateRemoved = std::max(maxFeeRateRemoved, removed);
 
         setEntries stage;
-        CalculateDescendants(mapTx.project<0>(it), stage);
+        CalculateDescendants(mapTx.project<index_by_txid>(it), stage);
         nTxnRemoved += stage.size();
 
         std::vector<CTransaction> txn;
