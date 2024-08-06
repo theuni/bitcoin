@@ -409,7 +409,7 @@ static CTxMemPool::Options&& Flatten(CTxMemPool::Options&& opts, bilingual_str& 
 }
 
 CTxMemPool::CTxMemPool(Options opts, bilingual_str& error)
-    : m_opts{Flatten(std::move(opts), error)}
+    : mapTxTxidIndex{mapTx.get<index_by_txid>()}, m_opts{Flatten(std::move(opts), error)}
 {
 }
 
