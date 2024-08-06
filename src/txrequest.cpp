@@ -263,7 +263,7 @@ bool operator==(const PeerInfo& a, const PeerInfo& b)
 std::unordered_map<NodeId, PeerInfo> RecomputePeerInfo(const Index& index)
 {
     std::unordered_map<NodeId, PeerInfo> ret;
-    for (const Announcement& ann : index) {
+    for (const Announcement& ann : index.get<ByPeer>()) {
         PeerInfo& info = ret[ann.m_peer];
         ++info.m_total;
         info.m_requested += (ann.GetState() == State::REQUESTED);
@@ -276,7 +276,7 @@ std::unordered_map<NodeId, PeerInfo> RecomputePeerInfo(const Index& index)
 std::map<uint256, TxHashInfo> ComputeTxHashInfo(const Index& index, const PriorityComputer& computer)
 {
     std::map<uint256, TxHashInfo> ret;
-    for (const Announcement& ann : index) {
+    for (const Announcement& ann : index.get<ByPeer>()) {
         TxHashInfo& info = ret[ann.m_txhash];
         // Classify how many announcements of each state we have for this txhash.
         info.m_candidate_delayed += (ann.GetState() == State::CANDIDATE_DELAYED);
@@ -355,7 +355,7 @@ public:
 
     void PostGetRequestableSanityCheck(std::chrono::microseconds now) const
     {
-        for (const Announcement& ann : m_index) {
+        for (const Announcement& ann : m_index.get<ByPeer>()) {
             if (ann.IsWaiting()) {
                 // REQUESTED and CANDIDATE_DELAYED must have a time in the future (they should have been converted
                 // to COMPLETED/CANDIDATE_READY respectively).
