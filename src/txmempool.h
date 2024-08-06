@@ -392,7 +392,7 @@ public:
     mutable RecursiveMutex cs;
     indexed_transaction_set mapTx GUARDED_BY(cs);
 
-    using txiter = indexed_transaction_set::nth_index<0>::type::const_iterator;
+    using txiter = indexed_transaction_set::index<index_by_txid>::type::const_iterator;
     std::vector<CTransactionRef> txns_randomized GUARDED_BY(cs); //!< All transactions in mapTx, in random order
 
     typedef std::set<txiter, CompareIteratorByHash> setEntries;
