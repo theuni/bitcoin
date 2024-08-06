@@ -670,7 +670,7 @@ public:
         if (gtxid.IsWtxid()) {
             return (mapTx.get<index_by_wtxid>().count(gtxid.GetHash()) != 0);
         }
-        return (mapTx.count(gtxid.GetHash()) != 0);
+        return (mapTx.get<index_by_txid>().count(gtxid.GetHash()) != 0);
     }
 
     const CTxMemPoolEntry* GetEntry(const Txid& txid) const LIFETIMEBOUND EXCLUSIVE_LOCKS_REQUIRED(cs);
