@@ -393,7 +393,7 @@ public:
     indexed_transaction_set mapTx GUARDED_BY(cs);
 
     // shorthand for mapTx.get<index_by_txid>()
-    indexed_transaction_set::index<index_by_txid>::type& mapTxTxidIndex;
+    indexed_transaction_set::index<index_by_txid>::type& mapTxTxidIndex GUARDED_BY(cs);
 
     using txiter = indexed_transaction_set::index<index_by_txid>::type::const_iterator;
     std::vector<CTransactionRef> txns_randomized GUARDED_BY(cs); //!< All transactions in mapTx, in random order
