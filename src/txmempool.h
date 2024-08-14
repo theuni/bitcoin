@@ -18,18 +18,11 @@
 #include <policy/packages.h>
 #include <primitives/transaction.h>
 #include <sync.h>
+#include <tmi.h>
 #include <util/epochguard.h>
 #include <util/hasher.h>
 #include <util/result.h>
 #include <util/feefrac.h>
-
-#include <boost/multi_index/hashed_index.hpp>
-#include <boost/multi_index/identity.hpp>
-#include <boost/multi_index/indexed_by.hpp>
-#include <boost/multi_index/ordered_index.hpp>
-#include <boost/multi_index/sequenced_index.hpp>
-#include <boost/multi_index/tag.hpp>
-#include <boost/multi_index_container.hpp>
 
 #include <atomic>
 #include <map>
@@ -242,7 +235,7 @@ struct TxMempoolInfo
  *
  * CTxMemPool::mapTx, and CTxMemPoolEntry bookkeeping:
  *
- * mapTx is a boost::multi_index that sorts the mempool on 5 criteria:
+ * mapTx is a tmi::container that sorts the mempool on 5 criteria:
  * - transaction hash (txid)
  * - witness-transaction hash (wtxid)
  * - descendant feerate [we use max(feerate of tx, feerate of tx with all descendants)]
@@ -329,36 +322,36 @@ public:
 
     static const int ROLLING_FEE_HALFLIFE = 60 * 60 * 12; // public only for testing
 
-    struct CTxMemPoolEntry_Indices final : boost::multi_index::indexed_by<
+    struct CTxMemPoolEntry_Indices final : tmi::indexed_by<
             // sorted by txid
-            boost::multi_index::hashed_unique<mempoolentry_txid, SaltedTxidHasher>,
+            tmi::hashed_unique<mempoolentry_txid, SaltedTxidHasher>,
             // sorted by wtxid
-            boost::multi_index::hashed_unique<
-                boost::multi_index::tag<index_by_wtxid>,
+            tmi::hashed_unique<
+                tmi::tag<index_by_wtxid>,
                 mempoolentry_wtxid,
                 SaltedTxidHasher
             >,
             // sorted by fee rate
-            boost::multi_index::ordered_non_unique<
-                boost::multi_index::tag<descendant_score>,
-                boost::multi_index::identity<CTxMemPoolEntry>,
+            tmi::ordered_non_unique<
+                tmi::tag<descendant_score>,
+                tmi::identity<CTxMemPoolEntry>,
                 CompareTxMemPoolEntryByDescendantScore
             >,
             // sorted by entry time
-            boost::multi_index::ordered_non_unique<
-                boost::multi_index::tag<entry_time>,
-                boost::multi_index::identity<CTxMemPoolEntry>,
+            tmi::ordered_non_unique<
+                tmi::tag<entry_time>,
+                tmi::identity<CTxMemPoolEntry>,
                 CompareTxMemPoolEntryByEntryTime
             >,
             // sorted by fee rate with ancestors
-            boost::multi_index::ordered_non_unique<
-                boost::multi_index::tag<ancestor_score>,
-                boost::multi_index::identity<CTxMemPoolEntry>,
+            tmi::ordered_non_unique<
+                tmi::tag<ancestor_score>,
+                tmi::identity<CTxMemPoolEntry>,
                 CompareTxMemPoolEntryByAncestorFee
             >
         >
         {};
-    typedef boost::multi_index_container<
+    typedef tmi::multi_index_container<
         CTxMemPoolEntry,
         CTxMemPoolEntry_Indices
     > indexed_transaction_set;
