@@ -287,6 +287,12 @@ BITCOIN_CORE_H = \
   support/lockedpool.h \
   sync.h \
   threadsafety.h \
+  tmi.h \
+  tmi_comparator.h \
+  tmi_hasher.h \
+  tmi_index.h \
+  tminode.h \
+  tminode_base.h \
   torcontrol.h \
   txdb.h \
   txmempool.h \
