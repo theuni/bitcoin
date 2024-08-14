@@ -9,17 +9,13 @@
 #include <node/types.h>
 #include <policy/policy.h>
 #include <primitives/block.h>
+#include <tmi.h>
 #include <txmempool.h>
 
 #include <memory>
 #include <optional>
 #include <stdint.h>
 
-#include <boost/multi_index/identity.hpp>
-#include <boost/multi_index/indexed_by.hpp>
-#include <boost/multi_index/ordered_index.hpp>
-#include <boost/multi_index/tag.hpp>
-#include <boost/multi_index_container.hpp>
 
 class ArgsManager;
 class CBlockIndex;
@@ -98,22 +94,22 @@ struct CompareTxIterByAncestorCount {
 };
 
 
-struct CTxMemPoolModifiedEntry_Indices final : boost::multi_index::indexed_by<
-    boost::multi_index::ordered_unique<
+struct CTxMemPoolModifiedEntry_Indices final : tmi::indexed_by<
+    tmi::ordered_unique<
         modifiedentry_iter,
         CompareCTxMemPoolIter
     >,
     // sorted by modified ancestor fee rate
-    boost::multi_index::ordered_non_unique<
+    tmi::ordered_non_unique<
         // Reuse same tag from CTxMemPool's similar index
-        boost::multi_index::tag<ancestor_score>,
-        boost::multi_index::identity<CTxMemPoolModifiedEntry>,
+        tmi::tag<ancestor_score>,
+        tmi::identity<CTxMemPoolModifiedEntry>,
         CompareTxMemPoolEntryByAncestorFee
     >
 >
 {};
 
-typedef boost::multi_index_container<
+typedef tmi::multi_index_container<
     CTxMemPoolModifiedEntry,
     CTxMemPoolModifiedEntry_Indices
 > indexed_modified_transaction_set;
