@@ -8,14 +8,9 @@
 #include <net.h>
 #include <primitives/transaction.h>
 #include <random.h>
+#include <tmi.h>
 #include <uint256.h>
 
-#include <boost/multi_index/indexed_by.hpp>
-#include <boost/multi_index/ordered_index.hpp>
-#include <boost/multi_index/sequenced_index.hpp>
-#include <boost/multi_index/tag.hpp>
-#include <boost/multi_index_container.hpp>
-#include <boost/tuple/tuple.hpp>
 
 #include <chrono>
 #include <unordered_map>
@@ -212,15 +207,15 @@ struct ByTimeViewExtractor
     }
 };
 
-struct Announcement_Indices final : boost::multi_index::indexed_by<
-    boost::multi_index::ordered_unique<boost::multi_index::tag<ByPeer>, ByPeerViewExtractor>,
-    boost::multi_index::ordered_non_unique<boost::multi_index::tag<ByTxHash>, ByTxHashViewExtractor>,
-    boost::multi_index::ordered_non_unique<boost::multi_index::tag<ByTime>, ByTimeViewExtractor>
+struct Announcement_Indices final : tmi::indexed_by<
+    tmi::ordered_unique<tmi::tag<ByPeer>, ByPeerViewExtractor>,
+    tmi::ordered_non_unique<tmi::tag<ByTxHash>, ByTxHashViewExtractor>,
+    tmi::ordered_non_unique<tmi::tag<ByTime>, ByTimeViewExtractor>
 >
 {};
 
 /** Data type for the main data structure (Announcement objects with ByPeer/ByTxHash/ByTime indexes). */
-using Index = boost::multi_index_container<
+using Index = tmi::multi_index_container<
     Announcement,
     Announcement_Indices
 >;
@@ -525,10 +520,10 @@ public:
     explicit Impl(bool deterministic) :
         m_computer(deterministic),
         // Explicitly initialize m_index as we need to pass a reference to m_computer to ByTxHashViewExtractor.
-        m_index(boost::make_tuple(
-            boost::make_tuple(ByPeerViewExtractor(), std::less<ByPeerView>()),
-            boost::make_tuple(ByTxHashViewExtractor(m_computer), std::less<ByTxHashView>()),
-            boost::make_tuple(ByTimeViewExtractor(), std::less<ByTimeView>())
+        m_index(std::make_tuple(
+            std::make_tuple(ByPeerViewExtractor(), std::less<ByPeerView>()),
+            std::make_tuple(ByTxHashViewExtractor(m_computer), std::less<ByTxHashView>()),
+            std::make_tuple(ByTimeViewExtractor(), std::less<ByTimeView>())
         )) {}
 
     // Disable copying and assigning (a default copy won't work due the stateful ByTxHashViewExtractor).
