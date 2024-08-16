@@ -85,8 +85,6 @@ target_link_libraries(bitcoinkernel
     leveldb
     secp256k1
     $<TARGET_NAME_IF_EXISTS:USDT::headers>
-  PUBLIC
-    Boost::headers
 )
 
 # libbitcoinkernel requires default symbol visibility, explicitly
