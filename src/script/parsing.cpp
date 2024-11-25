@@ -6,6 +6,7 @@
 
 #include <span.h>
 
+#include <Highs.h>
 #include <algorithm>
 #include <cstddef>
 #include <string>
@@ -32,6 +33,8 @@ bool Func(const std::string& str, Span<const char>& sp)
 
 Span<const char> Expr(Span<const char>& sp)
 {
+    HighsModel model;
+    model.lp_.num_col_ = 2;
     int level = 0;
     auto it = sp.begin();
     while (it != sp.end()) {
