@@ -2802,7 +2802,7 @@ CoinsCacheSizeState Chainstate::GetCoinsCacheSizeState(
         max_coins_cache_size_bytes + std::max<int64_t>(int64_t(max_mempool_size_bytes) - nMempoolUsage, 0);
 
     //! No need to periodic flush if at least this much space still available.
-    static constexpr int64_t MAX_BLOCK_COINSDB_USAGE_BYTES = 10 * 1024 * 1024;  // 10MB
+    static constexpr int64_t MAX_BLOCK_COINSDB_USAGE_BYTES = 10_MiB;
     int64_t large_threshold =
         std::max((9 * nTotalSpace) / 10, nTotalSpace - MAX_BLOCK_COINSDB_USAGE_BYTES);
 
@@ -5854,7 +5854,7 @@ util::Result<CBlockIndex*> ChainstateManager::ActivateSnapshot(
 
     LogPrintf("[snapshot] successfully activated snapshot %s\n", base_blockhash.ToString());
     LogPrintf("[snapshot] (%.2f MB)\n",
-        m_snapshot_chainstate->CoinsTip().DynamicMemoryUsage() / (1000 * 1000));
+        m_snapshot_chainstate->CoinsTip().DynamicMemoryUsage() / (1_MB));
 
     this->MaybeRebalanceCaches();
     return snapshot_start_block;
@@ -5865,7 +5865,7 @@ static void FlushSnapshotToDisk(CCoinsViewCache& coins_cache, bool snapshot_load
     LOG_TIME_MILLIS_WITH_CATEGORY_MSG_ONCE(
         strprintf("%s (%.2f MB)",
                   snapshot_loaded ? "saving snapshot chainstate" : "flushing coins cache",
-                  coins_cache.DynamicMemoryUsage() / (1000 * 1000)),
+                  coins_cache.DynamicMemoryUsage() / (1_MB)),
         BCLog::LogFlags::ALL);
 
     coins_cache.Flush();
@@ -5963,7 +5963,7 @@ util::Result<void> ChainstateManager::PopulateAndValidateSnapshot(
                     LogPrintf("[snapshot] %d coins loaded (%.2f%%, %.2f MB)\n",
                         coins_processed,
                         static_cast<float>(coins_processed) * 100 / static_cast<float>(coins_count),
-                        coins_cache.DynamicMemoryUsage() / (1000 * 1000));
+                        coins_cache.DynamicMemoryUsage() / (1_MB));
                 }
 
                 // Batch write and flush (if we need to) every so often.
@@ -6017,7 +6017,7 @@ util::Result<void> ChainstateManager::PopulateAndValidateSnapshot(
 
     LogPrintf("[snapshot] loaded %d (%.2f MB) coins from snapshot %s\n",
         coins_count,
-        coins_cache.DynamicMemoryUsage() / (1000 * 1000),
+        coins_cache.DynamicMemoryUsage() / (1_MB),
         base_blockhash.ToString());
 
     // No need to acquire cs_main since this chainstate isn't being used yet.
@@ -6083,7 +6083,7 @@ util::Result<void> ChainstateManager::PopulateAndValidateSnapshot(
     snapshot_chainstate.setBlockIndexCandidates.insert(snapshot_start_block);
 
     LogPrintf("[snapshot] validated snapshot (%.2f MB)\n",
-        coins_cache.DynamicMemoryUsage() / (1000 * 1000));
+        coins_cache.DynamicMemoryUsage() / (1_MB));
     return {};
 }
 
