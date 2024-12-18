@@ -439,6 +439,31 @@ template <util::detail::Hex str>
 inline auto operator""_hex_v_u8() { return std::vector<uint8_t>{UCharCast(str.bytes.data()), UCharCast(str.bytes.data() + str.bytes.size())}; }
 
 } // inline namespace hex_literals
+
+inline namespace size_literals {
+
+namespace detail{
+consteval size_t do_byte_mult(unsigned long long from, unsigned long long multiplier) {
+    // Compile-time check to disallow wrapping
+    assert(from <= std::numeric_limits<size_t>::max() / multiplier);
+    return from * multiplier;
+}
+} // namespace detail
+
+// Base10 (kilobyte, megabyte, etc) user-defined literals
+consteval size_t operator""_kB(unsigned long long from) { return detail::do_byte_mult(from, 1000ULL); }
+consteval size_t operator""_MB(unsigned long long from) { return detail::do_byte_mult(from, 1000 * 1000ULL); }
+consteval size_t operator""_GB(unsigned long long from) { return detail::do_byte_mult(from, 1000 * 1000 * 1000ULL); }
+consteval size_t operator""_TB(unsigned long long from) { return detail::do_byte_mult(from, 1000 * 1000 * 1000 * 1000ULL); }
+
+// Base2 (kibibyte, mebibyte, etc) user-defined literals
+consteval size_t operator""_KiB(unsigned long long from) { return detail::do_byte_mult(from, 1024ULL);}
+consteval size_t operator""_MiB(unsigned long long from) { return detail::do_byte_mult(from, 1024 * 1024ULL);}
+consteval size_t operator""_GiB(unsigned long long from) { return detail::do_byte_mult(from, 1024 * 1024 * 1024ULL);}
+consteval size_t operator""_TiB(unsigned long long from) { return detail::do_byte_mult(from, 1024 * 1024 * 1024 * 1024ULL);}
+
+} // inline namespace size_literals
+
 } // namespace util
 
 #endif // BITCOIN_UTIL_STRENCODINGS_H
