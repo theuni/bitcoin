@@ -994,12 +994,43 @@ bool BlockManager::SaveBlockUndo(const CBlockUndo& blockundo, BlockValidationSta
     return true;
 }
 
+// Helper to get a block from disk in a single read().
+struct DiskBlock
+{
+    CBlock& m_block;
+
+    template <typename Stream>
+    void Unserialize(Stream& s) {
+        unsigned int blk_size;
+        MessageStartChars magic;
+
+        s >> magic;
+        s >> blk_size;
+        if (blk_size > MAX_SIZE) {
+            throw std::runtime_error{strprintf("Refusing to read block of size: %d", blk_size)};
+        }
+
+        std::vector<unsigned char> mem(blk_size);
+        Span buf(mem);
+        s >> buf;
+        SpanReader reader(buf);
+        reader >> TX_WITH_WITNESS(m_block);
+    }
+};
+
 bool BlockManager::ReadBlockFromDisk(CBlock& block, const FlatFilePos& pos) const
 {
     block.SetNull();
+    DiskBlock diskblock{block};
+
+    // rewind back to the meta header
+    FlatFilePos newpos = pos;
+    auto rewind = sizeof(MessageStartChars) + sizeof(unsigned int);
+    Assert(newpos.nPos >= rewind);
+    newpos.nPos -= rewind;
 
     // Open history file to read
-    AutoFile filein{OpenBlockFile(pos, true)};
+    AutoFile filein{OpenBlockFile(newpos, true)};
     if (filein.IsNull()) {
         LogError("%s: OpenBlockFile failed for %s\n", __func__, pos.ToString());
         return false;
@@ -1007,7 +1038,7 @@ bool BlockManager::ReadBlockFromDisk(CBlock& block, const FlatFilePos& pos) cons
 
     // Read block
     try {
-        filein >> TX_WITH_WITNESS(block);
+        filein >> diskblock;
     } catch (const std::exception& e) {
         LogError("%s: Deserialize or I/O error - %s at %s\n", __func__, e.what(), pos.ToString());
         return false;
