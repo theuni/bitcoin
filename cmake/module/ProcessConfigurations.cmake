@@ -134,8 +134,12 @@ else()
   remove_cxx_flag_from_all_configs(-DNDEBUG)
 
   # Adjust flags used by the CXX compiler during RELEASE builds.
-  # Prefer -O2 optimization level. (-O3 is CMake's default for Release for many compilers.)
-  replace_cxx_flag_in_config(Release -O3 -O2)
+  # Prefer -O2 optimization level (-O3 is CMake's default for Release for many compilers),
+  # but allow -O3 if set explicitly in CMAKE_CXX_FLAGS_RELEASE
+  are_flags_overridden(CMAKE_CXX_FLAGS_RELEASE cxx_flags_release_overridden)
+  if(NOT cxx_flags_release_overridden)
+    replace_cxx_flag_in_config(Release -O3 -O2)
+  endif()
 
   are_flags_overridden(CMAKE_CXX_FLAGS_DEBUG cxx_flags_debug_overridden)
   if(NOT cxx_flags_debug_overridden)
@@ -161,6 +165,7 @@ else()
     )
   endif()
   unset(cxx_flags_debug_overridden)
+  unset(cxx_flags_release_overridden)
 endif()
 
 set(CMAKE_CXX_FLAGS_COVERAGE "-g -Og --coverage")
