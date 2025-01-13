@@ -29,9 +29,12 @@ endef
 define add_host_flags_func
 ifeq ($(filter $(origin $1),undefined default),)
 $(host_arch)_$(host_os)_$1 = $($1)
-$(host_arch)_$(host_os)_$(release_type)_$1 =
 else
 $(host_arch)_$(host_os)_$1 += $($(host_os)_$1)
+endif
+ifneq ($($(1)_CONFIG),)
+$(host_arch)_$(host_os)_$(release_type)_$1 = $($(1)_CONFIG)
+else
 $(host_arch)_$(host_os)_$(release_type)_$1 += $($(host_os)_$(release_type)_$1)
 endif
 host_$1 = $$($(host_arch)_$(host_os)_$1)
