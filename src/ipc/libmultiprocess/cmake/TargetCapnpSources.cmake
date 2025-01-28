@@ -66,19 +66,28 @@ function(target_capnp_sources target include_prefix)
 
   set(generated_headers "")
   foreach(capnp_file IN LISTS TCS_UNPARSED_ARGUMENTS)
-    add_custom_command(
-      OUTPUT ${capnp_file}.c++ ${capnp_file}.h ${capnp_file}.proxy-client.c++ ${capnp_file}.proxy-types.h ${capnp_file}.proxy-server.c++ ${capnp_file}.proxy-types.c++ ${capnp_file}.proxy.h
-      COMMAND Libmultiprocess::mpgen ${CMAKE_CURRENT_SOURCE_DIR} ${include_prefix} ${CMAKE_CURRENT_SOURCE_DIR}/${capnp_file} ${TCS_IMPORT_PATHS} ${MP_INCLUDE_DIR}
-      DEPENDS ${capnp_file}
-      VERBATIM
-    )
+    if(EXISTS ${PROJECT_SOURCE_DIR}/cmake/script/CopyOrGenerate.cmake)
+      set(capnp_path ${CMAKE_CURRENT_SOURCE_DIR}/${capnp_file})
+      add_custom_command(
+        OUTPUT ${capnp_file}.c++ ${capnp_file}.h ${capnp_file}.proxy-client.c++ ${capnp_file}.proxy-types.h ${capnp_file}.proxy-server.c++ ${capnp_file}.proxy-types.c++ ${capnp_file}.proxy.h
+        COMMAND ${CMAKE_COMMAND} -DMPGEN=$<TARGET_FILE:Libmultiprocess::mpgen> -DCAPNP_SRCDIR=${CMAKE_CURRENT_SOURCE_DIR} -Dcapnp_path=${capnp_path} -DCAPNP_FILE=${capnp_file} -DINCLUDE_PREFIX=${include_prefix} -DTCS_IMPORT_PATHS=${TCS_IMPORT_PATHS} -DMP_INCLUDE_DIR=${MP_INCLUDE_DIR}  -P ${PROJECT_SOURCE_DIR}/cmake/script/CopyOrGenerate.cmake
+        DEPENDS ${capnp_file}
+        VERBATIM
+      )
+    else()
+      add_custom_command(
+         OUTPUT ${capnp_file}.c++ ${capnp_file}.h ${capnp_file}.proxy-client.c++ ${capnp_file}.proxy-types.h ${capnp_file}.proxy-server.c++ ${capnp_file}.proxy-types.c++ ${capnp_file}.proxy.h
+         COMMAND Libmultiprocess::mpgen ${CMAKE_CURRENT_SOURCE_DIR} ${include_prefix} ${capnp_path} ${TCS_IMPORT_PATHS} ${MP_INCLUDE_DIR}
+         DEPENDS ${capnp_file}
+         VERBATIM
+       )
+    endif()
     target_sources(${target} PRIVATE
       ${CMAKE_CURRENT_BINARY_DIR}/${capnp_file}.c++
       ${CMAKE_CURRENT_BINARY_DIR}/${capnp_file}.proxy-client.c++
       ${CMAKE_CURRENT_BINARY_DIR}/${capnp_file}.proxy-server.c++
       ${CMAKE_CURRENT_BINARY_DIR}/${capnp_file}.proxy-types.c++
     )
-
     list(APPEND generated_headers ${capnp_file}.h)
   endforeach()
 
