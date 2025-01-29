@@ -345,6 +345,8 @@ if(BUILD_MULTIPROCESS)
     )
     target_capnp_sources(bitcoin_ipc_test ${PROJECT_SOURCE_DIR}
       test/ipc_test.capnp
+      USE_EXTERNAL_MPGEN ${USE_EXTERNAL_MPGEN}
+      EXTERNAL_MPGEN ${MPGEN}
     )
     add_dependencies(bitcoin_ipc_test bitcoin_ipc_headers)
   endif()

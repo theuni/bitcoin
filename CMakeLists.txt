@@ -142,13 +142,6 @@ endif()
 cmake_dependent_option(WITH_DBUS "Enable DBus support." ON "CMAKE_SYSTEM_NAME STREQUAL \"Linux\" AND BUILD_GUI" OFF)
 
 option(BUILD_MULTIPROCESS "Build multiprocess bitcoin-node and bitcoin-gui executables in addition to monolithic bitcoind and bitcoin-qt executables. Requires libmultiprocess library. Experimental." OFF)
-option(WITH_LIBMULTIPROCESS "Build with external libmultiprocess library instead of with local git submodule when BUILD_MULTIPROCESS is enabled. This is necessary in cross-compiled builds to provide a native code-generation tool, and also useful for making changes to the upstream project." OFF)
-if(WITH_LIBMULTIPROCESS)
-  find_package(Libmultiprocess REQUIRED COMPONENTS Lib)
-  find_package(LibmultiprocessNative REQUIRED COMPONENTS Bin
-    NAMES Libmultiprocess
-  )
-endif()
 
 cmake_dependent_option(BUILD_GUI_TESTS "Build test_bitcoin-qt executable." ON "BUILD_GUI;BUILD_TESTS" OFF)
 if(BUILD_GUI)
@@ -174,6 +167,14 @@ option(BUILD_FUZZ_BINARY "Build fuzz binary." OFF)
 option(BUILD_FOR_FUZZING "Build for fuzzing. Enabling this will disable all other targets and override BUILD_FUZZ_BINARY." OFF)
 
 option(INSTALL_MAN "Install man pages." ON)
+
+set(MPGEN "" CACHE STRING "mpgen binary")
+option(USE_EXTERNAL_MPGEN "Use the mpgen binary specified in $MPGEN." OFF)
+if(USE_EXTERNAL_MPGEN)
+  if(NOT EXISTS ${MPGEN})
+    message(FATAL_ERROR "Missing MPGEN")
+  endif()
+endif()
 
 set(APPEND_CPPFLAGS "" CACHE STRING "Preprocessor flags that are appended to the command line after all other flags added by the build system. This variable is intended for debugging and special builds.")
 set(APPEND_CFLAGS "" CACHE STRING "C compiler flags that are appended to the command line after all other flags added by the build system. This variable is intended for debugging and special builds.")
