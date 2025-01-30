@@ -5,7 +5,9 @@
 cmake_minimum_required(VERSION 3.8)
 
 project("Libmultiprocess" CXX)
-set(CMAKE_CXX_STANDARD 17)
+if(NOT DEFINED CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+endif()
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
 
 include("cmake/compat_find.cmake")
