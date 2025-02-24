@@ -28,7 +28,20 @@ bool WhirlpoolTransactions::isWhirlpool(const CTransactionRef& tx) {
 
 CFeeRate GetMedianFeeRateFromBlock(const CBlock& block) {
     // calculate median fee rate
-    return CFeeRate(0);
+    vtx = block->vtx;
+    std::vector<CFeeRate> feeRates;
+    for (const auto& tx : vtx) {
+        CAmount fee = tx->vin - tx->vout;
+        size_t txSize = ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
+        CFeeRate feeRate(fee, txSize);
+        feeRates.push_back(feeRate);
+    }
+    std::sort(feeRates.begin(), feeRates.end());
+    if (feeRates.size() % 2 == 1) {
+        return feeRates[feeRates.size()/2];
+    } else {
+        return CFeeRate((feeRates[feeRates.size()/2]+feeRates[feeRates.sisze()/2+1])/2)
+    }
 }
 
 void WhirlpoolTransactions::Update(const CTransactionRef& tx, int block_height, CFeeRate median_fee_rate) {
@@ -45,4 +58,3 @@ void WhirlpoolTransactions::Update(const CTransactionRef& tx, int block_height, 
         }
     }
 }
-
