@@ -1,7 +1,10 @@
 // Copyright (c) 2024 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
+#include <iostream>
 
+#include <coins.h>
+#include <consensus/validation.h>
 #include <util/coinjoins.h>
 
 bool WhirlpoolTransactions::isWhirlpool(const CTransactionRef& tx) {
@@ -26,21 +29,27 @@ bool WhirlpoolTransactions::isWhirlpool(const CTransactionRef& tx) {
     return false;
 }
 
-CFeeRate GetMedianFeeRateFromBlock(const CBlock& block) {
+CFeeRate GetMedianFeeRateFromBlock(const CBlock& block, CCoinsViewCache &view) {
     // calculate median fee rate
-    vtx = block->vtx;
     std::vector<CFeeRate> feeRates;
-    for (const auto& tx : vtx) {
-        CAmount fee = tx->vin - tx->vout;
-        size_t txSize = ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
-        CFeeRate feeRate(fee, txSize);
-        feeRates.push_back(feeRate);
+    for (const auto& tx : block.vtx) {
+      CAmount value_in = 0;
+      for (auto &v : tx->vin) {
+        const COutPoint &prevout = v.prevout;
+        const Coin& coin = view.AccessCoin(prevout);
+        value_in += coin.out.nValue;
+      }
+      CAmount value_out = tx->GetValueOut();
+      size_t txSize = GetTransactionWeight(*tx);
+      std::cout << tx->GetHash().ToString() << " " << value_in << " " << value_out << std::endl;
+      CFeeRate feeRate(value_in - value_out, txSize);
+      feeRates.push_back(feeRate);
     }
     std::sort(feeRates.begin(), feeRates.end());
     if (feeRates.size() % 2 == 1) {
-        return feeRates[feeRates.size()/2];
+      return CFeeRate(feeRates[feeRates.size()/2].GetFeePerK());
     } else {
-        return CFeeRate((feeRates[feeRates.size()/2]+feeRates[feeRates.sisze()/2+1])/2)
+      return CFeeRate((feeRates[feeRates.size()/2].GetFeePerK()+feeRates[feeRates.size()/2+1].GetFeePerK())/2);
     }
 }
 

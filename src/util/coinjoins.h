@@ -56,7 +56,7 @@ public:
     }
 };
 
-CFeeRate GetMedianFeeRateFromBlock(const CBlock& block);
+CFeeRate GetMedianFeeRateFromBlock(const CBlock& block, CCoinsViewCache &view);
 
 class WhirlpoolTransactions {
     Tx0s tx0s;

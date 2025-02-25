@@ -153,8 +153,11 @@ int main(int argc, char* argv[])
         }
     }
 
+    	  std::cout << "BEFORE MAIN" << std::endl;
+
     {
         // Main program logic starts here
+      // copied from src/node/transaction.cpp
 
         int block_height = FIRST_COINJOIN_HEIGHT;
         CBlockIndex* current_block;
@@ -162,18 +165,22 @@ int main(int argc, char* argv[])
         // Keeping track of data:
         WhirlpoolTransactions whirlpool_txs{abs_datadir};
 
+	    	  std::cout << "AFTER WHIRLPOOL" << std::endl;
+
         {
             LOCK(chainman.GetMutex());
             current_block = chainman.ActiveChain()[block_height];
         }
+	CCoinsViewCache &view = chainman.ActiveChainstate().CoinsTip();
+	std::cout << "AFTER VIEW" << std::endl;
+	std::cout << "BEFORE LOOP" << std::endl;
 
         while (current_block) {
+	  std::cout << "TEST" << std::endl;
 
             CBlock block;
             chainman.m_blockman.ReadBlockFromDisk(block, *current_block);
-
-            CFeeRate fee_rate = GetMedianFeeRateFromBlock(block);
-
+            CFeeRate fee_rate = GetMedianFeeRateFromBlock(block, view);
             // the get feerate function
 
             for (const CTransactionRef& tx : block.vtx) {
