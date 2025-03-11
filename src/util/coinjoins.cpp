@@ -6,6 +6,7 @@
 #include <coins.h>
 #include <consensus/validation.h>
 #include <util/coinjoins.h>
+#include <undo.h>
 
 bool WhirlpoolTransactions::isWhirlpool(const CTransactionRef& tx) {
     if (tx->vin.size() == 5 && tx->vout.size() == 5) {
@@ -29,15 +30,17 @@ bool WhirlpoolTransactions::isWhirlpool(const CTransactionRef& tx) {
     return false;
 }
 
-CFeeRate GetMedianFeeRateFromBlock(const CBlock& block, CCoinsViewCache &view) {
+CFeeRate GetMedianFeeRateFromBlock(const CBlock& block, const CBlockUndo &undo) {
     // calculate median fee rate
     std::vector<CFeeRate> feeRates;
-    for (const auto& tx : block.vtx) {
+    // Skip coinbase
+    for(size_t txindex = 1; txindex < block.vtx.size(); txindex++) {
+      const auto& tx = block.vtx[txindex];
+      // vtxundo is offset by 1 because the coinbase tx is not present.
+      const auto& undotx = undo.vtxundo[txindex - 1];
       CAmount value_in = 0;
-      for (auto &v : tx->vin) {
-        const COutPoint &prevout = v.prevout;
-        const Coin& coin = view.AccessCoin(prevout);
-        value_in += coin.out.nValue;
+      for (const auto& prevout : undotx.vprevout) {
+           value_in += prevout.out.nValue;
       }
       CAmount value_out = tx->GetValueOut();
       size_t txSize = GetTransactionWeight(*tx);

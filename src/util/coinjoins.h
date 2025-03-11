@@ -55,8 +55,8 @@ public:
         return tx0_set.size();
     }
 };
-
-CFeeRate GetMedianFeeRateFromBlock(const CBlock& block, CCoinsViewCache &view);
+class CBlockUndo;
+CFeeRate GetMedianFeeRateFromBlock(const CBlock& block, const CBlockUndo& undo);
 
 class WhirlpoolTransactions {
     Tx0s tx0s;

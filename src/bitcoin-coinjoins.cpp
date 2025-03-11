@@ -31,6 +31,7 @@
 #include <util/signalinterrupt.h>
 #include <util/task_runner.h>
 #include <util/translation.h>
+#include <undo.h>
 #include <validation.h>
 #include <validationinterface.h>
 
@@ -171,7 +172,6 @@ int main(int argc, char* argv[])
             LOCK(chainman.GetMutex());
             current_block = chainman.ActiveChain()[block_height];
         }
-	CCoinsViewCache &view = chainman.ActiveChainstate().CoinsTip();
 	std::cout << "AFTER VIEW" << std::endl;
 	std::cout << "BEFORE LOOP" << std::endl;
 
@@ -179,8 +179,12 @@ int main(int argc, char* argv[])
 	  std::cout << "TEST" << std::endl;
 
             CBlock block;
-            chainman.m_blockman.ReadBlockFromDisk(block, *current_block);
-            CFeeRate fee_rate = GetMedianFeeRateFromBlock(block, view);
+            CBlockUndo undo;
+            bool read_success = false;
+            read_success = chainman.m_blockman.ReadBlockFromDisk(block, *current_block);
+            read_success &= chainman.m_blockman.UndoReadFromDisk(undo, *current_block);
+            assert(read_success);
+            CFeeRate fee_rate = GetMedianFeeRateFromBlock(block, undo);
             // the get feerate function
 
             for (const CTransactionRef& tx : block.vtx) {
