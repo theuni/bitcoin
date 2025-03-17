@@ -358,6 +358,7 @@ BOOST_AUTO_TEST_CASE(http_client_server_tests)
 
         // Instantiate server with dead-end request handler
         HTTPServer server = HTTPServer(StoreRequest);
+        server.m_rpcservertimeout = std::chrono::seconds(DEFAULT_HTTP_SERVER_TIMEOUT);
         BOOST_REQUIRE(server.m_no_clients);
 
         // This address won't actually get used because we stubbed CreateSock()
@@ -366,8 +367,7 @@ BOOST_AUTO_TEST_CASE(http_client_server_tests)
         // Bind to mock Listening Socket
         BOOST_REQUIRE(server.BindAndStartListening(addr.value(), strError));
         // Start the I/O loop, accepting connections
-        SockMan::Options sockman_options;
-        server.StartSocketsThreads(sockman_options);
+        server.StartSocketsThreads();
 
         // Wait up to one minute for mock client to connect.
         // Given that the mock client is itself a mock socket
@@ -433,9 +433,9 @@ BOOST_AUTO_TEST_CASE(http_client_server_tests)
         BOOST_REQUIRE(server.m_no_clients);
 
         // Close server
-        server.interruptNet();
+        server.Interrupt();
         // Wait for I/O loop to finish, after all sockets are closed
-        server.JoinSocketsThreads();
+        server.Stop();
     }
 }
 BOOST_AUTO_TEST_SUITE_END()

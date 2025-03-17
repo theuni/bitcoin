@@ -187,7 +187,7 @@ bool Sock::WaitMany(std::chrono::milliseconds timeout, EventsPerSock& events_per
         assert(pfds.size() == events_per_sock.size() + 1);
         if (pfds.back().revents & POLLIN) {
             std::array<std::byte, 1024> bytes;
-            [[maybe_unused]] size_t read_bytes = wakesock->Recv(bytes.data(), bytes.size(), MSG_DONTWAIT);
+            [[maybe_unused]] auto read_bytes = wakesock->Recv(bytes.data(), bytes.size(), MSG_DONTWAIT);
         }
     } else {
         assert(pfds.size() == events_per_sock.size());

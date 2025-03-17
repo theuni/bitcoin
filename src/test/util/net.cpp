@@ -394,7 +394,7 @@ bool DynSock::WaitMany(std::chrono::milliseconds timeout, EventsPerSock& events_
         }
         if (wakesock) {
             std::array<std::byte, 1024> bytes;
-            [[maybe_unused]] size_t read_bytes = wakesock->Recv(bytes.data(), bytes.size(), MSG_DONTWAIT);
+            [[maybe_unused]] auto read_bytes = wakesock->Recv(bytes.data(), bytes.size(), MSG_DONTWAIT);
         }
 
         if (at_least_one_event_occurred || std::chrono::steady_clock::now() > deadline) {

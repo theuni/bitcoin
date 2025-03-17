@@ -5,6 +5,7 @@
 #include <httpserver.h>
 
 #include <chainparamsbase.h>
+#include <clientversion.h>
 #include <common/args.h>
 #include <common/messages.h>
 #include <common/url.h>
@@ -18,6 +19,7 @@
 #include <util/check.h>
 #include <util/signalinterrupt.h>
 #include <util/strencodings.h>
+#include <util/thread.h>
 #include <util/threadnames.h>
 #include <util/time.h>
 #include <util/translation.h>
@@ -34,6 +36,8 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+
+static constexpr auto SELECT_TIMEOUT{50ms};
 
 using common::InvalidPortErrMsg;
 using http_bitcoin::HTTPRequest;
@@ -547,6 +551,7 @@ void HTTPRequest::WriteReply(HTTPStatusCode status, std::span<const std::byte> r
     // Response headers are different if no body is needed
     bool needs_body{status != HTTP_NO_CONTENT && (status < 100 || status >= 200)};
 
+    bool keep_alive = false;
     // See libevent evhttp_make_header_response()
     // Expected response headers depend on protocol version
     if (m_version_major == 1) {
@@ -554,8 +559,8 @@ void HTTPRequest::WriteReply(HTTPStatusCode status, std::span<const std::byte> r
         if (m_version_minor == 0) {
             auto connection_header{m_headers.Find("Connection")};
             if (connection_header && ToLower(connection_header.value()) == "keep-alive") {
+                keep_alive = true;
                 res.m_headers.Write("Connection", "keep-alive");
-                res.m_keep_alive = true;
             }
         }
 
@@ -567,9 +572,7 @@ void HTTPRequest::WriteReply(HTTPStatusCode status, std::span<const std::byte> r
             if (needs_body) {
                 res.m_headers.Write("Content-Length", strprintf("%d", reply_body.size()));
             }
-
-            // Default for HTTP/1.1
-            res.m_keep_alive = true;
+            keep_alive = true;
         }
     }
 
@@ -583,20 +586,16 @@ void HTTPRequest::WriteReply(HTTPStatusCode status, std::span<const std::byte> r
         // Might not exist already but we need to replace it, not append to it
         res.m_headers.Remove("Connection");
         res.m_headers.Write("Connection", "close");
-        res.m_keep_alive = false;
+        keep_alive = false;
     }
-
-    m_client->m_keep_alive = res.m_keep_alive;
 
     // Serialize the response headers
     const std::string headers{res.StringifyHeaders()};
     const auto headers_bytes{std::as_bytes(std::span(headers.begin(), headers.end()))};
 
-    bool send_buffer_was_empty{false};
     // Fill the send buffer with the complete serialized response headers + body
     {
         LOCK(m_client->m_send_mutex);
-        send_buffer_was_empty = m_client->m_send_buffer.empty();
         m_client->m_send_buffer.insert(m_client->m_send_buffer.end(), headers_bytes.begin(), headers_bytes.end());
 
         // We've been using std::span up until now but it is finally time to copy
@@ -613,17 +612,12 @@ void HTTPRequest::WriteReply(HTTPStatusCode status, std::span<const std::byte> r
         m_client->m_origin,
         m_client->m_node_id);
 
-    // If the send buffer was empty before we wrote this reply, we can try an
-    // optimistic send akin to CConnman::PushMessage() in which we
-    // push the data directly out the socket to client right now, instead
-    // of waiting for the next iteration of the Sockman I/O loop.
-    if (send_buffer_was_empty) {
-        m_client->SendBytesFromBuffer();
-    } else {
-        // Inform Sockman I/O there is data that is ready to be sent to this client
-        // in the next loop iteration.
-        m_client->m_send_ready = true;
+    m_client->m_send_ready = true;
+    m_client->m_refcount--;
+    if (!keep_alive) {
+        m_client->m_done = true;
     }
+    m_client->m_server->Wake();
 }
 
 bool HTTPClient::ReadRequest(std::unique_ptr<HTTPRequest>& req)
@@ -641,159 +635,41 @@ bool HTTPClient::ReadRequest(std::unique_ptr<HTTPRequest>& req)
         m_recv_buffer.begin(),
         m_recv_buffer.begin() + (reader.it - reader.start));
 
+    m_refcount++;
     return true;
 }
 
-bool HTTPClient::SendBytesFromBuffer()
+void HTTPClient::ReceiveMsgBytes(std::span<const uint8_t> data)
 {
-    Assume(m_server);
-
-    // Send as much data from this client's buffer as we can
-    LOCK(m_send_mutex);
-    if (!m_send_buffer.empty()) {
-        std::string err;
-        // We don't intend to "send more" because http responses are usually small and we want the kernel to send them right away.
-        ssize_t bytes_sent = m_server->SendBytes(m_node_id, MakeUCharSpan(m_send_buffer), /*will_send_more=*/false, err);
-        if (bytes_sent < 0) {
-            LogDebug(
-                BCLog::HTTP,
-                "Error sending HTTP response data to client %s (id=%lld): %s\n",
-                m_origin,
-                m_node_id,
-                err);
-            m_send_ready = false;
-            m_prevent_disconnect = false;
-            m_disconnect = true;
-            return false;
-        }
-
-        Assume(static_cast<size_t>(bytes_sent) <= m_send_buffer.size());
-        m_send_buffer.erase(m_send_buffer.begin(), m_send_buffer.begin() + bytes_sent);
-
-        LogDebug(
-            BCLog::HTTP,
-            "Sent %d bytes to client %s (id=%lld)\n",
-            bytes_sent,
-            m_origin,
-            m_node_id);
-
-        // This check is inside the if(!empty) block meaning "there was data but now its gone".
-        // We shouldn't even be calling SendBytesFromBuffer() when the send buffer is empty,
-        // but for belt-and-suspenders, we don't want to modify the disconnect flags if SendBytesFromBuffer() was a no-op.
-        if (m_send_buffer.empty()) {
-            m_send_ready = false;
-            m_prevent_disconnect = false;
-
-            // Our work is done here
-            if (!m_keep_alive) {
-                m_disconnect = true;
-                return false;
-            }
-        } else {
-            m_send_ready = true;
-            m_prevent_disconnect = true;
-        }
-    }
-
-    return true;
-}
-
-void HTTPServer::CloseConnectionInternal(std::shared_ptr<HTTPClient>& client)
-{
-    if (CloseConnection(client->m_node_id)) {
-        LogDebug(BCLog::HTTP, "Disconnected HTTP client %s (id=%d)\n", client->m_origin, client->m_node_id);
-    } else {
-        LogDebug(BCLog::HTTP, "Failed to disconnect non-existent HTTP client %s (id=%d)\n", client->m_origin, client->m_node_id);
-    }
-}
-
-void HTTPServer::DisconnectClients()
-{
-    const auto now{Now<SteadySeconds>()};
-    for (auto it = m_connected_clients.begin(); it != m_connected_clients.end();) {
-        bool timeout{now - it->second->m_idle_since > m_rpcservertimeout};
-        if (((it->second->m_disconnect || m_disconnect_all_clients) && !it->second->m_prevent_disconnect)
-            || timeout) {
-            CloseConnectionInternal(it->second);
-            it = m_connected_clients.erase(it);
-        } else {
-            ++it;
-        }
-    }
-    m_no_clients = m_connected_clients.size() == 0;
-}
-
-bool HTTPServer::EventNewConnectionAccepted(NodeId node_id,
-                                            const CService& me,
-                                            const CService& them)
-{
-    auto client = std::make_shared<HTTPClient>(node_id, them);
-    // Point back to the server
-    client->m_server = this;
-    // Set timeout
-    client->m_idle_since = Now<SteadySeconds>();
-    LogDebug(BCLog::HTTP, "HTTP Connection accepted from %s (id=%d)\n", client->m_origin, client->m_node_id);
-    m_connected_clients.emplace(client->m_node_id, std::move(client));
-    m_no_clients = false;
-    return true;
-}
-
-void HTTPServer::EventReadyToSend(NodeId node_id, bool& cancel_recv)
-{
-    // Next attempt to receive data from this node is permitted
-    cancel_recv = false;
-
-    // Get the HTTPClient
-    auto client{GetClientById(node_id)};
-    if (client == nullptr) {
-        return;
-    }
-
-    // SendBytesFromBuffer() returns true if we should keep the client around,
-    // false if we are done with it. Invert that boolean to inform Sockman
-    // whether it should cancel the next receive attempt from this client.
-    cancel_recv = !client->SendBytesFromBuffer();
-}
-
-void HTTPServer::EventGotData(NodeId node_id, std::span<const uint8_t> data)
-{
-    // Get the HTTPClient
-    auto client{GetClientById(node_id)};
-    if (client == nullptr) {
-        return;
-    }
-
     // Reset idle timeout
-    client->m_idle_since = Now<SteadySeconds>();
-
-    // Prevent disconnect until all requests are completely handled.
-    client->m_prevent_disconnect = true;
+    m_idle_since = Now<SteadySeconds>();
 
     // Copy data from socket buffer to client receive buffer
-    client->m_recv_buffer.insert(
-        client->m_recv_buffer.end(),
+    m_recv_buffer.insert(
+        m_recv_buffer.end(),
         reinterpret_cast<const std::byte*>(data.data()),
-        reinterpret_cast<const std::byte*>(data.data() + data.size())
-    );
+        reinterpret_cast<const std::byte*>(data.data() + data.size()));
 
     // Try reading (potentially multiple) HTTP requests from the buffer
-    while (client->m_recv_buffer.size() > 0) {
+    while (m_recv_buffer.size() > 0) {
         // Create a new request object and try to fill it with data from the receive buffer
-        auto req = std::make_unique<HTTPRequest>(client);
+        auto req = std::make_unique<HTTPRequest>(shared_from_this());
         try {
             // Stop reading if we need more data from the client to parse a complete request
-            if (!client->ReadRequest(req)) break;
+            if (!ReadRequest(req)) break;
         } catch (const std::runtime_error& e) {
+            m_refcount++;
             LogDebug(
                 BCLog::HTTP,
                 "Error reading HTTP request from client %s (id=%lld): %s\n",
-                client->m_origin,
-                client->m_node_id,
+                m_origin,
+                m_node_id,
                 e.what());
 
             // We failed to read a complete request from the buffer
+            m_recv_buffer.clear();
+            m_done = true;
             req->WriteReply(HTTP_BAD_REQUEST);
-            client->m_disconnect = true;
             break;
         }
 
@@ -803,71 +679,371 @@ void HTTPServer::EventGotData(NodeId node_id, std::span<const uint8_t> data)
             "Received a %s request for %s from %s (id=%lld)\n",
             req->m_method,
             req->m_target,
-            req->m_client->m_origin,
-            req->m_client->m_node_id);
+            m_origin,
+            m_node_id);
 
         // handle request
-        m_request_dispatcher(std::move(req));
+        m_server->m_request_dispatcher(std::move(req));
     }
 }
 
-void HTTPServer::EventGotEOF(NodeId node_id)
+std::pair<ssize_t, bool> HTTPClient::SendBytesFromBuffer()
 {
-    // Get the HTTPClient
-    auto client{GetClientById(node_id)};
-    if (client == nullptr) {
+    Assume(m_server);
+
+    // Send as much data from this client's buffer as we can
+    LOCK(m_send_mutex);
+    ssize_t bytes_sent = 0;
+    if (!m_send_buffer.empty()) {
+        std::string err;
+        // We don't intend to "send more" because http responses are usually small and we want the kernel to send them right away.
+        bytes_sent = SendBytes(MakeUCharSpan(m_send_buffer), err);
+        if (bytes_sent < 0) {
+            LogDebug(
+                BCLog::HTTP,
+                "Error sending HTTP response data to client %s (id=%lld): %s\n",
+                m_origin,
+                m_node_id,
+                err);
+            m_send_ready = false;
+            m_send_buffer.clear();
+            m_done = true;
+            return std::make_pair(0, false);
+        }
+
+        Assume(static_cast<size_t>(bytes_sent) <= m_send_buffer.size());
+        m_send_buffer.erase(m_send_buffer.begin(), m_send_buffer.begin() + bytes_sent);
+        if (m_send_buffer.empty()) {
+            m_send_ready = false;
+        }
+
+        LogDebug(
+            BCLog::HTTP,
+            "Sent %d bytes to client %s (id=%lld)\n",
+            bytes_sent,
+            m_origin,
+            m_node_id);
+    }
+    return std::make_pair(bytes_sent, m_send_ready.load());
+}
+
+ssize_t HTTPClient::SendBytes(std::span<const unsigned char> data,
+                              std::string& errmsg) const
+{
+    if (data.empty()) {
+        return 0;
+    }
+
+    int flags{MSG_NOSIGNAL | MSG_DONTWAIT};
+
+    const ssize_t sent = m_sock->Send(reinterpret_cast<const char*>(data.data()), data.size(), flags);
+
+    if (sent >= 0) {
+        return sent;
+    }
+
+    const int err{WSAGetLastError()};
+    if (err == WSAEWOULDBLOCK || err == WSAEMSGSIZE || err == WSAEINTR || err == WSAEINPROGRESS) {
+        return 0;
+    }
+    errmsg = NetworkErrorString(err);
+    return -1;
+}
+
+HTTPServer::HTTPServer(std::function<void(std::unique_ptr<HTTPRequest>)> func) : m_request_dispatcher(func)
+{
+    // Create a dummy pair of sockets that can be used to interrupt select/poll
+    // by writing a byte to the send side.
+
+#ifndef WIN32
+    int wake_pair[2];
+    auto ret = socketpair(AF_UNIX, SOCK_STREAM, 0, wake_pair);
+    assert(!ret);
+    m_wake_send = std::make_shared<Sock>(wake_pair[0]);
+    m_wake_recv = std::make_shared<Sock>(wake_pair[1]);
+#endif
+};
+
+void HTTPServer::DisconnectClients()
+{
+    const auto now{Now<SteadySeconds>()};
+    for (auto it = m_connected_clients.begin(); it != m_connected_clients.end();) {
+        bool timeout{now - (*it)->m_idle_since > m_rpcservertimeout};
+        if ((*it)->m_disconnect || timeout) {
+            LogDebug(BCLog::HTTP, "Disconnected HTTP client %s (id=%d)\n", (*it)->m_origin, (*it)->m_node_id);
+            it = m_connected_clients.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    m_no_clients = m_connected_clients.size() == 0;
+}
+
+
+void HTTPServer::SocketHandler()
+{
+    Sock::EventsPerSock io_readiness;
+    while (!m_listen.empty() || !m_connected_clients.empty()) {
+        io_readiness.clear();
+        io_readiness.reserve(m_listen.size() + m_connected_clients.size());
+
+        // Check for the readiness of the already connected sockets and the
+        // listening sockets in one call ("readiness" as in poll(2) or
+        // select(2)). If none are ready, wait for a short while and return
+        // empty sets.
+        for (const auto& listen_socket : m_listen) {
+            io_readiness.emplace(listen_socket, Sock::Events{Sock::RECV});
+        }
+
+        for (const auto& client : m_connected_clients) {
+            bool select_recv = !client->m_send_ready;
+            bool select_send = client->m_send_ready;
+            Sock::Event event = (select_send ? Sock::SEND : 0) | (select_recv ? Sock::RECV : 0);
+            io_readiness.emplace(client->m_sock, Sock::Events{event});
+        }
+
+            // WaitMany() may as well be a static method, the context of the first Sock in the vector is not relevant.
+        [[maybe_unused]] bool ret = io_readiness.begin()->first->WaitMany(SELECT_TIMEOUT, io_readiness, m_wake_recv);
+
+        // Service (send/receive) each of the already connected sockets.
+        SocketHandlerConnected(m_connected_clients, io_readiness);
+
+        // Accept new connections from listening sockets.
+        SocketHandlerListening(io_readiness);
+
+        DisconnectClients();
+    }
+}
+void HTTPServer::SocketHandlerConnected(const std::vector<std::shared_ptr<HTTPClient>>& clients, const Sock::EventsPerSock& events_per_sock)
+{
+    for (auto& client : clients) {
+        //
+        // Receive
+        //
+        bool recvSet = false;
+        bool sendSet = false;
+        bool errorSet = false;
+        {
+            const auto it = events_per_sock.find(client->m_sock);
+            if (it != events_per_sock.end()) {
+                recvSet = it->second.occurred & Sock::RECV;
+                sendSet = it->second.occurred & Sock::SEND;
+                errorSet = it->second.occurred & Sock::ERR;
+            }
+        }
+
+        // Send data
+        if (sendSet) {
+            auto [bytes_sent, data_left] = client->SendBytesFromBuffer();
+            if (bytes_sent) {
+                // If both receiving and (non-optimistic) sending were possible, we first attempt
+                // sending. If that succeeds, but does not fully drain the send queue, do not
+                // attempt to receive. This avoids needlessly queueing data if the remote peer
+                // is slow at receiving data, by means of TCP flow control. We only do this when
+                // sending actually succeeded to make sure progress is always made; otherwise a
+                // deadlock would be possible when both sides have data to send, but neither is
+                // receiving.
+                if (data_left) {
+                    recvSet = false;
+                } else if (!client->m_refcount && (client->m_done || m_disconnect_all_clients)) {
+                    client->m_disconnect = true;
+                    continue;
+                }
+            }
+        }
+        if (recvSet || errorSet)
+        {
+            // typical socket buffer is 8K-64K
+            uint8_t pchBuf[0x10000];
+            int nBytes = 0;
+            nBytes = client->m_sock->Recv(pchBuf, sizeof(pchBuf), MSG_DONTWAIT);
+            if (nBytes > 0)
+            {
+                client->ReceiveMsgBytes({pchBuf, (size_t)nBytes});
+            }
+            else if (nBytes == 0)
+            {
+                // socket closed gracefully
+                client->m_disconnect = true;
+            }
+            else if (nBytes < 0)
+            {
+                // error
+                int nErr = WSAGetLastError();
+                if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS)
+                {
+                    LogDebug(BCLog::HTTP, "socket recv error, %s\n", NetworkErrorString(nErr));
+                    client->m_disconnect = true;
+                }
+            }
+        }
+        if (!client->m_refcount && !client->m_send_ready && m_disconnect_all_clients) {
+            client->m_disconnect = true;
+        }
+    }
+}
+
+NodeId HTTPServer::GetNewId()
+{
+    return m_next_id++;
+}
+
+void HTTPServer::AcceptConnection(const Sock& listen_socket) {
+    struct sockaddr_storage sockaddr;
+    socklen_t len = sizeof(sockaddr);
+    auto sock = listen_socket.Accept((struct sockaddr*)&sockaddr, &len);
+
+    if (!sock) {
+        const int nErr = WSAGetLastError();
+        if (nErr != WSAEWOULDBLOCK) {
+            LogPrintf("socket error accept failed: %s\n", NetworkErrorString(nErr));
+        }
         return;
     }
 
-    client->m_disconnect = true;
-}
-
-void HTTPServer::EventGotPermanentReadError(NodeId node_id, const std::string& errmsg)
-{
-    // Get the HTTPClient
-    auto client{GetClientById(node_id)};
-    if (client == nullptr) {
+    CService addr;
+    if (!addr.SetSockAddr((const struct sockaddr*)&sockaddr, len)) {
+        LogPrintLevel(BCLog::HTTP, BCLog::Level::Warning, "Unknown socket family\n");
+    }
+    auto them = GetBindAddress(*sock);
+    if (!sock->IsSelectable()) {
+        LogPrintf("connection from %s dropped: non-selectable socket\n", them.ToStringAddrPort());
         return;
     }
 
-    client->m_disconnect = true;
+    // According to the internet TCP_NODELAY is not carried into accepted sockets
+    // on all platforms.  Set it again here just to be sure.
+    const int on{1};
+    if (sock->SetSockOpt(IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on)) == SOCKET_ERROR) {
+        LogDebug(BCLog::HTTP, "connection from %s: unable to set TCP_NODELAY, continuing anyway\n",
+                 them.ToStringAddrPort());
+    }
+
+    const NodeId node_id{GetNewId()};
+
+    auto client = std::make_shared<HTTPClient>(node_id, addr);
+    // Point back to the server
+    client->m_server = this;
+    // Set timeout
+    client->m_idle_since = Now<SteadySeconds>();
+    client->m_sock = std::move(sock);
+    LogDebug(BCLog::HTTP, "HTTP Connection accepted from %s (id=%d)\n", client->m_origin, client->m_node_id);
+    m_connected_clients.push_back(std::move(client));
+    m_no_clients = false;
 }
 
-void HTTPServer::EventIOLoopCompletedForAll()
+void HTTPServer::SocketHandlerListening(const Sock::EventsPerSock& events_per_sock)
 {
-    DisconnectClients();
+    if (m_listen_interrupt) {
+        m_listen.clear();
+        m_listen_interrupt.reset();
+    }
+    for (const auto& listen_socket : m_listen) {
+        const auto it = events_per_sock.find(listen_socket);
+        if (it != events_per_sock.end() && it->second.occurred & Sock::RECV) {
+            AcceptConnection(*listen_socket);
+        }
+    }
+}
+void HTTPServer::Wake()
+{
+#ifndef WIN32
+    static constexpr std::byte wake_byte = std::byte('.');
+    const ssize_t sent = m_wake_send->Send(&wake_byte, 1, MSG_NOSIGNAL);
+    assert(sent == 1);
+#endif
 }
 
-bool HTTPServer::ShouldTryToSend(NodeId node_id) const
+void HTTPServer::StartSocketsThreads()
 {
-    // Get the HTTPClient
-    auto client{GetClientById(node_id)};
-    if (client == nullptr) {
+    m_thread_socket_handler = std::thread(&util::TraceThread, "http", [this] { SocketHandler(); });
+}
+void HTTPServer::JoinSocketsThreads()
+{
+    if (m_thread_socket_handler.joinable()) {
+        m_thread_socket_handler.join();
+    }
+}
+bool HTTPServer::BindAndStartListening(const CService& addrBind, bilingual_str& strError)
+{
+    int nOne = 1;
+
+    // Create socket for listening for incoming connections
+    struct sockaddr_storage sockaddr;
+    socklen_t len = sizeof(sockaddr);
+    if (!addrBind.GetSockAddr((struct sockaddr*)&sockaddr, &len))
+    {
+        strError = Untranslated(strprintf("Bind address family for %s not supported", addrBind.ToStringAddrPort()));
+        LogPrintLevel(BCLog::HTTP, BCLog::Level::Error, "%s\n", strError.original);
         return false;
     }
 
-    return client->m_send_ready;
-}
-
-bool HTTPServer::ShouldTryToRecv(NodeId node_id) const
-{
-    // Get the HTTPClient
-    auto client{GetClientById(node_id)};
-    if (client == nullptr) {
+    std::unique_ptr<Sock> sock = CreateSock(addrBind.GetSAFamily(), SOCK_STREAM, IPPROTO_TCP);
+    if (!sock) {
+        strError = Untranslated(strprintf("Couldn't open socket for incoming connections (socket returned error %s)", NetworkErrorString(WSAGetLastError())));
+        LogPrintLevel(BCLog::HTTP, BCLog::Level::Error, "%s\n", strError.original);
         return false;
     }
 
-    // Don't try to receive again until we've cleared the send buffer to this client
-    return !client->m_send_ready;
+    // Allow binding if the port is still in TIME_WAIT state after
+    // the program was closed and restarted.
+    if (sock->SetSockOpt(SOL_SOCKET, SO_REUSEADDR, (sockopt_arg_type)&nOne, sizeof(int)) == SOCKET_ERROR) {
+        strError = Untranslated(strprintf("Error setting SO_REUSEADDR on socket: %s, continuing anyway", NetworkErrorString(WSAGetLastError())));
+        LogPrintf("%s\n", strError.original);
+    }
+
+    // some systems don't have IPV6_V6ONLY but are always v6only; others do have the option
+    // and enable it by default or not. Try to enable it, if possible.
+    if (addrBind.IsIPv6()) {
+#ifdef IPV6_V6ONLY
+        if (sock->SetSockOpt(IPPROTO_IPV6, IPV6_V6ONLY, (sockopt_arg_type)&nOne, sizeof(int)) == SOCKET_ERROR) {
+            strError = Untranslated(strprintf("Error setting IPV6_V6ONLY on socket: %s, continuing anyway", NetworkErrorString(WSAGetLastError())));
+            LogPrintf("%s\n", strError.original);
+        }
+#endif
+#ifdef WIN32
+        int nProtLevel = PROTECTION_LEVEL_UNRESTRICTED;
+        if (sock->SetSockOpt(IPPROTO_IPV6, IPV6_PROTECTION_LEVEL, (const char*)&nProtLevel, sizeof(int)) == SOCKET_ERROR) {
+            strError = Untranslated(strprintf("Error setting IPV6_PROTECTION_LEVEL on socket: %s, continuing anyway", NetworkErrorString(WSAGetLastError())));
+            LogPrintf("%s\n", strError.original);
+        }
+#endif
+    }
+    if (sock->Bind(reinterpret_cast<struct sockaddr*>(&sockaddr), len) == SOCKET_ERROR) {
+        int nErr = WSAGetLastError();
+        if (nErr == WSAEADDRINUSE)
+            strError = strprintf(_("Unable to bind to %s on this computer. %s is probably already running."), addrBind.ToStringAddrPort(), CLIENT_NAME);
+        else
+            strError = strprintf(_("Unable to bind to %s on this computer (bind returned error %s)"), addrBind.ToStringAddrPort(), NetworkErrorString(nErr));
+        LogPrintLevel(BCLog::HTTP, BCLog::Level::Error, "%s\n", strError.original);
+        return false;
+    }
+    LogPrintf("Bound to %s\n", addrBind.ToStringAddrPort());
+
+    // Listen for incoming connections
+    if (sock->Listen(SOMAXCONN) == SOCKET_ERROR)
+    {
+        strError = strprintf(_("Listening for incoming connections failed (listen returned error %s)"), NetworkErrorString(WSAGetLastError()));
+        LogPrintLevel(BCLog::HTTP, BCLog::Level::Error, "%s\n", strError.original);
+        return false;
+    }
+    m_listen.emplace_back(std::move(sock));
+    return true;
 }
 
-std::shared_ptr<HTTPClient> HTTPServer::GetClientById(NodeId node_id) const
+void HTTPServer::Interrupt()
 {
-    auto it{m_connected_clients.find(node_id)};
-    if (it != m_connected_clients.end()) {
-        return it->second;
-    }
-    return nullptr;
+    m_request_dispatcher = RejectAllRequests;
+    m_listen_interrupt();
+    Wake();
+}
+
+
+void HTTPServer::Stop()
+{
+    m_disconnect_all_clients = true;
+    Wake();
+    JoinSocketsThreads();
 }
 
 bool InitHTTPServer(const util::SignalInterrupt& interrupt)
@@ -921,9 +1097,7 @@ void StartHTTPServer()
 {
     int rpcThreads = std::max((long)gArgs.GetIntArg("-rpcthreads", DEFAULT_HTTP_THREADS), 1L);
     LogInfo("Starting HTTP server with %d worker threads\n", rpcThreads);
-    SockMan::Options sockman_options;
-    sockman_options.socket_handler_thread_name = "http";
-    g_http_server->StartSocketsThreads(sockman_options);
+    g_http_server->StartSocketsThreads();
 
     for (int i = 0; i < rpcThreads; i++) {
         g_thread_http_workers.emplace_back(HTTPWorkQueueRun, g_work_queue.get(), i);
@@ -935,7 +1109,7 @@ void InterruptHTTPServer()
     LogDebug(BCLog::HTTP, "Interrupting HTTP server\n");
     if (g_http_server) {
         // Reject all new requests
-        g_http_server->m_request_dispatcher = RejectAllRequests;
+        g_http_server->Interrupt();
     }
     if (g_work_queue) {
         // Stop workers, killing requests we haven't processed or responded to yet
@@ -954,16 +1128,7 @@ void StopHTTPServer()
         g_thread_http_workers.clear();
     }
     if (g_http_server) {
-        // Disconnect clients as their remaining responses are flushed
-        g_http_server->m_disconnect_all_clients = true;
-        // Wait for all disconnections
-        while (!g_http_server->m_no_clients) {
-            std::this_thread::sleep_for(std::chrono::milliseconds{50});
-        }
-        // Break sockman I/O loop: stop accepting connections, sending and receiving data
-        g_http_server->interruptNet();
-        // Wait for sockman threads to exit
-        g_http_server->JoinSocketsThreads();
+        g_http_server->Stop();
     }
     LogDebug(BCLog::HTTP, "Stopped HTTP server\n");
 }

@@ -7,15 +7,18 @@
 
 #include <functional>
 #include <map>
+#include <memory>
 #include <optional>
 #include <span>
 #include <string>
 
+#include <netaddress.h>
 #include <rpc/protocol.h>
-#include <common/sockman.h>
+#include <util/sock.h>
 #include <util/strencodings.h>
 #include <util/string.h>
 #include <util/time.h>
+#include <util/translation.h>
 
 namespace util {
 class SignalInterrupt;
@@ -53,7 +56,7 @@ public:
 
 namespace http_bitcoin {
 using util::LineReader;
-using NodeId = SockMan::Id;
+using NodeId = int64_t;
 
 // shortest valid request line, used by libevent in evhttp_parse_request_line()
 static const size_t MIN_REQUEST_LINE_LENGTH{strlen("GET / HTTP/1.0")};
@@ -83,7 +86,6 @@ public:
     std::string m_reason;
     HTTPHeaders m_headers;
     std::vector<std::byte> m_body;
-    bool m_keep_alive{false};
 
     std::string StringifyHeaders() const;
 };
@@ -114,6 +116,7 @@ public:
     bool LoadControlData(LineReader& reader);
     bool LoadHeaders(LineReader& reader);
     bool LoadBody(LineReader& reader);
+    void SetKeepAlive();
 
     // These methods reimplement the API from http_libevent::HTTPRequest
     // for downstream JSONRPC and REST modules.
@@ -124,7 +127,7 @@ public:
     std::pair<bool, std::string> GetHeader(const std::string& hdr) const;
     std::string ReadBody() const {return m_body;};
     void WriteHeader(const std::string& hdr, const std::string& value);
-
+    bool CheckKeepAlive() const;
     // Response headers may be set in advance before response body is known
     HTTPHeaders m_response_headers;
     void WriteReply(HTTPStatusCode status, std::span<const std::byte> reply_body = {});
@@ -145,16 +148,18 @@ std::optional<std::string> GetQueryParameterFromUri(const std::string& uri, cons
 
 class HTTPServer;
 
-class HTTPClient
+class HTTPClient : public std::enable_shared_from_this<HTTPClient>
 {
+    ssize_t SendBytes(std::span<const unsigned char> data, std::string& errmsg) const;
+
 public:
-    // ID provided by SockMan, inherited by HTTPServer
     NodeId m_node_id;
+    std::shared_ptr<Sock> m_sock;
     // Remote address of connected client
     CService m_addr;
     // IP:port of connected client, cached for logging purposes
     std::string m_origin;
-    // Pointer back to the server so we can call Sockman I/O methods from the client
+    // Pointer back to the server so we can call Server I/O methods from the client
     // Ok to remain null for unit tests.
     HTTPServer* m_server;
 
@@ -164,26 +169,17 @@ public:
     std::vector<std::byte> m_recv_buffer{};
 
     // Response data destined for this client.
-    // Written to directly by http worker threads, read and erased by Sockman I/O
+    // Written to directly by http worker threads
     Mutex m_send_mutex;
     std::vector<std::byte> m_send_buffer GUARDED_BY(m_send_mutex);
     // Set true by worker threads after writing a response to m_send_buffer.
-    // Set false by the Sockman I/O thread after flushing m_send_buffer.
-    // Checked in the Sockman I/O loop to avoid locking m_send_mutex if there's nothing to send.
     std::atomic_bool m_send_ready{false};
 
-    // Set to true when we receive request data and set to false once m_send_buffer is cleared.
-    // Checked during DisconnectClients(). All of these operations take place in the Sockman I/O loop,
-    // however it may get set my a worker thread during an "optimistic send".
-    std::atomic_bool m_prevent_disconnect{false};
-
-    // Client request to keep connection open after all requests have been responded to.
-    // Set by (potentially multiple) worker threads and checked in the Sockman I/O loop.
-    std::atomic_bool m_keep_alive{false};
-
-    // Flag this client for disconnection on next loop.
-    // Checked at the end of every Sockman I/O loop, may be set a worker thread.
-    std::atomic_bool m_disconnect{false};
+    std::atomic_bool m_done{false};
+    bool m_prevent_disconnect = false;
+    // Flag this client for disconnection on next loop
+    bool m_disconnect{false};
+    std::atomic<int> m_refcount{0};
 
     // Timestamp of last receive activity, used for -rpcservertimeout
     SteadySeconds m_idle_since;
@@ -197,110 +193,56 @@ public:
     bool ReadRequest(std::unique_ptr<HTTPRequest>& req);
 
     // Push data from m_send_buffer to the connected socket via m_server
-    // Returns false if we are done with this client and Sockman can
-    // therefore skip the next read operation from it.
-    bool SendBytesFromBuffer() EXCLUSIVE_LOCKS_REQUIRED(!m_send_mutex);
+    std::pair<ssize_t, bool> SendBytesFromBuffer() EXCLUSIVE_LOCKS_REQUIRED(!m_send_mutex);
+    void CloseSocketDisconnect();
+    void ReceiveMsgBytes(std::span<const uint8_t> data);
 
     // Disable copies (should only be used as shared pointers)
     HTTPClient(const HTTPClient&) = delete;
     HTTPClient& operator=(const HTTPClient&) = delete;
 };
 
-class HTTPServer : public SockMan
+class HTTPServer
 {
 private:
     void CloseConnectionInternal(std::shared_ptr<HTTPClient>& client);
+    void SocketHandler();
+    void SocketHandlerConnected(const std::vector<std::shared_ptr<HTTPClient>>& nodes, const Sock::EventsPerSock& events_per_sock);
+    void SocketHandlerListening(const Sock::EventsPerSock& events_per_sock);
+    NodeId GetNewId();
+    void AcceptConnection(const Sock& listen_socket);
+    // Close underlying connections where flagged
+    void DisconnectClients();
+
+
+    std::thread m_thread_socket_handler;
+    std::vector<std::shared_ptr<Sock>> m_listen;
+    NodeId m_next_id{0};
+
+    std::shared_ptr<Sock> m_wake_send;
+    std::shared_ptr<Sock> m_wake_recv;
+
+    //! Connected clients with live HTTP connections
+    std::vector<std::shared_ptr<HTTPClient>> m_connected_clients;
+    CThreadInterrupt m_listen_interrupt;
+    std::atomic_bool m_disconnect_all_clients{false};
+    void JoinSocketsThreads();
 
 public:
-    explicit HTTPServer(std::function<void(std::unique_ptr<HTTPRequest>)> func) : m_request_dispatcher(func) {};
-
-    // Set in the Sockman I/O loop and only checked by main thread when shutting
-    // down to wait for all clients to be disconnected.
+    explicit HTTPServer(std::function<void(std::unique_ptr<HTTPRequest>)> func);
     std::atomic_bool m_no_clients{true};
-    //! Connected clients with live HTTP connections
-    std::unordered_map<NodeId, std::shared_ptr<HTTPClient>> m_connected_clients;
 
     // What to do with HTTP requests once received, validated and parsed
     std::function<void(std::unique_ptr<HTTPRequest>)> m_request_dispatcher;
 
-    std::shared_ptr<HTTPClient> GetClientById(NodeId node_id) const;
-
-    // Close underlying connections where flagged
-    void DisconnectClients();
-
-    // Flag used during shutdown to bypass keep-alive flag.
-    // Set by main thread and read by Sockman I/O thread
-    std::atomic_bool m_disconnect_all_clients{false};
-
     // Idle timeout after which clients are disconnected
     std::chrono::seconds m_rpcservertimeout{DEFAULT_HTTP_SERVER_TIMEOUT};
 
-    /**
-     * Be notified when a new connection has been accepted.
-     * @param[in] node_id Id of the newly accepted connection.
-     * @param[in] me The address and port at our side of the connection.
-     * @param[in] them The address and port at the peer's side of the connection.
-     * @retval true The new connection was accepted at the higher level.
-     * @retval false The connection was refused at the higher level, so the
-     * associated socket and node_id should be discarded by `SockMan`.
-     */
-    virtual bool EventNewConnectionAccepted(NodeId node_id, const CService& me, const CService& them) override;
-
-    /**
-     * Called when the socket is ready to send data and `ShouldTryToSend()` has
-     * returned true. This is where the higher level code serializes its messages
-     * and calls `SockMan::SendBytes()`.
-     * @param[in] node_id Id of the node whose socket is ready to send.
-     * @param[out] cancel_recv Should always be set upon return and if it is true,
-     * then the next attempt to receive data from that node will be omitted.
-     */
-    virtual void EventReadyToSend(NodeId node_id, bool& cancel_recv) override;
-
-    /**
-     * Called when new data has been received.
-     * @param[in] node_id Connection for which the data arrived.
-     * @param[in] data Received data.
-     */
-    virtual void EventGotData(NodeId node_id, std::span<const uint8_t> data) override;
-
-    /**
-     * Called when the remote peer has sent an EOF on the socket. This is a graceful
-     * close of their writing side, we can still send and they will receive, if it
-     * makes sense at the application level.
-     * @param[in] node_id Node whose socket got EOF.
-     */
-    virtual void EventGotEOF(NodeId node_id) override;
-
-    /**
-     * Called when we get an irrecoverable error trying to read from a socket.
-     * @param[in] node_id Node whose socket got an error.
-     * @param[in] errmsg Message describing the error.
-     */
-    virtual void EventGotPermanentReadError(NodeId node_id, const std::string& errmsg) override;
-
-    /**
-     * SockMan has completed send+recv for all nodes.
-     * Can be used to execute periodic tasks for all nodes, like disconnecting
-     * nodes due to higher level logic.
-     * The implementation in SockMan does nothing.
-     */
-    virtual void EventIOLoopCompletedForAll() override;
-
-    /**
-     * Can be used to temporarily pause sends on a connection.
-     * SockMan would only call EventReadyToSend() if this returns true.
-     * The implementation in SockMan always returns true.
-     * @param[in] node_id Connection for which to confirm or omit the next call to EventReadyToSend().
-     */
-    virtual bool ShouldTryToSend(NodeId node_id) const override;
-
-    /**
-     * SockMan would only call Recv() on a connection's socket if this returns true.
-     * Can be used to temporarily pause receives on a connection.
-     * The implementation in SockMan always returns true.
-     * @param[in] node_id Connection for which to confirm or omit the next receive.
-     */
-    virtual bool ShouldTryToRecv(NodeId node_id) const override;
+    void StartSocketsThreads();
+    bool BindAndStartListening(const CService& addrBind, bilingual_str& strError);
+    void Wake();
+    void Interrupt();
+    void Stop();
 };
 
 /** Initialize HTTP server.
