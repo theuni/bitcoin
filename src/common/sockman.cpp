@@ -16,20 +16,6 @@
 // The sleep time needs to be small to avoid new sockets stalling
 static constexpr auto SELECT_TIMEOUT{50ms};
 
-/** Get the bind address for a socket as CService. */
-static CService GetBindAddress(const Sock& sock)
-{
-    CService addr_bind;
-    struct sockaddr_storage sockaddr_bind;
-    socklen_t sockaddr_bind_len = sizeof(sockaddr_bind);
-    if (!sock.GetSockName((struct sockaddr*)&sockaddr_bind, &sockaddr_bind_len)) {
-        addr_bind.SetSockAddr((const struct sockaddr*)&sockaddr_bind, sockaddr_bind_len);
-    } else {
-        LogPrintLevel(BCLog::NET, BCLog::Level::Warning, "getsockname failed\n");
-    }
-    return addr_bind;
-}
-
 bool SockMan::BindAndStartListening(const CService& to, bilingual_str& err_msg)
 {
     // Create socket for listening for incoming connections
