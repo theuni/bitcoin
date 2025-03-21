@@ -216,7 +216,7 @@ public:
      * false otherwise
      */
     [[nodiscard]] virtual bool WaitMany(std::chrono::milliseconds timeout,
-                                        EventsPerSock& events_per_sock) const;
+                                        EventsPerSock& events_per_sock, std::shared_ptr<const Sock> wakesock) const;
 
     /* Higher level, convenience, methods. These may throw. */
 

@@ -208,7 +208,7 @@ bool ZeroSock::Wait(std::chrono::milliseconds timeout, Event requested, Event* o
     return true;
 }
 
-bool ZeroSock::WaitMany(std::chrono::milliseconds timeout, EventsPerSock& events_per_sock) const
+bool ZeroSock::WaitMany(std::chrono::milliseconds timeout, EventsPerSock& events_per_sock, std::shared_ptr<const Sock> wakesock) const
 {
     for (auto& [sock, events] : events_per_sock) {
         (void)sock;
@@ -362,14 +362,14 @@ bool DynSock::Wait(std::chrono::milliseconds timeout,
 {
     EventsPerSock ev;
     ev.emplace(this, Events{requested});
-    const bool ret{WaitMany(timeout, ev)};
+    const bool ret{WaitMany(timeout, ev, nullptr)};
     if (occurred != nullptr) {
         *occurred = ev.begin()->second.occurred;
     }
     return ret;
 }
 
-bool DynSock::WaitMany(std::chrono::milliseconds timeout, EventsPerSock& events_per_sock) const
+bool DynSock::WaitMany(std::chrono::milliseconds timeout, EventsPerSock& events_per_sock, std::shared_ptr<const Sock> wakesock) const
 {
     const auto deadline = std::chrono::steady_clock::now() + timeout;
     bool at_least_one_event_occurred{false};
@@ -391,6 +391,10 @@ bool DynSock::WaitMany(std::chrono::milliseconds timeout, EventsPerSock& events_
                     at_least_one_event_occurred = true;
                 }
             }
+        }
+        if (wakesock) {
+            std::array<std::byte, 1024> bytes;
+            [[maybe_unused]] size_t read_bytes = wakesock->Recv(bytes.data(), bytes.size(), MSG_DONTWAIT);
         }
 
         if (at_least_one_event_occurred || std::chrono::steady_clock::now() > deadline) {

@@ -391,8 +391,9 @@ bool FuzzedSock::Wait(std::chrono::milliseconds timeout, Event requested, Event*
     return true;
 }
 
-bool FuzzedSock::WaitMany(std::chrono::milliseconds timeout, EventsPerSock& events_per_sock) const
+bool FuzzedSock::WaitMany(std::chrono::milliseconds timeout, EventsPerSock& events_per_sock, std::shared_ptr<const Sock> wakesock) const
 {
+    (void)wakesock;
     for (auto& [sock, events] : events_per_sock) {
         (void)sock;
         // We simulate the requested event as occurred when ConsumeBool()

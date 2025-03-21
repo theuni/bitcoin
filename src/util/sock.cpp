@@ -145,7 +145,7 @@ bool Sock::Wait(std::chrono::milliseconds timeout, Event requested, Event* occur
 
     EventsPerSock events_per_sock{std::make_pair(shared, Events{requested})};
 
-    if (!WaitMany(timeout, events_per_sock)) {
+    if (!WaitMany(timeout, events_per_sock, nullptr)) {
         return false;
     }
 
@@ -156,7 +156,7 @@ bool Sock::Wait(std::chrono::milliseconds timeout, Event requested, Event* occur
     return true;
 }
 
-bool Sock::WaitMany(std::chrono::milliseconds timeout, EventsPerSock& events_per_sock) const
+bool Sock::WaitMany(std::chrono::milliseconds timeout, EventsPerSock& events_per_sock, std::shared_ptr<const Sock> wakesock) const
 {
 #ifdef USE_POLL
     std::vector<pollfd> pfds;
@@ -172,11 +172,27 @@ bool Sock::WaitMany(std::chrono::milliseconds timeout, EventsPerSock& events_per
         }
     }
 
+    if (wakesock) {
+        pfds.emplace_back();
+        auto& pfd = pfds.back();
+        pfd.fd = wakesock->m_socket;
+        pfd.events |= POLLIN;
+    }
+
     if (poll(pfds.data(), pfds.size(), count_milliseconds(timeout)) == SOCKET_ERROR) {
         return false;
     }
 
-    assert(pfds.size() == events_per_sock.size());
+    if (wakesock) {
+        assert(pfds.size() == events_per_sock.size() + 1);
+        if (pfds.back().revents & POLLIN) {
+            std::array<std::byte, 1024> bytes;
+            [[maybe_unused]] size_t read_bytes = wakesock->Recv(bytes.data(), bytes.size(), MSG_DONTWAIT);
+        }
+    } else {
+        assert(pfds.size() == events_per_sock.size());
+    }
+
     size_t i{0};
     for (auto& [sock, events] : events_per_sock) {
         assert(sock->m_socket == static_cast<SOCKET>(pfds[i].fd));
@@ -218,10 +234,24 @@ bool Sock::WaitMany(std::chrono::milliseconds timeout, EventsPerSock& events_per
         socket_max = std::max(socket_max, s);
     }
 
+    if (wakesock) {
+        if (!wakesock->IsSelectable()) {
+            return false;
+        }
+        const auto& s = wakesock->m_socket;
+        FD_SET(s, &recv);
+        socket_max = std::max(socket_max, s);
+    }
+
     timeval tv = MillisToTimeval(timeout);
 
     if (select(socket_max + 1, &recv, &send, &err, &tv) == SOCKET_ERROR) {
         return false;
+    }
+
+    if (wakesock && FD_ISSET(wakesock->m_socket, &recv)) {
+        std::array<std::byte, 1024> bytes;
+        [[maybe_unused]] size_t read_bytes = wakesock->Recv(bytes.data(), bytes.size(), MSG_DONTWAIT);
     }
 
     for (auto& [sock, events] : events_per_sock) {

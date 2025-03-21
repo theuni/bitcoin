@@ -206,7 +206,7 @@ public:
         return true;
     }
 
-    bool WaitMany(std::chrono::milliseconds timeout, EventsPerSock& events_per_sock) const override
+    bool WaitMany(std::chrono::milliseconds timeout, EventsPerSock& events_per_sock, std::shared_ptr<const Sock> wakesock) const override
     {
         return false;
     }
