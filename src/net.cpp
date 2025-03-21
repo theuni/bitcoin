@@ -2086,7 +2086,7 @@ void CConnman::SocketHandler()
         // select(2)). If none are ready, wait for a short while and return
         // empty sets.
         events_per_sock = GenerateWaitSockets(snap.Nodes());
-        if (events_per_sock.empty() || !events_per_sock.begin()->first->WaitMany(timeout, events_per_sock)) {
+        if (events_per_sock.empty() || !events_per_sock.begin()->first->WaitMany(timeout, events_per_sock, nullptr)) {
             interruptNet.sleep_for(timeout);
         }
 
