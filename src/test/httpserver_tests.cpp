@@ -48,7 +48,7 @@ private:
 
 BOOST_FIXTURE_TEST_SUITE(httpserver_tests, HTTPTestingSetup)
 
-BOOST_AUTO_TEST_CASE(test_query_parameters)
+BOOST_AUTO_TEST_CASE(test_old_query_parameters)
 {
     // The legacy code that relied on libevent couldn't handle an invalid URI encoding.
     // The new code is more tolerant and so we expect a difference in behavior.
