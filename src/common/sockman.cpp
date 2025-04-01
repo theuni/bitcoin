@@ -332,7 +332,7 @@ void SockMan::ThreadSocketHandler()
         if (io_readiness.events_per_sock.empty() ||
             // WaitMany() may as well be a static method, the context of the first Sock in the vector is not relevant.
             !io_readiness.events_per_sock.begin()->first->WaitMany(SELECT_TIMEOUT,
-                                                                   io_readiness.events_per_sock)) {
+                                                                   io_readiness.events_per_sock, nullptr)) {
             interruptNet.sleep_for(SELECT_TIMEOUT);
         }
 
