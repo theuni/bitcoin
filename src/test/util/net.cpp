@@ -107,9 +107,9 @@ bool ConnmanTestMsg::ReceiveMsgFrom(CNode& node, CSerializedNetMsg&& ser_msg) co
     return complete;
 }
 
-CNode* ConnmanTestMsg::ConnectNodePublic(PeerManager& peerman, const char* pszDest, ConnectionType conn_type)
+std::shared_ptr<CNode> ConnmanTestMsg::ConnectNodePublic(PeerManager& peerman, const char* pszDest, ConnectionType conn_type)
 {
-    CNode* node = ConnectNode(CAddress{}, pszDest, /*fCountFailure=*/false, conn_type, /*use_v2transport=*/true);
+    auto node = ConnectNode(CAddress{}, pszDest, /*fCountFailure=*/false, conn_type, /*use_v2transport=*/true);
     if (!node) return nullptr;
     LOCK(NetEventsInterface::g_msgproc_mutex);
     Handshake(
@@ -119,7 +119,7 @@ CNode* ConnmanTestMsg::ConnectNodePublic(PeerManager& peerman, const char* pszDe
         /*local_services=*/ServiceFlags(NODE_NETWORK | NODE_WITNESS),
         /*version=*/PROTOCOL_VERSION,
         /*relay_txs=*/true);
-    AddTestNode(*node);
+    AddTestNode(node);
     return node;
 }
 

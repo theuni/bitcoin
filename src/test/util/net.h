@@ -45,26 +45,23 @@ struct ConnmanTestMsg : public CConnman {
         m_peer_connect_timeout = timeout;
     }
 
-    std::vector<CNode*> TestNodes()
+    std::vector<std::shared_ptr<CNode>> TestNodes()
     {
         LOCK(m_nodes_mutex);
         return m_nodes;
     }
 
-    void AddTestNode(CNode& node)
+    void AddTestNode(std::shared_ptr<CNode> node)
     {
         LOCK(m_nodes_mutex);
-        m_nodes.push_back(&node);
+        m_nodes.push_back(node);
 
-        if (node.IsManualOrFullOutboundConn()) ++m_network_conn_counts[node.addr.GetNetwork()];
+        if (node->IsManualOrFullOutboundConn()) ++m_network_conn_counts[node->addr.GetNetwork()];
     }
 
     void ClearTestNodes()
     {
         LOCK(m_nodes_mutex);
-        for (CNode* node : m_nodes) {
-            delete node;
-        }
         m_nodes.clear();
     }
 
@@ -88,7 +85,7 @@ struct ConnmanTestMsg : public CConnman {
 
     bool AlreadyConnectedPublic(const CAddress& addr) { return AlreadyConnectedToAddress(addr); };
 
-    CNode* ConnectNodePublic(PeerManager& peerman, const char* pszDest, ConnectionType conn_type)
+    std::shared_ptr<CNode> ConnectNodePublic(PeerManager& peerman, const char* pszDest, ConnectionType conn_type)
         EXCLUSIVE_LOCKS_REQUIRED(!m_unused_i2p_sessions_mutex);
 };
 

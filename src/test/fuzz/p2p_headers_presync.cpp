@@ -24,7 +24,7 @@ constexpr uint32_t FUZZ_MAX_HEADERS_RESULTS{16};
 
 class HeadersSyncSetup : public TestingSetup
 {
-    std::vector<CNode*> m_connections;
+    std::vector<std::shared_ptr<CNode>> m_connections;
 
 public:
     HeadersSyncSetup(const ChainType chain_type, TestOpts opts) : TestingSetup(chain_type, opts)
@@ -70,11 +70,11 @@ void HeadersSyncSetup::ResetAndInitialize()
 
     for (auto conn_type : conn_types) {
         CAddress addr{};
-        m_connections.push_back(new CNode(id++, nullptr, addr, 0, addr, "", conn_type, false));
-        CNode& p2p_node = *m_connections.back();
+        m_connections.push_back(std::make_shared<CNode>(id++, nullptr, addr, 0, addr, "", conn_type, false));
+        auto p2p_node = m_connections.back();
 
         connman.Handshake(
-            /*node=*/p2p_node,
+            /*node=*/*p2p_node,
             /*successfully_connected=*/true,
             /*remote_services=*/ServiceFlags(NODE_NETWORK | NODE_WITNESS),
             /*local_services=*/ServiceFlags(NODE_NETWORK | NODE_WITNESS),

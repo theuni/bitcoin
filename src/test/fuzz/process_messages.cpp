@@ -52,13 +52,13 @@ FUZZ_TARGET(process_messages, .init = initialize_process_messages)
 
     LOCK(NetEventsInterface::g_msgproc_mutex);
 
-    std::vector<CNode*> peers;
+    std::vector<std::shared_ptr<CNode>> peers;
     const auto num_peers_to_add = fuzzed_data_provider.ConsumeIntegralInRange(1, 3);
     for (int i = 0; i < num_peers_to_add; ++i) {
-        peers.push_back(ConsumeNodeAsUniquePtr(fuzzed_data_provider, i).release());
-        CNode& p2p_node = *peers.back();
+        peers.push_back(ConsumeNodeAsSharedPtr(fuzzed_data_provider, i));
+        auto p2p_node = peers.back();
 
-        FillNode(fuzzed_data_provider, connman, p2p_node);
+        FillNode(fuzzed_data_provider, connman, *p2p_node);
 
         connman.AddTestNode(p2p_node);
     }

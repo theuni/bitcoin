@@ -62,11 +62,11 @@ FUZZ_TARGET(p2p_handshake, .init = ::initialize)
 
     LOCK(NetEventsInterface::g_msgproc_mutex);
 
-    std::vector<CNode*> peers;
+    std::vector<std::shared_ptr<CNode>> peers;
     const auto num_peers_to_add = fuzzed_data_provider.ConsumeIntegralInRange(1, 3);
     for (int i = 0; i < num_peers_to_add; ++i) {
-        peers.push_back(ConsumeNodeAsUniquePtr(fuzzed_data_provider, i).release());
-        connman.AddTestNode(*peers.back());
+        peers.push_back(ConsumeNodeAsSharedPtr(fuzzed_data_provider, i));
+        connman.AddTestNode(peers.back());
         peerman->InitializeNode(
             *peers.back(),
             static_cast<ServiceFlags>(fuzzed_data_provider.ConsumeIntegral<uint64_t>()));
