@@ -1926,14 +1926,11 @@ void CConnman::DisconnectNodes()
         }
 
         // Disconnect unused nodes
-        std::vector<CNode*> nodes_copy = m_nodes;
-        for (CNode* pnode : nodes_copy)
+        for (auto it = m_nodes.begin(); it != m_nodes.end();)
         {
+            CNode* pnode = *it;
             if (pnode->fDisconnect)
             {
-                // remove from m_nodes
-                m_nodes.erase(remove(m_nodes.begin(), m_nodes.end(), pnode), m_nodes.end());
-
                 // Add to reconnection list if appropriate. We don't reconnect right here, because
                 // the creation of a connection is a blocking operation (up to several seconds),
                 // and we don't want to hold up the socket handler thread for that long.
@@ -1959,6 +1956,11 @@ void CConnman::DisconnectNodes()
                 // hold in disconnected pool until all refs are released
                 pnode->Release();
                 nodes_disconnected.push_back(pnode);
+
+                // remove from m_nodes
+                it = m_nodes.erase(it);
+            } else {
+                ++it;
             }
         }
     }
