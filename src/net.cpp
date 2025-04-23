@@ -1938,8 +1938,9 @@ void CConnman::DisconnectNodes()
             }
         }
     }
-
+    if (!nodes_disconnected.empty())
     {
+        LOCK(m_nodes_disconnected_mutex);
         m_nodes_disconnected.splice(m_nodes_disconnected.end(), std::move(nodes_disconnected));
         // Delete disconnected nodes
         for (auto it = m_nodes_disconnected.begin(); it != m_nodes_disconnected.end();) {
@@ -1950,12 +1951,12 @@ void CConnman::DisconnectNodes()
                 ++it;
             }
         }
-        for (const auto& pnode : nodes_to_delete)
-        {
-            // Destroy the object only after other threads have stopped using it.
-            m_msgproc->FinalizeNode(*pnode);
-            DeleteNode(pnode);
-        }
+    }
+    for (const auto& pnode : nodes_to_delete)
+    {
+        // Destroy the object only after other threads have stopped using it.
+        m_msgproc->FinalizeNode(*pnode);
+        DeleteNode(pnode);
     }
     {
         // Move entries from reconnections_to_add to m_reconnections.
@@ -3477,12 +3478,12 @@ void CConnman::StopNodes()
         m_msgproc->FinalizeNode(*pnode);
         DeleteNode(pnode);
     }
-
-    for (CNode* pnode : m_nodes_disconnected) {
+    std::list<CNode*> nodes_disconnected;
+    WITH_LOCK(m_nodes_disconnected_mutex, nodes_disconnected.swap(m_nodes_disconnected));
+    for (CNode* pnode : nodes_disconnected) {
         m_msgproc->FinalizeNode(*pnode);
         DeleteNode(pnode);
     }
-    m_nodes_disconnected.clear();
     vhListenSocket.clear();
     semOutbound.reset();
     semAddnode.reset();
