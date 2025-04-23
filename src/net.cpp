@@ -3923,11 +3923,13 @@ void CConnman::PushMessage(CNode* pnode, CSerializedNetMsg&& msg)
 bool CConnman::ForNode(NodeId id, std::function<bool(CNode* pnode)> func)
 {
     std::shared_ptr<CNode> found;
-    LOCK(m_nodes_mutex);
-    for (auto&& pnode : m_nodes) {
-        if(pnode->GetId() == id) {
-            found = pnode;
-            break;
+    {
+        LOCK(m_nodes_mutex);
+        for (auto&& pnode : m_nodes) {
+            if(pnode->GetId() == id) {
+                found = pnode;
+                break;
+            }
         }
     }
     return found && NodeFullyConnected(found.get()) && func(found.get());

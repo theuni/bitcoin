@@ -1124,8 +1124,8 @@ public:
     using NodeFn = std::function<void(CNode*)>;
     void ForEachNode(const NodeFn& func)
     {
-        LOCK(m_nodes_mutex);
-        for (auto&& node : m_nodes) {
+        auto nodes = WITH_LOCK(m_nodes_mutex, return m_nodes);
+        for (auto&& node : nodes) {
             if (NodeFullyConnected(node.get()))
                 func(node.get());
         }
@@ -1133,8 +1133,8 @@ public:
 
     void ForEachNode(const NodeFn& func) const
     {
-        LOCK(m_nodes_mutex);
-        for (auto&& node : m_nodes) {
+        auto nodes = WITH_LOCK(m_nodes_mutex, return m_nodes);
+        for (auto&& node : nodes) {
             if (NodeFullyConnected(node.get()))
                 func(node.get());
         }
