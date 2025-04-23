@@ -45,7 +45,7 @@ static CService ip(uint32_t i)
 
 struct PeerTest : LogIPsTestingSetup {
 /** Create a peer and connect to it. If the optional `address` (IP/CJDNS only) isn't passed, a random address is created. */
-void AddPeer(NodeId& id, std::vector<CNode*>& nodes, PeerManager& peerman, ConnmanTestMsg& connman, ConnectionType conn_type, bool onion_peer = false, std::optional<std::string> address = std::nullopt)
+void AddPeer(NodeId& id, std::vector<std::shared_ptr<CNode>>& nodes, PeerManager& peerman, ConnmanTestMsg& connman, ConnectionType conn_type, bool onion_peer = false, std::optional<std::string> address = std::nullopt)
 {
     CAddress addr{};
 
@@ -73,11 +73,11 @@ void AddPeer(NodeId& id, std::vector<CNode*>& nodes, PeerManager& peerman, Connm
                                  /*addrNameIn=*/"",
                                  conn_type,
                                  /*inbound_onion=*/inbound_onion});
-    CNode& node = *nodes.back();
-    node.SetCommonVersion(PROTOCOL_VERSION);
+    auto node = nodes.back();
+    node->SetCommonVersion(PROTOCOL_VERSION);
 
-    peerman.InitializeNode(node, ServiceFlags(NODE_NETWORK | NODE_WITNESS));
-    node.fSuccessfullyConnected = true;
+    peerman.InitializeNode(*node, ServiceFlags(NODE_NETWORK | NODE_WITNESS));
+    node->fSuccessfullyConnected = true;
 
     connman.AddTestNode(node);
 }
@@ -88,7 +88,7 @@ BOOST_FIXTURE_TEST_CASE(test_addnode_getaddednodeinfo_and_connection_detection, 
     auto connman = std::make_unique<ConnmanTestMsg>(0x1337, 0x1337, *m_node.addrman, *m_node.netgroupman, Params());
     auto peerman = PeerManager::make(*connman, *m_node.addrman, nullptr, *m_node.chainman, *m_node.mempool, *m_node.warnings, {});
     NodeId id{0};
-    std::vector<CNode*> nodes;
+    std::vector<std::shared_ptr<CNode>> nodes;
 
     // Connect a localhost peer.
     {

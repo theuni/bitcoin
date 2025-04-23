@@ -107,7 +107,7 @@ BOOST_AUTO_TEST_CASE(outbound_slow_chain_eviction)
 }
 
 struct OutboundTest : TestingSetup {
-void AddRandomOutboundPeer(NodeId& id, std::vector<CNode*>& vNodes, PeerManager& peerLogic, ConnmanTestMsg& connman, ConnectionType connType, bool onion_peer = false)
+void AddRandomOutboundPeer(NodeId& id, std::vector<std::shared_ptr<CNode>>& vNodes, PeerManager& peerLogic, ConnmanTestMsg& connman, ConnectionType connType, bool onion_peer = false)
 {
     CAddress addr;
 
@@ -129,11 +129,11 @@ void AddRandomOutboundPeer(NodeId& id, std::vector<CNode*>& vNodes, PeerManager&
                                   /*addrNameIn=*/"",
                                   connType,
                                   /*inbound_onion=*/false});
-    CNode &node = *vNodes.back();
-    node.SetCommonVersion(PROTOCOL_VERSION);
+    auto node = vNodes.back();
+    node->SetCommonVersion(PROTOCOL_VERSION);
 
-    peerLogic.InitializeNode(node, ServiceFlags(NODE_NETWORK | NODE_WITNESS));
-    node.fSuccessfullyConnected = true;
+    peerLogic.InitializeNode(*node, ServiceFlags(NODE_NETWORK | NODE_WITNESS));
+    node->fSuccessfullyConnected = true;
 
     connman.AddTestNode(node);
 }
@@ -153,7 +153,7 @@ BOOST_FIXTURE_TEST_CASE(stale_tip_peer_management, OutboundTest)
     SetMockTime(time_init);
     const auto time_later{time_init + 3 * std::chrono::seconds{m_node.chainman->GetConsensus().nPowTargetSpacing} + 1s};
     connman->Init(options);
-    std::vector<CNode *> vNodes;
+    std::vector<std::shared_ptr<CNode>> vNodes;
 
     // Mock some outbound peers
     for (int i = 0; i < max_outbound_full_relay; ++i) {
@@ -163,7 +163,7 @@ BOOST_FIXTURE_TEST_CASE(stale_tip_peer_management, OutboundTest)
     peerLogic->CheckForStaleTipAndEvictPeers();
 
     // No nodes should be marked for disconnection while we have no extra peers
-    for (const CNode *node : vNodes) {
+    for (const auto& node : vNodes) {
         BOOST_CHECK(node->fDisconnect == false);
     }
 
@@ -175,7 +175,7 @@ BOOST_FIXTURE_TEST_CASE(stale_tip_peer_management, OutboundTest)
     BOOST_CHECK(connman->GetTryNewOutboundPeer());
 
     // Still no peers should be marked for disconnection
-    for (const CNode *node : vNodes) {
+    for (const auto& node : vNodes) {
         BOOST_CHECK(node->fDisconnect == false);
     }
 
@@ -230,7 +230,7 @@ BOOST_FIXTURE_TEST_CASE(stale_tip_peer_management, OutboundTest)
 
     BOOST_CHECK(vNodes.back()->fDisconnect == true);
 
-    for (const CNode *node : vNodes) {
+    for (const auto& node : vNodes) {
         peerLogic->FinalizeNode(*node);
     }
 
@@ -249,7 +249,7 @@ BOOST_FIXTURE_TEST_CASE(block_relay_only_eviction, OutboundTest)
     options.m_max_automatic_connections = DEFAULT_MAX_PEER_CONNECTIONS;
 
     connman->Init(options);
-    std::vector<CNode*> vNodes;
+    std::vector<std::shared_ptr<CNode>> vNodes;
 
     // Add block-relay-only peers up to the limit
     for (int i = 0; i < max_outbound_block_relay; ++i) {
@@ -290,7 +290,7 @@ BOOST_FIXTURE_TEST_CASE(block_relay_only_eviction, OutboundTest)
     BOOST_CHECK(vNodes[max_outbound_block_relay - 1]->fDisconnect == true);
     BOOST_CHECK(vNodes.back()->fDisconnect == false);
 
-    for (const CNode* node : vNodes) {
+    for (const auto& node : vNodes) {
         peerLogic->FinalizeNode(*node);
     }
     connman->ClearTestNodes();
@@ -315,11 +315,11 @@ BOOST_AUTO_TEST_CASE(peer_discouragement)
 
     const CNetAddr other_addr{ip(0xa0b0ff01)}; // Not any of addr[].
 
-    std::array<CNode*, 3> nodes;
+    std::array<std::shared_ptr<CNode>, 3> nodes;
 
     banman->ClearBanned();
     NodeId id{0};
-    nodes[0] = new CNode{id++,
+    nodes[0] = std::make_shared<CNode>(id++,
                          /*sock=*/nullptr,
                          addr[0],
                          /*nKeyedNetGroupIn=*/0,
@@ -327,19 +327,19 @@ BOOST_AUTO_TEST_CASE(peer_discouragement)
                          CAddress(),
                          /*addrNameIn=*/"",
                          ConnectionType::INBOUND,
-                         /*inbound_onion=*/false};
+                         /*inbound_onion=*/false);
     nodes[0]->SetCommonVersion(PROTOCOL_VERSION);
     peerLogic->InitializeNode(*nodes[0], NODE_NETWORK);
     nodes[0]->fSuccessfullyConnected = true;
-    connman->AddTestNode(*nodes[0]);
+    connman->AddTestNode(nodes[0]);
     peerLogic->UnitTestMisbehaving(nodes[0]->GetId()); // Should be discouraged
-    BOOST_CHECK(peerLogic->SendMessages(nodes[0]));
+    BOOST_CHECK(peerLogic->SendMessages(nodes[0].get()));
 
     BOOST_CHECK(banman->IsDiscouraged(addr[0]));
     BOOST_CHECK(nodes[0]->fDisconnect);
     BOOST_CHECK(!banman->IsDiscouraged(other_addr)); // Different address, not discouraged
 
-    nodes[1] = new CNode{id++,
+    nodes[1] = std::make_shared<CNode>(id++,
                          /*sock=*/nullptr,
                          addr[1],
                          /*nKeyedNetGroupIn=*/1,
@@ -347,12 +347,12 @@ BOOST_AUTO_TEST_CASE(peer_discouragement)
                          CAddress(),
                          /*addrNameIn=*/"",
                          ConnectionType::INBOUND,
-                         /*inbound_onion=*/false};
+                         /*inbound_onion=*/false);
     nodes[1]->SetCommonVersion(PROTOCOL_VERSION);
     peerLogic->InitializeNode(*nodes[1], NODE_NETWORK);
     nodes[1]->fSuccessfullyConnected = true;
-    connman->AddTestNode(*nodes[1]);
-    BOOST_CHECK(peerLogic->SendMessages(nodes[1]));
+    connman->AddTestNode(nodes[1]);
+    BOOST_CHECK(peerLogic->SendMessages(nodes[1].get()));
     // [0] is still discouraged/disconnected.
     BOOST_CHECK(banman->IsDiscouraged(addr[0]));
     BOOST_CHECK(nodes[0]->fDisconnect);
@@ -360,7 +360,7 @@ BOOST_AUTO_TEST_CASE(peer_discouragement)
     BOOST_CHECK(!banman->IsDiscouraged(addr[1]));
     BOOST_CHECK(!nodes[1]->fDisconnect);
     peerLogic->UnitTestMisbehaving(nodes[1]->GetId());
-    BOOST_CHECK(peerLogic->SendMessages(nodes[1]));
+    BOOST_CHECK(peerLogic->SendMessages(nodes[1].get()));
     // Expect both [0] and [1] to be discouraged/disconnected now.
     BOOST_CHECK(banman->IsDiscouraged(addr[0]));
     BOOST_CHECK(nodes[0]->fDisconnect);
@@ -369,7 +369,7 @@ BOOST_AUTO_TEST_CASE(peer_discouragement)
 
     // Make sure non-IP peers are discouraged and disconnected properly.
 
-    nodes[2] = new CNode{id++,
+    nodes[2] = std::make_shared<CNode>(id++,
                          /*sock=*/nullptr,
                          addr[2],
                          /*nKeyedNetGroupIn=*/1,
@@ -377,13 +377,13 @@ BOOST_AUTO_TEST_CASE(peer_discouragement)
                          CAddress(),
                          /*addrNameIn=*/"",
                          ConnectionType::OUTBOUND_FULL_RELAY,
-                         /*inbound_onion=*/false};
+                         /*inbound_onion=*/false);
     nodes[2]->SetCommonVersion(PROTOCOL_VERSION);
     peerLogic->InitializeNode(*nodes[2], NODE_NETWORK);
     nodes[2]->fSuccessfullyConnected = true;
-    connman->AddTestNode(*nodes[2]);
+    connman->AddTestNode(nodes[2]);
     peerLogic->UnitTestMisbehaving(nodes[2]->GetId());
-    BOOST_CHECK(peerLogic->SendMessages(nodes[2]));
+    BOOST_CHECK(peerLogic->SendMessages(nodes[2].get()));
     BOOST_CHECK(banman->IsDiscouraged(addr[0]));
     BOOST_CHECK(banman->IsDiscouraged(addr[1]));
     BOOST_CHECK(banman->IsDiscouraged(addr[2]));
@@ -391,7 +391,7 @@ BOOST_AUTO_TEST_CASE(peer_discouragement)
     BOOST_CHECK(nodes[1]->fDisconnect);
     BOOST_CHECK(nodes[2]->fDisconnect);
 
-    for (CNode* node : nodes) {
+    for (const auto& node : nodes) {
         peerLogic->FinalizeNode(*node);
     }
     connman->ClearTestNodes();
