@@ -1968,6 +1968,7 @@ void CConnman::DisconnectNodes()
             // Destroy the object only after other threads have stopped using it.
             if (pnode->GetRefCount() <= 0) {
                 m_nodes_disconnected.remove(pnode);
+                m_msgproc->FinalizeNode(*pnode);
                 DeleteNode(pnode);
             }
         }
@@ -3478,10 +3479,12 @@ void CConnman::StopNodes()
     for (CNode* pnode : nodes) {
         LogDebug(BCLog::NET, "Stopping node, %s", pnode->DisconnectMsg(fLogIPs));
         pnode->CloseSocketDisconnect();
+        m_msgproc->FinalizeNode(*pnode);
         DeleteNode(pnode);
     }
 
     for (CNode* pnode : m_nodes_disconnected) {
+        m_msgproc->FinalizeNode(*pnode);
         DeleteNode(pnode);
     }
     m_nodes_disconnected.clear();
@@ -3493,7 +3496,6 @@ void CConnman::StopNodes()
 void CConnman::DeleteNode(CNode* pnode)
 {
     assert(pnode);
-    m_msgproc->FinalizeNode(*pnode);
     delete pnode;
 }
 
