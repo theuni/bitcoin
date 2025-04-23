@@ -1881,6 +1881,7 @@ void CConnman::DisconnectNodes()
     // m_reconnections_mutex while holding m_nodes_mutex.
     decltype(m_reconnections) reconnections_to_add;
     decltype(m_nodes_disconnected) nodes_disconnected;
+    decltype(m_nodes_disconnected) nodes_to_delete;
 
     {
         LOCK(m_nodes_mutex);
@@ -1939,15 +1940,19 @@ void CConnman::DisconnectNodes()
     {
         m_nodes_disconnected.splice(m_nodes_disconnected.end(), std::move(nodes_disconnected));
         // Delete disconnected nodes
-        std::list<CNode*> nodes_disconnected_copy = m_nodes_disconnected;
-        for (CNode* pnode : nodes_disconnected_copy)
+        for (auto it = m_nodes_disconnected.begin(); it != m_nodes_disconnected.end();) {
+            const auto& pnode = *it;
+            if (pnode->GetRefCount() <= 0) {
+                nodes_to_delete.splice(nodes_to_delete.end(), m_nodes_disconnected, it++);
+            } else {
+                ++it;
+            }
+        }
+        for (const auto& pnode : nodes_to_delete)
         {
             // Destroy the object only after other threads have stopped using it.
-            if (pnode->GetRefCount() <= 0) {
-                m_nodes_disconnected.remove(pnode);
-                m_msgproc->FinalizeNode(*pnode);
-                DeleteNode(pnode);
-            }
+            m_msgproc->FinalizeNode(*pnode);
+            DeleteNode(pnode);
         }
     }
     {
