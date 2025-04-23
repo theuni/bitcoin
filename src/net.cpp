@@ -546,8 +546,6 @@ CNode* CConnman::ConnectNode(CAddress addrConnect, const char *pszDest, bool fCo
                                     .recv_flood_size = nReceiveFloodSize,
                                     .use_v2transport = use_v2transport,
                                 });
-        pnode->AddRef();
-
         // We're making a new connection, harvest entropy from the time (and our peer count)
         RandAddEvent((uint32_t)id);
 
@@ -1845,7 +1843,6 @@ void CConnman::CreateNodeFromAcceptedSocket(std::unique_ptr<Sock>&& sock,
                                  .recv_flood_size = nReceiveFloodSize,
                                  .use_v2transport = use_v2transport,
                              });
-    pnode->AddRef();
     m_msgproc->InitializeNode(*pnode, local_services);
     {
         LOCK(m_nodes_mutex);
@@ -1954,7 +1951,6 @@ void CConnman::DisconnectNodes()
                 if (pnode->IsManualOrFullOutboundConn()) --m_network_conn_counts[pnode->addr.GetNetwork()];
 
                 // hold in disconnected pool until all refs are released
-                pnode->Release();
                 nodes_disconnected.push_back(pnode);
 
                 // remove from m_nodes
@@ -1971,7 +1967,7 @@ void CConnman::DisconnectNodes()
         // Delete disconnected nodes
         for (auto it = m_nodes_disconnected.begin(); it != m_nodes_disconnected.end();) {
             CNode* pnode = *it;
-            if (pnode->GetRefCount() <= 0 && pnode->m_finalized) {
+            if (pnode->m_finalized) {
                 nodes_to_delete.splice(nodes_to_delete.end(), m_nodes_disconnected, it++);
             } else {
                 ++it;
@@ -2102,7 +2098,7 @@ void CConnman::SocketHandler()
     Sock::EventsPerSock events_per_sock;
 
     {
-        const NodesSnapshot snap{*this, /*shuffle=*/false};
+        std::vector<CNode*> nodes = WITH_LOCK(m_nodes_mutex, return m_nodes);
 
         const auto timeout = std::chrono::milliseconds(SELECT_TIMEOUT_MILLISECONDS);
 
@@ -2110,13 +2106,13 @@ void CConnman::SocketHandler()
         // listening sockets in one call ("readiness" as in poll(2) or
         // select(2)). If none are ready, wait for a short while and return
         // empty sets.
-        events_per_sock = GenerateWaitSockets(snap.Nodes());
+        events_per_sock = GenerateWaitSockets(nodes);
         if (events_per_sock.empty() || !events_per_sock.begin()->first->WaitMany(timeout, events_per_sock)) {
             interruptNet.sleep_for(timeout);
         }
 
         // Service (send/receive) each of the already connected nodes.
-        SocketHandlerConnected(snap.Nodes(), events_per_sock);
+        SocketHandlerConnected(nodes, events_per_sock);
     }
 
     // Accept new connections from listening sockets.
@@ -3063,9 +3059,9 @@ void CConnman::ThreadMessageHandler()
             // Randomize the order in which we process messages from/to our peers.
             // This prevents attacks in which an attacker exploits having multiple
             // consecutive connections in the m_nodes list.
-            const NodesSnapshot snap{*this, /*shuffle=*/true};
-
-            for (CNode* pnode : snap.Nodes()) {
+            std::vector<CNode*> nodes = WITH_LOCK(m_nodes_mutex, return m_nodes);
+            std::shuffle(nodes.begin(), nodes.end(), FastRandomContext{});
+            for (CNode* pnode : nodes) {
                 if (pnode->fDisconnect)
                     continue;
 
