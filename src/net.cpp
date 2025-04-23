@@ -1964,7 +1964,7 @@ void CConnman::DisconnectNodes()
         // Delete disconnected nodes
         for (auto it = m_nodes_disconnected.begin(); it != m_nodes_disconnected.end();) {
             const auto& pnode = *it;
-            if (pnode->GetRefCount() <= 0) {
+            if (pnode->GetRefCount() <= 0 && pnode->m_finalized) {
                 nodes_to_delete.splice(nodes_to_delete.end(), m_nodes_disconnected, it++);
             } else {
                 ++it;
@@ -1974,7 +1974,6 @@ void CConnman::DisconnectNodes()
     for (const auto& pnode : nodes_to_delete)
     {
         // Destroy the object only after other threads have stopped using it.
-        m_msgproc->FinalizeNode(*pnode);
         DeleteNode(pnode);
     }
     {
@@ -3046,6 +3045,14 @@ void CConnman::ThreadMessageHandler()
         bool fMoreWork = false;
 
         {
+            // Finalize nodes that were marked for deletion on another thread
+            decltype(m_nodes_disconnected) nodes_to_finalize;
+            WITH_LOCK(m_nodes_disconnected_mutex, std::copy_if(m_nodes_disconnected.begin(), m_nodes_disconnected.end(), std::back_inserter(nodes_to_finalize), [](const auto& pnode) { return !pnode->m_finalized; }));
+            for (const auto& pnode : nodes_to_finalize) {
+                m_msgproc->FinalizeNode(*pnode);
+                pnode->m_finalized = true;
+            }
+
             // Randomize the order in which we process messages from/to our peers.
             // This prevents attacks in which an attacker exploits having multiple
             // consecutive connections in the m_nodes list.
@@ -3483,13 +3490,17 @@ void CConnman::StopNodes()
     for (CNode* pnode : nodes) {
         LogDebug(BCLog::NET, "Stopping node, %s", pnode->DisconnectMsg(fLogIPs));
         pnode->CloseSocketDisconnect();
-        m_msgproc->FinalizeNode(*pnode);
+        if (!pnode->m_finalized) {
+            m_msgproc->FinalizeNode(*pnode);
+        }
         DeleteNode(pnode);
     }
     std::list<CNode*> nodes_disconnected;
     WITH_LOCK(m_nodes_disconnected_mutex, nodes_disconnected.swap(m_nodes_disconnected));
     for (CNode* pnode : nodes_disconnected) {
-        m_msgproc->FinalizeNode(*pnode);
+        if (!pnode->m_finalized) {
+            m_msgproc->FinalizeNode(*pnode);
+        }
         DeleteNode(pnode);
     }
     vhListenSocket.clear();
