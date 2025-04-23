@@ -1908,6 +1908,7 @@ void CConnman::DisconnectNodes()
     // Use a temporary variable to accumulate desired reconnections, so we don't need
     // m_reconnections_mutex while holding m_nodes_mutex.
     decltype(m_reconnections) reconnections_to_add;
+    decltype(m_nodes_disconnected) nodes_disconnected;
 
     {
         LOCK(m_nodes_mutex);
@@ -1956,11 +1957,12 @@ void CConnman::DisconnectNodes()
 
                 // hold in disconnected pool until all refs are released
                 pnode->Release();
-                m_nodes_disconnected.push_back(pnode);
+                nodes_disconnected.push_back(pnode);
             }
         }
     }
     {
+        m_nodes_disconnected.splice(m_nodes_disconnected.end(), std::move(nodes_disconnected));
         // Delete disconnected nodes
         std::list<CNode*> nodes_disconnected_copy = m_nodes_disconnected;
         for (CNode* pnode : nodes_disconnected_copy)
