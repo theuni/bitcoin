@@ -1936,16 +1936,20 @@ void CConnman::DisconnectNodes()
     }
     if (!nodes_disconnected.empty())
     {
-        LOCK(m_nodes_disconnected_mutex);
-        m_nodes_disconnected.splice(m_nodes_disconnected.end(), std::move(nodes_disconnected));
-        for (auto it = m_nodes_disconnected.begin(); it != m_nodes_disconnected.end();) {
-            const auto& pnode = *it;
-            if (pnode->m_finalized) {
-                nodes_to_delete.splice(nodes_to_delete.end(), m_nodes_disconnected, it++);
-            } else {
-                ++it;
+        {
+            LOCK(m_nodes_disconnected_mutex);
+            m_nodes_disconnected.splice(m_nodes_disconnected.end(), std::move(nodes_disconnected));
+            for (auto it = m_nodes_disconnected.begin(); it != m_nodes_disconnected.end();) {
+                const auto& pnode = *it;
+                if (pnode->m_finalized) {
+                    nodes_to_delete.splice(nodes_to_delete.end(), m_nodes_disconnected, it++);
+                } else {
+                    ++it;
+                }
             }
         }
+        WakeMessageHandler();
+
     }
     // Delete disconnected nodes only after other threads have stopped using them.
     nodes_to_delete.clear();
