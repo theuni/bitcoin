@@ -3036,35 +3036,33 @@ void CConnman::ThreadMessageHandler()
     {
         bool fMoreWork = false;
 
-        {
-            // Finalize nodes that were marked for deletion on another thread
-            decltype(m_nodes_disconnected) nodes_to_finalize;
-            WITH_LOCK(m_nodes_disconnected_mutex, std::copy_if(m_nodes_disconnected.begin(), m_nodes_disconnected.end(), std::back_inserter(nodes_to_finalize), [](const auto& pnode) { return !pnode->m_finalized; }));
-            for (const auto& pnode : nodes_to_finalize) {
-                m_msgproc->FinalizeNode(*pnode);
-                pnode->m_finalized = true;
-            }
+        // Finalize nodes that were marked for deletion on another thread
+        decltype(m_nodes_disconnected) nodes_to_finalize;
+        WITH_LOCK(m_nodes_disconnected_mutex, std::copy_if(m_nodes_disconnected.begin(), m_nodes_disconnected.end(), std::back_inserter(nodes_to_finalize), [](const auto& pnode) { return !pnode->m_finalized; }));
+        for (const auto& pnode : nodes_to_finalize) {
+            m_msgproc->FinalizeNode(*pnode);
+            pnode->m_finalized = true;
+        }
 
-            // Randomize the order in which we process messages from/to our peers.
-            // This prevents attacks in which an attacker exploits having multiple
-            // consecutive connections in the m_nodes list.
-            auto nodes = WITH_LOCK(m_nodes_mutex, return m_nodes);
-            std::shuffle(nodes.begin(), nodes.end(), FastRandomContext{});
-            for (const auto& pnode : nodes) {
-                if (pnode->fDisconnect)
-                    continue;
+        // Randomize the order in which we process messages from/to our peers.
+        // This prevents attacks in which an attacker exploits having multiple
+        // consecutive connections in the m_nodes list.
+        auto nodes = WITH_LOCK(m_nodes_mutex, return m_nodes);
+        std::shuffle(nodes.begin(), nodes.end(), FastRandomContext{});
+        for (const auto& pnode : nodes) {
+            if (pnode->fDisconnect)
+                continue;
 
-                // Receive messages
-                bool fMoreNodeWork = m_msgproc->ProcessMessages(pnode.get(), flagInterruptMsgProc);
-                fMoreWork |= (fMoreNodeWork && !pnode->fPauseSend);
-                if (flagInterruptMsgProc)
-                    return;
-                // Send messages
-                m_msgproc->SendMessages(pnode.get());
+            // Receive messages
+            bool fMoreNodeWork = m_msgproc->ProcessMessages(pnode.get(), flagInterruptMsgProc);
+            fMoreWork |= (fMoreNodeWork && !pnode->fPauseSend);
+            if (flagInterruptMsgProc)
+                return;
+            // Send messages
+            m_msgproc->SendMessages(pnode.get());
 
-                if (flagInterruptMsgProc)
-                    return;
-            }
+            if (flagInterruptMsgProc)
+                return;
         }
 
         WAIT_LOCK(mutexMsgProc, lock);
