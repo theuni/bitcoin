@@ -3075,7 +3075,13 @@ void CConnman::ThreadMessageHandler()
             if (flagInterruptMsgProc)
                 return;
         }
-
+        // Finalize nodes that were marked for deletion on this pass through the loop
+        for (const auto& pnode : nodes) {
+            if (pnode->fDisconnect && !pnode->m_finalized) {
+                m_msgproc->FinalizeNode(*pnode);
+                pnode->m_finalized = true;
+            }
+        }
         WAIT_LOCK(mutexMsgProc, lock);
         if (!fMoreWork) {
             condMsgProc.wait_until(lock, std::chrono::steady_clock::now() + std::chrono::milliseconds(100), [this]() EXCLUSIVE_LOCKS_REQUIRED(mutexMsgProc) { return fMsgProcWake; });
