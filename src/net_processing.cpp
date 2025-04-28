@@ -418,10 +418,14 @@ struct Peer {
      * timestamp the peer sent in the version message. */
     std::atomic<std::chrono::seconds> m_time_offset{0s};
 
-    explicit Peer(NodeId id, ServiceFlags our_services, ConnectionType conn_type)
+    //! The peer's remote address
+    const CAddress m_addr;
+
+    explicit Peer(NodeId id, ServiceFlags our_services, ConnectionType conn_type, CAddress addr)
         : m_id{id}
         , m_our_services{our_services}
         , m_conn_type{conn_type}
+        , m_addr(std::move(addr))
     {}
 
 private:
@@ -1575,7 +1579,7 @@ void PeerManagerImpl::InitializeNode(const CNode& node, ServiceFlags our_service
         our_services = static_cast<ServiceFlags>(our_services | NODE_BLOOM);
     }
 
-    PeerRef peer = std::make_shared<Peer>(nodeid, our_services, node.m_conn_type);
+    PeerRef peer = std::make_shared<Peer>(nodeid, our_services, node.m_conn_type, node.addr);
     {
         LOCK(m_peer_mutex);
         m_peer_map.emplace_hint(m_peer_map.end(), nodeid, peer);
