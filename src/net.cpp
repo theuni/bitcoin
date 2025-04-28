@@ -246,7 +246,7 @@ std::optional<CService> GetLocalAddrForPeer(CNode& node)
     if (IsPeerAddrLocalGood(&node) && (!addrLocal.IsRoutable() ||
          rng.randbits((GetnScore(addrLocal) > LOCAL_MANUAL) ? 3 : 1) == 0))
     {
-        if (node.IsInboundConn()) {
+        if (IsInboundConn(node.m_conn_type)) {
             // For inbound connections, assume both the address and the port
             // as seen from the peer.
             addrLocal = CService{node.GetAddrLocal()};
@@ -367,7 +367,7 @@ bool CConnman::CheckIncomingNonce(uint64_t nonce)
 {
     LOCK(m_nodes_mutex);
     for (const auto& pnode : m_nodes) {
-        if (!pnode->fSuccessfullyConnected && !pnode->IsInboundConn() && pnode->GetLocalNonce() == nonce)
+        if (!pnode->fSuccessfullyConnected && !IsInboundConn(pnode->m_conn_type) && pnode->GetLocalNonce() == nonce)
             return false;
     }
     return true;
@@ -625,7 +625,7 @@ void CNode::CopyStats(CNodeStats& stats)
         LOCK(m_subver_mutex);
         X(cleanSubVer);
     }
-    stats.fInbound = IsInboundConn();
+    stats.fInbound = ::IsInboundConn(m_conn_type);
     X(m_bip152_highbandwidth_to);
     X(m_bip152_highbandwidth_from);
     {
@@ -1765,7 +1765,7 @@ void CConnman::CreateNodeFromAcceptedSocket(std::unique_ptr<Sock>&& sock,
     {
         LOCK(m_nodes_mutex);
         for (const auto& pnode : m_nodes) {
-            if (pnode->IsInboundConn()) nInbound++;
+            if (IsInboundConn(pnode->m_conn_type)) nInbound++;
         }
     }
 
@@ -1941,7 +1941,7 @@ void CConnman::DisconnectNodes()
                 pnode->CloseSocketDisconnect();
 
                 // update connection count by network
-                if (pnode->IsManualOrFullOutboundConn()) --m_network_conn_counts[pnode->addr.GetNetwork()];
+                if (IsManualOrFullOutboundConn(pnode->m_conn_type)) --m_network_conn_counts[pnode->addr.GetNetwork()];
 
                 // hold in disconnected pool until all refs are released
                 nodes_disconnected.push_back(pnode);
@@ -2439,7 +2439,7 @@ int CConnman::GetFullOutboundConnCount() const
     {
         LOCK(m_nodes_mutex);
         for (const auto& pnode : m_nodes) {
-            if (pnode->fSuccessfullyConnected && pnode->IsFullOutboundConn()) ++nRelevant;
+            if (pnode->fSuccessfullyConnected && IsFullOutboundConn(pnode->m_conn_type)) ++nRelevant;
         }
     }
     return nRelevant;
@@ -2457,7 +2457,7 @@ int CConnman::GetExtraFullOutboundCount() const
     {
         LOCK(m_nodes_mutex);
         for (const auto& pnode : m_nodes) {
-            if (pnode->fSuccessfullyConnected && !pnode->fDisconnect && pnode->IsFullOutboundConn()) {
+            if (pnode->fSuccessfullyConnected && !pnode->fDisconnect && IsFullOutboundConn(pnode->m_conn_type)) {
                 ++full_outbound_peers;
             }
         }
@@ -2471,7 +2471,7 @@ int CConnman::GetExtraBlockRelayCount() const
     {
         LOCK(m_nodes_mutex);
         for (const auto& pnode : m_nodes) {
-            if (pnode->fSuccessfullyConnected && !pnode->fDisconnect && pnode->IsBlockOnlyConn()) {
+            if (pnode->fSuccessfullyConnected && !pnode->fDisconnect && IsBlockOnlyConn(pnode->m_conn_type)) {
                 ++block_relay_peers;
             }
         }
@@ -2642,8 +2642,8 @@ void CConnman::ThreadOpenConnections(const std::vector<std::string> connect, std
         {
             LOCK(m_nodes_mutex);
             for (const auto& pnode : m_nodes) {
-                if (pnode->IsFullOutboundConn()) nOutboundFullRelay++;
-                if (pnode->IsBlockOnlyConn()) nOutboundBlockRelay++;
+                if (IsFullOutboundConn(pnode->m_conn_type)) nOutboundFullRelay++;
+                if (IsBlockOnlyConn(pnode->m_conn_type)) nOutboundBlockRelay++;
 
                 // Make sure our persistent outbound slots to ipv4/ipv6 peers belong to different netgroups.
                 switch (pnode->m_conn_type) {
@@ -2887,7 +2887,7 @@ std::vector<CAddress> CConnman::GetCurrentBlockRelayOnlyConns() const
     std::vector<CAddress> ret;
     LOCK(m_nodes_mutex);
     for (const auto& pnode : m_nodes) {
-        if (pnode->IsBlockOnlyConn()) {
+        if (IsBlockOnlyConn(pnode->m_conn_type)) {
             ret.push_back(pnode->addr);
         }
     }
@@ -2914,11 +2914,11 @@ std::vector<AddedNodeInfo> CConnman::GetAddedNodeInfo(bool include_connected) co
         LOCK(m_nodes_mutex);
         for (const auto& pnode : m_nodes) {
             if (pnode->addr.IsValid()) {
-                mapConnected[pnode->addr] = pnode->IsInboundConn();
+                mapConnected[pnode->addr] = IsInboundConn(pnode->m_conn_type);
             }
             std::string addrName{pnode->m_addr_name};
             if (!addrName.empty()) {
-                mapConnectedByName[std::move(addrName)] = std::make_pair(pnode->IsInboundConn(), static_cast<const CService&>(pnode->addr));
+                mapConnectedByName[std::move(addrName)] = std::make_pair(IsInboundConn(pnode->m_conn_type), static_cast<const CService&>(pnode->addr));
             }
         }
     }
@@ -3019,7 +3019,7 @@ void CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFai
         m_nodes.push_back(pnode);
 
         // update connection count by network
-        if (pnode->IsManualOrFullOutboundConn()) ++m_network_conn_counts[pnode->addr.GetNetwork()];
+        if (IsManualOrFullOutboundConn(pnode->m_conn_type)) ++m_network_conn_counts[pnode->addr.GetNetwork()];
     }
 
     TRACEPOINT(net, outbound_connection,
@@ -3527,7 +3527,7 @@ std::vector<CAddress> CConnman::GetAddresses(CNode& requestor, size_t max_addres
         .Write(local_socket_bytes)
         // For outbound connections, the port of the bound address is randomly
         // assigned by the OS and would therefore not be useful for seeding.
-        .Write(requestor.IsInboundConn() ? requestor.addrBind.GetPort() : 0)
+        .Write(IsInboundConn(requestor.m_conn_type) ? requestor.addrBind.GetPort() : 0)
         .Finalize();
     const auto current_time = GetTime<std::chrono::microseconds>();
     auto r = m_addr_response_caches.emplace(cache_id, CachedAddrResponse{});
@@ -3609,7 +3609,7 @@ size_t CConnman::GetNodeCount(ConnectionDirection flags) const
 
     int nNum = 0;
     for (const auto& pnode : m_nodes) {
-        if (flags & (pnode->IsInboundConn() ? ConnectionDirection::In : ConnectionDirection::Out)) {
+        if (flags & (IsInboundConn(pnode->m_conn_type) ? ConnectionDirection::In : ConnectionDirection::Out)) {
             nNum++;
         }
     }
