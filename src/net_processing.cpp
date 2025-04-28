@@ -2850,7 +2850,7 @@ void PeerManagerImpl::UpdatePeerStateForReceivedHeaders(CNode& pfrom, Peer& peer
             // until we have a headers chain that has at least
             // the minimum chain work, even if a peer has a chain past our tip,
             // as an anti-DoS measure.
-            if (pfrom.IsOutboundOrBlockRelayConn()) {
+            if (IsOutboundOrBlockRelayConn(pfrom.m_conn_type)) {
                 LogInfo("outbound peer headers chain has insufficient work, %s\n", pfrom.DisconnectMsg(fLogIPs));
                 pfrom.fDisconnect = true;
             }
@@ -2862,7 +2862,7 @@ void PeerManagerImpl::UpdatePeerStateForReceivedHeaders(CNode& pfrom, Peer& peer
     // Note that outbound block-relay peers are excluded from this protection, and
     // thus always subject to eviction under the bad/lagging chain logic.
     // See ChainSyncTimeoutState.
-    if (!pfrom.fDisconnect && pfrom.IsFullOutboundConn() && nodestate->pindexBestKnownBlock != nullptr) {
+    if (!pfrom.fDisconnect && IsFullOutboundConn(pfrom.m_conn_type) && nodestate->pindexBestKnownBlock != nullptr) {
         if (m_outbound_peers_with_protect_from_disconnect < MAX_OUTBOUND_PEERS_TO_PROTECT_FROM_DISCONNECT && nodestate->pindexBestKnownBlock->nChainWork >= m_chainman.ActiveChain().Tip()->nChainWork && !nodestate->m_chain_sync.m_protect) {
             LogDebug(BCLog::NET, "Protecting outbound peer=%d from eviction\n", pfrom.GetId());
             nodestate->m_chain_sync.m_protect = true;
@@ -3484,7 +3484,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         }
         vRecv.ignore(8); // Ignore the addrMe service bits sent by the peer
         vRecv >> CNetAddr::V1(addrMe);
-        if (!pfrom.IsInboundConn())
+        if (!IsInboundConn(pfrom.m_conn_type))
         {
             // Overwrites potentially existing services. In contrast to this,
             // unvalidated services received via gossip relay in ADDR/ADDRV2
@@ -3527,21 +3527,21 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         if (!vRecv.empty())
             vRecv >> fRelay;
         // Disconnect if we connected to ourself
-        if (pfrom.IsInboundConn() && !m_connman.CheckIncomingNonce(nNonce))
+        if (IsInboundConn(pfrom.m_conn_type) && !m_connman.CheckIncomingNonce(nNonce))
         {
             LogPrintf("connected to self at %s, disconnecting\n", peer->m_addr.ToStringAddrPort());
             pfrom.fDisconnect = true;
             return;
         }
 
-        if (pfrom.IsInboundConn() && addrMe.IsRoutable())
+        if (IsInboundConn(pfrom.m_conn_type) && addrMe.IsRoutable())
         {
             SeenLocal(addrMe);
         }
 
         // Inbound peers send us their version message when they connect.
         // We send our version message in response.
-        if (pfrom.IsInboundConn()) {
+        if (IsInboundConn(pfrom.m_conn_type)) {
             PushNodeVersion(pfrom, *peer);
         }
 
@@ -3578,8 +3578,8 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         // - fRelay=true (the peer wishes to receive transaction announcements)
         //   or we're offering NODE_BLOOM to this peer. NODE_BLOOM means that
         //   the peer may turn on transaction relay later.
-        if (!pfrom.IsBlockOnlyConn() &&
-            !pfrom.IsFeelerConn() &&
+        if (!IsBlockOnlyConn(pfrom.m_conn_type) &&
+            !IsFeelerConn(pfrom.m_conn_type) &&
             (fRelay || (peer->m_our_services & NODE_BLOOM))) {
             auto* const tx_relay = peer->SetTxRelay();
             {
@@ -3600,7 +3600,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
             // - we are not in -blocksonly mode.
             const auto* tx_relay = peer->GetTxRelay();
             if (tx_relay && WITH_LOCK(tx_relay->m_bloom_filter_mutex, return tx_relay->m_relay_txs) &&
-                !pfrom.IsAddrFetchConn() && !m_opts.ignore_incoming_txs) {
+                !IsAddrFetchConn(pfrom.m_conn_type) && !m_opts.ignore_incoming_txs) {
                 const uint64_t recon_salt = m_txreconciliation->PreRegisterPeer(pfrom.GetId());
                 MakeAndPushMessage(pfrom, NetMsgType::SENDTXRCNCL,
                                    TXRECONCILIATION_VERSION, recon_salt);
@@ -3613,7 +3613,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         {
             LOCK(cs_main);
             CNodeState* state = State(pfrom.GetId());
-            state->fPreferredDownload = (!pfrom.IsInboundConn() || pfrom.HasPermission(NetPermissionFlags::NoBan)) && !pfrom.IsAddrFetchConn() && CanServeBlocks(*peer);
+            state->fPreferredDownload = (!IsInboundConn(pfrom.m_conn_type) || pfrom.HasPermission(NetPermissionFlags::NoBan)) && !IsAddrFetchConn(pfrom.m_conn_type) && CanServeBlocks(*peer);
             m_num_preferred_download_peers += state->fPreferredDownload;
         }
 
@@ -3621,7 +3621,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         // to decide whether to send GETADDR, so that we don't send it to
         // inbound or outbound block-relay-only peers.
         bool send_getaddr{false};
-        if (!pfrom.IsInboundConn()) {
+        if (!IsInboundConn(pfrom.m_conn_type)) {
             send_getaddr = SetupAddressRelay(pfrom, *peer);
         }
         if (send_getaddr) {
@@ -3638,7 +3638,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
             peer->m_addr_token_bucket += MAX_ADDR_TO_SEND;
         }
 
-        if (!pfrom.IsInboundConn()) {
+        if (!IsInboundConn(pfrom.m_conn_type)) {
             // For non-inbound connections, we update the addrman to record
             // connection success so that addrman will have an up-to-date
             // notion of which peers are online and available.
@@ -3663,7 +3663,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
                   pfrom.LogIP(fLogIPs), (mapped_as ? strprintf(", mapped_as=%d", mapped_as) : ""));
 
         peer->m_time_offset = NodeSeconds{std::chrono::seconds{nTime}} - Now<NodeSeconds>();
-        if (!pfrom.IsInboundConn()) {
+        if (!IsInboundConn(pfrom.m_conn_type)) {
             // Don't use timedata samples from inbound peers to make it
             // harder for others to create false warnings about our clock being out of sync.
             m_outbound_time_offsets.Add(peer->m_time_offset);
@@ -3677,7 +3677,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         }
 
         // Feeler connections exist only to verify if address is online.
-        if (pfrom.IsFeelerConn()) {
+        if (IsFeelerConn(pfrom.m_conn_type)) {
             LogDebug(BCLog::NET, "feeler connection completed, %s\n", pfrom.DisconnectMsg(fLogIPs));
             pfrom.fDisconnect = true;
         }
@@ -3698,7 +3698,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
 
         // Log successful connections unconditionally for outbound, but not for inbound as those
         // can be triggered by an attacker at high rate.
-        if (!pfrom.IsInboundConn() || LogAcceptCategory(BCLog::NET, BCLog::Level::Debug)) {
+        if (!IsInboundConn(pfrom.m_conn_type) || LogAcceptCategory(BCLog::NET, BCLog::Level::Debug)) {
             const auto mapped_as{m_connman.GetMappedAS(peer->m_addr)};
             LogPrintf("New %s %s peer connected: version: %d, blocks=%d, peer=%d%s%s\n",
                       pfrom.ConnectionTypeAsString(),
@@ -3849,7 +3849,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         uint64_t remote_salt;
         vRecv >> peer_txreconcl_version >> remote_salt;
 
-        const ReconciliationRegisterResult result = m_txreconciliation->RegisterPeer(pfrom.GetId(), pfrom.IsInboundConn(),
+        const ReconciliationRegisterResult result = m_txreconciliation->RegisterPeer(pfrom.GetId(), IsInboundConn(pfrom.m_conn_type),
                                                                                      peer_txreconcl_version, remote_salt);
         switch (result) {
         case ReconciliationRegisterResult::NOT_FOUND:
@@ -3964,7 +3964,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         if (vAddr.size() < 1000) peer->m_getaddr_sent = false;
 
         // AddrFetch: Require multiple addresses to avoid disconnecting on self-announcements
-        if (pfrom.IsAddrFetchConn() && vAddr.size() > 1) {
+        if (IsAddrFetchConn(pfrom.m_conn_type) && vAddr.size() > 1) {
             LogDebug(BCLog::NET, "addrfetch connection completed, %s\n", pfrom.DisconnectMsg(fLogIPs));
             pfrom.fDisconnect = true;
         }
@@ -4515,7 +4515,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
                     req.blockhash = pindex->GetBlockHash();
                     MakeAndPushMessage(pfrom, NetMsgType::GETBLOCKTXN, req);
                 } else if (pfrom.m_bip152_highbandwidth_to &&
-                    (!pfrom.IsInboundConn() ||
+                    (!IsInboundConn(pfrom.m_conn_type) ||
                     IsBlockRequestedFromOutbound(blockhash) ||
                     already_in_flight < MAX_CMPCTBLOCKS_INFLIGHT_PER_BLOCK - 1)) {
                     // ... or it's a hb relay peer and:
@@ -4715,7 +4715,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         // to users' AddrMan and later request them by sending getaddr messages.
         // Making nodes which are behind NAT and can only make outgoing connections ignore
         // the getaddr message mitigates the attack.
-        if (!pfrom.IsInboundConn()) {
+        if (!IsInboundConn(pfrom.m_conn_type)) {
             LogDebug(BCLog::NET, "Ignoring \"getaddr\" from %s connection. peer=%d\n", pfrom.ConnectionTypeAsString(), pfrom.GetId());
             return;
         }
@@ -4989,7 +4989,7 @@ bool PeerManagerImpl::MaybeDiscourageAndDisconnect(CNode& pnode, Peer& peer)
         return false;
     }
 
-    if (pnode.IsManualConn()) {
+    if (IsManualConn(pnode.m_conn_type)) {
         // We never disconnect or discourage manual peers for bad behavior
         LogPrintf("Warning: not punishing manually connected peer %d!\n", peer.m_id);
         return false;
@@ -5021,7 +5021,7 @@ bool PeerManagerImpl::ProcessMessages(CNode* pfrom, std::atomic<bool>& interrupt
 
     // For outbound connections, ensure that the initial VERSION message
     // has been sent first before processing any incoming messages
-    if (!pfrom->IsInboundConn() && !peer->m_outbound_version_message_sent) return false;
+    if (!IsInboundConn(pfrom->m_conn_type) && !peer->m_outbound_version_message_sent) return false;
 
     {
         LOCK(peer->m_getdata_requests_mutex);
@@ -5059,7 +5059,7 @@ bool PeerManagerImpl::ProcessMessages(CNode* pfrom, std::atomic<bool>& interrupt
     TRACEPOINT(net, inbound_message,
         pfrom->GetId(),
         peer->m_addr_name.c_str(),
-        pfrom->ConnectionTypeAsString().c_str(),
+        ConnectionTypeAsString(peer->m_conn_type).c_str(),
         msg.m_type.c_str(),
         msg.m_recv.size(),
         msg.m_recv.data()
@@ -5098,7 +5098,7 @@ void PeerManagerImpl::ConsiderEviction(CNode& pto, Peer& peer, std::chrono::seco
 
     CNodeState &state = *State(pto.GetId());
 
-    if (!state.m_chain_sync.m_protect && pto.IsOutboundOrBlockRelayConn() && state.fSyncStarted) {
+    if (!state.m_chain_sync.m_protect && IsOutboundOrBlockRelayConn(pto.m_conn_type) && state.fSyncStarted) {
         // This is an outbound peer subject to disconnection if they don't
         // announce a block with as much work as the current tip within
         // CHAIN_SYNC_TIMEOUT + HEADERS_RESPONSE_TIME seconds (note: if
@@ -5164,7 +5164,7 @@ void PeerManagerImpl::EvictExtraOutboundPeers(std::chrono::seconds now)
         std::pair<NodeId, std::chrono::seconds> youngest_peer{-1, 0}, next_youngest_peer{-1, 0};
 
         m_connman.ForEachNode([&](CNode* pnode) {
-            if (!pnode->IsBlockOnlyConn() || pnode->fDisconnect) return;
+            if (!IsBlockOnlyConn(pnode->m_conn_type) || pnode->fDisconnect) return;
             if (pnode->GetId() > youngest_peer.first) {
                 next_youngest_peer = youngest_peer;
                 youngest_peer.first = pnode->GetId();
@@ -5215,7 +5215,7 @@ void PeerManagerImpl::EvictExtraOutboundPeers(std::chrono::seconds now)
 
             // Only consider outbound-full-relay peers that are not already
             // marked for disconnection
-            if (!pnode->IsFullOutboundConn() || pnode->fDisconnect) return;
+            if (!IsFullOutboundConn(pnode->m_conn_type) || pnode->fDisconnect) return;
             CNodeState *state = State(pnode->GetId());
             if (state == nullptr) return; // shouldn't be possible, but just in case
             // Don't evict our protected peers
@@ -5421,7 +5421,7 @@ void PeerManagerImpl::MaybeSendFeefilter(CNode& pto, Peer& peer, std::chrono::mi
     if (pto.HasPermission(NetPermissionFlags::ForceRelay)) return;
     // Don't send feefilter messages to outbound block-relay-only peers since they should never announce
     // transactions to us, regardless of feefilter state.
-    if (pto.IsBlockOnlyConn()) return;
+    if (IsBlockOnlyConn(pto.m_conn_type)) return;
 
     CAmount currentFilter = m_mempool.GetMinFee().GetFeePerK();
 
@@ -5479,8 +5479,8 @@ public:
 bool PeerManagerImpl::RejectIncomingTxs(const CNode& node, const Peer& peer) const
 {
     // block-relay-only peers may never send txs to us
-    if (node.IsBlockOnlyConn()) return true;
-    if (node.IsFeelerConn()) return true;
+    if (IsBlockOnlyConn(node.m_conn_type)) return true;
+    if (IsFeelerConn(node.m_conn_type)) return true;
     // In -blocksonly mode, peers need the 'relay' permission to send txs to us
     if (m_opts.ignore_incoming_txs && !node.HasPermission(NetPermissionFlags::Relay)) return true;
     return false;
@@ -5491,7 +5491,7 @@ bool PeerManagerImpl::SetupAddressRelay(const CNode& node, Peer& peer)
     // We don't participate in addr relay with outbound block-relay-only
     // connections to prevent providing adversaries with the additional
     // information of addr traffic to infer the link.
-    if (node.IsBlockOnlyConn()) return false;
+    if (IsBlockOnlyConn(node.m_conn_type)) return false;
 
     if (!peer.m_addr_relay_enabled.exchange(true)) {
         // During version message processing (non-block-relay-only outbound peers)
@@ -5517,7 +5517,7 @@ bool PeerManagerImpl::SendMessages(CNode* pto)
     if (MaybeDiscourageAndDisconnect(*pto, *peer)) return true;
 
     // Initiate version handshake for outbound connections
-    if (!pto->IsInboundConn() && !peer->m_outbound_version_message_sent) {
+    if (!IsInboundConn(pto->m_conn_type) && !peer->m_outbound_version_message_sent) {
         PushNodeVersion(*pto, *peer);
         peer->m_outbound_version_message_sent = true;
     }
@@ -5528,7 +5528,7 @@ bool PeerManagerImpl::SendMessages(CNode* pto)
 
     const auto current_time{GetTime<std::chrono::microseconds>()};
 
-    if (pto->IsAddrFetchConn() && current_time - pto->m_connected > 10 * AVG_ADDRESS_BROADCAST_INTERVAL) {
+    if (IsAddrFetchConn(pto->m_conn_type) && current_time - pto->m_connected > 10 * AVG_ADDRESS_BROADCAST_INTERVAL) {
         LogDebug(BCLog::NET, "addrfetch connection timeout, %s\n", pto->DisconnectMsg(fLogIPs));
         pto->fDisconnect = true;
         return true;
@@ -5559,7 +5559,7 @@ bool PeerManagerImpl::SendMessages(CNode* pto)
         bool sync_blocks_and_headers_from_peer = false;
         if (state.fPreferredDownload) {
             sync_blocks_and_headers_from_peer = true;
-        } else if (CanServeBlocks(*peer) && !pto->IsAddrFetchConn()) {
+        } else if (CanServeBlocks(*peer) && !IsAddrFetchConn(pto->m_conn_type)) {
             // Typically this is an inbound peer. If we don't have any outbound
             // peers, or if we aren't downloading any blocks from such peers,
             // then allow block downloads from this peer, too.
@@ -5761,7 +5761,7 @@ bool PeerManagerImpl::SendMessages(CNode* pto)
                 bool fSendTrickle = pto->HasPermission(NetPermissionFlags::NoBan);
                 if (tx_relay->m_next_inv_send_time < current_time) {
                     fSendTrickle = true;
-                    if (pto->IsInboundConn()) {
+                    if (IsInboundConn(pto->m_conn_type)) {
                         tx_relay->m_next_inv_send_time = NextInvToInbounds(current_time, INBOUND_INVENTORY_BROADCAST_INTERVAL);
                     } else {
                         tx_relay->m_next_inv_send_time = current_time + m_rng.rand_exp_duration(OUTBOUND_INVENTORY_BROADCAST_INTERVAL);
