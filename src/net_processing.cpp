@@ -3688,7 +3688,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
     }
 
     if (msg_type == NetMsgType::VERACK) {
-        if (pfrom.fSuccessfullyConnected) {
+        if (peer->m_handshake_complete) {
             LogDebug(BCLog::NET, "ignoring redundant verack message from peer=%d\n", pfrom.GetId());
             return;
         }
@@ -3778,7 +3778,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
     // BIP339 defines feature negotiation of wtxidrelay, which must happen between
     // VERSION and VERACK to avoid relay problems from switching after a connection is up.
     if (msg_type == NetMsgType::WTXIDRELAY) {
-        if (pfrom.fSuccessfullyConnected) {
+        if (peer->m_handshake_complete) {
             // Disconnect peers that send a wtxidrelay message after VERACK.
             LogDebug(BCLog::NET, "wtxidrelay received after verack, %s\n", pfrom.DisconnectMsg(fLogIPs));
             pfrom.fDisconnect = true;
@@ -3800,7 +3800,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
     // BIP155 defines feature negotiation of addrv2 and sendaddrv2, which must happen
     // between VERSION and VERACK.
     if (msg_type == NetMsgType::SENDADDRV2) {
-        if (pfrom.fSuccessfullyConnected) {
+        if (peer->m_handshake_complete) {
             // Disconnect peers that send a SENDADDRV2 message after VERACK.
             LogDebug(BCLog::NET, "sendaddrv2 received after verack, %s\n", pfrom.DisconnectMsg(fLogIPs));
             pfrom.fDisconnect = true;
@@ -3819,7 +3819,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
             return;
         }
 
-        if (pfrom.fSuccessfullyConnected) {
+        if (peer->m_handshake_complete) {
             LogDebug(BCLog::NET, "sendtxrcncl received after verack, %s\n", pfrom.DisconnectMsg(fLogIPs));
             pfrom.fDisconnect = true;
             return;
@@ -3866,7 +3866,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         return;
     }
 
-    if (!pfrom.fSuccessfullyConnected) {
+    if (!peer->m_handshake_complete) {
         LogDebug(BCLog::NET, "Unsupported message \"%s\" prior to verack from peer=%d\n", SanitizeString(msg_type), pfrom.GetId());
         return;
     }
@@ -5520,7 +5520,7 @@ bool PeerManagerImpl::SendMessages(CNode* pto)
     }
 
     // Don't send anything until the version handshake is complete
-    if (!pto->fSuccessfullyConnected || pto->fDisconnect)
+    if (!peer->m_handshake_complete || pto->fDisconnect)
         return true;
 
     const auto current_time{GetTime<std::chrono::microseconds>()};
