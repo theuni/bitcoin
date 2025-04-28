@@ -122,7 +122,7 @@ BOOST_FIXTURE_TEST_CASE(test_addnode_getaddednodeinfo_and_connection_detection, 
     // Add a CJDNS peer connection.
     AddPeer(id, nodes, *peerman, *connman, ConnectionType::INBOUND, /*onion_peer=*/false,
             /*address=*/"[fc00:3344:5566:7788:9900:aabb:ccdd:eeff]:1234");
-    BOOST_CHECK(nodes.back()->IsInboundConn());
+    BOOST_CHECK(IsInboundConn(nodes.back()->m_conn_type));
     BOOST_CHECK_EQUAL(nodes.back()->ConnectedThroughNetwork(), Network::NET_CJDNS);
 
     BOOST_TEST_MESSAGE("Call AddNode() for all the peers");

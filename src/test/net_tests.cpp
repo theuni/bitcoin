@@ -67,12 +67,12 @@ BOOST_AUTO_TEST_CASE(cnode_simple_test)
                                                             pszDest,
                                                             ConnectionType::OUTBOUND_FULL_RELAY,
                                                             /*inbound_onion=*/false);
-    BOOST_CHECK(pnode1->IsFullOutboundConn() == true);
-    BOOST_CHECK(pnode1->IsManualConn() == false);
-    BOOST_CHECK(pnode1->IsBlockOnlyConn() == false);
-    BOOST_CHECK(pnode1->IsFeelerConn() == false);
-    BOOST_CHECK(pnode1->IsAddrFetchConn() == false);
-    BOOST_CHECK(pnode1->IsInboundConn() == false);
+    BOOST_CHECK(IsFullOutboundConn(pnode1->m_conn_type) == true);
+    BOOST_CHECK(IsManualConn(pnode1->m_conn_type) == false);
+    BOOST_CHECK(IsBlockOnlyConn(pnode1->m_conn_type) == false);
+    BOOST_CHECK(IsFeelerConn(pnode1->m_conn_type) == false);
+    BOOST_CHECK(IsAddrFetchConn(pnode1->m_conn_type) == false);
+    BOOST_CHECK(IsInboundConn(pnode1->m_conn_type) == false);
     BOOST_CHECK(pnode1->m_inbound_onion == false);
     BOOST_CHECK_EQUAL(pnode1->ConnectedThroughNetwork(), Network::NET_IPV4);
 
@@ -84,12 +84,12 @@ BOOST_AUTO_TEST_CASE(cnode_simple_test)
                                                             pszDest,
                                                             ConnectionType::INBOUND,
                                                             /*inbound_onion=*/false);
-    BOOST_CHECK(pnode2->IsFullOutboundConn() == false);
-    BOOST_CHECK(pnode2->IsManualConn() == false);
-    BOOST_CHECK(pnode2->IsBlockOnlyConn() == false);
-    BOOST_CHECK(pnode2->IsFeelerConn() == false);
-    BOOST_CHECK(pnode2->IsAddrFetchConn() == false);
-    BOOST_CHECK(pnode2->IsInboundConn() == true);
+    BOOST_CHECK(IsFullOutboundConn(pnode2->m_conn_type) == false);
+    BOOST_CHECK(IsManualConn(pnode2->m_conn_type) == false);
+    BOOST_CHECK(IsBlockOnlyConn(pnode2->m_conn_type) == false);
+    BOOST_CHECK(IsFeelerConn(pnode2->m_conn_type) == false);
+    BOOST_CHECK(IsAddrFetchConn(pnode2->m_conn_type) == false);
+    BOOST_CHECK(IsInboundConn(pnode2->m_conn_type) == true);
     BOOST_CHECK(pnode2->m_inbound_onion == false);
     BOOST_CHECK_EQUAL(pnode2->ConnectedThroughNetwork(), Network::NET_IPV4);
 
@@ -101,12 +101,12 @@ BOOST_AUTO_TEST_CASE(cnode_simple_test)
                                                             pszDest,
                                                             ConnectionType::OUTBOUND_FULL_RELAY,
                                                             /*inbound_onion=*/false);
-    BOOST_CHECK(pnode3->IsFullOutboundConn() == true);
-    BOOST_CHECK(pnode3->IsManualConn() == false);
-    BOOST_CHECK(pnode3->IsBlockOnlyConn() == false);
-    BOOST_CHECK(pnode3->IsFeelerConn() == false);
-    BOOST_CHECK(pnode3->IsAddrFetchConn() == false);
-    BOOST_CHECK(pnode3->IsInboundConn() == false);
+    BOOST_CHECK(IsFullOutboundConn(pnode3->m_conn_type) == true);
+    BOOST_CHECK(IsManualConn(pnode3->m_conn_type) == false);
+    BOOST_CHECK(IsBlockOnlyConn(pnode3->m_conn_type) == false);
+    BOOST_CHECK(IsFeelerConn(pnode3->m_conn_type) == false);
+    BOOST_CHECK(IsAddrFetchConn(pnode3->m_conn_type) == false);
+    BOOST_CHECK(IsInboundConn(pnode3->m_conn_type) == false);
     BOOST_CHECK(pnode3->m_inbound_onion == false);
     BOOST_CHECK_EQUAL(pnode3->ConnectedThroughNetwork(), Network::NET_IPV4);
 
@@ -118,12 +118,12 @@ BOOST_AUTO_TEST_CASE(cnode_simple_test)
                                                             pszDest,
                                                             ConnectionType::INBOUND,
                                                             /*inbound_onion=*/true);
-    BOOST_CHECK(pnode4->IsFullOutboundConn() == false);
-    BOOST_CHECK(pnode4->IsManualConn() == false);
-    BOOST_CHECK(pnode4->IsBlockOnlyConn() == false);
-    BOOST_CHECK(pnode4->IsFeelerConn() == false);
-    BOOST_CHECK(pnode4->IsAddrFetchConn() == false);
-    BOOST_CHECK(pnode4->IsInboundConn() == true);
+    BOOST_CHECK(IsFullOutboundConn(pnode4->m_conn_type) == false);
+    BOOST_CHECK(IsManualConn(pnode4->m_conn_type) == false);
+    BOOST_CHECK(IsBlockOnlyConn(pnode4->m_conn_type) == false);
+    BOOST_CHECK(IsFeelerConn(pnode4->m_conn_type) == false);
+    BOOST_CHECK(IsAddrFetchConn(pnode4->m_conn_type) == false);
+    BOOST_CHECK(IsInboundConn(pnode4->m_conn_type) == true);
     BOOST_CHECK(pnode4->m_inbound_onion == true);
     BOOST_CHECK_EQUAL(pnode4->ConnectedThroughNetwork(), Network::NET_ONION);
 }
