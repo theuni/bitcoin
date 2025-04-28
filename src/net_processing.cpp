@@ -333,11 +333,6 @@ struct Peer {
         return WITH_LOCK(m_tx_relay_mutex, return m_tx_relay.get());
     };
 
-    bool IsInbound() const
-    {
-        return m_conn_type == ConnectionType::INBOUND;
-    }
-
     /** A vector of addresses to send to the peer, limited to MAX_ADDR_TO_SEND. */
     std::vector<CAddress> m_addrs_to_send GUARDED_BY(NetEventsInterface::g_msgproc_mutex);
     /** Probabilistic filter to track recent addr messages relayed with this
@@ -1186,7 +1181,7 @@ bool PeerManagerImpl::IsBlockRequestedFromOutbound(const uint256& hash)
     for (auto range = mapBlocksInFlight.equal_range(hash); range.first != range.second; range.first++) {
         auto [nodeid, block_it] = range.first->second;
         PeerRef peer{GetPeerRef(nodeid)};
-        if (peer && !peer->IsInbound()) return true;
+        if (peer && !IsInboundConn(peer->m_conn_type)) return true;
     }
 
     return false;
@@ -1289,14 +1284,14 @@ void PeerManagerImpl::MaybeSetPeerAsAnnouncingHeaderAndIDs(NodeId nodeid)
             return;
         }
         PeerRef peer_ref{GetPeerRef(*it)};
-        if (peer_ref && !peer_ref->IsInbound()) ++num_outbound_hb_peers;
+        if (peer_ref && !IsInboundConn(peer_ref->m_conn_type)) ++num_outbound_hb_peers;
     }
-    if (peer && peer->IsInbound()) {
+    if (peer && IsInboundConn(peer->m_conn_type)) {
         // If we're adding an inbound HB peer, make sure we're not removing
         // our last outbound HB peer in the process.
         if (lNodesAnnouncingHeaderAndIDs.size() >= 3 && num_outbound_hb_peers == 1) {
             PeerRef remove_peer{GetPeerRef(lNodesAnnouncingHeaderAndIDs.front())};
-            if (remove_peer && !remove_peer->IsInbound()) {
+            if (remove_peer && !IsInboundConn(remove_peer->m_conn_type)) {
                 // Put the HB outbound peer in the second slot, so that it
                 // doesn't get removed.
                 std::swap(lNodesAnnouncingHeaderAndIDs.front(), *std::next(lNodesAnnouncingHeaderAndIDs.begin()));
@@ -1834,7 +1829,7 @@ void PeerManagerImpl::MaybePunishNodeForBlock(NodeId nodeid, const BlockValidati
         {
             // Discourage outbound (but not inbound) peers if on an invalid chain.
             // Exempt HB compact block peers. Manual connections are always protected from discouragement.
-            if (peer && !via_compact_block && !peer->IsInbound()) {
+            if (peer && !via_compact_block && !IsInboundConn(peer->m_conn_type)) {
                 if (peer) Misbehaving(*peer, message);
                 return;
             }
