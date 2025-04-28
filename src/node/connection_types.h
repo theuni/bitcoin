@@ -5,6 +5,7 @@
 #ifndef BITCOIN_NODE_CONNECTION_TYPES_H
 #define BITCOIN_NODE_CONNECTION_TYPES_H
 
+#include <cassert>
 #include <cstdint>
 #include <string>
 
@@ -89,5 +90,60 @@ enum class TransportProtocolType : uint8_t {
 
 /** Convert TransportProtocolType enum to a string value */
 std::string TransportTypeAsString(TransportProtocolType transport_type);
+
+inline bool IsOutboundOrBlockRelayConn(ConnectionType conn_type) {
+    switch (conn_type) {
+        case ConnectionType::OUTBOUND_FULL_RELAY:
+        case ConnectionType::BLOCK_RELAY:
+            return true;
+        case ConnectionType::INBOUND:
+        case ConnectionType::MANUAL:
+        case ConnectionType::ADDR_FETCH:
+        case ConnectionType::FEELER:
+            return false;
+    } // no default case, so the compiler can warn about missing cases
+
+    assert(false);
+}
+
+inline bool IsFullOutboundConn(ConnectionType conn_type) {
+    return conn_type == ConnectionType::OUTBOUND_FULL_RELAY;
+}
+
+inline bool IsManualConn(ConnectionType conn_type) {
+    return conn_type == ConnectionType::MANUAL;
+}
+
+inline bool IsManualOrFullOutboundConn(ConnectionType conn_type)
+{
+    switch (conn_type) {
+    case ConnectionType::INBOUND:
+    case ConnectionType::FEELER:
+    case ConnectionType::BLOCK_RELAY:
+    case ConnectionType::ADDR_FETCH:
+            return false;
+    case ConnectionType::OUTBOUND_FULL_RELAY:
+    case ConnectionType::MANUAL:
+            return true;
+    } // no default case, so the compiler can warn about missing cases
+
+    assert(false);
+}
+
+inline bool IsBlockOnlyConn(ConnectionType conn_type) {
+    return conn_type == ConnectionType::BLOCK_RELAY;
+}
+
+inline bool IsFeelerConn(ConnectionType conn_type) {
+    return conn_type == ConnectionType::FEELER;
+}
+
+inline bool IsAddrFetchConn(ConnectionType conn_type) {
+    return conn_type == ConnectionType::ADDR_FETCH;
+}
+
+inline bool IsInboundConn(ConnectionType conn_type) {
+    return conn_type == ConnectionType::INBOUND;
+}
 
 #endif // BITCOIN_NODE_CONNECTION_TYPES_H
