@@ -3035,7 +3035,7 @@ void CConnman::ThreadMessageHandler()
         decltype(m_nodes_disconnected) nodes_to_finalize;
         WITH_LOCK(m_nodes_disconnected_mutex, std::copy_if(m_nodes_disconnected.begin(), m_nodes_disconnected.end(), std::back_inserter(nodes_to_finalize), [](const auto& pnode) { return !pnode->m_finalized; }));
         for (const auto& pnode : nodes_to_finalize) {
-            m_msgproc->FinalizeNode(*pnode);
+            m_msgproc->FinalizeNode(pnode->GetId());
             pnode->m_finalized = true;
         }
 
@@ -3477,7 +3477,7 @@ void CConnman::StopNodes()
         LogDebug(BCLog::NET, "Stopping node, %s", pnode->DisconnectMsg(fLogIPs));
         pnode->CloseSocketDisconnect();
         if (!pnode->m_finalized) {
-            m_msgproc->FinalizeNode(*pnode);
+            m_msgproc->FinalizeNode(pnode->GetId());
         }
     }
     nodes.clear();
@@ -3485,7 +3485,7 @@ void CConnman::StopNodes()
     WITH_LOCK(m_nodes_disconnected_mutex, nodes_disconnected.swap(m_nodes_disconnected));
     for (const auto& pnode : nodes_disconnected) {
         if (!pnode->m_finalized) {
-            m_msgproc->FinalizeNode(*pnode);
+            m_msgproc->FinalizeNode(pnode->GetId());
         }
     }
     nodes_disconnected.clear();

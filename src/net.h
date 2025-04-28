@@ -970,7 +970,7 @@ public:
     virtual void InitializeNode(const CNode& node, ServiceFlags our_services) = 0;
 
     /** Handle removal of a peer (clear state) */
-    virtual void FinalizeNode(const CNode& node) = 0;
+    virtual void FinalizeNode(NodeId nodeid) = 0;
 
     /**
      * Callback to determine whether the given set of service flags are sufficient

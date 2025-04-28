@@ -532,7 +532,7 @@ public:
 
     /** Implement NetEventsInterface */
     void InitializeNode(const CNode& node, ServiceFlags our_services) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_tx_download_mutex);
-    void FinalizeNode(const CNode& node) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_headers_presync_mutex, !m_tx_download_mutex);
+    void FinalizeNode(NodeId nodeid) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_headers_presync_mutex, !m_tx_download_mutex);
     bool HasAllDesirableServiceFlags(ServiceFlags services) const override;
     bool ProcessMessages(CNode* pfrom, std::atomic<bool>& interrupt) override
         EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_most_recent_block_mutex, !m_headers_presync_mutex, g_msgproc_mutex, !m_tx_download_mutex);
@@ -1608,9 +1608,8 @@ void PeerManagerImpl::ReattemptInitialBroadcast(CScheduler& scheduler)
     scheduler.scheduleFromNow([&] { ReattemptInitialBroadcast(scheduler); }, delta);
 }
 
-void PeerManagerImpl::FinalizeNode(const CNode& node)
+void PeerManagerImpl::FinalizeNode(NodeId nodeid)
 {
-    NodeId nodeid = node.GetId();
     bool update_addrman = false;
     CAddress peeraddr;
     {

@@ -173,7 +173,7 @@ BOOST_FIXTURE_TEST_CASE(test_addnode_getaddednodeinfo_and_connection_detection, 
 
     // Clean up
     for (auto node : connman->TestNodes()) {
-        peerman->FinalizeNode(*node);
+        peerman->FinalizeNode(node->GetId());
     }
     connman->ClearTestNodes();
 }
