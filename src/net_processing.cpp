@@ -1609,6 +1609,8 @@ void PeerManagerImpl::ReattemptInitialBroadcast(CScheduler& scheduler)
 void PeerManagerImpl::FinalizeNode(const CNode& node)
 {
     NodeId nodeid = node.GetId();
+    bool update_addrman = false;
+    CAddress peeraddr;
     {
     LOCK(cs_main);
     {
@@ -1621,6 +1623,13 @@ void PeerManagerImpl::FinalizeNode(const CNode& node)
         assert(peer != nullptr);
         m_wtxid_relay_peers -= peer->m_wtxid_relay;
         assert(m_wtxid_relay_peers >= 0);
+
+        // Only change visible addrman state for full outbound peers.  We don't
+        // call Connected() for feeler connections since they don't have
+        // m_handshake_complete set.
+        peeraddr = peer->m_addr;
+        const ConnectionType& conn_type = peer->m_conn_type;
+        update_addrman = peer->m_handshake_complete && conn_type != ConnectionType::BLOCK_RELAY && conn_type != ConnectionType::INBOUND;
     }
     CNodeState *state = State(nodeid);
     assert(state != nullptr);
@@ -1662,12 +1671,8 @@ void PeerManagerImpl::FinalizeNode(const CNode& node)
         WITH_LOCK(m_tx_download_mutex, m_txdownloadman.CheckIsEmpty());
     }
     } // cs_main
-    if (node.fSuccessfullyConnected &&
-        !node.IsBlockOnlyConn() && !node.IsInboundConn()) {
-        // Only change visible addrman state for full outbound peers.  We don't
-        // call Connected() for feeler connections since they don't have
-        // fSuccessfullyConnected set.
-        m_addrman.Connected(node.addr);
+    if (update_addrman) {
+        m_addrman.Connected(peeraddr);
     }
     {
         LOCK(m_headers_presync_mutex);
