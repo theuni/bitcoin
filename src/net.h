@@ -761,58 +761,36 @@ public:
     }
 
     bool IsOutboundOrBlockRelayConn() const {
-        switch (m_conn_type) {
-            case ConnectionType::OUTBOUND_FULL_RELAY:
-            case ConnectionType::BLOCK_RELAY:
-                return true;
-            case ConnectionType::INBOUND:
-            case ConnectionType::MANUAL:
-            case ConnectionType::ADDR_FETCH:
-            case ConnectionType::FEELER:
-                return false;
-        } // no default case, so the compiler can warn about missing cases
-
-        assert(false);
+        return ::IsOutboundOrBlockRelayConn(m_conn_type);
     }
 
     bool IsFullOutboundConn() const {
-        return m_conn_type == ConnectionType::OUTBOUND_FULL_RELAY;
+        return ::IsFullOutboundConn(m_conn_type);
     }
 
     bool IsManualConn() const {
-        return m_conn_type == ConnectionType::MANUAL;
+        return ::IsManualConn(m_conn_type);
     }
 
     bool IsManualOrFullOutboundConn() const
     {
-        switch (m_conn_type) {
-        case ConnectionType::INBOUND:
-        case ConnectionType::FEELER:
-        case ConnectionType::BLOCK_RELAY:
-        case ConnectionType::ADDR_FETCH:
-                return false;
-        case ConnectionType::OUTBOUND_FULL_RELAY:
-        case ConnectionType::MANUAL:
-                return true;
-        } // no default case, so the compiler can warn about missing cases
-
-        assert(false);
+        return ::IsManualOrFullOutboundConn(m_conn_type);
     }
 
     bool IsBlockOnlyConn() const {
-        return m_conn_type == ConnectionType::BLOCK_RELAY;
+        return ::IsBlockOnlyConn(m_conn_type);
     }
 
     bool IsFeelerConn() const {
-        return m_conn_type == ConnectionType::FEELER;
+        return ::IsFeelerConn(m_conn_type);
     }
 
     bool IsAddrFetchConn() const {
-        return m_conn_type == ConnectionType::ADDR_FETCH;
+        return ::IsAddrFetchConn(m_conn_type);
     }
 
     bool IsInboundConn() const {
-        return m_conn_type == ConnectionType::INBOUND;
+        return ::IsInboundConn(m_conn_type);
     }
 
     bool ExpectServicesFromConn() const {
