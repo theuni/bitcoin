@@ -760,39 +760,6 @@ public:
         mapSendBytesPerMsgType[msg_type] += sent_bytes;
     }
 
-    bool IsOutboundOrBlockRelayConn() const {
-        return ::IsOutboundOrBlockRelayConn(m_conn_type);
-    }
-
-    bool IsFullOutboundConn() const {
-        return ::IsFullOutboundConn(m_conn_type);
-    }
-
-    bool IsManualConn() const {
-        return ::IsManualConn(m_conn_type);
-    }
-
-    bool IsManualOrFullOutboundConn() const
-    {
-        return ::IsManualOrFullOutboundConn(m_conn_type);
-    }
-
-    bool IsBlockOnlyConn() const {
-        return ::IsBlockOnlyConn(m_conn_type);
-    }
-
-    bool IsFeelerConn() const {
-        return ::IsFeelerConn(m_conn_type);
-    }
-
-    bool IsAddrFetchConn() const {
-        return ::IsAddrFetchConn(m_conn_type);
-    }
-
-    bool IsInboundConn() const {
-        return ::IsInboundConn(m_conn_type);
-    }
-
     bool ExpectServicesFromConn() const {
         switch (m_conn_type) {
             case ConnectionType::INBOUND:
