@@ -421,6 +421,8 @@ struct Peer {
     //! The peer's remote address
     const CAddress m_addr;
 
+    //! Whether the peer has successfully completed the initial handshake
+    bool m_handshake_complete{false};
     explicit Peer(NodeId id, ServiceFlags our_services, ConnectionType conn_type, CAddress addr)
         : m_id{id}
         , m_our_services{our_services}
@@ -3742,6 +3744,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         }
 
         pfrom.fSuccessfullyConnected = true;
+        peer->m_handshake_complete = true;
         return;
     }
 
