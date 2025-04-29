@@ -333,6 +333,16 @@ struct Peer {
         return WITH_LOCK(m_tx_relay_mutex, return m_tx_relay.get());
     };
 
+    void SetCommonVersion(int greatest_common_version)
+    {
+        Assume(m_greatest_common_version == INIT_PROTO_VERSION);
+        m_greatest_common_version = greatest_common_version;
+    }
+    int GetCommonVersion() const
+    {
+        return m_greatest_common_version;
+    }
+
     /** A vector of addresses to send to the peer, limited to MAX_ADDR_TO_SEND. */
     std::vector<CAddress> m_addrs_to_send GUARDED_BY(NetEventsInterface::g_msgproc_mutex);
     /** Probabilistic filter to track recent addr messages relayed with this
@@ -433,6 +443,8 @@ private:
 
     /** Transaction relay data. May be a nullptr. */
     std::unique_ptr<TxRelay> m_tx_relay GUARDED_BY(m_tx_relay_mutex);
+
+    int m_greatest_common_version{INIT_PROTO_VERSION};
 };
 
 using PeerRef = std::shared_ptr<Peer>;
@@ -3543,6 +3555,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         // Change version
         const int greatest_common_version = std::min(nVersion, PROTOCOL_VERSION);
         pfrom.SetCommonVersion(greatest_common_version);
+        peer->SetCommonVersion(greatest_common_version);
         pfrom.nVersion = nVersion;
 
         if (greatest_common_version >= WTXID_RELAY_VERSION) {
@@ -3703,7 +3716,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
                       (mapped_as ? strprintf(", mapped_as=%d", mapped_as) : ""));
         }
 
-        if (pfrom.GetCommonVersion() >= SHORT_IDS_BLOCKS_VERSION) {
+        if (peer->GetCommonVersion() >= SHORT_IDS_BLOCKS_VERSION) {
             // Tell our peer we are willing to provide version 2 cmpctblocks.
             // However, we do not request new block announcements using
             // cmpctblock messages.
@@ -3782,7 +3795,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
             pfrom.fDisconnect = true;
             return;
         }
-        if (pfrom.GetCommonVersion() >= WTXID_RELAY_VERSION) {
+        if (peer->GetCommonVersion() >= WTXID_RELAY_VERSION) {
             if (!peer->m_wtxid_relay) {
                 peer->m_wtxid_relay = true;
                 m_wtxid_relay_peers++;
@@ -3790,7 +3803,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
                 LogDebug(BCLog::NET, "ignoring duplicate wtxidrelay from peer=%d\n", pfrom.GetId());
             }
         } else {
-            LogDebug(BCLog::NET, "ignoring wtxidrelay due to old common version=%d from peer=%d\n", pfrom.GetCommonVersion(), pfrom.GetId());
+            LogDebug(BCLog::NET, "ignoring wtxidrelay due to old common version=%d from peer=%d\n", peer->GetCommonVersion(), pfrom.GetId());
         }
         return;
     }
@@ -4771,7 +4784,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
     }
 
     if (msg_type == NetMsgType::PING) {
-        if (pfrom.GetCommonVersion() > BIP0031_VERSION) {
+        if (peer->GetCommonVersion() > BIP0031_VERSION) {
             uint64_t nonce = 0;
             vRecv >> nonce;
             // Echo the message back with the nonce. This allows for two useful features:
@@ -5314,7 +5327,7 @@ void PeerManagerImpl::MaybeSendPing(CNode& node_to, Peer& peer, std::chrono::mic
         } while (nonce == 0);
         peer.m_ping_queued = false;
         peer.m_ping_start = now;
-        if (node_to.GetCommonVersion() > BIP0031_VERSION) {
+        if (peer.GetCommonVersion() > BIP0031_VERSION) {
             peer.m_ping_nonce_sent = nonce;
             MakeAndPushMessage(node_to, NetMsgType::PING, nonce);
         } else {
@@ -5393,7 +5406,7 @@ void PeerManagerImpl::MaybeSendSendHeaders(CNode& node, Peer& peer)
     // initial-headers-sync with this peer. Receiving headers announcements for
     // new blocks while trying to sync their headers chain is problematic,
     // because of the state tracking done.
-    if (!peer.m_sent_sendheaders && node.GetCommonVersion() >= SENDHEADERS_VERSION) {
+    if (!peer.m_sent_sendheaders && peer.GetCommonVersion() >= SENDHEADERS_VERSION) {
         LOCK(cs_main);
         CNodeState &state = *State(node.GetId());
         if (state.pindexBestKnownBlock != nullptr &&
@@ -5411,7 +5424,7 @@ void PeerManagerImpl::MaybeSendSendHeaders(CNode& node, Peer& peer)
 void PeerManagerImpl::MaybeSendFeefilter(CNode& pto, Peer& peer, std::chrono::microseconds current_time)
 {
     if (m_opts.ignore_incoming_txs) return;
-    if (pto.GetCommonVersion() < FEEFILTER_VERSION) return;
+    if (peer.GetCommonVersion() < FEEFILTER_VERSION) return;
     // peers with the forcerelay permission should not filter txs to us
     if (pto.HasPermission(NetPermissionFlags::ForceRelay)) return;
     // Don't send feefilter messages to outbound block-relay-only peers since they should never announce
