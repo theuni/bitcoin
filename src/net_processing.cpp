@@ -343,6 +343,10 @@ struct Peer {
         return m_greatest_common_version;
     }
 
+    bool HasPermission(NetPermissionFlags permission) const {
+        return NetPermissions::HasFlag(m_permission_flags, permission);
+    }
+
     /** A vector of addresses to send to the peer, limited to MAX_ADDR_TO_SEND. */
     std::vector<CAddress> m_addrs_to_send GUARDED_BY(NetEventsInterface::g_msgproc_mutex);
     /** Probabilistic filter to track recent addr messages relayed with this
@@ -430,12 +434,13 @@ struct Peer {
 
     //! Whether the peer has successfully completed the initial handshake
     bool m_handshake_complete{false};
-    explicit Peer(NodeId id, ServiceFlags our_services, ConnectionType conn_type, CAddress addr, std::string addr_name)
+    explicit Peer(NodeId id, ServiceFlags our_services, ConnectionType conn_type, CAddress addr, std::string addr_name, NetPermissionFlags permission_flags)
         : m_id{id}
         , m_our_services{our_services}
         , m_conn_type{conn_type}
         , m_addr(std::move(addr))
         , m_addr_name(std::move(addr_name))
+        , m_permission_flags(permission_flags)
     {}
 
 private:
@@ -445,6 +450,7 @@ private:
     std::unique_ptr<TxRelay> m_tx_relay GUARDED_BY(m_tx_relay_mutex);
 
     int m_greatest_common_version{INIT_PROTO_VERSION};
+    const NetPermissionFlags m_permission_flags;
 };
 
 using PeerRef = std::shared_ptr<Peer>;
@@ -1591,7 +1597,7 @@ void PeerManagerImpl::InitializeNode(const CNode& node, ServiceFlags our_service
         our_services = static_cast<ServiceFlags>(our_services | NODE_BLOOM);
     }
 
-    PeerRef peer = std::make_shared<Peer>(nodeid, our_services, node.m_conn_type, node.addr, node.m_addr_name);
+    PeerRef peer = std::make_shared<Peer>(nodeid, our_services, node.m_conn_type, node.addr, node.m_addr_name, node.m_permission_flags);
     {
         LOCK(m_peer_mutex);
         m_peer_map.emplace_hint(m_peer_map.end(), nodeid, peer);
