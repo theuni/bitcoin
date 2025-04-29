@@ -343,6 +343,10 @@ struct Peer {
         return m_greatest_common_version;
     }
 
+    uint64_t GetLocalNonce() const {
+        return m_local_nonce;
+    }
+
     bool HasPermission(NetPermissionFlags permission) const {
         return NetPermissions::HasFlag(m_permission_flags, permission);
     }
@@ -434,13 +438,14 @@ struct Peer {
 
     //! Whether the peer has successfully completed the initial handshake
     bool m_handshake_complete{false};
-    explicit Peer(NodeId id, ServiceFlags our_services, ConnectionType conn_type, CAddress addr, std::string addr_name, NetPermissionFlags permission_flags)
+    explicit Peer(NodeId id, ServiceFlags our_services, ConnectionType conn_type, CAddress addr, std::string addr_name, NetPermissionFlags permission_flags, uint64_t local_nonce)
         : m_id{id}
         , m_our_services{our_services}
         , m_conn_type{conn_type}
         , m_addr(std::move(addr))
         , m_addr_name(std::move(addr_name))
         , m_permission_flags(permission_flags)
+        , m_local_nonce(local_nonce)
     {}
 
 private:
@@ -451,6 +456,7 @@ private:
 
     int m_greatest_common_version{INIT_PROTO_VERSION};
     const NetPermissionFlags m_permission_flags;
+    const uint64_t m_local_nonce;
 };
 
 using PeerRef = std::shared_ptr<Peer>;
@@ -1102,7 +1108,19 @@ private:
     void PushAddress(Peer& peer, const CAddress& addr) EXCLUSIVE_LOCKS_REQUIRED(g_msgproc_mutex);
 
     void LogBlockHeader(const CBlockIndex& index, const CNode& peer, bool via_compact_block);
+    bool CheckIncomingNonce(uint64_t nonce) const EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex);
 };
+
+bool PeerManagerImpl::CheckIncomingNonce(uint64_t nonce) const
+{
+    LOCK(m_peer_mutex);
+    for (auto& it : m_peer_map) {
+        Peer& peer = *it.second;
+        if (!peer.m_handshake_complete && !IsInboundConn(peer.m_conn_type) && peer.GetLocalNonce() == nonce)
+            return false;
+    }
+    return true;
+}
 
 const CNodeState* PeerManagerImpl::State(NodeId pnode) const
 {
@@ -1556,7 +1574,7 @@ void PeerManagerImpl::PushNodeVersion(CNode& pnode, const Peer& peer)
 {
     uint64_t my_services{peer.m_our_services};
     const int64_t nTime{count_seconds(GetTime<std::chrono::seconds>())};
-    uint64_t nonce = pnode.GetLocalNonce();
+    uint64_t nonce = peer.GetLocalNonce();
     const int nNodeStartingHeight{m_best_height};
     NodeId nodeid = pnode.GetId();
     CAddress addr = peer.m_addr;
@@ -1597,7 +1615,7 @@ void PeerManagerImpl::InitializeNode(const CNode& node, ServiceFlags our_service
         our_services = static_cast<ServiceFlags>(our_services | NODE_BLOOM);
     }
 
-    PeerRef peer = std::make_shared<Peer>(nodeid, our_services, node.m_conn_type, node.addr, node.m_addr_name, node.m_permission_flags);
+    PeerRef peer = std::make_shared<Peer>(nodeid, our_services, node.m_conn_type, node.addr, node.m_addr_name, node.m_permission_flags, node.GetLocalNonce());
     {
         LOCK(m_peer_mutex);
         m_peer_map.emplace_hint(m_peer_map.end(), nodeid, peer);
@@ -3540,7 +3558,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         if (!vRecv.empty())
             vRecv >> fRelay;
         // Disconnect if we connected to ourself
-        if (IsInboundConn(peer->m_conn_type) && !m_connman.CheckIncomingNonce(nNonce))
+        if (IsInboundConn(peer->m_conn_type) && !CheckIncomingNonce(nNonce))
         {
             LogPrintf("connected to self at %s, disconnecting\n", peer->m_addr.ToStringAddrPort());
             pfrom.fDisconnect = true;
