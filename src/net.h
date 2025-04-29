@@ -742,7 +742,7 @@ public:
     const ConnectionType m_conn_type;
 
     /** Move all messages from the received queue to the processing queue. */
-    void MarkReceivedMsgsForProcessing()
+    void MarkReceivedMsgsForProcessing(std::list<CNetMessage> messages)
         EXCLUSIVE_LOCKS_REQUIRED(!m_msg_process_queue_mutex);
 
     /** Poll the next message from the processing queue of this connection.
@@ -870,6 +870,7 @@ public:
         m_last_ping_time = ping_time;
     }
 
+    std::list<CNetMessage> GetCompleteMessages();
 private:
     const NodeId id;
     const uint64_t nLocalHostNonce;

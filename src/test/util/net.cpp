@@ -77,7 +77,8 @@ void ConnmanTestMsg::NodeReceiveMsgBytes(CNode& node, std::span<const uint8_t> m
 {
     assert(node.ReceiveMsgBytes(msg_bytes, complete));
     if (complete) {
-        node.MarkReceivedMsgsForProcessing();
+        std::list<CNetMessage> complete_messages = node.GetCompleteMessages();
+        node.MarkReceivedMsgsForProcessing(std::move(complete_messages));
     }
 }
 
