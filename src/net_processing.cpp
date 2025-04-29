@@ -2306,7 +2306,7 @@ void PeerManagerImpl::ProcessGetBlockData(CNode& pfrom, Peer& peer, const CInv& 
         // disconnect node in case we have reached the outbound limit for serving historical blocks
         if (m_connman.OutboundTargetReached(true) &&
             (((m_chainman.m_best_header != nullptr) && (m_chainman.m_best_header->GetBlockTime() - pindex->GetBlockTime() > HISTORICAL_BLOCK_AGE)) || inv.IsMsgFilteredBlk()) &&
-            !pfrom.HasPermission(NetPermissionFlags::Download) // nodes with the download permission may exceed target
+            !peer.HasPermission(NetPermissionFlags::Download) // nodes with the download permission may exceed target
         ) {
             LogDebug(BCLog::NET, "historical block serving limit reached, %s\n", pfrom.DisconnectMsg(fLogIPs));
             pfrom.fDisconnect = true;
@@ -2314,7 +2314,7 @@ void PeerManagerImpl::ProcessGetBlockData(CNode& pfrom, Peer& peer, const CInv& 
         }
         tip = m_chainman.ActiveChain().Tip();
         // Avoid leaking prune-height by never sending blocks below the NODE_NETWORK_LIMITED threshold
-        if (!pfrom.HasPermission(NetPermissionFlags::NoBan) && (
+        if (!peer.HasPermission(NetPermissionFlags::NoBan) && (
                 (((peer.m_our_services & NODE_NETWORK_LIMITED) == NODE_NETWORK_LIMITED) && ((peer.m_our_services & NODE_NETWORK) != NODE_NETWORK) && (tip->nHeight - pindex->nHeight > (int)NODE_NETWORK_LIMITED_MIN_BLOCKS + 2 /* add two blocks buffer extension for possible races */) )
            )) {
             LogDebug(BCLog::NET, "Ignore block request below NODE_NETWORK_LIMITED threshold, %s\n", pfrom.DisconnectMsg(fLogIPs));
@@ -2985,7 +2985,7 @@ void PeerManagerImpl::ProcessHeadersMessage(CNode& pfrom, Peer& peer,
     // If our peer has NetPermissionFlags::NoBan privileges, then bypass our
     // anti-DoS logic (this saves bandwidth when we connect to a trusted peer
     // on startup).
-    if (pfrom.HasPermission(NetPermissionFlags::NoBan)) {
+    if (peer.HasPermission(NetPermissionFlags::NoBan)) {
         already_validated_work = true;
     }
 
@@ -3627,7 +3627,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         {
             LOCK(cs_main);
             CNodeState* state = State(pfrom.GetId());
-            state->fPreferredDownload = (!IsInboundConn(peer->m_conn_type) || pfrom.HasPermission(NetPermissionFlags::NoBan)) && !IsAddrFetchConn(peer->m_conn_type) && CanServeBlocks(*peer);
+            state->fPreferredDownload = (!IsInboundConn(peer->m_conn_type) || peer->HasPermission(NetPermissionFlags::NoBan)) && !IsAddrFetchConn(peer->m_conn_type) && CanServeBlocks(*peer);
             m_num_preferred_download_peers += state->fPreferredDownload;
         }
 
@@ -3759,7 +3759,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
             const CNodeState* state = State(pfrom.GetId());
             m_txdownloadman.ConnectedPeer(pfrom.GetId(), node::TxDownloadConnectionInfo {
                 .m_preferred = state->fPreferredDownload,
-                .m_relay_permissions = pfrom.HasPermission(NetPermissionFlags::Relay),
+                .m_relay_permissions = peer->HasPermission(NetPermissionFlags::Relay),
                 .m_wtxid_relay = peer->m_wtxid_relay,
             });
         }
@@ -3926,7 +3926,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         }
         peer->m_addr_token_timestamp = current_time;
 
-        const bool rate_limited = !pfrom.HasPermission(NetPermissionFlags::Addr);
+        const bool rate_limited = !peer->HasPermission(NetPermissionFlags::Addr);
         uint64_t num_proc = 0;
         uint64_t num_rate_limit = 0;
         std::shuffle(vAddr.begin(), vAddr.end(), m_rng);
@@ -4244,7 +4244,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         // the minimum chain work. This prevents us from starting a low-work headers
         // sync that will inevitably be aborted by our peer.
         if (m_chainman.ActiveTip() == nullptr ||
-                (m_chainman.ActiveTip()->nChainWork < m_chainman.MinimumChainWork() && !pfrom.HasPermission(NetPermissionFlags::Download))) {
+                (m_chainman.ActiveTip()->nChainWork < m_chainman.MinimumChainWork() && !peer->HasPermission(NetPermissionFlags::Download))) {
             LogDebug(BCLog::NET, "Ignoring getheaders from peer=%d because active chain has too little work; sending empty response\n", pfrom.GetId());
             // Just respond with an empty headers message, to tell the peer to
             // go away but not treat us as unresponsive.
@@ -4328,7 +4328,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
 
         const auto& [should_validate, package_to_validate] = m_txdownloadman.ReceivedTx(pfrom.GetId(), ptx);
         if (!should_validate) {
-            if (pfrom.HasPermission(NetPermissionFlags::ForceRelay)) {
+            if (peer->HasPermission(NetPermissionFlags::ForceRelay)) {
                 // Always relay transactions received from peers with forcerelay
                 // permission, even if they were already in the mempool, allowing
                 // the node to function as a gateway for nodes hidden behind it.
@@ -4748,7 +4748,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
 
         peer->m_addrs_to_send.clear();
         std::vector<CAddress> vAddr;
-        if (pfrom.HasPermission(NetPermissionFlags::Addr)) {
+        if (peer->HasPermission(NetPermissionFlags::Addr)) {
             vAddr = m_connman.GetAddresses(MAX_ADDR_TO_SEND, MAX_PCT_ADDR_TO_SEND, /*network=*/std::nullopt);
         } else {
             vAddr = m_connman.GetAddresses(pfrom, MAX_ADDR_TO_SEND, MAX_PCT_ADDR_TO_SEND);
@@ -4762,9 +4762,9 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
     if (msg_type == NetMsgType::MEMPOOL) {
         // Only process received mempool messages if we advertise NODE_BLOOM
         // or if the peer has mempool permissions.
-        if (!(peer->m_our_services & NODE_BLOOM) && !pfrom.HasPermission(NetPermissionFlags::Mempool))
+        if (!(peer->m_our_services & NODE_BLOOM) && !peer->HasPermission(NetPermissionFlags::Mempool))
         {
-            if (!pfrom.HasPermission(NetPermissionFlags::NoBan))
+            if (!peer->HasPermission(NetPermissionFlags::NoBan))
             {
                 LogDebug(BCLog::NET, "mempool request with bloom filters disabled, %s\n", pfrom.DisconnectMsg(fLogIPs));
                 pfrom.fDisconnect = true;
@@ -4772,9 +4772,9 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
             return;
         }
 
-        if (m_connman.OutboundTargetReached(false) && !pfrom.HasPermission(NetPermissionFlags::Mempool))
+        if (m_connman.OutboundTargetReached(false) && !peer->HasPermission(NetPermissionFlags::Mempool))
         {
-            if (!pfrom.HasPermission(NetPermissionFlags::NoBan))
+            if (!peer->HasPermission(NetPermissionFlags::NoBan))
             {
                 LogDebug(BCLog::NET, "mempool request with bandwidth limit reached, %s\n", pfrom.DisconnectMsg(fLogIPs));
                 pfrom.fDisconnect = true;
@@ -4997,7 +4997,7 @@ bool PeerManagerImpl::MaybeDiscourageAndDisconnect(CNode& pnode, Peer& peer)
         peer.m_should_discourage = false;
     } // peer.m_misbehavior_mutex
 
-    if (pnode.HasPermission(NetPermissionFlags::NoBan)) {
+    if (peer.HasPermission(NetPermissionFlags::NoBan)) {
         // We never disconnect or discourage peers for bad behavior if they have NetPermissionFlags::NoBan permission
         LogPrintf("Warning: not punishing noban peer %d!\n", peer.m_id);
         return false;
@@ -5432,7 +5432,7 @@ void PeerManagerImpl::MaybeSendFeefilter(CNode& pto, Peer& peer, std::chrono::mi
     if (m_opts.ignore_incoming_txs) return;
     if (peer.GetCommonVersion() < FEEFILTER_VERSION) return;
     // peers with the forcerelay permission should not filter txs to us
-    if (pto.HasPermission(NetPermissionFlags::ForceRelay)) return;
+    if (peer.HasPermission(NetPermissionFlags::ForceRelay)) return;
     // Don't send feefilter messages to outbound block-relay-only peers since they should never announce
     // transactions to us, regardless of feefilter state.
     if (IsBlockOnlyConn(peer.m_conn_type)) return;
@@ -5496,7 +5496,7 @@ bool PeerManagerImpl::RejectIncomingTxs(const CNode& node, const Peer& peer) con
     if (IsBlockOnlyConn(peer.m_conn_type)) return true;
     if (IsFeelerConn(peer.m_conn_type)) return true;
     // In -blocksonly mode, peers need the 'relay' permission to send txs to us
-    if (m_opts.ignore_incoming_txs && !node.HasPermission(NetPermissionFlags::Relay)) return true;
+    if (m_opts.ignore_incoming_txs && !peer.HasPermission(NetPermissionFlags::Relay)) return true;
     return false;
 }
 
@@ -5772,7 +5772,7 @@ bool PeerManagerImpl::SendMessages(CNode* pto)
         if (auto tx_relay = peer->GetTxRelay(); tx_relay != nullptr) {
                 LOCK(tx_relay->m_tx_inventory_mutex);
                 // Check whether periodic sends should happen
-                bool fSendTrickle = pto->HasPermission(NetPermissionFlags::NoBan);
+                bool fSendTrickle = peer->HasPermission(NetPermissionFlags::NoBan);
                 if (tx_relay->m_next_inv_send_time < current_time) {
                     fSendTrickle = true;
                     if (IsInboundConn(peer->m_conn_type)) {
@@ -5921,7 +5921,7 @@ bool PeerManagerImpl::SendMessages(CNode* pto)
                     // Note: If all our peers are inbound, then we won't
                     // disconnect our sync peer for stalling; we have bigger
                     // problems if we can't get any outbound peers.
-                    if (!pto->HasPermission(NetPermissionFlags::NoBan)) {
+                    if (!peer->HasPermission(NetPermissionFlags::NoBan)) {
                         LogInfo("Timeout downloading headers, %s\n", pto->DisconnectMsg(fLogIPs));
                         pto->fDisconnect = true;
                         return true;
