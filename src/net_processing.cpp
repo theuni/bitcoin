@@ -421,13 +421,16 @@ struct Peer {
     //! The peer's remote address
     const CAddress m_addr;
 
+    const std::string m_addr_name;
+
     //! Whether the peer has successfully completed the initial handshake
     bool m_handshake_complete{false};
-    explicit Peer(NodeId id, ServiceFlags our_services, ConnectionType conn_type, CAddress addr)
+    explicit Peer(NodeId id, ServiceFlags our_services, ConnectionType conn_type, CAddress addr, std::string addr_name)
         : m_id{id}
         , m_our_services{our_services}
         , m_conn_type{conn_type}
         , m_addr(std::move(addr))
+        , m_addr_name(std::move(addr_name))
     {}
 
 private:
@@ -1581,7 +1584,7 @@ void PeerManagerImpl::InitializeNode(const CNode& node, ServiceFlags our_service
         our_services = static_cast<ServiceFlags>(our_services | NODE_BLOOM);
     }
 
-    PeerRef peer = std::make_shared<Peer>(nodeid, our_services, node.m_conn_type, node.addr);
+    PeerRef peer = std::make_shared<Peer>(nodeid, our_services, node.m_conn_type, node.addr, node.m_addr_name);
     {
         LOCK(m_peer_mutex);
         m_peer_map.emplace_hint(m_peer_map.end(), nodeid, peer);
@@ -5055,7 +5058,7 @@ bool PeerManagerImpl::ProcessMessages(CNode* pfrom, std::atomic<bool>& interrupt
 
     TRACEPOINT(net, inbound_message,
         pfrom->GetId(),
-        pfrom->m_addr_name.c_str(),
+        peer->m_addr_name.c_str(),
         pfrom->ConnectionTypeAsString().c_str(),
         msg.m_type.c_str(),
         msg.m_recv.size(),
