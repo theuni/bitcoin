@@ -566,13 +566,13 @@ public:
 
     /** Implement NetEventsInterface */
     void InitializeNode(const CNode& node, ServiceFlags our_services) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_tx_download_mutex);
-    void FinalizeNode(NodeId nodeid) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_headers_presync_mutex, !m_tx_download_mutex);
+    void MarkNodeDisconnected(NodeId nodeid) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_headers_presync_mutex, !m_tx_download_mutex);
     bool HasAllDesirableServiceFlags(ServiceFlags services) const override;
     bool ProcessMessages(CNode* pfrom, std::atomic<bool>& interrupt) override
         EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_most_recent_block_mutex, !m_headers_presync_mutex, g_msgproc_mutex, !m_tx_download_mutex);
     bool SendMessages(CNode* pto) override
         EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_most_recent_block_mutex, g_msgproc_mutex, !m_tx_download_mutex);
-
+    void FinalizeNodes() override;
     /** Implement PeerManager */
     void StartScheduledTasks(CScheduler& scheduler) override;
     void CheckForStaleTipAndEvictPeers() override;
@@ -596,6 +596,7 @@ public:
     ServiceFlags GetDesirableServiceFlags(ServiceFlags services) const override;
 
 private:
+    void FinalizeNode(NodeId nodeid) EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_headers_presync_mutex, !m_tx_download_mutex);
     /** Consider evicting an outbound peer based on the amount of time they've been behind our tip */
     void ConsiderEviction(CNode& pto, Peer& peer, std::chrono::seconds time_in_seconds) EXCLUSIVE_LOCKS_REQUIRED(cs_main, g_msgproc_mutex);
 
@@ -922,6 +923,9 @@ private:
     NodeId m_headers_presync_bestpeer GUARDED_BY(m_headers_presync_mutex) {-1};
     /** The m_headers_presync_stats improved, and needs signalling. */
     std::atomic_bool m_headers_presync_should_signal{false};
+
+    Mutex m_nodes_to_finalize_mutex;
+    std::vector<NodeId> m_nodes_to_finalize GUARDED_BY(m_nodes_to_finalize_mutex);
 
     /** Height of the highest block announced using BIP 152 high-bandwidth mode. */
     int m_highest_fast_announce GUARDED_BY(::cs_main){0};
@@ -6037,3 +6041,19 @@ bool PeerManagerImpl::SendMessages(CNode* pto)
     MaybeSendFeefilter(*pto, *peer, current_time);
     return true;
 }
+
+void PeerManagerImpl::MarkNodeDisconnected(NodeId nodeid)
+{
+    LOCK(m_nodes_to_finalize_mutex);
+    m_nodes_to_finalize.push_back(nodeid);
+}
+
+void PeerManagerImpl::FinalizeNodes()
+{
+    decltype(m_nodes_to_finalize) nodes_to_finalize;
+    WITH_LOCK(m_nodes_to_finalize_mutex, nodes_to_finalize.swap(m_nodes_to_finalize));
+    for(auto nodeid : nodes_to_finalize) {
+        FinalizeNode(nodeid);
+    }
+}
+

@@ -916,7 +916,7 @@ public:
     virtual void InitializeNode(const CNode& node, ServiceFlags our_services) = 0;
 
     /** Handle removal of a peer (clear state) */
-    virtual void FinalizeNode(NodeId nodeid) = 0;
+    virtual void MarkNodeDisconnected(NodeId) = 0;
 
     /**
      * Callback to determine whether the given set of service flags are sufficient
@@ -941,7 +941,7 @@ public:
     */
     virtual bool SendMessages(CNode* pnode) EXCLUSIVE_LOCKS_REQUIRED(g_msgproc_mutex) = 0;
 
-
+    virtual void FinalizeNodes() = 0;
 protected:
     /**
      * Protected destructor so that instances can only be deleted by derived classes.

@@ -1936,23 +1936,12 @@ void CConnman::DisconnectNodes()
     }
     if (!nodes_disconnected.empty())
     {
+        for (const auto& node : nodes_disconnected)
         {
-            LOCK(m_nodes_disconnected_mutex);
-            m_nodes_disconnected.splice(m_nodes_disconnected.end(), std::move(nodes_disconnected));
-            for (auto it = m_nodes_disconnected.begin(); it != m_nodes_disconnected.end();) {
-                const auto& pnode = *it;
-                if (pnode->m_finalized) {
-                    nodes_to_delete.splice(nodes_to_delete.end(), m_nodes_disconnected, it++);
-                } else {
-                    ++it;
-                }
-            }
+            m_msgproc->MarkNodeDisconnected(node->GetId());
         }
         WakeMessageHandler();
-
     }
-    // Delete disconnected nodes only after other threads have stopped using them.
-    nodes_to_delete.clear();
     {
         // Move entries from reconnections_to_add to m_reconnections.
         LOCK(m_reconnections_mutex);
@@ -3035,12 +3024,7 @@ void CConnman::ThreadMessageHandler()
         bool fMoreWork = false;
 
         // Finalize nodes that were marked for deletion on another thread
-        decltype(m_nodes_disconnected) nodes_to_finalize;
-        WITH_LOCK(m_nodes_disconnected_mutex, std::copy_if(m_nodes_disconnected.begin(), m_nodes_disconnected.end(), std::back_inserter(nodes_to_finalize), [](const auto& pnode) { return !pnode->m_finalized; }));
-        for (const auto& pnode : nodes_to_finalize) {
-            m_msgproc->FinalizeNode(pnode->GetId());
-            pnode->m_finalized = true;
-        }
+        m_msgproc->FinalizeNodes();
 
         // Randomize the order in which we process messages from/to our peers.
         // This prevents attacks in which an attacker exploits having multiple
@@ -3479,19 +3463,18 @@ void CConnman::StopNodes()
     for (const auto& pnode : nodes) {
         LogDebug(BCLog::NET, "Stopping node, %s", pnode->DisconnectMsg(fLogIPs));
         pnode->CloseSocketDisconnect();
-        if (!pnode->m_finalized) {
-            m_msgproc->FinalizeNode(pnode->GetId());
-        }
+        m_msgproc->MarkNodeDisconnected(pnode->GetId());
+        m_msgproc->FinalizeNodes();
     }
     nodes.clear();
     std::list<std::shared_ptr<CNode>> nodes_disconnected;
     WITH_LOCK(m_nodes_disconnected_mutex, nodes_disconnected.swap(m_nodes_disconnected));
     for (const auto& pnode : nodes_disconnected) {
-        if (!pnode->m_finalized) {
-            m_msgproc->FinalizeNode(pnode->GetId());
-        }
+        m_msgproc->MarkNodeDisconnected(pnode->GetId());
+        m_msgproc->FinalizeNodes();
     }
     nodes_disconnected.clear();
+
     vhListenSocket.clear();
     semOutbound.reset();
     semAddnode.reset();
