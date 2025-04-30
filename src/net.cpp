@@ -360,7 +360,7 @@ CNode* CConnman::FindNode(const CService& addr)
 
 bool CConnman::AlreadyConnectedToAddress(const CAddress& addr)
 {
-    return FindNode(static_cast<CNetAddr>(addr));
+    return FindNode(static_cast<CNetAddr>(addr)) != nullptr;
 }
 
 bool CConnman::CheckIncomingNonce(uint64_t nonce)
