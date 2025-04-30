@@ -3870,6 +3870,18 @@ bool CConnman::NodeFullyConnected(const CNode* pnode)
     return pnode && pnode->fSuccessfullyConnected && !pnode->fDisconnect;
 }
 
+void CConnman::PushMessage(NodeId id, CSerializedNetMsg&& msg)
+{
+    std::shared_ptr<CNode> node;
+    {
+        LOCK(m_nodes_mutex);
+        auto it = std::find_if(m_nodes.begin(), m_nodes.end(), [&id](const auto& node) { return node->GetId() == id; });
+        if(it == m_nodes.end()) return;
+        node = *it;
+    }
+    PushMessage(node.get(), std::move(msg));
+}
+
 void CConnman::PushMessage(CNode* pnode, CSerializedNetMsg&& msg)
 {
     AssertLockNotHeld(m_total_bytes_sent_mutex);
