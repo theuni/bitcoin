@@ -453,12 +453,16 @@ struct Peer {
 
     std::atomic_bool m_disconnecting{false};
 
-    explicit Peer(NodeId id, ServiceFlags our_services, ConnectionType conn_type, CAddress addr, std::string addr_name, NetPermissionFlags permission_flags, uint64_t local_nonce)
+    //! Unix epoch time at peer connection
+    const std::chrono::seconds m_connected;
+
+    explicit Peer(NodeId id, ServiceFlags our_services, ConnectionType conn_type, CAddress addr, std::string addr_name, NetPermissionFlags permission_flags, uint64_t local_nonce, std::chrono::seconds connected)
         : m_id{id}
         , m_our_services{our_services}
         , m_conn_type{conn_type}
         , m_addr(std::move(addr))
         , m_addr_name(std::move(addr_name))
+        , m_connected(connected)
         , m_permission_flags(permission_flags)
         , m_local_nonce(local_nonce)
     {}
@@ -1633,7 +1637,7 @@ void PeerManagerImpl::InitializeNode(const CNode& node, ServiceFlags our_service
         our_services = static_cast<ServiceFlags>(our_services | NODE_BLOOM);
     }
 
-    PeerRef peer = std::make_shared<Peer>(nodeid, our_services, node.m_conn_type, node.addr, node.m_addr_name, node.m_permission_flags, node.GetLocalNonce());
+    PeerRef peer = std::make_shared<Peer>(nodeid, our_services, node.m_conn_type, node.addr, node.m_addr_name, node.m_permission_flags, node.GetLocalNonce(), node.m_connected);
     {
         LOCK(m_peer_mutex);
         m_peer_map.emplace_hint(m_peer_map.end(), nodeid, peer);
@@ -5584,7 +5588,7 @@ bool PeerManagerImpl::SendMessages(CNode* pto)
 
     const auto current_time{GetTime<std::chrono::microseconds>()};
 
-    if (IsAddrFetchConn(peer->m_conn_type) && current_time - pto->m_connected > 10 * AVG_ADDRESS_BROADCAST_INTERVAL) {
+    if (IsAddrFetchConn(peer->m_conn_type) && current_time - peer->m_connected > 10 * AVG_ADDRESS_BROADCAST_INTERVAL) {
         LogDebug(BCLog::NET, "addrfetch connection timeout, %s\n", peer->DisconnectMsg(fLogIPs));
         RequestDisconnect(*peer);
         return true;
