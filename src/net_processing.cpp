@@ -1131,6 +1131,24 @@ private:
 
     void LogBlockHeader(const CBlockIndex& index, const CNode& peer, bool via_compact_block);
     bool CheckIncomingNonce(uint64_t nonce) const EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex);
+
+    template <typename Callable>
+    requires std::invocable<Callable&, Peer&>
+    void ForEachFullyConnectedPeer(const Callable& func) EXCLUSIVE_LOCKS_REQUIRED(cs_main, !m_peer_mutex)
+    {
+        std::vector<PeerRef> peers;
+        {
+            LOCK(m_peer_mutex);
+            peers.reserve(m_peer_map.size());
+            for(const auto&[_, peer] : m_peer_map) {
+                peers.push_back(peer);
+            }
+        }
+        for(const auto& peer : peers) {
+            assert(peer);
+            if (peer->m_handshake_complete && !peer->m_disconnecting) func(*peer);
+        }
+    };
 };
 
 bool PeerManagerImpl::CheckIncomingNonce(uint64_t nonce) const
@@ -2120,22 +2138,22 @@ void PeerManagerImpl::NewPoWValidBlock(const CBlockIndex *pindex, const std::sha
         m_most_recent_block_txs = std::move(most_recent_block_txs);
     }
 
-    m_connman.ForEachNode([this, pindex, &lazy_ser, &hashBlock](CNode* pnode) EXCLUSIVE_LOCKS_REQUIRED(::cs_main) {
+    ForEachFullyConnectedPeer([this, pindex, &lazy_ser, &hashBlock](const Peer& peer) EXCLUSIVE_LOCKS_REQUIRED(::cs_main) {
         AssertLockHeld(::cs_main);
-
-        if (pnode->GetCommonVersion() < INVALID_CB_NO_BAN_VERSION || pnode->fDisconnect)
+        auto node_id = peer.m_id;
+        if (peer.GetCommonVersion() < INVALID_CB_NO_BAN_VERSION)
             return;
-        ProcessBlockAvailability(pnode->GetId());
-        CNodeState &state = *State(pnode->GetId());
+        ProcessBlockAvailability(node_id);
+        CNodeState &state = *State(node_id);
         // If the peer has, or we announced to them the previous block already,
         // but we don't think they have this one, go ahead and announce it
         if (state.m_requested_hb_cmpctblocks && !PeerHasHeader(&state, pindex) && PeerHasHeader(&state, pindex->pprev)) {
 
             LogDebug(BCLog::NET, "%s sending header-and-ids %s to peer=%d\n", "PeerManager::NewPoWValidBlock",
-                    hashBlock.ToString(), pnode->GetId());
+                    hashBlock.ToString(), node_id);
 
             const CSerializedNetMsg& ser_cmpctblock{lazy_ser.get()};
-            PushMessage(pnode->GetId(), ser_cmpctblock.Copy());
+            PushMessage(node_id, ser_cmpctblock.Copy());
             state.pindexBestHeaderSent = pindex;
         }
     });
@@ -5223,12 +5241,13 @@ void PeerManagerImpl::EvictExtraOutboundPeers(std::chrono::seconds now)
     if (m_connman.GetExtraBlockRelayCount() > 0) {
         std::pair<NodeId, std::chrono::seconds> youngest_peer{-1, 0}, next_youngest_peer{-1, 0};
 
-        m_connman.ForEachNode([&](CNode* pnode) {
-            if (!IsBlockOnlyConn(pnode->m_conn_type) || pnode->fDisconnect) return;
-            if (pnode->GetId() > youngest_peer.first) {
+        ForEachFullyConnectedPeer([&](const Peer& peer) {
+            auto node_id = peer.m_id;
+            if (!IsBlockOnlyConn(peer.m_conn_type)) return;
+            if (node_id > youngest_peer.first) {
                 next_youngest_peer = youngest_peer;
-                youngest_peer.first = pnode->GetId();
-                youngest_peer.second = *Assert(m_evictionman.GetLastBlockTime(pnode->GetId()));
+                youngest_peer.first = node_id;
+                youngest_peer.second = *Assert(m_evictionman.GetLastBlockTime(node_id));
             }
         });
         NodeId to_disconnect = youngest_peer.first;
