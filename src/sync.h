@@ -90,20 +90,13 @@ public:
         DeleteLock((void*)this);
     }
 
-    void lock() EXCLUSIVE_LOCK_FUNCTION()
-    {
-        PARENT::lock();
-    }
-
-    void unlock() UNLOCK_FUNCTION()
-    {
-        PARENT::unlock();
-    }
-
-    bool try_lock() EXCLUSIVE_TRYLOCK_FUNCTION(true)
-    {
-        return PARENT::try_lock();
-    }
+    // Disallow manual lock/unlock functions. All operations should be handled
+    // with an RAII wrapper instead.
+    void lock() = delete;
+    void unlock() = delete;
+    bool try_lock() = delete;
+    bool try_lock_for() = delete;
+    bool try_lock_until() = delete;
 
     using unique_lock = std::unique_lock<PARENT>;
 #ifdef __clang__
