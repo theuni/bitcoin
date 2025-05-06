@@ -200,11 +200,6 @@ public:
             LeaveCritical();
     }
 
-    operator bool()
-    {
-        return Base::owns_lock();
-    }
-
 protected:
     // needed for reverse_lock
     UniqueLock() = default;
