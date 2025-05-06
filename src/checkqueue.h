@@ -14,6 +14,7 @@
 #include <iterator>
 #include <optional>
 #include <vector>
+#include <semaphore>
 
 /**
  * Queue for verifications that have to be performed.
@@ -41,6 +42,9 @@ private:
 
     //! Master thread blocks on this when out of work
     std::condition_variable m_master_cv;
+
+    //! Semaphore to ensure only one concurrent CCheckQueueControl
+    std::binary_semaphore m_control_sem{1};
 
     //! The queue of elements to be processed.
     //! As the order of booleans doesn't matter, it is used as a LIFO (stack)
@@ -135,10 +139,21 @@ private:
             vChecks.clear();
         } while (true);
     }
-
 public:
-    //! Mutex to ensure only one concurrent CCheckQueueControl
-    Mutex m_control_mutex;
+    void Lock()
+    {
+        m_control_sem.acquire();
+    }
+
+    bool TryLock()
+    {
+        return m_control_sem.try_acquire();
+    }
+
+    void Unlock()
+    {
+        m_control_sem.release();
+    }
 
     //! Create a new check queue
     explicit CCheckQueue(unsigned int batch_size, int worker_threads_num)
@@ -219,7 +234,7 @@ public:
     {
         // passed queue is supposed to be unused, or nullptr
         if (pqueue != nullptr) {
-            ENTER_CRITICAL_SECTION(pqueue->m_control_mutex);
+            pqueue->Lock();
         }
     }
 
@@ -243,7 +258,7 @@ public:
         if (!fDone)
             Complete();
         if (pqueue != nullptr) {
-            LEAVE_CRITICAL_SECTION(pqueue->m_control_mutex);
+            pqueue->Unlock();
         }
     }
 };
