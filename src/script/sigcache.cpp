@@ -50,13 +50,13 @@ void SignatureCache::ComputeEntrySchnorr(uint256& entry, const uint256& hash, st
 
 bool SignatureCache::Get(const uint256& entry, const bool erase)
 {
-    std::shared_lock<std::shared_mutex> lock(cs_sigcache);
+    LOCK_SHARED(cs_sigcache);
     return setValid.contains(entry, erase);
 }
 
 void SignatureCache::Set(const uint256& entry)
 {
-    std::unique_lock<std::shared_mutex> lock(cs_sigcache);
+    LOCK(cs_sigcache);
     setValid.insert(entry);
 }
 
