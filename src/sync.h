@@ -147,6 +147,23 @@ class SCOPED_LOCKABLE UniqueLock : public MutexType::unique_lock
 private:
     using Base = typename MutexType::unique_lock;
 
+    // Disallow all modifying functions so that locks can only be managed via
+    // scopes. Make them private rather than deleting them so that reverse_lock
+    // can use them.
+    using Base::lock;
+    using Base::unlock;
+    using Base::try_lock;
+    using Base::try_lock_for;
+    using Base::try_lock_until;
+    using Base::swap;
+    using Base::release;
+
+    // Allow our custom locks to be used with condition_variable_any
+    friend class std::condition_variable_any;
+
+    // needed for reverse_lock
+    UniqueLock() = default;
+
     void Enter(const char* pszName, const char* pszFile, int nLine)
     {
         EnterCritical(pszName, pszFile, nLine, Base::mutex());
@@ -192,10 +209,6 @@ public:
         if (Base::owns_lock())
             LeaveCritical();
     }
-
-protected:
-    // needed for reverse_lock
-    UniqueLock() = default;
 
 public:
     /**
