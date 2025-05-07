@@ -11,11 +11,11 @@
 #include <cuckoocache.h>
 #include <script/interpreter.h>
 #include <span.h>
+#include <sync.h>
 #include <uint256.h>
 #include <util/hasher.h>
 
 #include <cstddef>
-#include <shared_mutex>
 #include <vector>
 
 class CPubKey;
@@ -42,8 +42,8 @@ private:
     CSHA256 m_salted_hasher_ecdsa;
     CSHA256 m_salted_hasher_schnorr;
     typedef CuckooCache::cache<uint256, SignatureCacheHasher> map_type;
-    map_type setValid;
-    std::shared_mutex cs_sigcache;
+    SharedMutex cs_sigcache;
+    map_type setValid GUARDED_BY(cs_sigcache);
 
 public:
     SignatureCache(size_t max_size_bytes);
@@ -55,9 +55,9 @@ public:
 
     void ComputeEntrySchnorr(uint256& entry, const uint256 &hash, std::span<const unsigned char> sig, const XOnlyPubKey& pubkey) const;
 
-    bool Get(const uint256& entry, const bool erase);
+    bool Get(const uint256& entry, const bool erase) EXCLUSIVE_LOCKS_REQUIRED(!cs_sigcache);
 
-    void Set(const uint256& entry);
+    void Set(const uint256& entry) EXCLUSIVE_LOCKS_REQUIRED(!cs_sigcache);
 };
 
 class CachingTransactionSignatureChecker : public TransactionSignatureChecker
