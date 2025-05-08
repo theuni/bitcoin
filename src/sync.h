@@ -461,14 +461,14 @@ public:
     CSemaphore& operator=(const CSemaphore&) = delete;
     CSemaphore& operator=(CSemaphore&&) = delete;
 
-    void wait() noexcept
+    void acquire() noexcept
     {
         std::unique_lock<std::mutex> lock(mutex);
         condition.wait(lock, [&]() { return value >= 1; });
         value--;
     }
 
-    bool try_wait() noexcept
+    bool try_acquire() noexcept
     {
         std::lock_guard<std::mutex> lock(mutex);
         if (value < 1) {
@@ -478,7 +478,7 @@ public:
         return true;
     }
 
-    void post() noexcept
+    void release() noexcept
     {
         {
             std::lock_guard<std::mutex> lock(mutex);
@@ -501,7 +501,7 @@ public:
         if (fHaveGrant) {
             return;
         }
-        sem->wait();
+        sem->acquire();
         fHaveGrant = true;
     }
 
@@ -510,13 +510,13 @@ public:
         if (!fHaveGrant) {
             return;
         }
-        sem->post();
+        sem->release();
         fHaveGrant = false;
     }
 
     bool TryAcquire() noexcept
     {
-        if (!fHaveGrant && sem->try_wait()) {
+        if (!fHaveGrant && sem->try_acquire()) {
             fHaveGrant = true;
         }
         return fHaveGrant;
