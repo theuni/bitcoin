@@ -202,16 +202,28 @@ static void pop_lock()
 }
 
 template <typename MutexType>
+void EnterCriticalShared(const char* pszName, const char* pszFile, int nLine, MutexType* cs, bool fTry)
+{
+    // TODO
+}
+template void EnterCriticalShared(const char*, const char*, int, std::shared_mutex*, bool);
+
+template <typename MutexType>
 void EnterCritical(const char* pszName, const char* pszFile, int nLine, MutexType* cs, bool fTry)
 {
     push_lock(cs, CLockLocation(pszName, pszFile, nLine, fTry, util::ThreadGetInternalName()));
 }
-template void EnterCritical(const char*, const char*, int, Mutex*, bool);
-template void EnterCritical(const char*, const char*, int, RecursiveMutex*, bool);
 template void EnterCritical(const char*, const char*, int, std::mutex*, bool);
 template void EnterCritical(const char*, const char*, int, std::recursive_mutex*, bool);
 
-void CheckLastCritical(void* cs, std::string& lockname, const char* guardname, const char* file, int line)
+template <>
+void EnterCritical<std::shared_mutex>(const char*, const char*, int, std::shared_mutex*, bool)
+{
+    // TODO
+}
+
+template <typename MutexType>
+void CheckLastCritical(MutexType* cs, std::string& lockname, const char* guardname, const char* file, int line)
 {
     LockData& lockdata = GetLockData();
     std::lock_guard<std::mutex> lock(lockdata.dd_mutex);
@@ -236,11 +248,29 @@ void CheckLastCritical(void* cs, std::string& lockname, const char* guardname, c
     }
     throw std::logic_error(strprintf("%s was not most recent critical section locked", guardname));
 }
+template void CheckLastCritical(std::mutex* cs, std::string& lockname, const char* guardname, const char* file, int line);
+template void CheckLastCritical(std::recursive_mutex* cs, std::string& lockname, const char* guardname, const char* file, int line);
 
-void LeaveCritical()
+template <typename MutexType>
+void LeaveCritical(MutexType*)
 {
     pop_lock();
 }
+template void LeaveCritical(std::mutex*);
+template void LeaveCritical(std::recursive_mutex*);
+
+template <>
+void LeaveCritical<std::shared_mutex>(std::shared_mutex*)
+{
+    // TODO
+}
+
+template <typename MutexType>
+void LeaveCriticalShared(MutexType*)
+{
+    // TODO
+}
+template void LeaveCriticalShared(std::shared_mutex*);
 
 static std::string LocksHeld()
 {
@@ -287,7 +317,8 @@ void AssertLockNotHeldInternal(const char* pszName, const char* pszFile, int nLi
 template void AssertLockNotHeldInternal(const char*, const char*, int, Mutex*);
 template void AssertLockNotHeldInternal(const char*, const char*, int, RecursiveMutex*);
 
-void DeleteLock(void* cs)
+template <typename MutexType>
+void DeleteLock(MutexType* cs)
 {
     LockData& lockdata = GetLockData();
     std::lock_guard<std::mutex> lock(lockdata.dd_mutex);
@@ -305,6 +336,16 @@ void DeleteLock(void* cs)
         lockdata.invlockorders.erase(invit++);
     }
 }
+template void DeleteLock(Mutex* cs);
+template void DeleteLock(RecursiveMutex* cs);
+
+template <typename MutexType>
+void DeleteLockShared(MutexType* cs)
+{
+    // TODO
+}
+template void DeleteLockShared(SharedMutex* cs);
+
 
 bool LockStackEmpty()
 {
