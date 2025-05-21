@@ -937,6 +937,8 @@ private:
     Mutex m_nodes_to_finalize_mutex;
     std::vector<NodeId> m_nodes_to_finalize GUARDED_BY(m_nodes_to_finalize_mutex);
 
+    std::array<unsigned int, Network::NET_MAX> m_network_conn_counts GUARDED_BY(m_peer_mutex);
+
     /** Height of the highest block announced using BIP 152 high-bandwidth mode. */
     int m_highest_fast_announce GUARDED_BY(::cs_main){0};
 
@@ -1663,6 +1665,7 @@ void PeerManagerImpl::InitializeNode(const CNode& node, ServiceFlags our_service
     {
         LOCK(m_peer_mutex);
         m_peer_map.emplace_hint(m_peer_map.end(), nodeid, peer);
+        if (IsManualOrFullOutboundConn(peer->m_conn_type)) ++m_network_conn_counts[peer->m_addr.GetNetwork()];
     }
 }
 
@@ -1791,6 +1794,7 @@ PeerRef PeerManagerImpl::RemovePeer(NodeId id)
     auto it = m_peer_map.find(id);
     if (it != m_peer_map.end()) {
         ret = std::move(it->second);
+        if (IsManualOrFullOutboundConn(ret->m_conn_type)) --m_network_conn_counts[ret->m_addr.GetNetwork()];
         m_peer_map.erase(it);
     }
     return ret;
@@ -5302,7 +5306,7 @@ void PeerManagerImpl::EvictExtraOutboundPeers(std::chrono::seconds now)
             if (state->m_chain_sync.m_protect) return;
             // If this is the only connection on a particular network that is
             // OUTBOUND_FULL_RELAY or MANUAL, protect it.
-            if (!m_connman.MultipleManualOrFullOutboundConns(pnode->addr.GetNetwork())) return;
+            if(WITH_LOCK(m_peer_mutex, return m_network_conn_counts[pnode->addr.GetNetwork()] > 1)) return;
             if (state->m_last_block_announcement < oldest_block_announcement || (state->m_last_block_announcement == oldest_block_announcement && pnode->GetId() > worst_peer)) {
                 worst_peer = pnode->GetId();
                 oldest_block_announcement = state->m_last_block_announcement;
