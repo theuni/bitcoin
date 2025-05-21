@@ -1134,7 +1134,7 @@ private:
     void AddAddressKnown(Peer& peer, const CAddress& addr) EXCLUSIVE_LOCKS_REQUIRED(g_msgproc_mutex);
     void PushAddress(Peer& peer, const CAddress& addr) EXCLUSIVE_LOCKS_REQUIRED(g_msgproc_mutex);
 
-    void LogBlockHeader(const CBlockIndex& index, const CNode& peer, bool via_compact_block);
+    void LogBlockHeader(const CBlockIndex& index, const CNode& node, const Peer& peer, bool via_compact_block);
     bool CheckIncomingNonce(uint64_t nonce) const EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex);
 
     template <typename Callable>
@@ -3087,7 +3087,7 @@ void PeerManagerImpl::ProcessHeadersMessage(CNode& pfrom, Peer& peer,
     assert(pindexLast);
 
     if (processed && received_new_header) {
-        LogBlockHeader(*pindexLast, pfrom, /*via_compact_block=*/false);
+        LogBlockHeader(*pindexLast, pfrom, peer, /*via_compact_block=*/false);
     }
 
     // Consider fetching more headers if we are not using our headers-sync mechanism.
@@ -3505,7 +3505,7 @@ void PeerManagerImpl::ProcessCompactBlockTxns(CNode& pfrom, Peer& peer, const Bl
     return;
 }
 
-void PeerManagerImpl::LogBlockHeader(const CBlockIndex& index, const CNode& peer, bool via_compact_block) {
+void PeerManagerImpl::LogBlockHeader(const CBlockIndex& index, const CNode& node, const Peer& peer, bool via_compact_block) {
     // To prevent log spam, this function should only be called after it was determined that a
     // header is both new and valid.
     //
@@ -3521,8 +3521,8 @@ void PeerManagerImpl::LogBlockHeader(const CBlockIndex& index, const CNode& peer
         via_compact_block ? "cmpctblock " : "",
         index.GetBlockHash().ToString(),
         index.nHeight,
-        peer.GetId(),
-        peer.LogIP(fLogIPs)
+        node.GetId(),
+        node.LogIP(fLogIPs)
     );
     if (m_chainman.IsInitialBlockDownload()) {
         LogDebug(BCLog::VALIDATION, "%s", msg);
@@ -4486,7 +4486,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         // If AcceptBlockHeader returned true, it set pindex
         Assert(pindex);
         if (received_new_header) {
-            LogBlockHeader(*pindex, pfrom, /*via_compact_block=*/true);
+            LogBlockHeader(*pindex, pfrom, *peer, /*via_compact_block=*/true);
         }
 
         bool fProcessBLOCKTXN = false;
