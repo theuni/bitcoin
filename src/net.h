@@ -195,10 +195,6 @@ public:
     int nVersion;
     std::string cleanSubVer;
     bool fInbound;
-    // We requested high bandwidth connection to peer
-    bool m_bip152_highbandwidth_to;
-    // Peer requested high bandwidth connection
-    bool m_bip152_highbandwidth_from;
     int m_starting_height;
     uint64_t nSendBytes;
     mapMsgTypeSize mapSendBytesPerMsgType;
@@ -786,11 +782,6 @@ public:
 
     /** Whether this peer connected through a privacy network. */
     [[nodiscard]] bool IsConnectedThroughPrivacyNet() const;
-
-    // We selected peer as (compact blocks) high-bandwidth peer (BIP152)
-    std::atomic<bool> m_bip152_highbandwidth_to{false};
-    // Peer selected us as (compact blocks) high-bandwidth peer (BIP152)
-    std::atomic<bool> m_bip152_highbandwidth_from{false};
 
     /** Whether this peer provides all services that we want. Used for eviction decisions */
     std::atomic_bool m_has_all_wanted_services{false};
