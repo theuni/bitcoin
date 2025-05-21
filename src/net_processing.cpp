@@ -3528,7 +3528,7 @@ void PeerManagerImpl::LogBlockHeader(const CBlockIndex& index, const CNode& node
         index.GetBlockHash().ToString(),
         index.nHeight,
         peer.m_id,
-        node.LogIP(fLogIPs)
+        peer.LogIP(fLogIPs)
     );
     if (m_chainman.IsInitialBlockDownload()) {
         LogDebug(BCLog::VALIDATION, "%s", msg);
