@@ -200,10 +200,6 @@ public:
     int nVersion;
     std::string cleanSubVer;
     bool fInbound;
-    // We requested high bandwidth connection to peer
-    bool m_bip152_highbandwidth_to;
-    // Peer requested high bandwidth connection
-    bool m_bip152_highbandwidth_from;
     int m_starting_height;
     uint64_t nSendBytes;
     mapMsgTypeSize mapSendBytesPerMsgType;
@@ -789,11 +785,6 @@ public:
 
     /** Whether this peer connected through a privacy network. */
     [[nodiscard]] bool IsConnectedThroughPrivacyNet() const;
-
-    // We selected peer as (compact blocks) high-bandwidth peer (BIP152)
-    std::atomic<bool> m_bip152_highbandwidth_to{false};
-    // Peer selected us as (compact blocks) high-bandwidth peer (BIP152)
-    std::atomic<bool> m_bip152_highbandwidth_from{false};
 
     /** Last measured round-trip time. Used only for RPC/GUI stats/debugging.*/
     std::atomic<std::chrono::microseconds> m_last_ping_time{0us};

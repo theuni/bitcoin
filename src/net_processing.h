@@ -63,6 +63,8 @@ struct CNodeStateStats {
     ServiceFlags their_services;
     int64_t presync_height{-1};
     std::chrono::seconds time_offset{0};
+    bool m_bip152_highbandwidth_to;
+    bool m_bip152_highbandwidth_from;
 };
 
 struct PeerManagerInfo {

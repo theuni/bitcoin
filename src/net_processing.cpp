@@ -456,6 +456,11 @@ struct Peer {
     //! Unix epoch time at peer connection
     const std::chrono::seconds m_connected;
 
+    // We requested high bandwidth connection to peer
+    std::atomic_bool m_bip152_highbandwidth_to;
+    // Peer requested high bandwidth connection
+    std::atomic_bool m_bip152_highbandwidth_from;
+
     explicit Peer(NodeId id, ServiceFlags our_services, ConnectionType conn_type, CAddress addr, std::string addr_name, NetPermissionFlags permission_flags, uint64_t local_nonce, std::chrono::seconds connected)
         : m_id{id}
         , m_our_services{our_services}
@@ -1374,25 +1379,24 @@ void PeerManagerImpl::MaybeSetPeerAsAnnouncingHeaderAndIDs(NodeId nodeid)
             }
         }
     }
-    m_connman.ForNode(nodeid, [this](CNode* pfrom) EXCLUSIVE_LOCKS_REQUIRED(::cs_main) {
+    if (peer && !peer->m_disconnecting && peer->m_handshake_complete) {
         AssertLockHeld(::cs_main);
         if (lNodesAnnouncingHeaderAndIDs.size() >= 3) {
             // As per BIP152, we only get 3 of our peers to announce
             // blocks using compact encodings.
-            m_connman.ForNode(lNodesAnnouncingHeaderAndIDs.front(), [this](CNode* pnodeStop){
-                MakeAndPushMessage(pnodeStop->GetId(), NetMsgType::SENDCMPCT, /*high_bandwidth=*/false, /*version=*/CMPCTBLOCKS_VERSION);
+            auto peerStop = GetPeerRef(lNodesAnnouncingHeaderAndIDs.front());
+            if (peerStop && !peerStop->m_disconnecting && peerStop->m_handshake_complete) {
+                MakeAndPushMessage(peerStop->m_id, NetMsgType::SENDCMPCT, /*high_bandwidth=*/false, /*version=*/CMPCTBLOCKS_VERSION);
                 // save BIP152 bandwidth state: we select peer to be low-bandwidth
-                pnodeStop->m_bip152_highbandwidth_to = false;
-                return true;
-            });
+                peerStop->m_bip152_highbandwidth_to = false;
+            }
             lNodesAnnouncingHeaderAndIDs.pop_front();
         }
-        MakeAndPushMessage(pfrom->GetId(), NetMsgType::SENDCMPCT, /*high_bandwidth=*/true, /*version=*/CMPCTBLOCKS_VERSION);
+        MakeAndPushMessage(nodeid, NetMsgType::SENDCMPCT, /*high_bandwidth=*/true, /*version=*/CMPCTBLOCKS_VERSION);
         // save BIP152 bandwidth state: we select peer to be high-bandwidth
-        pfrom->m_bip152_highbandwidth_to = true;
-        lNodesAnnouncingHeaderAndIDs.push_back(pfrom->GetId());
-        return true;
-    });
+        peer->m_bip152_highbandwidth_to = true;
+        lNodesAnnouncingHeaderAndIDs.push_back(nodeid);
+    }
 }
 
 bool PeerManagerImpl::TipMayBeStale()
@@ -1841,7 +1845,8 @@ bool PeerManagerImpl::GetNodeStateStats(NodeId nodeid, CNodeStateStats& stats) c
         }
     }
     stats.time_offset = peer->m_time_offset;
-
+    stats.m_bip152_highbandwidth_to = peer->m_bip152_highbandwidth_to;
+    stats.m_bip152_highbandwidth_from = peer->m_bip152_highbandwidth_from;
     return true;
 }
 
@@ -3852,7 +3857,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         nodestate->m_requested_hb_cmpctblocks = sendcmpct_hb;
         // save whether peer selects us as BIP152 high-bandwidth peer
         // (receiving sendcmpct(1) signals high-bandwidth, sendcmpct(0) low-bandwidth)
-        pfrom.m_bip152_highbandwidth_from = sendcmpct_hb;
+        peer->m_bip152_highbandwidth_from = sendcmpct_hb;
         return;
     }
 
@@ -4592,7 +4597,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
                     // as long as it's first...
                     req.blockhash = pindex->GetBlockHash();
                     MakeAndPushMessage(peer->m_id, NetMsgType::GETBLOCKTXN, req);
-                } else if (pfrom.m_bip152_highbandwidth_to &&
+                } else if (peer->m_bip152_highbandwidth_to &&
                     (!IsInboundConn(peer->m_conn_type) ||
                     IsBlockRequestedFromOutbound(blockhash) ||
                     already_in_flight < MAX_CMPCTBLOCKS_INFLIGHT_PER_BLOCK - 1)) {
