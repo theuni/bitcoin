@@ -756,21 +756,6 @@ public:
         mapSendBytesPerMsgType[msg_type] += sent_bytes;
     }
 
-    bool ExpectServicesFromConn() const {
-        switch (m_conn_type) {
-            case ConnectionType::INBOUND:
-            case ConnectionType::MANUAL:
-            case ConnectionType::FEELER:
-                return false;
-            case ConnectionType::OUTBOUND_FULL_RELAY:
-            case ConnectionType::BLOCK_RELAY:
-            case ConnectionType::ADDR_FETCH:
-                return true;
-        } // no default case, so the compiler can warn about missing cases
-
-        assert(false);
-    }
-
     /**
      * Get network the peer connected through.
      *

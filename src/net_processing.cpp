@@ -363,6 +363,21 @@ struct Peer {
                          LogIP(log_ip));
     }
 
+    bool ExpectServicesFromConn() const {
+        switch (m_conn_type) {
+            case ConnectionType::INBOUND:
+            case ConnectionType::MANUAL:
+            case ConnectionType::FEELER:
+                return false;
+            case ConnectionType::OUTBOUND_FULL_RELAY:
+            case ConnectionType::BLOCK_RELAY:
+            case ConnectionType::ADDR_FETCH:
+                return true;
+        } // no default case, so the compiler can warn about missing cases
+
+        assert(false);
+    }
+
     /** A vector of addresses to send to the peer, limited to MAX_ADDR_TO_SEND. */
     std::vector<CAddress> m_addrs_to_send GUARDED_BY(NetEventsInterface::g_msgproc_mutex);
     /** Probabilistic filter to track recent addr messages relayed with this
@@ -3576,7 +3591,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
             // messages are only ever added but cannot replace existing ones.
             m_addrman.SetServices(peer->m_addr, nServices);
         }
-        if (pfrom.ExpectServicesFromConn() && !HasAllDesirableServiceFlags(nServices))
+        if (peer->ExpectServicesFromConn() && !HasAllDesirableServiceFlags(nServices))
         {
             LogDebug(BCLog::NET, "peer does not offer the expected services (%08x offered, %08x expected), %s\n",
                      nServices,
