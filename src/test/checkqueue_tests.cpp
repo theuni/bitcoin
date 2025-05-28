@@ -337,7 +337,8 @@ BOOST_AUTO_TEST_CASE(test_CheckQueue_FrozenCleanup)
     }
     // Try to get control of the queue a bunch of times
     for (auto x = 0; x < 100 && !fails; ++x) {
-        fails = queue->m_control_mutex.try_lock();
+        TRY_LOCK(queue->m_control_mutex, try_control);
+        fails = try_control.owns_lock();
     }
     {
         // Unfreeze (we need lock n case of spurious wakeup)
@@ -402,7 +403,8 @@ BOOST_AUTO_TEST_CASE(test_CheckQueueControl_Locks)
             cv.wait(l, [&](){return has_lock;});
             bool fails = false;
             for (auto x = 0; x < 100 && !fails; ++x) {
-                fails = queue->m_control_mutex.try_lock();
+                TRY_LOCK(queue->m_control_mutex, try_control);
+                fails = try_control.owns_lock();
             }
             has_tried = true;
             cv.notify_one();
