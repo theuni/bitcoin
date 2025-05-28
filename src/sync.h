@@ -50,13 +50,16 @@ TRY_LOCK(mutex, name);
 #ifdef DEBUG_LOCKORDER
 template <typename MutexType>
 void EnterCritical(const char* pszName, const char* pszFile, int nLine, MutexType* cs, bool fTry = false);
-void LeaveCritical();
-void CheckLastCritical(void* cs, std::string& lockname, const char* guardname, const char* file, int line);
+template <typename MutexType>
+void LeaveCritical(MutexType*);
+template <typename MutexType>
+void CheckLastCritical(MutexType* cs, std::string& lockname, const char* guardname, const char* file, int line);
 template <typename MutexType>
 void AssertLockHeldInternal(const char* pszName, const char* pszFile, int nLine, MutexType* cs) EXCLUSIVE_LOCKS_REQUIRED(cs);
 template <typename MutexType>
 void AssertLockNotHeldInternal(const char* pszName, const char* pszFile, int nLine, MutexType* cs) LOCKS_EXCLUDED(cs);
-void DeleteLock(void* cs);
+template <typename MutexType>
+void DeleteLock(MutexType* cs);
 bool LockStackEmpty();
 
 /**
@@ -68,13 +71,16 @@ extern bool g_debug_lockorder_abort;
 #else
 template <typename MutexType>
 inline void EnterCritical(const char* pszName, const char* pszFile, int nLine, MutexType* cs, bool fTry = false) {}
-inline void LeaveCritical() {}
-inline void CheckLastCritical(void* cs, std::string& lockname, const char* guardname, const char* file, int line) {}
+template <typename MutexType>
+inline void LeaveCritical(MutexType*) {}
+template <typename MutexType>
+inline void CheckLastCritical(MutexType* cs, std::string& lockname, const char* guardname, const char* file, int line) {}
 template <typename MutexType>
 inline void AssertLockHeldInternal(const char* pszName, const char* pszFile, int nLine, MutexType* cs) EXCLUSIVE_LOCKS_REQUIRED(cs) {}
 template <typename MutexType>
 void AssertLockNotHeldInternal(const char* pszName, const char* pszFile, int nLine, MutexType* cs) LOCKS_EXCLUDED(cs) {}
-inline void DeleteLock(void* cs) {}
+template <typename MutexType>
+inline void DeleteLock(MutexType* cs) {}
 inline bool LockStackEmpty() { return true; }
 #endif
 
@@ -87,7 +93,7 @@ class LOCKABLE AnnotatedMixin : public PARENT
 {
 public:
     ~AnnotatedMixin() {
-        DeleteLock((void*)this);
+        DeleteLock(this);
     }
 
     // Disallow manual lock/unlock functions. All operations should be handled
@@ -174,7 +180,7 @@ private:
         if (Base::try_lock()) {
             return true;
         }
-        LeaveCritical();
+        LeaveCritical(Base::mutex());
         return false;
     }
 
@@ -201,7 +207,7 @@ public:
     ~UniqueLock() UNLOCK_FUNCTION()
     {
         if (Base::owns_lock())
-            LeaveCritical();
+            LeaveCritical(Base::mutex());
     }
 
 public:
@@ -214,9 +220,9 @@ public:
             // Ensure that mutex passed back for thread-safety analysis is indeed the original
             assert(std::addressof(mutex) == lock.mutex());
 
-            CheckLastCritical((void*)lock.mutex(), lockname, _guardname, _file, _line);
+            CheckLastCritical(lock.mutex(), lockname, _guardname, _file, _line);
             lock.unlock();
-            LeaveCritical();
+            LeaveCritical(lock.mutex());
             lock.swap(templock);
         }
 
