@@ -133,7 +133,10 @@ using Mutex = AnnotatedMixin<std::mutex>;
  */
 class GlobalMutex : public Mutex { };
 
-#define AssertLockHeld(cs) AssertLockHeldInternal(#cs, __FILE__, __LINE__, &cs)
+inline void AssertLockHeldInline(const char* name, const char* file, int line, Mutex* cs) EXCLUSIVE_LOCKS_REQUIRED(cs) { AssertLockHeldInternal(name, file, line, cs); }
+inline void AssertLockHeldInline(const char* name, const char* file, int line, RecursiveMutex* cs) EXCLUSIVE_LOCKS_REQUIRED(cs) { AssertLockHeldInternal(name, file, line, cs); }
+inline void AssertLockHeldInline(const char* name, const char* file, int line, GlobalMutex* cs) EXCLUSIVE_LOCKS_REQUIRED(cs) { AssertLockHeldInternal(name, file, line, cs); }
+#define AssertLockHeld(cs) AssertLockHeldInline(#cs, __FILE__, __LINE__, &cs)
 
 inline void AssertLockNotHeldInline(const char* name, const char* file, int line, Mutex* cs) EXCLUSIVE_LOCKS_REQUIRED(!cs) { AssertLockNotHeldInternal(name, file, line, cs); }
 inline void AssertLockNotHeldInline(const char* name, const char* file, int line, RecursiveMutex* cs) LOCKS_EXCLUDED(cs) { AssertLockNotHeldInternal(name, file, line, cs); }
