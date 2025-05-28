@@ -209,6 +209,19 @@ void EnterCritical(const char* pszName, const char* pszFile, int nLine, MutexTyp
 template void EnterCritical(const char*, const char*, int, std::mutex*, bool);
 template void EnterCritical(const char*, const char*, int, std::recursive_mutex*, bool);
 
+template <>
+void EnterCritical<std::shared_mutex>(const char*, const char*, int, std::shared_mutex*, bool)
+{
+    // TODO
+}
+
+template <typename MutexType>
+void EnterCriticalShared(const char* pszName, const char* pszFile, int nLine, MutexType* cs, bool fTry)
+{
+    // TODO
+}
+template void EnterCriticalShared(const char*, const char*, int, std::shared_mutex*, bool);
+
 template <typename MutexType>
 void CheckLastCritical(MutexType* cs, std::string& lockname, const char* guardname, const char* file, int line)
 {
@@ -238,6 +251,19 @@ void CheckLastCritical(MutexType* cs, std::string& lockname, const char* guardna
 template void CheckLastCritical(std::mutex*, std::string& lockname, const char* guardname, const char* file, int line);
 template void CheckLastCritical(std::recursive_mutex*, std::string& lockname, const char* guardname, const char* file, int line);
 
+template <>
+void CheckLastCritical<std::shared_mutex>(std::shared_mutex*, std::string& lockname, const char* guardname, const char* file, int line)
+{
+    // TODO
+}
+
+template <typename MutexType>
+void CheckLastCriticalShared(MutexType* cs, std::string& lockname, const char* guardname, const char* file, int line)
+{
+    // TODO
+}
+template void CheckLastCriticalShared(std::shared_mutex* cs, std::string& lockname, const char* guardname, const char* file, int line);
+
 template <typename MutexType>
 void LeaveCritical(MutexType*)
 {
@@ -246,7 +272,18 @@ void LeaveCritical(MutexType*)
 template void LeaveCritical(std::mutex*);
 template void LeaveCritical(std::recursive_mutex*);
 
+template <>
+void LeaveCritical<std::shared_mutex>(std::shared_mutex*)
+{
+    // TODO
+}
 
+template <typename MutexType>
+void LeaveCriticalShared(MutexType*)
+{
+    // TODO
+}
+template void LeaveCriticalShared(std::shared_mutex*);
 
 static std::string LocksHeld()
 {
@@ -314,6 +351,13 @@ void DeleteLock(MutexType* cs)
 }
 template void DeleteLock(Mutex*);
 template void DeleteLock(RecursiveMutex*);
+
+template <>
+void DeleteLock<SharedMutex>(SharedMutex*)
+{
+    // TODO
+}
+
 
 bool LockStackEmpty()
 {
