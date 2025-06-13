@@ -78,22 +78,15 @@ bool CTransaction::ComputeHasWitness() const
     });
 }
 
-Txid CTransaction::ComputeHash() const
+std::pair<Txid,Wtxid> CTransaction::ComputeHashes() const
 {
-    return Txid::FromUint256((HashWriter{} << TX_NO_WITNESS(*this)).GetHash());
+    const uint256& txid{(HashWriter{} << TX_NO_WITNESS(*this)).GetHash()};
+    const uint256& wtxid{HasWitness() ? (HashWriter{} << TX_WITH_WITNESS(*this)).GetHash() : txid};
+    return { Txid::FromUint256(txid), Wtxid::FromUint256(wtxid) };
 }
 
-Wtxid CTransaction::ComputeWitnessHash() const
-{
-    if (!HasWitness()) {
-        return Wtxid::FromUint256(hash.ToUint256());
-    }
-
-    return Wtxid::FromUint256((HashWriter{} << TX_WITH_WITNESS(*this)).GetHash());
-}
-
-CTransaction::CTransaction(const CMutableTransaction& tx) : vin(tx.vin), vout(tx.vout), version{tx.version}, nLockTime{tx.nLockTime}, m_has_witness{ComputeHasWitness()}, hash{ComputeHash()}, m_witness_hash{ComputeWitnessHash()} {}
-CTransaction::CTransaction(CMutableTransaction&& tx) : vin(std::move(tx.vin)), vout(std::move(tx.vout)), version{tx.version}, nLockTime{tx.nLockTime}, m_has_witness{ComputeHasWitness()}, hash{ComputeHash()}, m_witness_hash{ComputeWitnessHash()} {}
+CTransaction::CTransaction(const CMutableTransaction& tx) : vin(tx.vin), vout(tx.vout), version{tx.version}, nLockTime{tx.nLockTime}, m_has_witness{ComputeHasWitness()}, m_hashes{ComputeHashes()} {}
+CTransaction::CTransaction(CMutableTransaction&& tx) : vin(std::move(tx.vin)), vout(std::move(tx.vout)), version{tx.version}, nLockTime{tx.nLockTime}, m_has_witness{ComputeHasWitness()}, m_hashes{ComputeHashes()} {}
 
 CAmount CTransaction::GetValueOut() const
 {

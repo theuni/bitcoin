@@ -311,11 +311,9 @@ public:
 private:
     /** Memory only. */
     const bool m_has_witness;
-    const Txid hash;
-    const Wtxid m_witness_hash;
+    const std::pair<Txid, Wtxid> m_hashes;
 
-    Txid ComputeHash() const;
-    Wtxid ComputeWitnessHash() const;
+    std::pair<Txid, Wtxid> ComputeHashes() const;
 
     bool ComputeHasWitness() const;
 
@@ -340,8 +338,8 @@ public:
         return vin.empty() && vout.empty();
     }
 
-    const Txid& GetHash() const LIFETIMEBOUND { return hash; }
-    const Wtxid& GetWitnessHash() const LIFETIMEBOUND { return m_witness_hash; };
+    const Txid& GetHash() const LIFETIMEBOUND { return std::get<Txid>(m_hashes); }
+    const Wtxid& GetWitnessHash() const LIFETIMEBOUND { return std::get<Wtxid>(m_hashes); };
 
     // Return sum of txouts.
     CAmount GetValueOut() const;
