@@ -340,7 +340,7 @@ public:
       }
 
   public:
-      SharedLock(MutexType& mutexIn, const char* pszName, const char* pszFile, int nLine, bool fTry = false) SHARED_LOCK_FUNCTION(mutexIn) : Base(mutexIn, std::defer_lock)
+      SharedLock(const MutexType& mutexIn, const char* pszName, const char* pszFile, int nLine, bool fTry = false) SHARED_LOCK_FUNCTION(mutexIn) : Base(const_cast<MutexType&>(mutexIn), std::defer_lock)
       {
           if (fTry)
               TryEnter(pszName, pszFile, nLine);
@@ -359,25 +359,25 @@ public:
        */
       class SCOPED_LOCKABLE reverse_lock {
       public:
-          explicit reverse_lock(SharedLock& _lock, const MutexType& mutex, const char* _guardname, const char* _file, int _line) SHARED_UNLOCK_FUNCTION(mutex) : lock(_lock), lockname(_guardname), file(_file), line(_line) {
+          explicit reverse_lock(const SharedLock& _lock, const MutexType& mutex, const char* _guardname, const char* _file, int _line) SHARED_UNLOCK_FUNCTION(mutex) : lock(_lock), lockname(_guardname), file(_file), line(_line) {
               assert(std::addressof(mutex) == lock.mutex());
               CheckLastCritical(lock.mutex(), lockname, _guardname, _file, _line);
-              lock.unlock();
+              const_cast<SharedLock&>(lock).unlock();
               LeaveCritical(lock.mutex());
-              lock.swap(templock);
+              const_cast<SharedLock&>(lock).swap(templock);
           }
 
           ~reverse_lock() UNLOCK_FUNCTION() {
-              templock.swap(lock);
+              templock.swap(const_cast<SharedLock&>(lock));
               EnterCritical(lockname.c_str(), file.c_str(), line, lock.mutex());
-              lock.lock();
+              const_cast<SharedLock&>(lock).lock();
           }
 
        private:
           reverse_lock(reverse_lock const&);
           reverse_lock& operator=(reverse_lock const&);
 
-          SharedLock& lock;
+          const SharedLock& lock;
           SharedLock templock;
           std::string lockname;
           const std::string file;
@@ -396,7 +396,7 @@ inline SharedMutex& MaybeCheckNotHeld(SharedMutex& cs) EXCLUSIVE_LOCKS_REQUIRED(
 
 // It would make sense for this to be SHARED_LOCKS_REQUIRED(!cs), but clang
 // does not understand negative shared capabilities as of v21.
-inline SharedMutex& MaybeCheckNotHeldShared(SharedMutex& cs) EXCLUSIVE_LOCKS_REQUIRED(!cs) LOCK_RETURNED(cs) { return cs; }
+inline const SharedMutex& MaybeCheckNotHeldShared(const SharedMutex& cs) EXCLUSIVE_LOCKS_REQUIRED(!cs) LOCK_RETURNED(cs) { return cs; }
 
 // When locking a GlobalMutex or RecursiveMutex, just check it is not
 // locked in the surrounding scope.
