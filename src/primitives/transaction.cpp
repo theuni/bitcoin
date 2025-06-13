@@ -137,9 +137,14 @@ bool CTransaction::ComputeHasWitness() const
 
 std::pair<Txid,Wtxid> CTransaction::ComputeHashes() const
 {
-    const uint256& txid{(HashWriter{} << TX_NO_WITNESS(*this)).GetHash()};
-    const uint256& wtxid{HasWitness() ? (HashWriter{} << TX_WITH_WITNESS(*this)).GetHash() : txid};
-    return { Txid::FromUint256(txid), Wtxid::FromUint256(wtxid) };
+    if (HasWitness()) {
+        TxHashWriter s;
+        SerializeTransaction(*this, s, TX_WITH_WITNESS);
+        return s.GetHashes();
+    } else {
+        const uint256& txid{(HashWriter{} << TX_NO_WITNESS(*this)).GetHash()};
+        return { Txid::FromUint256(txid), Wtxid::FromUint256(txid) };
+    }
 }
 
 CTransaction::CTransaction(const CMutableTransaction& tx) : vin(tx.vin), vout(tx.vout), version{tx.version}, nLockTime{tx.nLockTime}, m_has_witness{ComputeHasWitness()}, m_hashes{ComputeHashes()} {}
