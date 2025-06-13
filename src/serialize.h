@@ -1231,4 +1231,13 @@ public:
         return ParamsWrapper{*this, t};                                                  \
     }
 
+template <typename T, typename Tag>
+class TaggedSerParam
+{
+    T& m_serialize;
+public:
+    constexpr TaggedSerParam(T& serialize) noexcept : m_serialize{serialize} {}
+    SERIALIZE_METHODS(TaggedSerParam, obj) { READWRITE(obj.m_serialize); }
+};
+
 #endif // BITCOIN_SERIALIZE_H
