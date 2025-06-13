@@ -274,7 +274,7 @@ void SerializeTransaction(const TxType& tx, Stream& s, const TransactionSerParam
 {
     const bool fAllowWitness = params.allow_witness;
 
-    s << tx.version;
+    s << SerializeTxidAndWtxid{tx.version};
     unsigned char flags = 0;
     // Consistency check
     if (fAllowWitness) {
@@ -286,17 +286,17 @@ void SerializeTransaction(const TxType& tx, Stream& s, const TransactionSerParam
     if (flags) {
         /* Use extended format in case witnesses are to be serialized. */
         std::vector<CTxIn> vinDummy;
-        s << vinDummy;
-        s << flags;
+        s << SerializeWtxidOnly{vinDummy};
+        s << SerializeWtxidOnly{flags};
     }
-    s << tx.vin;
-    s << tx.vout;
+    s << SerializeTxidAndWtxid{tx.vin};
+    s << SerializeTxidAndWtxid{tx.vout};
     if (flags & 1) {
         for (size_t i = 0; i < tx.vin.size(); i++) {
-            s << tx.vin[i].scriptWitness.stack;
+            s << SerializeWtxidOnly{tx.vin[i].scriptWitness.stack};
         }
     }
-    s << tx.nLockTime;
+    s << SerializeTxidAndWtxid{tx.nLockTime};
 }
 
 template<typename TxType>
