@@ -252,6 +252,23 @@ void UnserializeTransaction(TxType& tx, Stream& s, const TransactionSerParams& p
     s >> tx.nLockTime;
 }
 
+enum serialize_type
+{
+    include_in_txid = 1,
+    include_in_wtxid = 1 << 1,
+    include_in_txid_and_wtxid = include_in_txid | include_in_wtxid
+};
+
+
+template <serialize_type>
+struct serialize_tx_hash{};
+
+template <typename T>
+using SerializeWtxidOnly = TaggedSerParam<T, serialize_tx_hash<serialize_type::include_in_wtxid>>;
+
+template <typename T>
+using SerializeTxidAndWtxid = TaggedSerParam<T, serialize_tx_hash<serialize_type::include_in_txid_and_wtxid>>;
+
 template<typename Stream, typename TxType>
 void SerializeTransaction(const TxType& tx, Stream& s, const TransactionSerParams& params)
 {

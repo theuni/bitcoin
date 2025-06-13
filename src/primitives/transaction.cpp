@@ -18,6 +18,63 @@
 #include <cassert>
 #include <stdexcept>
 
+class TxHashWriter
+{
+    CSHA256 m_txid_ctx;
+    CSHA256 m_wtxid_ctx;
+
+    template <serialize_type HASH_TYPE>
+    class hasher
+    {
+        friend class TxHashWriter;
+
+        TxHashWriter& m_parent;
+        constexpr hasher(TxHashWriter& parent) : m_parent(parent){}
+    public:
+        void write(std::span<const std::byte> src)
+        {
+            if constexpr(HASH_TYPE & serialize_type::include_in_txid)
+                m_parent.m_txid_ctx.Write(UCharCast(src.data()), src.size());
+            if constexpr(HASH_TYPE & serialize_type::include_in_wtxid)
+                m_parent.m_wtxid_ctx.Write(UCharCast(src.data()), src.size());
+        }
+        template <typename T>
+        hasher& operator<<(const T& obj)
+        {
+            ::Serialize(*this, obj);
+            return *this;
+        }
+    };
+
+    public:
+
+    std::pair<Txid, Wtxid> GetHashes() {
+        uint256 txid_result;
+        m_txid_ctx.Finalize(txid_result.begin());
+        m_txid_ctx.Reset().Write(txid_result.begin(), CSHA256::OUTPUT_SIZE).Finalize(txid_result.begin());
+
+        uint256 wtxid_result;
+        m_wtxid_ctx.Finalize(wtxid_result.begin());
+        m_wtxid_ctx.Reset().Write(wtxid_result.begin(), CSHA256::OUTPUT_SIZE).Finalize(wtxid_result.begin());
+        return { Txid::FromUint256(txid_result), Wtxid::FromUint256(wtxid_result) };
+    }
+
+    template <typename T>
+    TxHashWriter& operator<<(const SerializeWtxidOnly<T>& obj)
+    {
+        hasher<include_in_wtxid> wtxid_writer{*this};
+        ::Serialize(wtxid_writer, obj);
+        return *this;
+    }
+    template <typename T>
+    TxHashWriter& operator<<(const SerializeTxidAndWtxid<T>& obj)
+    {
+        hasher<include_in_txid_and_wtxid> txid_wtxid_writer{*this};
+        ::Serialize(txid_wtxid_writer, obj);
+        return *this;
+    }
+};
+
 std::string COutPoint::ToString() const
 {
     return strprintf("COutPoint(%s, %u)", hash.ToString().substr(0,10), n);
