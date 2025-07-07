@@ -198,7 +198,6 @@ public:
     std::chrono::seconds m_connected;
     std::string m_addr_name;
     int nVersion;
-    std::string cleanSubVer;
     bool fInbound;
     int m_starting_height;
     uint64_t nSendBytes;
@@ -715,12 +714,6 @@ public:
     //! Whether this peer is an inbound onion, i.e. connected via our Tor onion service.
     const bool m_inbound_onion;
     std::atomic<int> nVersion{0};
-    Mutex m_subver_mutex;
-    /**
-     * cleanSubVer is a sanitized string of the user agent byte array we read
-     * from the wire. This cleaned string can safely be logged or displayed.
-     */
-    std::string cleanSubVer GUARDED_BY(m_subver_mutex){};
     bool HasPermission(NetPermissionFlags permission) const {
         return NetPermissions::HasFlag(m_permission_flags, permission);
     }

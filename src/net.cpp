@@ -618,10 +618,6 @@ void CNode::CopyStats(CNodeStats& stats)
     X(m_connected);
     X(m_addr_name);
     X(nVersion);
-    {
-        LOCK(m_subver_mutex);
-        X(cleanSubVer);
-    }
     stats.fInbound = ::IsInboundConn(m_conn_type);
     {
         LOCK(cs_vSend);

@@ -476,6 +476,13 @@ struct Peer {
     // Peer requested high bandwidth connection
     std::atomic_bool m_bip152_highbandwidth_from;
 
+    Mutex m_subver_mutex;
+    /**
+     * cleanSubVer is a sanitized string of the user agent byte array we read
+     * from the wire. This cleaned string can safely be logged or displayed.
+     */
+    std::string cleanSubVer GUARDED_BY(m_subver_mutex){};
+
     explicit Peer(NodeId id, ServiceFlags our_services, ConnectionType conn_type, CAddress addr, std::string addr_name, NetPermissionFlags permission_flags, uint64_t local_nonce, std::chrono::seconds connected)
         : m_id{id}
         , m_our_services{our_services}
@@ -1862,6 +1869,7 @@ bool PeerManagerImpl::GetNodeStateStats(NodeId nodeid, CNodeStateStats& stats) c
     stats.time_offset = peer->m_time_offset;
     stats.m_bip152_highbandwidth_to = peer->m_bip152_highbandwidth_to;
     stats.m_bip152_highbandwidth_from = peer->m_bip152_highbandwidth_from;
+    WITH_LOCK(peer->m_subver_mutex, stats.cleanSubVer = peer->cleanSubVer);
     return true;
 }
 
@@ -3668,8 +3676,8 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         peer->m_their_services = nServices;
         pfrom.SetAddrLocal(addrMe);
         {
-            LOCK(pfrom.m_subver_mutex);
-            pfrom.cleanSubVer = cleanSubVer;
+            LOCK(peer->m_subver_mutex);
+            peer->cleanSubVer = cleanSubVer;
         }
         peer->m_starting_height = starting_height;
 

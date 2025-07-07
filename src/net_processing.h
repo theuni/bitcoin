@@ -65,6 +65,7 @@ struct CNodeStateStats {
     std::chrono::seconds time_offset{0};
     bool m_bip152_highbandwidth_to;
     bool m_bip152_highbandwidth_from;
+    std::string cleanSubVer;
 };
 
 struct PeerManagerInfo {
