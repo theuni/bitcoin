@@ -78,8 +78,9 @@ static const int MAX_FEELER_CONNECTIONS = 1;
 static const bool DEFAULT_LISTEN = true;
 /** The maximum number of peer connections to maintain. */
 static const unsigned int DEFAULT_MAX_PEER_CONNECTIONS = 125;
-/** The default for -maxuploadtarget. 0 = Unlimited */
-static const std::string DEFAULT_MAX_UPLOAD_TARGET{"0M"};
+/** The default (in MB) for -maxuploadtarget. 0 = Unlimited */
+static const unsigned int DEFAULT_MAX_UPLOAD_TARGET{0};
+
 /** Default for blocks only*/
 static const bool DEFAULT_BLOCKSONLY = false;
 /** -peertimeout default */
@@ -1031,7 +1032,7 @@ public:
         BanMan* m_banman = nullptr;
         unsigned int nSendBufferMaxSize = 0;
         unsigned int nReceiveFloodSize = 0;
-        uint64_t nMaxOutboundLimit = 0;
+        uint64_t nMaxOutboundLimit = DEFAULT_MAX_UPLOAD_TARGET << 20;
         int64_t m_peer_connect_timeout = DEFAULT_PEER_CONNECT_TIMEOUT;
         std::vector<std::string> vSeedNodes;
         std::vector<NetWhitelistPermissions> vWhitelistedRangeIncoming;
