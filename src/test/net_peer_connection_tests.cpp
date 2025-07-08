@@ -73,10 +73,15 @@ void AddPeer(NodeId& id, std::vector<CNode*>& nodes, PeerManager& peerman, Connm
                                  conn_type,
                                  /*inbound_onion=*/inbound_onion});
     CNode& node = *nodes.back();
-    node.SetCommonVersion(PROTOCOL_VERSION);
 
-    peerman.InitializeNode(node, ServiceFlags(NODE_NETWORK | NODE_WITNESS));
-    node.fSuccessfullyConnected = true;
+    LOCK(NetEventsInterface::g_msgproc_mutex);
+    connman.Handshake(
+        /*node=*/node,
+        /*successfully_connected=*/true,
+        /*remote_services=*/ServiceFlags(NODE_NETWORK | NODE_WITNESS),
+        /*local_services=*/ServiceFlags(NODE_NETWORK | NODE_WITNESS),
+        /*version=*/PROTOCOL_VERSION,
+        /*relay_txs=*/true);
 
     connman.AddTestNode(node);
 }
@@ -86,6 +91,11 @@ BOOST_FIXTURE_TEST_CASE(test_addnode_getaddednodeinfo_and_connection_detection, 
 {
     auto connman = std::make_unique<ConnmanTestMsg>(0x1337, 0x1337, *m_node.addrman, *m_node.netgroupman, Params(), *m_node.evictionman);
     auto peerman = PeerManager::make(*connman, *m_node.addrman, *m_node.evictionman, nullptr, *m_node.chainman, *m_node.mempool, *m_node.warnings, {});
+
+    CConnman::Options options;
+    options.m_msgproc = peerman.get();
+    connman->Init(options);
+
     NodeId id{0};
     std::vector<CNode*> nodes;
 

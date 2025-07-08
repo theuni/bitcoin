@@ -111,9 +111,14 @@ CNode* ConnmanTestMsg::ConnectNodePublic(PeerManager& peerman, const char* pszDe
 {
     CNode* node = ConnectNode(CAddress{}, pszDest, /*fCountFailure=*/false, conn_type, /*use_v2transport=*/true);
     if (!node) return nullptr;
-    node->SetCommonVersion(PROTOCOL_VERSION);
-    peerman.InitializeNode(*node, ServiceFlags(NODE_NETWORK | NODE_WITNESS));
-    node->fSuccessfullyConnected = true;
+    LOCK(NetEventsInterface::g_msgproc_mutex);
+    Handshake(
+        /*node=*/*node,
+        /*successfully_connected=*/true,
+        /*remote_services=*/ServiceFlags(NODE_NETWORK | NODE_WITNESS),
+        /*local_services=*/ServiceFlags(NODE_NETWORK | NODE_WITNESS),
+        /*version=*/PROTOCOL_VERSION,
+        /*relay_txs=*/true);
     AddTestNode(*node);
     return node;
 }

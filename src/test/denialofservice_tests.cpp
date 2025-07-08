@@ -138,10 +138,15 @@ void AddRandomOutboundPeer(NodeId& id, std::vector<CNode*>& vNodes, PeerManager&
                                   connType,
                                   /*inbound_onion=*/false});
     CNode &node = *vNodes.back();
-    node.SetCommonVersion(PROTOCOL_VERSION);
 
-    peerLogic.InitializeNode(node, ServiceFlags(NODE_NETWORK | NODE_WITNESS));
-    node.fSuccessfullyConnected = true;
+    LOCK(NetEventsInterface::g_msgproc_mutex);
+    connman.Handshake(
+        /*node=*/node,
+        /*successfully_connected=*/true,
+        /*remote_services=*/ServiceFlags(NODE_NETWORK | NODE_WITNESS),
+        /*local_services=*/ServiceFlags(NODE_NETWORK | NODE_WITNESS),
+        /*version=*/PROTOCOL_VERSION,
+        /*relay_txs=*/true);
 
     evictionman.AddCandidate(
         /*id=*/node.GetId(),
@@ -165,6 +170,9 @@ BOOST_FIXTURE_TEST_CASE(stale_tip_peer_management, OutboundTest)
     auto peerLogic = PeerManager::make(*connman, *m_node.addrman, *evictionman, nullptr, *m_node.chainman, *m_node.mempool, *m_node.warnings, {});
 
     constexpr int max_outbound_full_relay = MAX_OUTBOUND_FULL_RELAY_CONNECTIONS;
+    CConnman::Options options;
+    options.m_msgproc = peerLogic.get();
+    connman->Init(options);
 
     const auto time_init{GetTime<std::chrono::seconds>()};
     SetMockTime(time_init);
@@ -263,6 +271,10 @@ BOOST_FIXTURE_TEST_CASE(block_relay_only_eviction, OutboundTest)
     constexpr int max_outbound_block_relay{MAX_BLOCK_RELAY_ONLY_CONNECTIONS};
     constexpr int64_t MINIMUM_CONNECT_TIME{30};
 
+    CConnman::Options options;
+    options.m_msgproc = peerLogic.get();
+    connman->Init(options);
+
     std::vector<CNode*> vNodes;
 
     // Add block-relay-only peers up to the limit
@@ -319,6 +331,10 @@ BOOST_AUTO_TEST_CASE(peer_discouragement)
     auto connman = std::make_unique<ConnmanTestMsg>(0x1337, 0x1337, *m_node.addrman, *m_node.netgroupman, Params(), *evictionman);
     auto peerLogic = PeerManager::make(*connman, *m_node.addrman, *evictionman, banman.get(), *m_node.chainman, *m_node.mempool, *m_node.warnings, {});
 
+    CConnman::Options options;
+    options.m_msgproc = peerLogic.get();
+    connman->Init(options);
+
     CNetAddr tor_netaddr;
     BOOST_REQUIRE(
         tor_netaddr.SetSpecial("pg6mmjiyjmcrsslvykfwnntlaru7p5svn6y2ymmju6nubxndf4pscryd.onion"));
@@ -342,9 +358,14 @@ BOOST_AUTO_TEST_CASE(peer_discouragement)
                          /*addrNameIn=*/"",
                          ConnectionType::INBOUND,
                          /*inbound_onion=*/false};
-    nodes[0]->SetCommonVersion(PROTOCOL_VERSION);
-    peerLogic->InitializeNode(*nodes[0], NODE_NETWORK);
-    nodes[0]->fSuccessfullyConnected = true;
+
+    connman->Handshake(
+        /*node=*/*nodes[0],
+        /*successfully_connected=*/true,
+        /*remote_services=*/ServiceFlags(NODE_NETWORK),
+        /*local_services=*/ServiceFlags(NODE_NETWORK),
+        /*version=*/PROTOCOL_VERSION,
+        /*relay_txs=*/true);
     connman->AddTestNode(*nodes[0]);
     peerLogic->UnitTestMisbehaving(nodes[0]->GetId()); // Should be discouraged
     BOOST_CHECK(peerLogic->SendMessages(nodes[0]));
@@ -361,9 +382,13 @@ BOOST_AUTO_TEST_CASE(peer_discouragement)
                          /*addrNameIn=*/"",
                          ConnectionType::INBOUND,
                          /*inbound_onion=*/false};
-    nodes[1]->SetCommonVersion(PROTOCOL_VERSION);
-    peerLogic->InitializeNode(*nodes[1], NODE_NETWORK);
-    nodes[1]->fSuccessfullyConnected = true;
+    connman->Handshake(
+        /*node=*/*nodes[1],
+        /*successfully_connected=*/true,
+        /*remote_services=*/ServiceFlags(NODE_NETWORK),
+        /*local_services=*/ServiceFlags(NODE_NETWORK),
+        /*version=*/PROTOCOL_VERSION,
+        /*relay_txs=*/true);
     connman->AddTestNode(*nodes[1]);
     BOOST_CHECK(peerLogic->SendMessages(nodes[1]));
     // [0] is still discouraged/disconnected.
@@ -390,9 +415,15 @@ BOOST_AUTO_TEST_CASE(peer_discouragement)
                          /*addrNameIn=*/"",
                          ConnectionType::OUTBOUND_FULL_RELAY,
                          /*inbound_onion=*/false};
-    nodes[2]->SetCommonVersion(PROTOCOL_VERSION);
-    peerLogic->InitializeNode(*nodes[2], NODE_NETWORK);
-    nodes[2]->fSuccessfullyConnected = true;
+
+    connman->Handshake(
+        /*node=*/*nodes[2],
+        /*successfully_connected=*/true,
+        /*remote_services=*/ServiceFlags(NODE_NETWORK),
+        /*local_services=*/ServiceFlags(NODE_NETWORK),
+        /*version=*/PROTOCOL_VERSION,
+        /*relay_txs=*/true);
+
     connman->AddTestNode(*nodes[2]);
     peerLogic->UnitTestMisbehaving(nodes[2]->GetId());
     BOOST_CHECK(peerLogic->SendMessages(nodes[2]));
@@ -415,8 +446,12 @@ BOOST_AUTO_TEST_CASE(DoS_bantime)
 
     auto evictionman = std::make_unique<EvictionManager>();
     auto banman = std::make_unique<BanMan>(m_args.GetDataDirBase() / "banlist", nullptr, DEFAULT_MISBEHAVING_BANTIME);
-    auto connman = std::make_unique<CConnman>(0x1337, 0x1337, *m_node.addrman, *m_node.netgroupman, Params(), *evictionman);
+    auto connman = std::make_unique<ConnmanTestMsg>(0x1337, 0x1337, *m_node.addrman, *m_node.netgroupman, Params(), *evictionman);
     auto peerLogic = PeerManager::make(*connman, *m_node.addrman, *evictionman, banman.get(), *m_node.chainman, *m_node.mempool, *m_node.warnings, {});
+
+    CConnman::Options options;
+    options.m_msgproc = peerLogic.get();
+    connman->Init(options);
 
     banman->ClearBanned();
     int64_t nStartTime = GetTime();
@@ -432,9 +467,14 @@ BOOST_AUTO_TEST_CASE(DoS_bantime)
                     /*addrNameIn=*/"",
                     ConnectionType::INBOUND,
                     /*inbound_onion=*/false};
-    dummyNode.SetCommonVersion(PROTOCOL_VERSION);
-    peerLogic->InitializeNode(dummyNode, NODE_NETWORK);
-    dummyNode.fSuccessfullyConnected = true;
+
+    connman->Handshake(
+        /*node=*/dummyNode,
+        /*successfully_connected=*/true,
+        /*remote_services=*/ServiceFlags(NODE_NETWORK),
+        /*local_services=*/ServiceFlags(NODE_NETWORK),
+        /*version=*/PROTOCOL_VERSION,
+        /*relay_txs=*/true);
 
     peerLogic->UnitTestMisbehaving(dummyNode.GetId());
     BOOST_CHECK(peerLogic->SendMessages(&dummyNode));
