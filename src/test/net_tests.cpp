@@ -609,7 +609,6 @@ BOOST_AUTO_TEST_CASE(ipv4_peer_with_ipv6_addrMe_test)
                                                            /*pszDest=*/std::string{},
                                                            ConnectionType::OUTBOUND_FULL_RELAY,
                                                            /*inbound_onion=*/false);
-    pnode->fSuccessfullyConnected.store(true);
 
     // the peer claims to be reaching us via IPv6
     in6_addr ipv6AddrLocal;
@@ -662,7 +661,6 @@ BOOST_AUTO_TEST_CASE(get_local_addr_for_peer_port)
                    /*addrNameIn=*/std::string{},
                    /*conn_type_in=*/ConnectionType::OUTBOUND_FULL_RELAY,
                    /*inbound_onion=*/false};
-    peer_out.fSuccessfullyConnected = true;
     peer_out.SetAddrLocal(peer_us);
 
     // Without the fix peer_us:8333 is chosen instead of the proper peer_us:bind_port.
@@ -682,7 +680,6 @@ BOOST_AUTO_TEST_CASE(get_local_addr_for_peer_port)
                   /*addrNameIn=*/std::string{},
                   /*conn_type_in=*/ConnectionType::INBOUND,
                   /*inbound_onion=*/false};
-    peer_in.fSuccessfullyConnected = true;
     peer_in.SetAddrLocal(peer_us);
 
     // Without the fix peer_us:8333 is chosen instead of the proper peer_us:peer_us.GetPort().
