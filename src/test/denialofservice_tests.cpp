@@ -165,13 +165,10 @@ BOOST_FIXTURE_TEST_CASE(stale_tip_peer_management, OutboundTest)
     auto peerLogic = PeerManager::make(*connman, *m_node.addrman, *evictionman, nullptr, *m_node.chainman, *m_node.mempool, *m_node.warnings, {});
 
     constexpr int max_outbound_full_relay = MAX_OUTBOUND_FULL_RELAY_CONNECTIONS;
-    CConnman::Options options;
-    options.m_max_automatic_connections = DEFAULT_MAX_PEER_CONNECTIONS;
 
     const auto time_init{GetTime<std::chrono::seconds>()};
     SetMockTime(time_init);
     const auto time_later{time_init + 3 * std::chrono::seconds{m_node.chainman->GetConsensus().nPowTargetSpacing} + 1s};
-    connman->Init(options);
     std::vector<CNode *> vNodes;
 
     // Mock some outbound peers
@@ -265,10 +262,7 @@ BOOST_FIXTURE_TEST_CASE(block_relay_only_eviction, OutboundTest)
 
     constexpr int max_outbound_block_relay{MAX_BLOCK_RELAY_ONLY_CONNECTIONS};
     constexpr int64_t MINIMUM_CONNECT_TIME{30};
-    CConnman::Options options;
-    options.m_max_automatic_connections = DEFAULT_MAX_PEER_CONNECTIONS;
 
-    connman->Init(options);
     std::vector<CNode*> vNodes;
 
     // Add block-relay-only peers up to the limit

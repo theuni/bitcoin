@@ -1028,12 +1028,12 @@ public:
     struct Options
     {
         ServiceFlags m_local_services = NODE_NONE;
-        int m_max_automatic_connections = 0;
+        int m_max_automatic_connections = DEFAULT_MAX_PEER_CONNECTIONS;
         CClientUIInterface* uiInterface = nullptr;
         NetEventsInterface* m_msgproc = nullptr;
         BanMan* m_banman = nullptr;
-        unsigned int nSendBufferMaxSize = 0;
-        unsigned int nReceiveFloodSize = 0;
+        unsigned int nSendBufferMaxSize = DEFAULT_MAXSENDBUFFER * 1000;
+        unsigned int nReceiveFloodSize = DEFAULT_MAXRECEIVEBUFFER * 1000;
         uint64_t nMaxOutboundLimit = DEFAULT_MAX_UPLOAD_TARGET << 20;
         int64_t m_peer_connect_timeout = DEFAULT_PEER_CONNECT_TIMEOUT;
         std::vector<std::string> vSeedNodes;
@@ -1044,7 +1044,7 @@ public:
         std::vector<CService> onion_binds;
         /// True if the user did not specify -bind= or -whitebind= and thus
         /// we should bind on `0.0.0.0` (IPv4) and `::` (IPv6).
-        bool bind_on_any;
+        bool bind_on_any = true;
         bool m_use_addrman_outgoing = true;
         std::vector<std::string> m_specified_outgoing;
         std::vector<std::string> m_added_nodes;
