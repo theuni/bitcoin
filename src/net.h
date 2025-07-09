@@ -80,6 +80,8 @@ static const bool DEFAULT_LISTEN = true;
 static const unsigned int DEFAULT_MAX_PEER_CONNECTIONS = 125;
 /** The default (in MB) for -maxuploadtarget. 0 = Unlimited */
 static const unsigned int DEFAULT_MAX_UPLOAD_TARGET{0};
+/* Whether to accept inbound I2P connections (if I2P SAM proxy is enabled) */
+static const bool DEFAULT_I2P_ACCEPT_INCOMING{true};
 
 /** Default for blocks only*/
 static const bool DEFAULT_BLOCKSONLY = false;
@@ -1046,7 +1048,7 @@ public:
         bool m_use_addrman_outgoing = true;
         std::vector<std::string> m_specified_outgoing;
         std::vector<std::string> m_added_nodes;
-        bool m_i2p_accept_incoming;
+        bool m_i2p_accept_incoming = DEFAULT_I2P_ACCEPT_INCOMING;
         bool whitelist_forcerelay = DEFAULT_WHITELISTFORCERELAY;
         bool whitelist_relay = DEFAULT_WHITELISTRELAY;
     };
