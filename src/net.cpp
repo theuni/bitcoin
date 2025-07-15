@@ -1985,15 +1985,6 @@ bool CConnman::InactivityCheck(const CNode& node) const
         return true;
     }
 
-    if (!node.fSuccessfullyConnected) {
-        if (node.m_transport->GetInfo().transport_type == TransportProtocolType::DETECTING) {
-            LogDebug(BCLog::NET, "V2 handshake timeout, %s\n", node.DisconnectMsg(fLogIPs));
-        } else {
-            LogDebug(BCLog::NET, "version handshake timeout, %s\n", node.DisconnectMsg(fLogIPs));
-        }
-        return true;
-    }
-
     return false;
 }
 

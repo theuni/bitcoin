@@ -5429,8 +5429,8 @@ void PeerManagerImpl::CheckForStaleTipAndEvictPeers()
 
 void PeerManagerImpl::MaybeSendPing(CNode& node_to, Peer& peer, std::chrono::microseconds now)
 {
-    if (m_connman.ShouldRunInactivityChecks(node_to, std::chrono::duration_cast<std::chrono::seconds>(now)) &&
-        peer.m_ping_nonce_sent &&
+    assert(peer.m_handshake_complete);
+    if (peer.m_ping_nonce_sent &&
         now > peer.m_ping_start.load() + TIMEOUT_INTERVAL)
     {
         // The ping timeout is using mocktime. To disable the check during
@@ -5664,11 +5664,22 @@ bool PeerManagerImpl::SendMessages(CNode* pto)
         peer->m_outbound_version_message_sent = true;
     }
 
-    // Don't send anything until the version handshake is complete
-    if (!peer->m_handshake_complete || peer->m_disconnecting)
-        return true;
+    if (peer->m_disconnecting) return true;
 
     const auto current_time{GetTime<std::chrono::microseconds>()};
+
+    // Don't send anything until the version handshake is complete
+    if (!peer->m_handshake_complete) {
+        if (peer->m_connected + m_opts.version_handshake_timeout < current_time) {
+            if (peer->m_transport == TransportProtocolType::DETECTING) {
+                LogDebug(BCLog::NET, "V2 handshake timeout, %s\n", peer->DisconnectMsg(fLogIPs));
+            } else {
+                LogDebug(BCLog::NET, "version handshake timeout, %s\n", peer->DisconnectMsg(fLogIPs));
+            }
+            RequestDisconnect(*peer);
+        }
+        return true;
+    }
 
     if (IsAddrFetchConn(peer->m_conn_type) && current_time - peer->m_connected > 10 * AVG_ADDRESS_BROADCAST_INTERVAL) {
         LogDebug(BCLog::NET, "addrfetch connection timeout, %s\n", peer->DisconnectMsg(fLogIPs));
