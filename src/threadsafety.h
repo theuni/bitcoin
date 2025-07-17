@@ -33,7 +33,23 @@
 #define SHARED_LOCKS_REQUIRED(...) __attribute__((requires_shared_capability(__VA_ARGS__)))
 #define NO_THREAD_SAFETY_ANALYSIS __attribute__((no_thread_safety_analysis))
 #define ASSERT_EXCLUSIVE_LOCK(...) __attribute__((assert_capability(__VA_ARGS__)))
+
+#if defined(__has_attribute)
+#  if __has_attribute(resets_capability)
+#    define HAS_RESET_CAPABILITY_ATTRIBUTE
+#  endif
+#endif
+
+#if defined HAS_RESET_CAPABILITY_ATTRIBUTE
+#  define LOCKS_RESET(...) __attribute__((resets_capability(__VA_ARGS__)))
+#  define RECURSIVE_LOCKS_REQUIRED(...) __attribute__((requires_capability(__VA_ARGS__)))
 #else
+#  define LOCKS_RESET(...)
+#  define RECURSIVE_LOCKS_REQUIRED(...)
+#endif
+
+#else // !__clang__
+
 #define LOCKABLE
 #define SCOPED_LOCKABLE
 #define GUARDED_BY(x)
@@ -52,6 +68,8 @@
 #define SHARED_LOCKS_REQUIRED(...)
 #define NO_THREAD_SAFETY_ANALYSIS
 #define ASSERT_EXCLUSIVE_LOCK(...)
+#define LOCKS_RESET(...)
+#define RECURSIVE_LOCKS_REQUIRED(...)
 #endif // __GNUC__
 
 // StdMutex provides an annotated version of std::mutex for us,
