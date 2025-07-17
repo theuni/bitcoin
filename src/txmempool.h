@@ -300,7 +300,7 @@ protected:
 
     bool m_load_tried GUARDED_BY(cs){false};
 
-    CFeeRate GetMinFee(size_t sizelimit) const;
+    CFeeRate GetMinFee(size_t sizelimit) const LOCKS_RESET(!cs);
 
 public:
 
@@ -433,7 +433,7 @@ public:
      * all inputs are in the mapNextTx array). If sanity-checking is turned off,
      * check does nothing.
      */
-    void check(const CCoinsViewCache& active_coins_tip, int64_t spendheight) const EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
+    void check(const CCoinsViewCache& active_coins_tip, int64_t spendheight) const EXCLUSIVE_LOCKS_REQUIRED(::cs_main) LOCKS_RESET(!cs);
 
 
     void removeRecursive(const CTransaction& tx, MemPoolRemovalReason reason) EXCLUSIVE_LOCKS_REQUIRED(cs);
@@ -448,8 +448,8 @@ public:
     void removeConflicts(const CTransaction& tx) EXCLUSIVE_LOCKS_REQUIRED(cs);
     void removeForBlock(const std::vector<CTransactionRef>& vtx, unsigned int nBlockHeight) EXCLUSIVE_LOCKS_REQUIRED(cs);
 
-    bool CompareDepthAndScore(const GenTxid& hasha, const GenTxid& hashb) const;
-    bool isSpent(const COutPoint& outpoint) const;
+    bool CompareDepthAndScore(const GenTxid& hasha, const GenTxid& hashb) const EXCLUSIVE_LOCKS_REQUIRED(!cs);
+    bool isSpent(const COutPoint& outpoint) const LOCKS_RESET(!cs);
     unsigned int GetTransactionsUpdated() const;
     void AddTransactionsUpdated(unsigned int n);
     /**
@@ -459,7 +459,7 @@ public:
     bool HasNoInputsOf(const CTransaction& tx) const EXCLUSIVE_LOCKS_REQUIRED(cs);
 
     /** Affect CreateNewBlock prioritisation of transactions */
-    void PrioritiseTransaction(const uint256& hash, const CAmount& nFeeDelta);
+    void PrioritiseTransaction(const uint256& hash, const CAmount& nFeeDelta) LOCKS_RESET(!cs);
     void ApplyDelta(const uint256& hash, CAmount &nFeeDelta) const EXCLUSIVE_LOCKS_REQUIRED(cs);
     void ClearPrioritisation(const uint256& hash) EXCLUSIVE_LOCKS_REQUIRED(cs);
 
@@ -576,7 +576,7 @@ public:
      *  takes the fee rate to go back down all the way to 0. When the feerate
      *  would otherwise be half of this, it is set to 0 instead.
      */
-    CFeeRate GetMinFee() const {
+    CFeeRate GetMinFee() const LOCKS_RESET(!cs) {
         return GetMinFee(m_opts.max_size_bytes);
     }
 
@@ -595,21 +595,21 @@ public:
      * When ancestors is non-zero (ie, the transaction itself is in the mempool),
      * ancestorsize and ancestorfees will also be set to the appropriate values.
      */
-    void GetTransactionAncestry(const uint256& txid, size_t& ancestors, size_t& descendants, size_t* ancestorsize = nullptr, CAmount* ancestorfees = nullptr) const;
+    void GetTransactionAncestry(const uint256& txid, size_t& ancestors, size_t& descendants, size_t* ancestorsize = nullptr, CAmount* ancestorfees = nullptr) const LOCKS_RESET(!cs);
 
     /**
      * @returns true if an initial attempt to load the persisted mempool was made, regardless of
      *          whether the attempt was successful or not
      */
-    bool GetLoadTried() const;
+    bool GetLoadTried() const LOCKS_RESET(!cs);
 
     /**
      * Set whether or not an initial attempt to load the persisted mempool was made (regardless
      * of whether the attempt was successful or not)
      */
-    void SetLoadTried(bool load_tried);
+    void SetLoadTried(bool load_tried) EXCLUSIVE_LOCKS_REQUIRED(!cs);
 
-    unsigned long size() const
+    unsigned long size() const  LOCKS_RESET(!cs)
     {
         LOCK(cs);
         return mapTx.size();
@@ -627,13 +627,13 @@ public:
         return m_total_fee;
     }
 
-    bool exists(const Txid& txid) const
+    bool exists(const Txid& txid) const LOCKS_RESET(!cs)
     {
         LOCK(cs);
         return (mapTx.count(txid) != 0);
     }
 
-    bool exists(const Wtxid& wtxid) const
+    bool exists(const Wtxid& wtxid) const LOCKS_RESET(!cs)
     {
         LOCK(cs);
         return (mapTx.get<index_by_wtxid>().count(wtxid) != 0);
@@ -641,10 +641,10 @@ public:
 
     const CTxMemPoolEntry* GetEntry(const Txid& txid) const LIFETIMEBOUND EXCLUSIVE_LOCKS_REQUIRED(cs);
 
-    CTransactionRef get(const uint256& hash) const;
+    CTransactionRef get(const uint256& hash) const LOCKS_RESET(!cs);
 
     template <TxidOrWtxid T>
-    TxMempoolInfo info(const T& id) const
+    TxMempoolInfo info(const T& id) const  EXCLUSIVE_LOCKS_REQUIRED(!cs)
     {
         LOCK(cs);
         auto i{GetIter(id)};
@@ -653,7 +653,7 @@ public:
 
     /** Returns info for a transaction if its entry_sequence < last_sequence */
     template <TxidOrWtxid T>
-    TxMempoolInfo info_for_relay(const T& id, uint64_t last_sequence) const
+    TxMempoolInfo info_for_relay(const T& id, uint64_t last_sequence) const EXCLUSIVE_LOCKS_REQUIRED(!cs)
     {
         LOCK(cs);
         auto i{GetIter(id)};
@@ -661,12 +661,12 @@ public:
     }
 
     std::vector<CTxMemPoolEntryRef> entryAll() const EXCLUSIVE_LOCKS_REQUIRED(cs);
-    std::vector<TxMempoolInfo> infoAll() const;
+    std::vector<TxMempoolInfo> infoAll() const LOCKS_RESET(!cs);
 
-    size_t DynamicMemoryUsage() const;
+    size_t DynamicMemoryUsage() const LOCKS_RESET(!cs);
 
     /** Adds a transaction to the unbroadcast set */
-    void AddUnbroadcastTx(const uint256& txid)
+    void AddUnbroadcastTx(const uint256& txid)  EXCLUSIVE_LOCKS_REQUIRED(!cs)
     {
         LOCK(cs);
         // Sanity check the transaction is in the mempool & insert into
@@ -675,10 +675,10 @@ public:
     };
 
     /** Removes a transaction from the unbroadcast set */
-    void RemoveUnbroadcastTx(const uint256& txid, const bool unchecked = false);
+    void RemoveUnbroadcastTx(const uint256& txid, const bool unchecked = false) LOCKS_RESET(!cs);
 
     /** Returns transactions in unbroadcast set */
-    std::set<uint256> GetUnbroadcastTxs() const
+    std::set<uint256> GetUnbroadcastTxs() const  LOCKS_RESET(!cs)
     {
         LOCK(cs);
         return m_unbroadcast_txids;
