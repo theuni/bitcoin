@@ -255,8 +255,14 @@ public:
 inline Mutex& MaybeCheckNotHeld(Mutex& cs) EXCLUSIVE_LOCKS_REQUIRED(!cs) LOCK_RETURNED(cs) { return cs; }
 inline Mutex* MaybeCheckNotHeld(Mutex* cs) EXCLUSIVE_LOCKS_REQUIRED(!cs) LOCK_RETURNED(cs) { return cs; }
 
-// When locking a GlobalMutex or RecursiveMutex, just check it is not
-// locked in the surrounding scope.
+// When checking a RecursiveMutex, only enable deep annotation checks when
+// opting in and if the reset_capability is understood
+#if defined(HAS_RESET_CAPABILITY_ATTRIBUTE) && defined(ENABLE_RECURSIVE_THREADSAFETY_CHECKS)
+inline RecursiveMutex& MaybeCheckNotHeld(RecursiveMutex& cs) EXCLUSIVE_LOCKS_REQUIRED(!cs) LOCK_RETURNED(cs) { return cs; }
+inline RecursiveMutex* MaybeCheckNotHeld(RecursiveMutex* cs) EXCLUSIVE_LOCKS_REQUIRED(!cs) LOCK_RETURNED(cs) { return cs; }
+#endif
+
+// When locking a GlobalMutex, just check it is not locked in the surrounding scope.
 template <typename MutexType>
 inline MutexType& MaybeCheckNotHeld(MutexType& m) LOCKS_EXCLUDED(m) LOCK_RETURNED(m) { return m; }
 template <typename MutexType>
