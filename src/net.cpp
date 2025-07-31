@@ -2185,8 +2185,6 @@ void CConnman::WakeMessageHandler()
 
 void CConnman::ThreadDNSAddressSeed()
 {
-    int outbound_connection_count = 0;
-
     if (!gArgs.GetArgs("-seednode").empty()) {
         auto start = NodeClock::now();
         constexpr std::chrono::seconds SEEDNODE_TIMEOUT = 30s;
@@ -2202,8 +2200,7 @@ void CConnman::ThreadDNSAddressSeed()
                 break;
             }
 
-            outbound_connection_count = GetFullOutboundConnCount();
-            if (outbound_connection_count >= SEED_OUTBOUND_CONNECTION_THRESHOLD) {
+            if (m_bootstrapped) {
                 LogPrintf("P2P peers available. Finished fetching data from seed nodes.\n");
                 break;
             }
@@ -2226,7 +2223,7 @@ void CConnman::ThreadDNSAddressSeed()
     }
 
     // Proceed with dnsseeds if seednodes hasn't reached the target or if forcednsseed is set
-    if (outbound_connection_count < SEED_OUTBOUND_CONNECTION_THRESHOLD || seeds_right_now) {
+    if (!m_bootstrapped || seeds_right_now) {
         // goal: only query DNS seed if address need is acute
         // * If we have a reasonable number of peers in addrman, spend
         //   some time trying them first. This improves user privacy by
@@ -2257,7 +2254,7 @@ void CConnman::ThreadDNSAddressSeed()
                         if (!interruptNet.sleep_for(w)) return;
                         to_wait -= w;
 
-                        if (GetFullOutboundConnCount() >= SEED_OUTBOUND_CONNECTION_THRESHOLD) {
+                        if (m_bootstrapped) {
                             if (found > 0) {
                                 LogPrintf("%d addresses found from DNS seeds\n", found);
                                 LogPrintf("P2P peers available. Finished DNS seeding.\n");
@@ -3959,6 +3956,11 @@ void CConnman::ASMapHealthCheck()
     std::transform(v6_addrs.begin(), v6_addrs.end(), std::back_inserter(clearnet_addrs),
         [](const CAddress& addr) { return static_cast<CNetAddr>(addr); });
     m_netgroupman.ASMapHealthCheck(clearnet_addrs);
+}
+
+void CConnman::SetBootstrapComplete()
+{
+    m_bootstrapped = true;
 }
 
 // Dump binary message to file, with timestamp.

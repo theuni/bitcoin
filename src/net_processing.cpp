@@ -196,7 +196,9 @@ static constexpr double MAX_ADDR_RATE_PER_SECOND{0.1};
 static constexpr size_t MAX_ADDR_PROCESSING_TOKEN_BUCKET{MAX_ADDR_TO_SEND};
 /** The compactblocks version we support. See BIP 152. */
 static constexpr uint64_t CMPCTBLOCKS_VERSION{2};
-
+/** Minimum number of outbound connections (that have completed the version handshake) required
+ *  for the initial p2p bootstrap to be considered complete. */
+static constexpr int OUTBOUND_CONNECTION_BOOTSTRAP_THRESHOLD = 2;
 // Internal stuff
 namespace {
 /** Blocks that are in flight, and that are in the queue to be downloaded. */
@@ -987,6 +989,9 @@ private:
     /** Height of the highest block announced using BIP 152 high-bandwidth mode. */
     int m_highest_fast_announce GUARDED_BY(::cs_main){0};
 
+    /** Whether we have enough tood peers to stop/skip seeding **/
+    bool m_peers_bootstrapped{false};
+
     /** Have we requested this block from a peer */
     bool IsBlockRequested(const uint256& hash) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
@@ -1183,6 +1188,9 @@ private:
     void LogBlockHeader(const CBlockIndex& index, const CNode& node, const Peer& peer, bool via_compact_block);
     bool CheckIncomingNonce(uint64_t nonce) const EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex);
 
+    int GetFullOutboundConnCount() const EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex);
+
+
     template <typename Callable>
     requires std::invocable<Callable&, Peer&>
     void ForEachFullyConnectedPeer(const Callable& func) EXCLUSIVE_LOCKS_REQUIRED(cs_main, !m_peer_mutex)
@@ -1211,6 +1219,18 @@ bool PeerManagerImpl::CheckIncomingNonce(uint64_t nonce) const
             return false;
     }
     return true;
+}
+
+int PeerManagerImpl::GetFullOutboundConnCount() const
+{
+    int nRelevant = 0;
+    {
+        LOCK(m_peer_mutex);
+        for (const auto& [_, peer] : m_peer_map) {
+            if (peer->m_handshake_complete && !peer->m_disconnecting &&  IsFullOutboundConn(peer->m_conn_type)) ++nRelevant;
+        }
+    }
+    return nRelevant;
 }
 
 const CNodeState* PeerManagerImpl::State(NodeId pnode) const
@@ -3893,6 +3913,11 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
 
         pfrom.fSuccessfullyConnected = true;
         peer->m_handshake_complete = true;
+        if (!m_peers_bootstrapped && GetFullOutboundConnCount() >= OUTBOUND_CONNECTION_BOOTSTRAP_THRESHOLD) {
+            LogPrintf("P2P peers available. Finished fetching data from seed nodes.\n");
+            m_peers_bootstrapped = true;
+            m_connman.SetBootstrapComplete();
+        }
         return;
     }
 

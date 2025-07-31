@@ -1134,6 +1134,8 @@ public:
 
     bool MultipleManualOrFullOutboundConns(Network net) const EXCLUSIVE_LOCKS_REQUIRED(m_nodes_mutex);
 
+    void SetBootstrapComplete();
+
 private:
     struct ListenSocket {
     public:
@@ -1497,6 +1499,8 @@ private:
     static constexpr size_t MAX_UNUSED_I2P_SESSIONS_SIZE{10};
 
     const CChainParams& m_params;
+
+    std::atomic_bool m_bootstrapped{false};
 
     friend struct ConnmanTestMsg;
 };
