@@ -86,8 +86,8 @@ static void ApiSharedPtr(benchmark::Bench& bench)
         uint64_t counter = 0;
         size_t n_outputs = transaction_get_output_size(tx);
         for (uint64_t i = 0; i < n_outputs; ++i) {
-            TransactionOutput* output = transaction_get_output(tx, i);
-            ScriptPubkey* pubkey = transaction_output_get_script_pubkey(output);
+            std::unique_ptr<TransactionOutput> output{transaction_get_output(tx, i)};
+            std::unique_ptr<ScriptPubkey> pubkey{transaction_output_get_script_pubkey(output.get())};
             if (pubkey->m_script->IsPayToScriptHash()) {
                 ++counter;
             }
@@ -104,8 +104,8 @@ static void ApiSharedPtrCopy(benchmark::Bench& bench)
         std::vector<CScript> scripts;
         scripts.reserve(n_outputs);
         for (uint64_t i = 0; i < n_outputs; ++i) {
-            TransactionOutput* output = transaction_get_output(tx, i);
-            ScriptPubkey* pubkey = transaction_output_get_script_pubkey(output);
+            std::unique_ptr<TransactionOutput> output{transaction_get_output(tx, i)};
+            std::unique_ptr<ScriptPubkey> pubkey{transaction_output_get_script_pubkey(output.get())};
             scripts.push_back(*pubkey->m_script);
         }
         assert(scripts.size() == n_outputs);
