@@ -5455,16 +5455,6 @@ void PeerManagerImpl::CheckForStaleTipAndEvictPeers()
 void PeerManagerImpl::MaybeSendPing(CNode& node_to, Peer& peer, std::chrono::microseconds now)
 {
     assert(peer.m_handshake_complete);
-    if (peer.m_ping_nonce_sent &&
-        now > peer.m_ping_start.load() + TIMEOUT_INTERVAL)
-    {
-        // The ping timeout is using mocktime. To disable the check during
-        // testing, increase -peertimeout.
-        LogDebug(BCLog::NET, "ping timeout: %fs, %s", 0.000001 * count_microseconds(now - peer.m_ping_start.load()), peer.DisconnectMsg(fLogIPs));
-        RequestDisconnect(peer);
-        return;
-    }
-
     bool pingSend = false;
 
     if (peer.m_ping_queued) {
@@ -5712,10 +5702,17 @@ bool PeerManagerImpl::SendMessages(CNode* pto)
         return true;
     }
 
-    MaybeSendPing(*pto, *peer, current_time);
+    if (peer->m_ping_nonce_sent &&
+        current_time > peer->m_ping_start.load() + TIMEOUT_INTERVAL)
+    {
+        // The ping timeout is using mocktime. To disable the check during
+        // testing, increase -peertimeout.
+        LogDebug(BCLog::NET, "ping timeout: %fs, %s", 0.000001 * count_microseconds(current_time - peer->m_ping_start.load()), peer->DisconnectMsg(fLogIPs));
+        RequestDisconnect(*peer);
+        return true;
+    }
 
-    // MaybeSendPing may have marked peer for disconnection
-    if (peer->m_disconnecting) return true;
+    MaybeSendPing(*pto, *peer, current_time);
 
     MaybeSendAddr(*pto, *peer, current_time);
 
