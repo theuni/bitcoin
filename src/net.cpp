@@ -3832,21 +3832,22 @@ bool CConnman::NodeFullyConnected(const CNode* pnode)
     return pnode && pnode->fSuccessfullyConnected && !pnode->fDisconnect;
 }
 
-void CConnman::PushMessage(NodeId id, CSerializedNetMsg&& msg)
+bool CConnman::PushMessage(NodeId id, CSerializedNetMsg&& msg)
 {
     std::shared_ptr<CNode> node;
     {
         LOCK(m_nodes_mutex);
         auto it = std::find_if(m_nodes.begin(), m_nodes.end(), [&id](const auto& node) { return node->GetId() == id; });
-        if(it == m_nodes.end()) return;
+        if(it == m_nodes.end()) return false;
         node = *it;
     }
-    PushMessage(node.get(), std::move(msg));
+    return PushMessage(node.get(), std::move(msg));
 }
 
-void CConnman::PushMessage(CNode* pnode, CSerializedNetMsg&& msg)
+bool CConnman::PushMessage(CNode* pnode, CSerializedNetMsg&& msg)
 {
     AssertLockNotHeld(m_total_bytes_sent_mutex);
+    if(pnode->fDisconnect) return false;
     size_t nMessageSize = msg.data.size();
     LogDebug(BCLog::NET, "sending %s (%d bytes) peer=%d\n", msg.m_type, nMessageSize, pnode->GetId());
     if (gArgs.GetBoolArg("-capturemessages", false)) {
@@ -3889,6 +3890,7 @@ void CConnman::PushMessage(CNode* pnode, CSerializedNetMsg&& msg)
         }
     }
     if (nBytesSent) RecordBytesSent(nBytesSent);
+    return true;
 }
 
 bool CConnman::ForNode(NodeId id, std::function<bool(CNode* pnode)> func)
