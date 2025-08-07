@@ -1009,25 +1009,6 @@ public:
     bool PushMessage(CNode* pnode, CSerializedNetMsg&& msg) EXCLUSIVE_LOCKS_REQUIRED(!m_total_bytes_sent_mutex);
     bool PushMessage(NodeId id, CSerializedNetMsg&& msg) EXCLUSIVE_LOCKS_REQUIRED(!m_total_bytes_sent_mutex);
 
-    using NodeFn = std::function<void(CNode*)>;
-    void ForEachNode(const NodeFn& func)
-    {
-        auto nodes = WITH_LOCK(m_nodes_mutex, return m_nodes);
-        for (auto&& node : nodes) {
-            if (NodeFullyConnected(node.get()))
-                func(node.get());
-        }
-    };
-
-    void ForEachNode(const NodeFn& func) const
-    {
-        auto nodes = WITH_LOCK(m_nodes_mutex, return m_nodes);
-        for (auto&& node : nodes) {
-            if (NodeFullyConnected(node.get()))
-                func(node.get());
-        }
-    };
-
     // Addrman functions
     /**
      * Return all or many randomly selected addresses, optionally by network.

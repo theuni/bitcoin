@@ -106,9 +106,6 @@ FUZZ_TARGET(connman, .init = initialize_connman)
                 connman.DisconnectNode(random_subnet);
             },
             [&] {
-                connman.ForEachNode([](auto) {});
-            },
-            [&] {
                 (void)connman.ForNode(fuzzed_data_provider.ConsumeIntegral<NodeId>(), [&](auto) { return fuzzed_data_provider.ConsumeBool(); });
             },
             [&] {
