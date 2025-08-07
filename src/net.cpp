@@ -3893,21 +3893,6 @@ bool CConnman::PushMessage(CNode* pnode, CSerializedNetMsg&& msg)
     return true;
 }
 
-bool CConnman::ForNode(NodeId id, std::function<bool(CNode* pnode)> func)
-{
-    std::shared_ptr<CNode> found;
-    {
-        LOCK(m_nodes_mutex);
-        for (auto&& pnode : m_nodes) {
-            if(pnode->GetId() == id) {
-                found = pnode;
-                break;
-            }
-        }
-    }
-    return found && NodeFullyConnected(found.get()) && func(found.get());
-}
-
 CSipHasher CConnman::GetDeterministicRandomizer(uint64_t id) const
 {
     return CSipHasher(nSeed0, nSeed1).Write(id);

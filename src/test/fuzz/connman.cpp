@@ -106,9 +106,6 @@ FUZZ_TARGET(connman, .init = initialize_connman)
                 connman.DisconnectNode(random_subnet);
             },
             [&] {
-                (void)connman.ForNode(fuzzed_data_provider.ConsumeIntegral<NodeId>(), [&](auto) { return fuzzed_data_provider.ConsumeBool(); });
-            },
-            [&] {
                 auto max_addresses = fuzzed_data_provider.ConsumeIntegral<size_t>();
                 auto max_pct = fuzzed_data_provider.ConsumeIntegralInRange<size_t>(0, 100);
                 auto filtered = fuzzed_data_provider.ConsumeBool();
