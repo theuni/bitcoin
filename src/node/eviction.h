@@ -62,6 +62,9 @@ public:
     /** Set the candidate's tx relay status to true. */
     void UpdateRelayTxs(NodeId id);
 
+    /** Set the candidate's handshake status to true. */
+    void UpdateVersionHandshakeComplete(NodeId id);
+
     bool HasCandidate(NodeId id) const;
 };
 

@@ -276,6 +276,7 @@ void EvictionManagerImpl::AddCandidate(NodeId id, std::chrono::seconds connected
         .m_network = network,
         .m_noban = noban,
         .m_conn_type = conn_type,
+        .m_version_handshake_complete = false
     };
     m_candidates.emplace_hint(m_candidates.end(), id, std::move(candidate));
 }
@@ -373,6 +374,14 @@ void EvictionManagerImpl::UpdateRelayTxs(NodeId id)
     }
 }
 
+void EvictionManagerImpl::UpdateVersionHandshakeComplete(NodeId id)
+{
+      LOCK(m_candidates_mutex);
+      if (const auto& it = m_candidates.find(id); it != m_candidates.end()) {
+          it->second.m_version_handshake_complete = true;
+      }
+}
+
 bool EvictionManagerImpl::HasCandidate(NodeId id) const
 {
     LOCK(m_candidates_mutex);
@@ -449,6 +458,11 @@ void EvictionManager::UpdateLoadedBloomFilter(NodeId id, bool bloom_filter_loade
 void EvictionManager::UpdateRelayTxs(NodeId id)
 {
     m_impl->UpdateRelayTxs(id);
+}
+
+void EvictionManager::UpdateVersionHandshakeComplete(NodeId id)
+{
+    m_impl->UpdateVersionHandshakeComplete(id);
 }
 
 bool EvictionManager::HasCandidate(NodeId id) const

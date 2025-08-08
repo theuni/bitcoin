@@ -98,6 +98,7 @@ public:
                 .m_network = network,
                 .m_noban = noban,
                 .m_conn_type = conn_type,
+                .m_version_handshake_complete = false,
             });
 
         assert(inserted != already_added);
@@ -201,6 +202,10 @@ public:
     {
         m_evictionman.UpdateRelayTxs(id);
     }
+    void UpdateVersionHandshakeComplete(NodeId id)
+    {
+        m_evictionman.UpdateVersionHandshakeComplete(id);
+    }
 };
 
 FUZZ_TARGET(evictionman)
@@ -251,6 +256,9 @@ FUZZ_TARGET(evictionman)
             },
             [&] {
                 tester.UpdateRelayTxs(fuzzed_data_provider.ConsumeIntegralInRange(0, MAX_PEERS));
+            },
+            [&] {
+                tester.UpdateVersionHandshakeComplete(fuzzed_data_provider.ConsumeIntegralInRange(0, MAX_PEERS));
             });
     }
 }
