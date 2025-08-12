@@ -978,6 +978,16 @@ public:
         whitelist_relay = connOptions.whitelist_relay;
     }
 
+    int GetMaxOutboundFullRelay() const
+    {
+        return m_max_outbound_full_relay;
+    }
+
+    int GetMaxOutboundBlockRelay() const
+    {
+        return m_max_outbound_block_relay;
+    }
+
     CConnman(uint64_t seed0, uint64_t seed1, AddrMan& addrman, const NetGroupManager& netgroupman,
              const CChainParams& params, EvictionManager& evictionman, bool network_active = true);
 

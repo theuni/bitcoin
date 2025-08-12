@@ -1188,7 +1188,18 @@ private:
     void LogBlockHeader(const CBlockIndex& index, const CNode& node, const Peer& peer, bool via_compact_block);
     bool CheckIncomingNonce(uint64_t nonce) const EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex);
 
+    // Return the number of outbound connections that are full relay (not blocks only)
     int GetFullOutboundConnCount() const EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex);
+
+    // Return the number of peers we have over our outbound connection limit
+    // Exclude peers that are marked for disconnect, or are going to be
+    // disconnected soon (eg ADDR_FETCH and FEELER)
+    // Also exclude peers that haven't finished initial connection handshake yet
+    // (so that we don't decide we're over our desired connection limit, and then
+    // evict some peer that has finished the handshake)
+    int GetExtraFullOutboundCount() const EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex);
+
+    int GetExtraBlockRelayCount() const EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex);
 
 
     template <typename Callable>
@@ -1209,6 +1220,25 @@ private:
         }
     };
 };
+
+int PeerManagerImpl::GetExtraFullOutboundCount() const
+{
+    return std::max(GetFullOutboundConnCount() - m_connman.GetMaxOutboundFullRelay(), 0);
+}
+
+int PeerManagerImpl::GetExtraBlockRelayCount() const
+{
+    int block_relay_peers = 0;
+    {
+        LOCK(m_peer_mutex);
+        for(const auto&[_, peer] : m_peer_map) {
+            if (peer->m_handshake_complete && !peer->m_disconnecting && IsFullOutboundConn(peer->m_conn_type)) {
+                ++block_relay_peers;
+            }
+        }
+    }
+    return std::max(block_relay_peers - m_connman.GetMaxOutboundBlockRelay(), 0);
+}
 
 bool PeerManagerImpl::CheckIncomingNonce(uint64_t nonce) const
 {
@@ -5327,7 +5357,7 @@ void PeerManagerImpl::EvictExtraOutboundPeers(std::chrono::seconds now)
     // The youngest block-relay-only peer would be the extra peer we connected
     // to temporarily in order to sync our tip; see net.cpp.
     // Note that we use higher nodeid as a measure for most recent connection.
-    if (m_connman.GetExtraBlockRelayCount() > 0) {
+    if (GetExtraBlockRelayCount() > 0) {
         std::pair<NodeId, std::chrono::seconds> youngest_peer{-1, 0}, next_youngest_peer{-1, 0};
 
         ForEachFullyConnectedPeer([&](const Peer& peer) {
@@ -5366,7 +5396,7 @@ void PeerManagerImpl::EvictExtraOutboundPeers(std::chrono::seconds now)
     }
 
     // Check whether we have too many outbound-full-relay peers
-    if (m_connman.GetExtraFullOutboundCount() > 0) {
+    if (GetExtraFullOutboundCount() > 0) {
         // If we have more outbound-full-relay peers than we target, disconnect one.
         // Pick the outbound-full-relay peer that least recently announced
         // us a new block, with ties broken by choosing the more recent
