@@ -241,6 +241,29 @@ void ProtectEvictionCandidatesByRatio(std::vector<NodeEvictionCandidate>& evicti
     return vEvictionCandidates.front().id;
 }
 
+std::optional<NodeId> SelectBlockRelayNodeToEvict(std::vector<NodeEvictionCandidate> candidates)
+{
+    std::pair<std::optional<NodeId>, std::chrono::seconds> youngest_peer{std::nullopt, 0}, next_youngest_peer{std::nullopt, 0};
+
+    for(const auto& candidate : candidates) {
+        if (!IsBlockOnlyConn(candidate.m_conn_type)) continue;
+        if (!candidate.m_version_handshake_complete) continue;
+        if (auto& youngest_id = youngest_peer.first; !youngest_id.has_value() || candidate.id > youngest_id.value()) {
+            next_youngest_peer = youngest_peer;
+            youngest_peer.first.emplace(candidate.id);
+            youngest_peer.second = candidate.m_last_block_time;
+        }
+    }
+    if (next_youngest_peer.first.has_value()) {
+        if (youngest_peer.second > next_youngest_peer.second) {
+            // Our newest block-relay-only peer gave us a block more recently;
+            // disconnect our second youngest.
+            return next_youngest_peer.first;
+        }
+    }
+    return youngest_peer.first;
+}
+
 EvictionManagerImpl::EvictionManagerImpl() {}
 EvictionManagerImpl::~EvictionManagerImpl() = default;
 
@@ -297,6 +320,19 @@ std::optional<NodeId> EvictionManagerImpl::SelectNodeToEvict() const
         }
     }
     return ::SelectNodeToEvict(std::move(candidates));
+}
+
+std::optional<NodeId> EvictionManagerImpl::SelectBlockRelayNodeToEvict() const
+{
+      std::vector<NodeEvictionCandidate> candidates;
+      {
+          LOCK(m_candidates_mutex);
+          candidates.reserve(m_candidates.size());
+          for (const auto& [_, candidate] : m_candidates) {
+              candidates.push_back(candidate);
+          }
+      }
+      return ::SelectBlockRelayNodeToEvict(std::move(candidates));
 }
 
 void EvictionManagerImpl::UpdateMinPingTime(NodeId id, std::chrono::microseconds ping_time)
@@ -413,6 +449,11 @@ bool EvictionManager::RemoveCandidate(NodeId id)
 std::optional<NodeId> EvictionManager::SelectNodeToEvict() const
 {
     return m_impl->SelectNodeToEvict();
+}
+
+std::optional<NodeId> EvictionManager::SelectBlockRelayNodeToEvict() const
+{
+    return m_impl->SelectBlockRelayNodeToEvict();
 }
 
 void EvictionManager::UpdateMinPingTime(NodeId id, std::chrono::microseconds ping_time)
