@@ -5364,24 +5364,9 @@ void PeerManagerImpl::EvictExtraOutboundPeers(std::chrono::seconds now)
     // to temporarily in order to sync our tip; see net.cpp.
     // Note that we use higher nodeid as a measure for most recent connection.
     if (GetExtraBlockRelayCount() > 0) {
-        std::pair<NodeId, std::chrono::seconds> youngest_peer{-1, 0}, next_youngest_peer{-1, 0};
-
-        ForEachFullyConnectedPeer([&](const Peer& peer) {
-            auto node_id = peer.m_id;
-            if (!IsBlockOnlyConn(peer.m_conn_type)) return;
-            if (node_id > youngest_peer.first) {
-                next_youngest_peer = youngest_peer;
-                youngest_peer.first = node_id;
-                youngest_peer.second = *Assert(m_evictionman.GetLastBlockTime(node_id));
-            }
-        });
-        NodeId to_disconnect = youngest_peer.first;
-        if (youngest_peer.second > next_youngest_peer.second) {
-            // Our newest block-relay-only peer gave us a block more recently;
-            // disconnect our second youngest.
-            to_disconnect = next_youngest_peer.first;
-        }
-        auto peer = GetPeerRef(to_disconnect);
+        auto to_disconnect = m_evictionman.SelectBlockRelayNodeToEvict();
+        if (!to_disconnect) return;
+        auto peer = GetPeerRef(*to_disconnect);
         auto node_id = peer->m_id;
             AssertLockHeld(::cs_main);
             // Make sure we're not getting a block right now, and that
