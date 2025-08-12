@@ -362,16 +362,6 @@ bool CConnman::AlreadyConnectedToAddress(const CAddress& addr)
     return FindNode(static_cast<CNetAddr>(addr)) != nullptr;
 }
 
-bool CConnman::CheckIncomingNonce(uint64_t nonce)
-{
-    LOCK(m_nodes_mutex);
-    for (const auto& pnode : m_nodes) {
-        if (!pnode->fSuccessfullyConnected && !IsInboundConn(pnode->m_conn_type) && pnode->GetLocalNonce() == nonce)
-            return false;
-    }
-    return true;
-}
-
 /** Get the bind address for a socket as CService. */
 static CService GetBindAddress(const Sock& sock)
 {
@@ -2367,53 +2357,6 @@ void CConnman::StartExtraBlockRelayPeers()
     m_start_extra_block_relay_peers = true;
 }
 
-// Return the number of outbound connections that are full relay (not blocks only)
-int CConnman::GetFullOutboundConnCount() const
-{
-    int nRelevant = 0;
-    {
-        LOCK(m_nodes_mutex);
-        for (const auto& pnode : m_nodes) {
-            if (pnode->fSuccessfullyConnected && IsFullOutboundConn(pnode->m_conn_type)) ++nRelevant;
-        }
-    }
-    return nRelevant;
-}
-
-// Return the number of peers we have over our outbound connection limit
-// Exclude peers that are marked for disconnect, or are going to be
-// disconnected soon (eg ADDR_FETCH and FEELER)
-// Also exclude peers that haven't finished initial connection handshake yet
-// (so that we don't decide we're over our desired connection limit, and then
-// evict some peer that has finished the handshake)
-int CConnman::GetExtraFullOutboundCount() const
-{
-    int full_outbound_peers = 0;
-    {
-        LOCK(m_nodes_mutex);
-        for (const auto& pnode : m_nodes) {
-            if (pnode->fSuccessfullyConnected && !pnode->fDisconnect && IsFullOutboundConn(pnode->m_conn_type)) {
-                ++full_outbound_peers;
-            }
-        }
-    }
-    return std::max(full_outbound_peers - m_max_outbound_full_relay, 0);
-}
-
-int CConnman::GetExtraBlockRelayCount() const
-{
-    int block_relay_peers = 0;
-    {
-        LOCK(m_nodes_mutex);
-        for (const auto& pnode : m_nodes) {
-            if (pnode->fSuccessfullyConnected && !pnode->fDisconnect && IsBlockOnlyConn(pnode->m_conn_type)) {
-                ++block_relay_peers;
-            }
-        }
-    }
-    return std::max(block_relay_peers - m_max_outbound_block_relay, 0);
-}
-
 std::unordered_set<Network> CConnman::GetReachableEmptyNetworks() const
 {
     std::unordered_set<Network> networks{};
@@ -3825,11 +3768,6 @@ std::list<CNetMessage> CNode::GetCompleteMessages()
     std::list<CNetMessage> complete_messages;
     complete_messages.swap(vRecvMsg);
     return complete_messages;
-}
-
-bool CConnman::NodeFullyConnected(const CNode* pnode)
-{
-    return pnode && pnode->fSuccessfullyConnected && !pnode->fDisconnect;
 }
 
 bool CConnman::PushMessage(NodeId id, CSerializedNetMsg&& msg)
