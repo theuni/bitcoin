@@ -654,6 +654,7 @@ public:
         EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_most_recent_block_mutex, !m_headers_presync_mutex, g_msgproc_mutex, !m_tx_download_mutex);
     void UpdateLastBlockAnnounceTime(NodeId node, int64_t time_in_seconds) override;
     ServiceFlags GetDesirableServiceFlags(ServiceFlags services) const override;
+    bool HandshakeComplete(NodeId) const override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex);
 private:
     void FinalizeNode(NodeId nodeid) EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_headers_presync_mutex, !m_tx_download_mutex);
     /** Consider evicting an outbound peer based on the amount of time they've been behind our tip */
@@ -1871,6 +1872,12 @@ ServiceFlags PeerManagerImpl::GetDesirableServiceFlags(ServiceFlags services) co
         }
     }
     return ServiceFlags(NODE_NETWORK | NODE_WITNESS);
+}
+
+bool PeerManagerImpl::HandshakeComplete(NodeId id) const
+{
+    auto ref = GetPeerRef(id);
+    return ref && ref->m_handshake_complete;
 }
 
 PeerRef PeerManagerImpl::GetPeerRef(NodeId id) const

@@ -69,7 +69,7 @@ void ConnmanTestMsg::Handshake(CNode& node,
         node.fPauseSend = false;
         connman.ProcessMessagesOnce(node);
         peerman.SendMessages(&node);
-        assert(node.fSuccessfullyConnected == true);
+        assert(peerman.HandshakeComplete(node.GetId()));
     }
 }
 
