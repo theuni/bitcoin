@@ -836,7 +836,7 @@ BOOST_AUTO_TEST_CASE(initial_advertise_from_version_message)
     const auto msg_verack = NetMsg::Make(NetMsgType::VERACK);
     DataStream msg_verack_stream{msg_verack.data};
 
-    // Will set peer.fSuccessfullyConnected to true (necessary in SendMessages()).
+    // Will set peer.m_handshake_complete to true (necessary in SendMessages()).
     m_node.peerman->ProcessMessage(
         peer, NetMsgType::VERACK, msg_verack_stream, time_received_dummy, interrupt_dummy);
 

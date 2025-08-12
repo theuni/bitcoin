@@ -3948,7 +3948,6 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
             });
         }
 
-        pfrom.fSuccessfullyConnected = true;
         peer->m_handshake_complete = true;
         m_evictionman.UpdateVersionHandshakeComplete(node_id);
         if (!m_peers_bootstrapped && GetFullOutboundConnCount() >= OUTBOUND_CONNECTION_BOOTSTRAP_THRESHOLD) {

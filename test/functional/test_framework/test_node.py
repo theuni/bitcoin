@@ -755,7 +755,7 @@ class TestNode():
             p2p_conn.wait_for_verack()
             # At this point we have sent our version message and received the version and verack, however the full node
             # has not yet received the verack from us (in reply to their version). So, the connection is not yet fully
-            # established (fSuccessfullyConnected).
+            # established (m_handshake_complete).
             #
             # This shouldn't lead to any issues when sending messages, since the verack will be in-flight before the
             # message we send. However, it might lead to races where we are expecting to receive a message. E.g. a

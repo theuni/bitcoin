@@ -680,11 +680,11 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
             assert peer is not None, "Error: peer disconnected"
             return peer['bytesrecv_per_msg'].pop(msg_type, 0) >= min_bytes_recv
 
-        # Poll until version handshake (fSuccessfullyConnected) is complete to
+        # Poll until version handshake (m_handshake_complete) is complete to
         # avoid race conditions, because some message types are blocked from
-        # being sent or received before fSuccessfullyConnected.
+        # being sent or received before m_handshake_complete.
         #
-        # As the flag fSuccessfullyConnected is not exposed, check it by
+        # As the flag m_handshake_complete is not exposed, check it by
         # waiting for a pong, which can only happen after the flag was set.
         self.wait_until(lambda: check_bytesrecv(find_conn(from_connection, to_connection_subver, inbound=False), 'pong', 29))
         self.wait_until(lambda: check_bytesrecv(find_conn(to_connection, from_connection_subver, inbound=True), 'pong', 29))
