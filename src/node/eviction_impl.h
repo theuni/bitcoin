@@ -84,6 +84,7 @@ public:
         EXCLUSIVE_LOCKS_REQUIRED(!m_candidates_mutex);
 
     std::optional<NodeId> SelectBlockRelayNodeToEvict() const EXCLUSIVE_LOCKS_REQUIRED(!m_candidates_mutex);
+    std::optional<NodeId> SelectFullOutboundNodeToEvict() const EXCLUSIVE_LOCKS_REQUIRED(!m_candidates_mutex);
 
     void UpdateMinPingTime(NodeId id, std::chrono::microseconds ping_time)
         EXCLUSIVE_LOCKS_REQUIRED(!m_candidates_mutex);
