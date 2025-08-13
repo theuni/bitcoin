@@ -33,6 +33,7 @@ struct NodeEvictionCandidate {
     ConnectionType m_conn_type;
     bool m_version_handshake_complete;
     bool m_protected;
+    std::chrono::seconds m_last_block_announcement;
 };
 
 [[nodiscard]] std::optional<NodeId> SelectNodeToEvict(std::vector<NodeEvictionCandidate>&& vEvictionCandidates);
@@ -110,6 +111,8 @@ public:
     void UpdateVersionHandshakeComplete(NodeId id) EXCLUSIVE_LOCKS_REQUIRED(!m_candidates_mutex);
 
     void UpdateProtected(NodeId id) EXCLUSIVE_LOCKS_REQUIRED(!m_candidates_mutex);
+
+    void UpdateLastBlockAnnounceTime(NodeId id, std::chrono::seconds last_block_announcement) EXCLUSIVE_LOCKS_REQUIRED(!m_candidates_mutex);
 
     bool HasCandidate(NodeId id) const EXCLUSIVE_LOCKS_REQUIRED(!m_candidates_mutex);
 };

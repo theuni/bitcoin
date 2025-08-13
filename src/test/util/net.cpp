@@ -146,6 +146,7 @@ std::vector<NodeEvictionCandidate> GetRandomNodeEvictionCandidates(int n_candida
             .m_conn_type=ConnectionType::INBOUND,
             .m_version_handshake_complete=false,
             .m_protected=false,
+            .m_last_block_announcement=std::chrono::seconds{random_context.randrange(100)}
         });
     }
     return candidates;

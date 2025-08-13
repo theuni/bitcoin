@@ -69,6 +69,8 @@ public:
 
     void UpdateProtected(NodeId id);
 
+    void UpdateLastBlockAnnounceTime(NodeId node, std::chrono::seconds time_in_seconds);
+
     bool HasCandidate(NodeId id) const;
 };
 

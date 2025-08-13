@@ -100,6 +100,7 @@ public:
                 .m_conn_type = conn_type,
                 .m_version_handshake_complete = false,
                 .m_protected = false,
+                .m_last_block_announcement = 0s,
             });
 
         assert(inserted != already_added);
@@ -211,6 +212,10 @@ public:
     {
         m_evictionman.UpdateProtected(id);
     }
+    void UpdateLastBlockAnnounceTime(NodeId id)
+    {
+        m_evictionman.UpdateLastBlockAnnounceTime(id,  Now<>());
+    }
 };
 
 FUZZ_TARGET(evictionman)
@@ -267,6 +272,9 @@ FUZZ_TARGET(evictionman)
             },
             [&] {
                 tester.UpdateProtected(fuzzed_data_provider.ConsumeIntegralInRange(0, MAX_PEERS));
+            },
+            [&] {
+                tester.UpdateLastBlockAnnounceTime(fuzzed_data_provider.ConsumeIntegralInRange(0, MAX_PEERS));
             });
     }
 }

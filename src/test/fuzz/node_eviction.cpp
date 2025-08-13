@@ -38,6 +38,7 @@ FUZZ_TARGET(node_eviction)
             /*m_conn_type=*/fuzzed_data_provider.PickValueInArray(ALL_CONNECTION_TYPES),
             /*m_version_handshake_complete=*/fuzzed_data_provider.ConsumeBool(),
             /*m_protected=*/fuzzed_data_provider.ConsumeBool(),
+            /*m_last_block_announcement=*/std::chrono::seconds{fuzzed_data_provider.ConsumeIntegral<int64_t>()}
         });
     }
     // Make a copy since eviction_candidates may be in some valid but otherwise
