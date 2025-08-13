@@ -1741,6 +1741,7 @@ void PeerManagerImpl::UpdateLastBlockAnnounceTime(NodeId node, int64_t time_in_s
     LOCK(cs_main);
     CNodeState *state = State(node);
     if (state) state->m_last_block_announcement = time_in_seconds;
+    m_evictionman.UpdateLastBlockAnnounceTime(node, std::chrono::seconds{time_in_seconds});
 }
 
 void PeerManagerImpl::InitializeNode(const CNode& node, ServiceFlags our_services)
@@ -3029,6 +3030,7 @@ void PeerManagerImpl::UpdatePeerStateForReceivedHeaders(CNode& pfrom, Peer& peer
 
     if (received_new_header && last_header.nChainWork > m_chainman.ActiveChain().Tip()->nChainWork) {
         nodestate->m_last_block_announcement = GetTime();
+        m_evictionman.UpdateLastBlockAnnounceTime(node_id, GetTime<std::chrono::seconds>());
     }
 
     // If we're in IBD, we want outbound peers that will serve us a useful
@@ -4634,6 +4636,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         // peer's last block announcement time
         if (received_new_header && pindex->nChainWork > m_chainman.ActiveChain().Tip()->nChainWork) {
             nodestate->m_last_block_announcement = GetTime();
+            m_evictionman.UpdateLastBlockAnnounceTime(node_id, GetTime<std::chrono::seconds>());
         }
 
         if (pindex->nStatus & BLOCK_HAVE_DATA) // Nothing to do here
