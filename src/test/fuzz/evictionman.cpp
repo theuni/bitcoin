@@ -99,6 +99,7 @@ public:
                 .m_noban = noban,
                 .m_conn_type = conn_type,
                 .m_version_handshake_complete = false,
+                .m_protected = false,
             });
 
         assert(inserted != already_added);
@@ -206,6 +207,10 @@ public:
     {
         m_evictionman.UpdateVersionHandshakeComplete(id);
     }
+    void UpdateProtected(NodeId id)
+    {
+        m_evictionman.UpdateProtected(id);
+    }
 };
 
 FUZZ_TARGET(evictionman)
@@ -259,6 +264,9 @@ FUZZ_TARGET(evictionman)
             },
             [&] {
                 tester.UpdateVersionHandshakeComplete(fuzzed_data_provider.ConsumeIntegralInRange(0, MAX_PEERS));
+            },
+            [&] {
+                tester.UpdateProtected(fuzzed_data_provider.ConsumeIntegralInRange(0, MAX_PEERS));
             });
     }
 }

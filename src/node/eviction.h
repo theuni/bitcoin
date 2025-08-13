@@ -67,6 +67,8 @@ public:
     /** Set the candidate's handshake status to true. */
     void UpdateVersionHandshakeComplete(NodeId id);
 
+    void UpdateProtected(NodeId id);
+
     bool HasCandidate(NodeId id) const;
 };
 

@@ -145,6 +145,7 @@ std::vector<NodeEvictionCandidate> GetRandomNodeEvictionCandidates(int n_candida
             .m_noban=false,
             .m_conn_type=ConnectionType::INBOUND,
             .m_version_handshake_complete=false,
+            .m_protected=false,
         });
     }
     return candidates;

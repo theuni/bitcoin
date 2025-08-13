@@ -32,6 +32,7 @@ struct NodeEvictionCandidate {
     bool m_noban;
     ConnectionType m_conn_type;
     bool m_version_handshake_complete;
+    bool m_protected;
 };
 
 [[nodiscard]] std::optional<NodeId> SelectNodeToEvict(std::vector<NodeEvictionCandidate>&& vEvictionCandidates);
@@ -107,6 +108,8 @@ public:
     void UpdateRelayTxs(NodeId id) EXCLUSIVE_LOCKS_REQUIRED(!m_candidates_mutex);
 
     void UpdateVersionHandshakeComplete(NodeId id) EXCLUSIVE_LOCKS_REQUIRED(!m_candidates_mutex);
+
+    void UpdateProtected(NodeId id) EXCLUSIVE_LOCKS_REQUIRED(!m_candidates_mutex);
 
     bool HasCandidate(NodeId id) const EXCLUSIVE_LOCKS_REQUIRED(!m_candidates_mutex);
 };
