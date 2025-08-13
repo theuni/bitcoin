@@ -5409,7 +5409,20 @@ void PeerManagerImpl::EvictExtraOutboundPeers(std::chrono::seconds now)
             if (state->m_chain_sync.m_protect) return;
             // If this is the only connection on a particular network that is
             // OUTBOUND_FULL_RELAY or MANUAL, protect it.
-            if (!m_connman.MultipleManualOrFullOutboundConns(peer.m_addr.GetNetwork())) return;
+            if (IsManualOrFullOutboundConn(peer.m_conn_type)) {
+                bool found_another = false;
+                LOCK(m_peer_mutex);
+                for (const auto& [count_peer_id, count_peer] : m_peer_map) {
+                    if (node_id == count_peer_id) continue;
+                    if (count_peer->m_addr.GetNetwork() != peer.m_addr.GetNetwork()) continue;
+                    // Found a different peer on the same network
+                    if (IsManualOrFullOutboundConn(count_peer->m_conn_type)) {
+                        found_another = true;
+                        break;
+                    }
+                }
+                if (!found_another) return;
+            }
             if (state->m_last_block_announcement < oldest_block_announcement || (state->m_last_block_announcement == oldest_block_announcement && node_id > worst_peer)) {
                 worst_peer = node_id;
                 oldest_block_announcement = state->m_last_block_announcement;
