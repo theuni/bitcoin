@@ -64,6 +64,9 @@ struct NodeEvictionCandidate {
  */
 void ProtectEvictionCandidatesByRatio(std::vector<NodeEvictionCandidate>& vEvictionCandidates);
 
+struct BlockRelayEviction;
+struct FullOutboundEviction;
+
 class EvictionManagerImpl
 {
 private:
@@ -84,8 +87,8 @@ public:
     std::optional<NodeId> SelectNodeToEvict() const
         EXCLUSIVE_LOCKS_REQUIRED(!m_candidates_mutex);
 
-    std::optional<NodeId> SelectBlockRelayNodeToEvict() const EXCLUSIVE_LOCKS_REQUIRED(!m_candidates_mutex);
-    std::optional<NodeId> SelectFullOutboundNodeToEvict() const EXCLUSIVE_LOCKS_REQUIRED(!m_candidates_mutex);
+    std::optional<BlockRelayEviction> SelectBlockRelayNodeToEvict() const EXCLUSIVE_LOCKS_REQUIRED(!m_candidates_mutex);
+    std::optional<FullOutboundEviction> SelectFullOutboundNodeToEvict() const EXCLUSIVE_LOCKS_REQUIRED(!m_candidates_mutex);
 
     void UpdateMinPingTime(NodeId id, std::chrono::microseconds ping_time)
         EXCLUSIVE_LOCKS_REQUIRED(!m_candidates_mutex);

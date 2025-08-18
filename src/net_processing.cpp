@@ -5370,7 +5370,7 @@ void PeerManagerImpl::EvictExtraOutboundPeers(std::chrono::seconds now)
     if (GetExtraBlockRelayCount() > 0) {
         auto to_disconnect = m_evictionman.SelectBlockRelayNodeToEvict();
         if (!to_disconnect) return;
-        auto peer = GetPeerRef(*to_disconnect);
+        auto peer = GetPeerRef(to_disconnect->id);
         auto node_id = peer->m_id;
             AssertLockHeld(::cs_main);
             // Make sure we're not getting a block right now, and that
@@ -5383,7 +5383,7 @@ void PeerManagerImpl::EvictExtraOutboundPeers(std::chrono::seconds now)
                 (now - peer->m_connected >= MINIMUM_CONNECT_TIME && node_state->vBlocksInFlight.empty())) {
                 RequestDisconnect(*peer);
                 LogDebug(BCLog::NET, "disconnecting extra block-relay-only peer=%d (last block received at time %d)\n",
-                         node_id, count_seconds(*Assert(m_evictionman.GetLastBlockTime(node_id))));
+                         node_id, count_seconds(to_disconnect->last_block_time));
             } else {
                 LogDebug(BCLog::NET, "keeping block-relay-only peer=%d chosen for eviction (connect time: %d, blocks_in_flight: %d)\n",
                          node_id, count_seconds(peer->m_connected), node_state->vBlocksInFlight.size());

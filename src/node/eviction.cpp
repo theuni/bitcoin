@@ -241,38 +241,37 @@ void ProtectEvictionCandidatesByRatio(std::vector<NodeEvictionCandidate>& evicti
     return vEvictionCandidates.front().id;
 }
 
-std::optional<NodeId> SelectBlockRelayNodeToEvict(std::vector<NodeEvictionCandidate> candidates)
+std::optional<BlockRelayEviction> SelectBlockRelayNodeToEvict(std::vector<NodeEvictionCandidate> candidates)
 {
-    std::pair<std::optional<NodeId>, std::chrono::seconds> youngest_peer{std::nullopt, 0}, next_youngest_peer{std::nullopt, 0};
+    std::optional<BlockRelayEviction> youngest_peer{std::nullopt}, next_youngest_peer{std::nullopt};
 
     for(const auto& candidate : candidates) {
         if (!IsBlockOnlyConn(candidate.m_conn_type)) continue;
         if (!candidate.m_version_handshake_complete) continue;
-        if (auto& youngest_id = youngest_peer.first; !youngest_id.has_value() || candidate.id > youngest_id.value()) {
+        if (!youngest_peer.has_value() || candidate.id > youngest_peer->id) {
             next_youngest_peer = youngest_peer;
-            youngest_peer.first.emplace(candidate.id);
-            youngest_peer.second = candidate.m_last_block_time;
+            youngest_peer.emplace(candidate.id, candidate.m_last_block_time);
         }
     }
-    if (next_youngest_peer.first.has_value()) {
-        if (youngest_peer.second > next_youngest_peer.second) {
+    if (next_youngest_peer.has_value()) {
+        assert(youngest_peer.has_value());
+        if (youngest_peer->last_block_time > next_youngest_peer->last_block_time) {
             // Our newest block-relay-only peer gave us a block more recently;
             // disconnect our second youngest.
-            return next_youngest_peer.first;
+            return next_youngest_peer;
         }
     }
-    return youngest_peer.first;
+    return youngest_peer;
 }
 
-std::optional<NodeId> SelectFullOutboundNodeToEvict(std::vector<NodeEvictionCandidate> candidates)
+std::optional<FullOutboundEviction> SelectFullOutboundNodeToEvict(std::vector<NodeEvictionCandidate> candidates)
 {
     std::array<unsigned int, Network::NET_MAX> network_conn_counts {};
     for(const auto& candidate : candidates) {
         if (IsManualOrFullOutboundConn(candidate.m_conn_type)) ++network_conn_counts[candidate.m_network];
     }
 
-    std::optional<NodeId> worst_peer;
-    std::chrono::seconds oldest_block_announcement = std::chrono::seconds::max();
+    std::optional<FullOutboundEviction> worst_peer;
 
     for(const auto& candidate : candidates) {
         // Only consider outbound-full-relay peers that are not already
@@ -285,9 +284,8 @@ std::optional<NodeId> SelectFullOutboundNodeToEvict(std::vector<NodeEvictionCand
         if (IsManualOrFullOutboundConn(candidate.m_conn_type)) {
             if (network_conn_counts[candidate.m_network] <= 1) continue;
         }
-        if (candidate.m_last_block_announcement < oldest_block_announcement || (candidate.m_last_block_announcement == oldest_block_announcement && candidate.id > worst_peer)) {
-            worst_peer.emplace(candidate.id);
-            oldest_block_announcement = candidate.m_last_block_announcement;
+        if (!worst_peer || candidate.m_last_block_announcement < worst_peer->last_block_announcement || (candidate.m_last_block_announcement == worst_peer->last_block_announcement && candidate.id > worst_peer->id)) {
+            worst_peer.emplace(candidate.id, candidate.m_last_block_announcement);
         }
     }
     return worst_peer;
@@ -353,7 +351,7 @@ std::optional<NodeId> EvictionManagerImpl::SelectNodeToEvict() const
     return ::SelectNodeToEvict(std::move(candidates));
 }
 
-std::optional<NodeId> EvictionManagerImpl::SelectBlockRelayNodeToEvict() const
+std::optional<BlockRelayEviction> EvictionManagerImpl::SelectBlockRelayNodeToEvict() const
 {
       std::vector<NodeEvictionCandidate> candidates;
       {
@@ -366,7 +364,7 @@ std::optional<NodeId> EvictionManagerImpl::SelectBlockRelayNodeToEvict() const
       return ::SelectBlockRelayNodeToEvict(std::move(candidates));
 }
 
-std::optional<NodeId> EvictionManagerImpl::SelectFullOutboundNodeToEvict() const
+std::optional<FullOutboundEviction> EvictionManagerImpl::SelectFullOutboundNodeToEvict() const
 {
       std::vector<NodeEvictionCandidate> candidates;
       {
@@ -511,12 +509,12 @@ std::optional<NodeId> EvictionManager::SelectNodeToEvict() const
     return m_impl->SelectNodeToEvict();
 }
 
-std::optional<NodeId> EvictionManager::SelectBlockRelayNodeToEvict() const
+std::optional<BlockRelayEviction> EvictionManager::SelectBlockRelayNodeToEvict() const
 {
     return m_impl->SelectBlockRelayNodeToEvict();
 }
 
-std::optional<NodeId> EvictionManager::SelectFullOutboundNodeToEvict() const
+std::optional<FullOutboundEviction> EvictionManager::SelectFullOutboundNodeToEvict() const
 {
     return m_impl->SelectFullOutboundNodeToEvict();
 }
