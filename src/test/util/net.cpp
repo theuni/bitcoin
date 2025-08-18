@@ -57,10 +57,10 @@ void ConnmanTestMsg::Handshake(CNode& node,
     peerman.SendMessages(&node);
     FlushSendBuffer(node); // Drop the verack message added by SendMessages.
     if (node.fDisconnect) return;
-    assert(node.nVersion == version);
     assert(node.GetCommonVersion() == std::min(version, PROTOCOL_VERSION));
     CNodeStateStats statestats;
     assert(peerman.GetNodeStateStats(node.GetId(), statestats));
+    assert(statestats.nVersion == version);
     assert(statestats.m_relay_txs == (relay_txs && !IsBlockOnlyConn(node.m_conn_type)));
     assert(statestats.their_services == remote_services);
     if (successfully_connected) {

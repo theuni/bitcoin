@@ -487,6 +487,8 @@ struct Peer {
 
     TransportProtocolType m_transport;
 
+    std::atomic_int nVersion{0};
+
     explicit Peer(NodeId id, ServiceFlags our_services, ConnectionType conn_type, CAddress addr, std::string addr_name, NetPermissionFlags permission_flags, uint64_t local_nonce, std::chrono::seconds connected, TransportProtocolType transport)
         : m_id{id}
         , m_our_services{our_services}
@@ -1917,6 +1919,7 @@ bool PeerManagerImpl::GetNodeStateStats(NodeId nodeid, CNodeStateStats& stats) c
 
     PeerRef peer = GetPeerRef(nodeid);
     if (peer == nullptr) return false;
+    stats.nVersion = peer->nVersion;
     stats.their_services = peer->m_their_services;
     stats.m_starting_height = peer->m_starting_height;
     // It is common for nodes with good ping times to suddenly become lagged,
@@ -3664,7 +3667,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
     if (peer == nullptr) return;
 
     if (msg_type == NetMsgType::VERSION) {
-        if (pfrom.nVersion != 0) {
+        if (peer->nVersion != 0) {
             LogDebug(BCLog::NET, "redundant version message from peer=%d\n", node_id);
             return;
         }
@@ -3749,7 +3752,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         const int greatest_common_version = std::min(nVersion, PROTOCOL_VERSION);
         pfrom.SetCommonVersion(greatest_common_version);
         peer->SetCommonVersion(greatest_common_version);
-        pfrom.nVersion = nVersion;
+        peer->nVersion = nVersion;
 
         if (greatest_common_version >= WTXID_RELAY_VERSION) {
             MakeAndPushMessage(peer->m_id, NetMsgType::WTXIDRELAY);
@@ -3859,7 +3862,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
 
         const auto mapped_as{m_connman.GetMappedAS(peer->m_addr)};
         LogDebug(BCLog::NET, "receive version message: %s: version %d, blocks=%d, us=%s, txrelay=%d, peer=%d%s%s\n",
-                  cleanSubVer, pfrom.nVersion,
+                  cleanSubVer, peer->nVersion,
                   peer->m_starting_height, addrMe.ToStringAddrPort(), fRelay, node_id,
                   pfrom.LogIP(fLogIPs), (mapped_as ? strprintf(", mapped_as=%d", mapped_as) : ""));
 
@@ -3885,7 +3888,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         return;
     }
 
-    if (pfrom.nVersion == 0) {
+    if (peer->nVersion == 0) {
         // Must have a version message before anything else
         LogDebug(BCLog::NET, "non-version message before version handshake. Message \"%s\" from peer=%d\n", SanitizeString(msg_type), node_id);
         return;
@@ -3904,7 +3907,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
             LogPrintf("New %s %s peer connected: version: %d, blocks=%d, peer=%d%s%s\n",
                       pfrom.ConnectionTypeAsString(),
                       TransportTypeAsString(peer->m_transport),
-                      pfrom.nVersion.load(), peer->m_starting_height,
+                      peer->nVersion.load(), peer->m_starting_height,
                       node_id, pfrom.LogIP(fLogIPs),
                       (mapped_as ? strprintf(", mapped_as=%d", mapped_as) : ""));
         }

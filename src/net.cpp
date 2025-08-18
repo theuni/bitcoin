@@ -591,7 +591,6 @@ void CNode::CopyStats(CNodeStats& stats)
     X(m_last_recv);
     X(m_connected);
     X(m_addr_name);
-    X(nVersion);
     stats.fInbound = ::IsInboundConn(m_conn_type);
     {
         LOCK(cs_vSend);

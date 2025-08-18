@@ -52,6 +52,7 @@ static const unsigned int MAX_HEADERS_RESULTS = 2000;
 static const std::chrono::seconds DEFAULT_VERSION_HANDSHAKE_TIMEOUT{60s};
 
 struct CNodeStateStats {
+    int nVersion = 0;
     int nSyncHeight = -1;
     int nCommonHeight = -1;
     int m_starting_height = -1;

@@ -255,7 +255,7 @@ static RPCHelpMan getpeerinfo()
         if (statestats.m_ping_wait > 0s) {
             obj.pushKV("pingwait", Ticks<SecondsDouble>(statestats.m_ping_wait));
         }
-        obj.pushKV("version", stats.nVersion);
+        obj.pushKV("version", statestats.nVersion);
         // Use the sanitized form of subver here, to avoid tricksy remote peers from
         // corrupting or modifying the JSON output by putting special characters in
         // their ver message.
