@@ -3905,7 +3905,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         if (!IsInboundConn(peer->m_conn_type) || LogAcceptCategory(BCLog::NET, BCLog::Level::Debug)) {
             const auto mapped_as{m_connman.GetMappedAS(peer->m_addr)};
             LogPrintf("New %s %s peer connected: version: %d, blocks=%d, peer=%d%s%s\n",
-                      pfrom.ConnectionTypeAsString(),
+                      ConnectionTypeAsString(peer->m_conn_type),
                       TransportTypeAsString(peer->m_transport),
                       peer->nVersion.load(), peer->m_starting_height,
                       node_id, pfrom.LogIP(fLogIPs),
@@ -4097,7 +4097,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         vRecv >> ser_params(vAddr);
 
         if (!SetupAddressRelay(pfrom, *peer)) {
-            LogDebug(BCLog::NET, "ignoring %s message from %s peer=%d\n", msg_type, pfrom.ConnectionTypeAsString(), node_id);
+            LogDebug(BCLog::NET, "ignoring %s message from %s peer=%d\n", msg_type, ConnectionTypeAsString(peer->m_conn_type), node_id);
             return;
         }
 
@@ -4926,7 +4926,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         // Making nodes which are behind NAT and can only make outgoing connections ignore
         // the getaddr message mitigates the attack.
         if (!IsInboundConn(peer->m_conn_type)) {
-            LogDebug(BCLog::NET, "Ignoring \"getaddr\" from %s connection. peer=%d\n", pfrom.ConnectionTypeAsString(), node_id);
+            LogDebug(BCLog::NET, "Ignoring \"getaddr\" from %s connection. peer=%d\n", ConnectionTypeAsString(peer->m_conn_type), node_id);
             return;
         }
 
