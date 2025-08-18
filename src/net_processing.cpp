@@ -3864,7 +3864,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
         LogDebug(BCLog::NET, "receive version message: %s: version %d, blocks=%d, us=%s, txrelay=%d, peer=%d%s%s\n",
                   cleanSubVer, peer->nVersion,
                   peer->m_starting_height, addrMe.ToStringAddrPort(), fRelay, node_id,
-                  pfrom.LogIP(fLogIPs), (mapped_as ? strprintf(", mapped_as=%d", mapped_as) : ""));
+                  peer->LogIP(fLogIPs), (mapped_as ? strprintf(", mapped_as=%d", mapped_as) : ""));
 
         peer->m_time_offset = NodeSeconds{std::chrono::seconds{nTime}} - Now<NodeSeconds>();
         if (!IsInboundConn(peer->m_conn_type)) {
@@ -3908,7 +3908,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
                       ConnectionTypeAsString(peer->m_conn_type),
                       TransportTypeAsString(peer->m_transport),
                       peer->nVersion.load(), peer->m_starting_height,
-                      node_id, pfrom.LogIP(fLogIPs),
+                      node_id, peer->LogIP(fLogIPs),
                       (mapped_as ? strprintf(", mapped_as=%d", mapped_as) : ""));
         }
 
