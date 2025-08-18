@@ -17,6 +17,7 @@
 typedef int64_t NodeId;
 
 struct NodeEvictionCandidate {
+    // Fixme: Some of these durations should be mockable time points
     NodeId id;
     std::chrono::seconds m_connected;
     std::chrono::microseconds m_min_ping_time;
