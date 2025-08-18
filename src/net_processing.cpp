@@ -483,13 +483,16 @@ struct Peer {
      */
     std::string cleanSubVer GUARDED_BY(m_subver_mutex){};
 
-    explicit Peer(NodeId id, ServiceFlags our_services, ConnectionType conn_type, CAddress addr, std::string addr_name, NetPermissionFlags permission_flags, uint64_t local_nonce, std::chrono::seconds connected)
+    TransportProtocolType m_transport;
+
+    explicit Peer(NodeId id, ServiceFlags our_services, ConnectionType conn_type, CAddress addr, std::string addr_name, NetPermissionFlags permission_flags, uint64_t local_nonce, std::chrono::seconds connected, TransportProtocolType transport)
         : m_id{id}
         , m_our_services{our_services}
         , m_conn_type{conn_type}
         , m_addr(std::move(addr))
         , m_addr_name(std::move(addr_name))
         , m_connected(connected)
+        , m_transport(std::move(transport))
         , m_permission_flags(permission_flags)
         , m_local_nonce(local_nonce)
     {}
@@ -1702,7 +1705,7 @@ void PeerManagerImpl::InitializeNode(const CNode& node, ServiceFlags our_service
         our_services = static_cast<ServiceFlags>(our_services | NODE_BLOOM);
     }
 
-    PeerRef peer = std::make_shared<Peer>(nodeid, our_services, node.m_conn_type, node.addr, node.m_addr_name, node.m_permission_flags, node.GetLocalNonce(), node.m_connected);
+    PeerRef peer = std::make_shared<Peer>(nodeid, our_services, node.m_conn_type, node.addr, node.m_addr_name, node.m_permission_flags, node.GetLocalNonce(), node.m_connected, node.m_transport->GetInfo().transport_type);
     {
         LOCK(m_peer_mutex);
         m_peer_map.emplace_hint(m_peer_map.end(), nodeid, peer);
@@ -3840,7 +3843,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
             const auto mapped_as{m_connman.GetMappedAS(peer->m_addr)};
             LogPrintf("New %s %s peer connected: version: %d, blocks=%d, peer=%d%s%s\n",
                       pfrom.ConnectionTypeAsString(),
-                      TransportTypeAsString(pfrom.m_transport->GetInfo().transport_type),
+                      TransportTypeAsString(peer->m_transport),
                       pfrom.nVersion.load(), peer->m_starting_height,
                       node_id, pfrom.LogIP(fLogIPs),
                       (mapped_as ? strprintf(", mapped_as=%d", mapped_as) : ""));
