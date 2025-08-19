@@ -3887,6 +3887,14 @@ void CConnman::SetBootstrapComplete()
     m_bootstrapped = true;
 }
 
+bool CConnman::IsSendBufferFull(NodeId id) const
+{
+    LOCK(m_nodes_mutex);
+    auto it = std::find_if(m_nodes.begin(), m_nodes.end(), [&id](const auto& node) { return node->GetId() == id; });
+    if(it == m_nodes.end()) return false;
+    return (*it)->fPauseSend;
+}
+
 // Dump binary message to file, with timestamp.
 static void CaptureMessageToFile(const CAddress& addr,
                                  const std::string& msg_type,

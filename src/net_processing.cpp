@@ -2643,7 +2643,7 @@ void PeerManagerImpl::ProcessGetData(CNode& pfrom, Peer& peer, const std::atomic
         if (interruptMsgProc) return;
         // The send buffer provides backpressure. If there's no space in
         // the buffer, pause processing until the next call.
-        if (pfrom.fPauseSend) break;
+        if (m_connman.IsSendBufferFull(peer.m_id)) break;
 
         const CInv &inv = *it++;
 
@@ -2666,7 +2666,7 @@ void PeerManagerImpl::ProcessGetData(CNode& pfrom, Peer& peer, const std::atomic
 
     // Only process one BLOCK item per call, since they're uncommon and can be
     // expensive to process.
-    if (it != peer.m_getdata_requests.end() && !pfrom.fPauseSend) {
+    if (it != peer.m_getdata_requests.end() && !m_connman.IsSendBufferFull(peer.m_id)) {
         const CInv &inv = *it++;
         if (inv.IsGenBlkMsg()) {
             ProcessGetBlockData(pfrom, peer, inv);

@@ -1108,6 +1108,8 @@ public:
 
     void SetBootstrapComplete();
 
+    bool IsSendBufferFull(NodeId id) const EXCLUSIVE_LOCKS_REQUIRED(!m_nodes_mutex);
+
 private:
     struct ListenSocket {
     public:
