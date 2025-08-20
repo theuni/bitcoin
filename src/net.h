@@ -792,16 +792,6 @@ public:
      */
     bool ReceiveMsgBytes(std::span<const uint8_t> msg_bytes, bool& complete) EXCLUSIVE_LOCKS_REQUIRED(!cs_vRecv);
 
-    void SetCommonVersion(int greatest_common_version)
-    {
-        Assume(m_greatest_common_version == INIT_PROTO_VERSION);
-        m_greatest_common_version = greatest_common_version;
-    }
-    int GetCommonVersion() const
-    {
-        return m_greatest_common_version;
-    }
-
     void CloseSocketDisconnect() EXCLUSIVE_LOCKS_REQUIRED(!m_sock_mutex);
 
     void CopyStats(CNodeStats& stats) EXCLUSIVE_LOCKS_REQUIRED(!cs_vSend, !cs_vRecv);
@@ -833,7 +823,6 @@ public:
 private:
     const NodeId id;
     const uint64_t nLocalHostNonce;
-    std::atomic<int> m_greatest_common_version{INIT_PROTO_VERSION};
 
     const size_t m_recv_flood_size;
     std::list<CNetMessage> vRecvMsg; // Used only by SocketHandler thread

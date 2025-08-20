@@ -3750,7 +3750,6 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
 
         // Change version
         const int greatest_common_version = std::min(nVersion, PROTOCOL_VERSION);
-        pfrom.SetCommonVersion(greatest_common_version);
         peer->SetCommonVersion(greatest_common_version);
         peer->nVersion = nVersion;
 
