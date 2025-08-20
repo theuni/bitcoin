@@ -1201,7 +1201,6 @@ void RPCConsole::updateDetailWidget()
     ui->peerLastRecv->setText(TimeDurationField(time_now, stats->nodeStats.m_last_recv));
     ui->peerBytesSent->setText(GUIUtil::formatBytes(stats->nodeStats.nSendBytes));
     ui->peerBytesRecv->setText(GUIUtil::formatBytes(stats->nodeStats.nRecvBytes));
-    ui->peerPingTime->setText(GUIUtil::formatPingTime(stats->nodeStats.m_last_ping_time));
     ui->peerMinPing->setText(GUIUtil::formatPingTime(stats->nodeStats.m_min_ping_time));
     if (stats->nodeStats.nVersion) {
         ui->peerVersion->setText(QString::number(stats->nodeStats.nVersion));
@@ -1231,6 +1230,7 @@ void RPCConsole::updateDetailWidget()
     // This check fails for example if the lock was busy and
     // nodeStateStats couldn't be fetched.
     if (stats->fNodeStateStatsAvailable) {
+        ui->peerPingTime->setText(GUIUtil::formatPingTime(stats->nodeStateStats.m_last_ping_time));
         ui->timeoffset->setText(GUIUtil::formatTimeOffset(Ticks<std::chrono::seconds>(stats->nodeStateStats.time_offset)));
         ui->peerServices->setText(GUIUtil::formatServicesStr(stats->nodeStateStats.their_services));
         // Sync height is init to -1

@@ -204,7 +204,6 @@ public:
     uint64_t nRecvBytes;
     mapMsgTypeSize mapRecvBytesPerMsgType;
     NetPermissionFlags m_permission_flags;
-    std::chrono::microseconds m_last_ping_time;
     std::chrono::microseconds m_min_ping_time;
     // Address of this peer
     CAddress addr;
@@ -758,9 +757,6 @@ public:
     /** Whether this peer connected through a privacy network. */
     [[nodiscard]] bool IsConnectedThroughPrivacyNet() const;
 
-    /** Last measured round-trip time. Used only for RPC/GUI stats/debugging.*/
-    std::atomic<std::chrono::microseconds> m_last_ping_time{0us};
-
     CNode(NodeId id,
           std::shared_ptr<Sock> sock,
           const CAddress& addrIn,
@@ -813,11 +809,6 @@ public:
      * @return "disconnecting peer=..." and optionally "peeraddr=..."
      */
     std::string DisconnectMsg(bool log_ip) const;
-
-    /** A ping-pong round trip has completed successfully. Update latest ping time. */
-    void PongReceived(std::chrono::microseconds ping_time) {
-        m_last_ping_time = ping_time;
-    }
 
     std::list<CNetMessage> GetCompleteMessages();
 private:

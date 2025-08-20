@@ -246,8 +246,8 @@ static RPCHelpMan getpeerinfo()
         obj.pushKV("bytesrecv", stats.nRecvBytes);
         obj.pushKV("conntime", count_seconds(stats.m_connected));
         obj.pushKV("timeoffset", Ticks<std::chrono::seconds>(statestats.time_offset));
-        if (stats.m_last_ping_time > 0us) {
-            obj.pushKV("pingtime", Ticks<SecondsDouble>(stats.m_last_ping_time));
+        if (statestats.m_last_ping_time > 0us) {
+            obj.pushKV("pingtime", Ticks<SecondsDouble>(statestats.m_last_ping_time));
         }
         if (stats.m_min_ping_time < std::chrono::microseconds::max()) {
             obj.pushKV("minping", Ticks<SecondsDouble>(stats.m_min_ping_time));

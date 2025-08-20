@@ -607,8 +607,6 @@ void CNode::CopyStats(CNodeStats& stats)
     }
     X(m_permission_flags);
 
-    X(m_last_ping_time);
-
     X(m_conn_type);
 }
 #undef X

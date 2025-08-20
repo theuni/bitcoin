@@ -278,6 +278,8 @@ struct Peer {
     std::atomic<std::chrono::microseconds> m_ping_start{0us};
     /** Whether a ping has been requested by the user */
     std::atomic<bool> m_ping_queued{false};
+    /** Last measured round-trip time.*/
+    std::atomic<std::chrono::microseconds> m_last_ping_time{0us};
 
     /** Whether this peer relays txs via wtxid */
     std::atomic<bool> m_wtxid_relay{false};
@@ -1962,7 +1964,7 @@ bool PeerManagerImpl::GetNodeStateStats(NodeId nodeid, CNodeStateStats& stats) c
         addr_local.IsValid() ?
             addr_local.ToStringAddrPort() :
             "";
-
+    stats.m_last_ping_time = peer->m_last_ping_time;
     return true;
 }
 
@@ -5022,7 +5024,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
                     const auto ping_time = ping_end - peer->m_ping_start.load();
                     if (ping_time.count() >= 0) {
                         // Let connman know about this successful ping-pong
-                        pfrom.PongReceived(ping_time);
+                        peer->m_last_ping_time = ping_time;
                         m_evictionman.UpdateMinPingTime(node_id, ping_time);
                     } else {
                         // This should never happen
