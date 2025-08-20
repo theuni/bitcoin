@@ -853,6 +853,9 @@ public:
     /** Handle removal of a peer (clear state) */
     virtual void MarkNodeDisconnected(NodeId) = 0;
 
+    virtual void MarkRecvBufferFull(NodeId, bool) = 0;
+    virtual void MarkSendBufferFull(NodeId, bool) = 0;
+
     /**
      * Callback to determine whether the given set of service flags are sufficient
      * for a peer to be "relevant".
@@ -986,6 +989,9 @@ public:
     void OpenNetworkConnection(const CAddress& addrConnect, bool fCountFailure, CountingSemaphoreGrant<>&& grant_outbound, const char* strDest, ConnectionType conn_type, bool use_v2transport) EXCLUSIVE_LOCKS_REQUIRED(!m_unused_i2p_sessions_mutex);
     void ASMapHealthCheck();
 
+    void MarkRecvBufferFull(CNode&, bool) const;
+    void MarkSendBufferFull(CNode&, bool) const;
+
     // alias for thread safety annotations only, not defined
     RecursiveMutex& GetNodesMutex() const LOCK_RETURNED(m_nodes_mutex);
 
@@ -1087,8 +1093,6 @@ public:
     bool MultipleManualOrFullOutboundConns(Network net) const EXCLUSIVE_LOCKS_REQUIRED(m_nodes_mutex);
 
     void SetBootstrapComplete();
-
-    bool IsSendBufferFull(NodeId id) const EXCLUSIVE_LOCKS_REQUIRED(!m_nodes_mutex);
 
 private:
     struct ListenSocket {

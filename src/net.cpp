@@ -1553,6 +1553,8 @@ std::pair<size_t, bool> CConnman::SocketSendData(CNode& node) const
     bool data_left{false}; //!< second return value (whether unsent data remains)
     std::optional<bool> expected_more;
 
+    bool send_buffer_was_full = node.m_send_memusage + node.m_transport->GetSendMemoryUsage() > nSendBufferMaxSize;
+
     while (true) {
         if (it != node.vSendMsg.end()) {
             // If possible, move one message from the send queue to the transport. This fails when
@@ -1616,7 +1618,9 @@ std::pair<size_t, bool> CConnman::SocketSendData(CNode& node) const
         }
     }
 
-    node.fPauseSend = node.m_send_memusage + node.m_transport->GetSendMemoryUsage() > nSendBufferMaxSize;
+    if (send_buffer_was_full) {
+        if(node.m_send_memusage + node.m_transport->GetSendMemoryUsage() <= nSendBufferMaxSize) MarkSendBufferFull(node, false);
+    }
 
     if (it == node.vSendMsg.end()) {
         assert(node.m_send_memusage == 0);
@@ -2104,8 +2108,8 @@ void CConnman::SocketHandlerConnected(const std::vector<std::shared_ptr<CNode>>&
                 RecordBytesRecv(nBytes);
                 if (notify) {
                     std::list<CNetMessage> complete_messages = pnode->GetCompleteMessages();
-                    if (!pnode->MarkReceivedMsgsForProcessing(std::move(complete_messages))) {
-                        pnode->fPauseRecv = true;
+                    if(!pnode->MarkReceivedMsgsForProcessing(std::move(complete_messages))) {
+                        MarkRecvBufferFull(*pnode, true);
                     }
                     WakeMessageHandler();
                 }
@@ -3741,9 +3745,22 @@ bool CNode::MarkReceivedMsgsForProcessing(std::list<CNetMessage> messages)
     }
 
     LOCK(m_msg_process_queue_mutex);
+    bool recv_buffer_was_full = m_msg_process_queue_size > m_recv_flood_size;
     m_msg_process_queue.splice(m_msg_process_queue.end(), messages);
     m_msg_process_queue_size += nSizeAdded;
-    return m_msg_process_queue_size <= m_recv_flood_size;
+    return !(recv_buffer_was_full && m_msg_process_queue_size <= m_recv_flood_size);
+}
+
+void CConnman::MarkRecvBufferFull(CNode& node, bool full) const
+{
+    m_msgproc->MarkRecvBufferFull(node.GetId(), full);
+    node.fPauseRecv = full;
+}
+
+void CConnman::MarkSendBufferFull(CNode& node, bool full) const
+{
+    m_msgproc->MarkSendBufferFull(node.GetId(), full);
+    node.fPauseSend = full;
 }
 
 std::optional<std::pair<CNetMessage, bool>> CNode::PollMessage()
@@ -3753,9 +3770,14 @@ std::optional<std::pair<CNetMessage, bool>> CNode::PollMessage()
 
     std::list<CNetMessage> msgs;
     // Just take one message
+    bool recv_buffer_was_full = m_msg_process_queue_size > m_recv_flood_size;
+
     msgs.splice(msgs.begin(), m_msg_process_queue, m_msg_process_queue.begin());
     m_msg_process_queue_size -= msgs.front().GetMemoryUsage();
-    fPauseRecv = m_msg_process_queue_size > m_recv_flood_size;
+
+    if (recv_buffer_was_full && m_msg_process_queue_size <= m_recv_flood_size) {
+        fPauseRecv = false;
+    }
 
     return std::make_pair(std::move(msgs.front()), !m_msg_process_queue.empty());
 }
@@ -3808,8 +3830,11 @@ bool CConnman::PushMessage(CNode* pnode, CSerializedNetMsg&& msg)
         const bool queue_was_empty{to_send.empty() && pnode->vSendMsg.empty()};
 
         // Update memory usage of send buffer.
+        bool send_buffer_was_full = pnode->m_send_memusage + pnode->m_transport->GetSendMemoryUsage() > nSendBufferMaxSize;
         pnode->m_send_memusage += msg.GetMemoryUsage();
-        if (pnode->m_send_memusage + pnode->m_transport->GetSendMemoryUsage() > nSendBufferMaxSize) pnode->fPauseSend = true;
+        if (!send_buffer_was_full) {
+            if (pnode->m_send_memusage + pnode->m_transport->GetSendMemoryUsage() > nSendBufferMaxSize) MarkSendBufferFull(*pnode, true);
+        }
         // Move message to vSendMsg queue.
         pnode->vSendMsg.push_back(std::move(msg));
 
@@ -3883,14 +3908,6 @@ void CConnman::ASMapHealthCheck()
 void CConnman::SetBootstrapComplete()
 {
     m_bootstrapped = true;
-}
-
-bool CConnman::IsSendBufferFull(NodeId id) const
-{
-    LOCK(m_nodes_mutex);
-    auto it = std::find_if(m_nodes.begin(), m_nodes.end(), [&id](const auto& node) { return node->GetId() == id; });
-    if(it == m_nodes.end()) return false;
-    return (*it)->fPauseSend;
 }
 
 // Dump binary message to file, with timestamp.

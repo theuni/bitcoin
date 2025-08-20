@@ -281,6 +281,9 @@ struct Peer {
     /** Last measured round-trip time.*/
     std::atomic<std::chrono::microseconds> m_last_ping_time{0us};
 
+    std::atomic_bool m_send_buffer_full{false};
+    std::atomic_bool m_recv_buffer_full{false};
+
     /** Whether this peer relays txs via wtxid */
     std::atomic<bool> m_wtxid_relay{false};
     /** The feerate in the most recent BIP133 `feefilter` message sent to the peer.
@@ -659,6 +662,8 @@ public:
     void UpdateLastBlockAnnounceTime(NodeId node, int64_t time_in_seconds) override;
     ServiceFlags GetDesirableServiceFlags(ServiceFlags services) const override;
     bool HandshakeComplete(NodeId) const override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex);
+    void MarkSendBufferFull(NodeId, bool) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex);
+    void MarkRecvBufferFull(NodeId, bool) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex);
 private:
     void FinalizeNode(NodeId nodeid) EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_headers_presync_mutex, !m_tx_download_mutex);
     /** Consider evicting an outbound peer based on the amount of time they've been behind our tip */
@@ -1243,6 +1248,28 @@ int PeerManagerImpl::GetExtraBlockRelayCount() const
         }
     }
     return std::max(block_relay_peers - m_connman.GetMaxOutboundBlockRelay(), 0);
+}
+
+void PeerManagerImpl::MarkSendBufferFull(NodeId id, bool full)
+{
+        LOCK(m_peer_mutex);
+        for(const auto&[peer_id, peer] : m_peer_map) {
+            if (id == peer_id) {
+                peer->m_send_buffer_full = full;
+                break;
+            }
+        }
+}
+
+void PeerManagerImpl::MarkRecvBufferFull(NodeId id, bool full)
+{
+        LOCK(m_peer_mutex);
+        for(const auto&[peer_id, peer] : m_peer_map) {
+            if (id == peer_id) {
+                peer->m_recv_buffer_full = full;
+                break;
+            }
+        }
 }
 
 bool PeerManagerImpl::CheckIncomingNonce(uint64_t nonce) const
@@ -2645,7 +2672,7 @@ void PeerManagerImpl::ProcessGetData(CNode& pfrom, Peer& peer, const std::atomic
         if (interruptMsgProc) return;
         // The send buffer provides backpressure. If there's no space in
         // the buffer, pause processing until the next call.
-        if (m_connman.IsSendBufferFull(peer.m_id)) break;
+        if (peer.m_send_buffer_full) break;
 
         const CInv &inv = *it++;
 
@@ -2668,7 +2695,7 @@ void PeerManagerImpl::ProcessGetData(CNode& pfrom, Peer& peer, const std::atomic
 
     // Only process one BLOCK item per call, since they're uncommon and can be
     // expensive to process.
-    if (it != peer.m_getdata_requests.end() && !m_connman.IsSendBufferFull(peer.m_id)) {
+    if (it != peer.m_getdata_requests.end() && !peer.m_send_buffer_full) {
         const CInv &inv = *it++;
         if (inv.IsGenBlkMsg()) {
             ProcessGetBlockData(pfrom, peer, inv);
@@ -5256,7 +5283,7 @@ bool PeerManagerImpl::ProcessMessages(CNode* pfrom, std::atomic<bool>& interrupt
     }
 
     // Don't bother if send buffer is too full to respond anyway
-    if (pfrom->fPauseSend) return false;
+    if (peer->m_send_buffer_full) return false;
 
     auto poll_result{pfrom->PollMessage()};
     if (!poll_result) {
