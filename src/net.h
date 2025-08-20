@@ -1016,6 +1016,7 @@ public:
      */
     std::vector<CAddress> GetAddresses(CNode& requestor, size_t max_addresses, size_t max_pct);
 
+    std::vector<CAddress> GetAddresses(NodeId id, size_t max_addresses, size_t max_pct);
     // This allows temporarily exceeding m_max_outbound_full_relay, with the goal of finding
     // a peer that is better than all our current peers.
     void SetTryNewOutboundPeer(bool flag);

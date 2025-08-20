@@ -3403,6 +3403,17 @@ std::vector<CAddress> CConnman::GetAddresses(size_t max_addresses, size_t max_pc
     return addresses;
 }
 
+std::vector<CAddress> CConnman::GetAddresses(NodeId id, size_t max_addresses, size_t max_pct)
+{
+    std::shared_ptr<CNode> requestor;
+    {
+    LOCK(m_nodes_mutex);
+        auto it = std::find_if(m_nodes.begin(), m_nodes.end(), [&id](const auto& node) { return node->GetId() == id; });
+        requestor = *it;
+    }
+    return GetAddresses(*requestor, max_addresses, max_pct);
+}
+
 std::vector<CAddress> CConnman::GetAddresses(CNode& requestor, size_t max_addresses, size_t max_pct)
 {
     auto local_socket_bytes = requestor.addrBind.GetAddrBytes();
