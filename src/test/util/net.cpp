@@ -32,7 +32,20 @@ void ConnmanTestMsg::Handshake(CNode& node,
     auto& peerman{static_cast<PeerManager&>(*m_msgproc)};
     auto& connman{*this};
 
-    peerman.InitializeNode(node, local_services);
+    PeerOptions options{
+        .id = node.GetId(),
+        .our_services = local_services,
+        .conn_type =node.m_conn_type,
+        .addr=node.addr,
+        .addr_name=node.m_addr_name,
+        .permission_flags=node.m_permission_flags,
+        .local_nonce=node.GetLocalNonce(),
+        .connected=node.m_connected,
+        .transport=node.m_transport->GetInfo().transport_type,
+        .inbound_onion=node.m_inbound_onion,
+    };
+    peerman.InitializeNode(std::move(options));
+
     peerman.SendMessages(&node);
     FlushSendBuffer(node); // Drop the version message added by SendMessages.
 

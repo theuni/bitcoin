@@ -838,6 +838,20 @@ private:
     std::unique_ptr<i2p::sam::Session> m_i2p_sam_session GUARDED_BY(m_sock_mutex);
 };
 
+struct PeerOptions
+{
+    NodeId id;
+    ServiceFlags our_services;
+    ConnectionType conn_type;
+    CAddress addr;
+    std::string addr_name;
+    NetPermissionFlags permission_flags;
+    uint64_t local_nonce;
+    std::chrono::seconds connected;
+    TransportProtocolType transport;
+    bool inbound_onion;
+};
+
 /**
  * Interface for message handling
  */
@@ -848,7 +862,7 @@ public:
     static Mutex g_msgproc_mutex;
 
     /** Initialize a peer (setup state) */
-    virtual void InitializeNode(const CNode& node, ServiceFlags our_services) = 0;
+    virtual void InitializeNode(PeerOptions options) = 0;
 
     /** Handle removal of a peer (clear state) */
     virtual void MarkNodeDisconnected(NodeId) = 0;

@@ -804,7 +804,10 @@ BOOST_AUTO_TEST_CASE(initial_advertise_from_version_message)
     // Create a peer with a routable IPv4 address.
     in_addr peer_in_addr;
     peer_in_addr.s_addr = htonl(0x01020304);
-    CNode peer{/*id=*/0,
+
+    NodeId node_id = 0;
+
+    CNode peer{/*id=*/node_id,
                /*sock=*/nullptr,
                /*addrIn=*/CAddress{CService{peer_in_addr, 8333}, NODE_NETWORK},
                /*nLocalHostNonceIn=*/0,
@@ -813,6 +816,19 @@ BOOST_AUTO_TEST_CASE(initial_advertise_from_version_message)
                /*conn_type_in=*/ConnectionType::OUTBOUND_FULL_RELAY,
                /*inbound_onion=*/false};
 
+    PeerOptions options{
+        .id = node_id,
+        .our_services = ServiceFlags{NODE_NETWORK | NODE_WITNESS},
+        .conn_type =ConnectionType::OUTBOUND_FULL_RELAY,
+        .addr=CAddress{CService{peer_in_addr, 8333}, NODE_NETWORK},
+        .addr_name={},
+        .permission_flags=NetPermissionFlags::None,
+        .local_nonce=0,
+        .connected=GetTime<std::chrono::seconds>(),
+        .transport=TransportProtocolType::V1,
+        .inbound_onion=false,
+    };
+
     const uint64_t services{NODE_NETWORK | NODE_WITNESS};
     const int64_t time{0};
 
@@ -820,8 +836,7 @@ BOOST_AUTO_TEST_CASE(initial_advertise_from_version_message)
     // Otherwise PushAddress() isn't called by PeerManager::ProcessMessage().
     auto& chainman = static_cast<TestChainstateManager&>(*m_node.chainman);
     chainman.JumpOutOfIbd();
-
-    m_node.peerman->InitializeNode(peer, NODE_NETWORK);
+    m_node.peerman->InitializeNode(std::move(options));
 
     std::atomic<bool> interrupt_dummy{false};
     std::chrono::microseconds time_received_dummy{0};
@@ -831,14 +846,14 @@ BOOST_AUTO_TEST_CASE(initial_advertise_from_version_message)
     DataStream msg_version_stream{msg_version.data};
 
     m_node.peerman->ProcessMessage(
-        peer.GetId(), NetMsgType::VERSION, msg_version_stream, time_received_dummy, interrupt_dummy);
+        node_id, NetMsgType::VERSION, msg_version_stream, time_received_dummy, interrupt_dummy);
 
     const auto msg_verack = NetMsg::Make(NetMsgType::VERACK);
     DataStream msg_verack_stream{msg_verack.data};
 
     // Will set peer.m_handshake_complete to true (necessary in SendMessages()).
     m_node.peerman->ProcessMessage(
-        peer.GetId(), NetMsgType::VERACK, msg_verack_stream, time_received_dummy, interrupt_dummy);
+        node_id, NetMsgType::VERACK, msg_verack_stream, time_received_dummy, interrupt_dummy);
 
     // Ensure that peer_us_addr:bind_port is sent to the peer.
     const CService expected{peer_us_addr, bind_port};

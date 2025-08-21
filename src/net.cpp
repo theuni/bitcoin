@@ -1784,7 +1784,20 @@ void CConnman::CreateNodeFromAcceptedSocket(std::unique_ptr<Sock>&& sock,
                                  .recv_flood_size = nReceiveFloodSize,
                                  .use_v2transport = use_v2transport,
                              });
-    m_msgproc->InitializeNode(*pnode, local_services);
+    PeerOptions options{
+        .id = pnode->GetId(),
+        .our_services = m_local_services,
+        .conn_type =pnode->m_conn_type,
+        .addr=pnode->addr,
+        .addr_name=pnode->m_addr_name,
+        .permission_flags=pnode->m_permission_flags,
+        .local_nonce=pnode->GetLocalNonce(),
+        .connected=pnode->m_connected,
+        .transport=pnode->m_transport->GetInfo().transport_type,
+        .inbound_onion=pnode->m_inbound_onion,
+    };
+    m_msgproc->InitializeNode(std::move(options));
+
     {
         LOCK(m_nodes_mutex);
         m_nodes.push_back(pnode);
@@ -2906,7 +2919,20 @@ void CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFai
         return;
     pnode->grantOutbound = std::move(grant_outbound);
 
-    m_msgproc->InitializeNode(*pnode, m_local_services);
+
+    PeerOptions options{
+        .id = pnode->GetId(),
+        .our_services = m_local_services,
+        .conn_type =pnode->m_conn_type,
+        .addr=pnode->addr,
+        .addr_name=pnode->m_addr_name,
+        .permission_flags=pnode->m_permission_flags,
+        .local_nonce=pnode->GetLocalNonce(),
+        .connected=pnode->m_connected,
+        .transport=pnode->m_transport->GetInfo().transport_type,
+        .inbound_onion=pnode->m_inbound_onion,
+    };
+    m_msgproc->InitializeNode(std::move(options));
     {
         LOCK(m_nodes_mutex);
         m_nodes.push_back(pnode);

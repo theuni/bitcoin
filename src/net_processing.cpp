@@ -496,17 +496,17 @@ struct Peer {
 
     bool m_inbound_onion{false};
 
-    explicit Peer(NodeId id, ServiceFlags our_services, ConnectionType conn_type, CAddress addr, std::string addr_name, NetPermissionFlags permission_flags, uint64_t local_nonce, std::chrono::seconds connected, TransportProtocolType transport, bool inbound_onion)
-        : m_id{id}
-        , m_our_services{our_services}
-        , m_conn_type{conn_type}
-        , m_addr(std::move(addr))
-        , m_addr_name(std::move(addr_name))
-        , m_connected(connected)
-        , m_transport(std::move(transport))
-        , m_inbound_onion(inbound_onion)
-        , m_permission_flags(permission_flags)
-        , m_local_nonce(local_nonce)
+    explicit Peer(PeerOptions options)
+        : m_id{options.id}
+        , m_our_services{options.our_services}
+        , m_conn_type{options.conn_type}
+        , m_addr(std::move(options.addr))
+        , m_addr_name(std::move(options.addr_name))
+        , m_connected(options.connected)
+        , m_transport(std::move(options.transport))
+        , m_inbound_onion(options.inbound_onion)
+        , m_permission_flags(options.permission_flags)
+        , m_local_nonce(options.local_nonce)
     {}
 
     CService GetAddrLocal() const
@@ -635,7 +635,7 @@ public:
         EXCLUSIVE_LOCKS_REQUIRED(!m_most_recent_block_mutex, !m_peer_mutex);
 
     /** Implement NetEventsInterface */
-    void InitializeNode(const CNode& node, ServiceFlags our_services) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_tx_download_mutex);
+    void InitializeNode(PeerOptions options) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_tx_download_mutex);
     void MarkNodeDisconnected(NodeId nodeid) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_nodes_to_finalize_mutex);
     bool HasAllDesirableServiceFlags(ServiceFlags services) const override;
     bool ProcessMessages(CNode* pfrom, std::atomic<bool>& interrupt) override
@@ -1772,20 +1772,20 @@ void PeerManagerImpl::UpdateLastBlockAnnounceTime(NodeId node, int64_t time_in_s
     m_evictionman.UpdateLastBlockAnnounceTime(node, std::chrono::seconds{time_in_seconds});
 }
 
-void PeerManagerImpl::InitializeNode(const CNode& node, ServiceFlags our_services)
+void PeerManagerImpl::InitializeNode(PeerOptions options)
 {
-    NodeId nodeid = node.GetId();
+    NodeId nodeid = options.id;
     {
         LOCK(cs_main); // For m_node_states
         m_node_states.try_emplace(m_node_states.end(), nodeid);
     }
     WITH_LOCK(m_tx_download_mutex, m_txdownloadman.CheckIsEmpty(nodeid));
 
-    if (NetPermissions::HasFlag(node.m_permission_flags, NetPermissionFlags::BloomFilter)) {
-        our_services = static_cast<ServiceFlags>(our_services | NODE_BLOOM);
+    if (NetPermissions::HasFlag(options.permission_flags, NetPermissionFlags::BloomFilter)) {
+        options.our_services = static_cast<ServiceFlags>(options.our_services | NODE_BLOOM);
     }
 
-    PeerRef peer = std::make_shared<Peer>(nodeid, our_services, node.m_conn_type, node.addr, node.m_addr_name, node.m_permission_flags, node.GetLocalNonce(), node.m_connected, node.m_transport->GetInfo().transport_type, node.m_inbound_onion);
+    PeerRef peer = std::make_shared<Peer>(std::move(options));
     {
         LOCK(m_peer_mutex);
         m_peer_map.emplace_hint(m_peer_map.end(), nodeid, peer);
