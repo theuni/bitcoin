@@ -494,7 +494,9 @@ struct Peer {
 
     std::atomic_int nVersion{0};
 
-    explicit Peer(NodeId id, ServiceFlags our_services, ConnectionType conn_type, CAddress addr, std::string addr_name, NetPermissionFlags permission_flags, uint64_t local_nonce, std::chrono::seconds connected, TransportProtocolType transport)
+    bool m_inbound_onion{false};
+
+    explicit Peer(NodeId id, ServiceFlags our_services, ConnectionType conn_type, CAddress addr, std::string addr_name, NetPermissionFlags permission_flags, uint64_t local_nonce, std::chrono::seconds connected, TransportProtocolType transport, bool inbound_onion)
         : m_id{id}
         , m_our_services{our_services}
         , m_conn_type{conn_type}
@@ -502,6 +504,7 @@ struct Peer {
         , m_addr_name(std::move(addr_name))
         , m_connected(connected)
         , m_transport(std::move(transport))
+        , m_inbound_onion(inbound_onion)
         , m_permission_flags(permission_flags)
         , m_local_nonce(local_nonce)
     {}
@@ -1788,7 +1791,7 @@ void PeerManagerImpl::InitializeNode(const CNode& node, ServiceFlags our_service
         our_services = static_cast<ServiceFlags>(our_services | NODE_BLOOM);
     }
 
-    PeerRef peer = std::make_shared<Peer>(nodeid, our_services, node.m_conn_type, node.addr, node.m_addr_name, node.m_permission_flags, node.GetLocalNonce(), node.m_connected, node.m_transport->GetInfo().transport_type);
+    PeerRef peer = std::make_shared<Peer>(nodeid, our_services, node.m_conn_type, node.addr, node.m_addr_name, node.m_permission_flags, node.GetLocalNonce(), node.m_connected, node.m_transport->GetInfo().transport_type, node.m_inbound_onion);
     {
         LOCK(m_peer_mutex);
         m_peer_map.emplace_hint(m_peer_map.end(), nodeid, peer);
@@ -5237,7 +5240,7 @@ bool PeerManagerImpl::MaybeDiscourageAndDisconnect(CNode& pnode, Peer& peer)
         // We disconnect local peers for bad behavior but don't discourage (since that would discourage
         // all peers on the same local address)
         LogDebug(BCLog::NET, "Warning: disconnecting but not discouraging %s peer %d!\n",
-                 pnode.m_inbound_onion ? "inbound onion" : "local", peer.m_id);
+                 peer.m_inbound_onion ? "inbound onion" : "local", peer.m_id);
         RequestDisconnect(peer);
         return true;
     }
