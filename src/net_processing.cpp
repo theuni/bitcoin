@@ -5534,7 +5534,7 @@ void PeerManagerImpl::MaybeSendAddr(CNode& node, Peer& peer, std::chrono::micros
         if (peer.m_next_local_addr_send != 0us) {
             peer.m_addr_known->reset();
         }
-        if (std::optional<CService> local_service = GetLocalAddrForPeer(node, peer.GetAddrLocal())) {
+        if (std::optional<CService> local_service = m_connman.GetLocalAddrForPeer(peer.m_id, peer.GetAddrLocal())) {
             CAddress local_addr{*local_service, peer.m_our_services, Now<NodeSeconds>()};
             PushAddress(peer, local_addr);
         }

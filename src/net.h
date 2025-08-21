@@ -1095,6 +1095,9 @@ public:
 
     void SetBootstrapComplete();
 
+    /** Returns a local address that we should advertise to this peer. */
+    std::optional<CService> GetLocalAddrForPeer(NodeId id, const CService& addr_local);
+
 private:
     struct ListenSocket {
     public:

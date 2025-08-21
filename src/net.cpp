@@ -235,6 +235,7 @@ static int GetnScore(const CService& addr)
            g_reachable_nets.Contains(addr_local);
 }
 
+
 std::optional<CService> GetLocalAddrForPeer(CNode& node, const CService& addr_local)
 {
     CService addrLocal{GetLocalAddress(node)};
@@ -264,6 +265,19 @@ std::optional<CService> GetLocalAddrForPeer(CNode& node, const CService& addr_lo
     // Address is unroutable. Don't advertise.
     return std::nullopt;
 }
+
+std::optional<CService> CConnman::GetLocalAddrForPeer(NodeId id, const CService& addr_local)
+{
+    std::shared_ptr<CNode> node;
+    {
+        LOCK(m_nodes_mutex);
+        auto it = std::find_if(m_nodes.begin(), m_nodes.end(), [&id](const auto& node) { return node->GetId() == id; });
+        if (it == m_nodes.end()) return std::nullopt;
+        node = *it;
+    }
+    return ::GetLocalAddrForPeer(*node, addr_local);
+}
+
 
 // learn a new local address
 bool AddLocal(const CService& addr_, int nScore)
