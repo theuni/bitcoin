@@ -3348,17 +3348,9 @@ void CConnman::StopNodes()
     for (const auto& pnode : nodes) {
         LogDebug(BCLog::NET, "Stopping node, %s", pnode->DisconnectMsg(fLogIPs));
         pnode->CloseSocketDisconnect();
-        m_msgproc->MarkNodeDisconnected(pnode->GetId());
-        m_msgproc->FinalizeNodes();
     }
     nodes.clear();
-    std::list<std::shared_ptr<CNode>> nodes_disconnected;
-    WITH_LOCK(m_nodes_disconnected_mutex, nodes_disconnected.swap(m_nodes_disconnected));
-    for (const auto& pnode : nodes_disconnected) {
-        m_msgproc->MarkNodeDisconnected(pnode->GetId());
-        m_msgproc->FinalizeNodes();
-    }
-    nodes_disconnected.clear();
+    WITH_LOCK(m_nodes_disconnected_mutex, m_nodes_disconnected.clear());
 
     vhListenSocket.clear();
     semOutbound.reset();

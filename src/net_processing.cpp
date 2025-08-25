@@ -621,6 +621,8 @@ public:
                     BanMan* banman, ChainstateManager& chainman,
                     CTxMemPool& pool, node::Warnings& warnings, Options opts);
 
+    ~PeerManagerImpl();
+
     /** Overridden from CValidationInterface. */
     void ActiveTipChange(const CBlockIndex& new_tip, bool) override
         EXCLUSIVE_LOCKS_REQUIRED(!m_tx_download_mutex);
@@ -674,7 +676,7 @@ public:
     void Interrupt() override;
     bool Interrupted() const override;
     void Start() override;
-    void Stop() override;
+    void Stop() override EXCLUSIVE_LOCKS_REQUIRED(!m_nodes_to_finalize_mutex, !m_peer_mutex, !m_headers_presync_mutex, !m_tx_download_mutex);
     void WakeMessageHandler() override EXCLUSIVE_LOCKS_REQUIRED(!mutexMsgProc);
     void ThreadMessageHandler() EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_tx_download_mutex, !m_headers_presync_mutex, !m_most_recent_block_mutex, !m_nodes_to_finalize_mutex, !mutexMsgProc);
 private:
@@ -1245,6 +1247,12 @@ private:
     };
 };
 
+PeerManagerImpl::~PeerManagerImpl()
+{
+    Interrupt();
+    Stop();
+}
+
 int PeerManagerImpl::GetExtraFullOutboundCount() const
 {
     return std::max(GetFullOutboundConnCount() - m_connman.GetMaxOutboundFullRelay(), 0);
@@ -1296,6 +1304,19 @@ void PeerManagerImpl::Stop()
 {
     if (threadMessageHandler.joinable())
         threadMessageHandler.join();
+
+    WITH_LOCK(m_nodes_to_finalize_mutex, m_nodes_to_finalize.clear());
+    std::vector<NodeId> ids_to_finalize;
+    {
+        LOCK(m_peer_mutex);
+        ids_to_finalize.reserve(m_peer_map.size());
+        for(const auto&[node_id, _] : m_peer_map) {
+            ids_to_finalize.push_back(node_id);
+        }
+    }
+    for(const auto& node_id : ids_to_finalize) {
+       FinalizeNode(node_id);
+    }
 }
 
 void PeerManagerImpl::ThreadMessageHandler()
