@@ -880,10 +880,9 @@ public:
     * Process protocol messages received from a given node
     *
     * @param[in]   node_id         The id of the node which we have received messages from.
-    * @param[in]   interrupt       Interrupt condition for processing threads
     * @return                      True if there is more work to be done
     */
-    virtual bool ProcessMessages(NodeId node_id, std::atomic<bool>& interrupt) EXCLUSIVE_LOCKS_REQUIRED(g_msgproc_mutex) = 0;
+    virtual bool ProcessMessages(NodeId node_id) EXCLUSIVE_LOCKS_REQUIRED(g_msgproc_mutex) = 0;
 
     /**
     * Send queued protocol messages to a given node.
@@ -894,6 +893,7 @@ public:
     virtual bool SendMessages(NodeId node_id) EXCLUSIVE_LOCKS_REQUIRED(g_msgproc_mutex) = 0;
 
     virtual void FinalizeNodes() = 0;
+    virtual bool Interrupted() const = 0;
 protected:
     /**
      * Protected destructor so that instances can only be deleted by derived classes.
@@ -1377,7 +1377,6 @@ private:
 
     std::condition_variable condMsgProc;
     Mutex mutexMsgProc;
-    std::atomic<bool> flagInterruptMsgProc{false};
 
     /**
      * This is signaled when network activity should cease.

@@ -271,6 +271,8 @@ void Interrupt(NodeContext& node)
     InterruptREST();
     InterruptTorControl();
     InterruptMapPort();
+    if (node.peerman)
+        node.peerman->Interrupt();
     if (node.connman)
         node.connman->Interrupt();
     for (auto* index : node.indexes) {

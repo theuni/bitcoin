@@ -838,7 +838,6 @@ BOOST_AUTO_TEST_CASE(initial_advertise_from_version_message)
     chainman.JumpOutOfIbd();
     m_node.peerman->InitializeNode(std::move(options));
 
-    std::atomic<bool> interrupt_dummy{false};
     std::chrono::microseconds time_received_dummy{0};
 
     const auto msg_version =
@@ -846,14 +845,14 @@ BOOST_AUTO_TEST_CASE(initial_advertise_from_version_message)
     DataStream msg_version_stream{msg_version.data};
 
     m_node.peerman->ProcessMessage(
-        node_id, NetMsgType::VERSION, msg_version_stream, time_received_dummy, interrupt_dummy);
+        node_id, NetMsgType::VERSION, msg_version_stream, time_received_dummy);
 
     const auto msg_verack = NetMsg::Make(NetMsgType::VERACK);
     DataStream msg_verack_stream{msg_verack.data};
 
     // Will set peer.m_handshake_complete to true (necessary in SendMessages()).
     m_node.peerman->ProcessMessage(
-        node_id, NetMsgType::VERACK, msg_verack_stream, time_received_dummy, interrupt_dummy);
+        node_id, NetMsgType::VERACK, msg_verack_stream, time_received_dummy);
 
     // Ensure that peer_us_addr:bind_port is sent to the peer.
     const CService expected{peer_us_addr, bind_port};

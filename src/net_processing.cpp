@@ -638,7 +638,7 @@ public:
     void InitializeNode(PeerOptions options) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_tx_download_mutex);
     void MarkNodeDisconnected(NodeId nodeid) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_nodes_to_finalize_mutex);
     bool HasAllDesirableServiceFlags(ServiceFlags services) const override;
-    bool ProcessMessages(NodeId node_id, std::atomic<bool>& interrupt) override
+    bool ProcessMessages(NodeId node_id) override
         EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_most_recent_block_mutex, !m_headers_presync_mutex, g_msgproc_mutex, !m_tx_download_mutex);
     bool SendMessages(NodeId node_id) override
         EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_most_recent_block_mutex, g_msgproc_mutex, !m_tx_download_mutex);
@@ -660,16 +660,18 @@ public:
     };
     void UnitTestMisbehaving(NodeId peer_id) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex) { Misbehaving(*Assert(GetPeerRef(peer_id)), ""); };
     void ProcessMessage(Peer& peer, const std::string& msg_type, DataStream& vRecv,
-                        const std::chrono::microseconds time_received, const std::atomic<bool>& interruptMsgProc)
+                        const std::chrono::microseconds time_received)
           EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_most_recent_block_mutex, !m_headers_presync_mutex, g_msgproc_mutex, !m_tx_download_mutex);
     void ProcessMessage(NodeId id, const std::string& msg_type, DataStream& vRecv,
-                          const std::chrono::microseconds time_received, const std::atomic<bool>& interruptMsgProc)
+                          const std::chrono::microseconds time_received)
           EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_most_recent_block_mutex, !m_headers_presync_mutex, g_msgproc_mutex, !m_tx_download_mutex) override;
     void UpdateLastBlockAnnounceTime(NodeId node, int64_t time_in_seconds) override;
     ServiceFlags GetDesirableServiceFlags(ServiceFlags services) const override;
     bool HandshakeComplete(NodeId) const override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex);
     void MarkSendBufferFull(NodeId, bool) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex);
     void MarkRecvBufferFull(NodeId, bool) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex);
+    void Interrupt() override;
+    bool Interrupted() const override;
 private:
     void FinalizeNode(NodeId nodeid) EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_headers_presync_mutex, !m_tx_download_mutex);
     /** Consider evicting an outbound peer based on the amount of time they've been behind our tip */
@@ -1004,6 +1006,7 @@ private:
     /** Whether we have enough tood peers to stop/skip seeding **/
     bool m_peers_bootstrapped{false};
 
+    std::atomic_bool interruptMsgProc{false};
     /** Have we requested this block from a peer */
     bool IsBlockRequested(const uint256& hash) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
@@ -1075,7 +1078,7 @@ private:
     CTransactionRef FindTxForGetData(const Peer::TxRelay& tx_relay, const GenTxid& gtxid)
         EXCLUSIVE_LOCKS_REQUIRED(!m_most_recent_block_mutex, NetEventsInterface::g_msgproc_mutex);
 
-    void ProcessGetData(Peer& peer, const std::atomic<bool>& interruptMsgProc)
+    void ProcessGetData(Peer& peer)
         EXCLUSIVE_LOCKS_REQUIRED(!m_most_recent_block_mutex, peer.m_getdata_requests_mutex, NetEventsInterface::g_msgproc_mutex)
         LOCKS_EXCLUDED(::cs_main);
 
@@ -1267,6 +1270,16 @@ void PeerManagerImpl::MarkRecvBufferFull(NodeId id, bool full)
                 break;
             }
         }
+}
+
+void PeerManagerImpl::Interrupt()
+{
+    interruptMsgProc = true;
+}
+
+bool PeerManagerImpl::Interrupted() const
+{
+    return interruptMsgProc;
 }
 
 bool PeerManagerImpl::CheckIncomingNonce(uint64_t nonce) const
@@ -2653,7 +2666,7 @@ CTransactionRef PeerManagerImpl::FindTxForGetData(const Peer::TxRelay& tx_relay,
     return {};
 }
 
-void PeerManagerImpl::ProcessGetData(Peer& peer, const std::atomic<bool>& interruptMsgProc)
+void PeerManagerImpl::ProcessGetData(Peer& peer)
 {
     AssertLockNotHeld(cs_main);
 
@@ -3682,16 +3695,14 @@ void PeerManagerImpl::LogBlockHeader(const CBlockIndex& index, const Peer& peer,
 }
 
 void PeerManagerImpl::ProcessMessage(NodeId id, const std::string& msg_type, DataStream& vRecv,
-                                   const std::chrono::microseconds time_received,
-                                   const std::atomic<bool>& interruptMsgProc)
+                                   const std::chrono::microseconds time_received)
 {
     auto peer = GetPeerRef(id);
-    ProcessMessage(*peer, msg_type, vRecv, time_received, interruptMsgProc);
+    ProcessMessage(*peer, msg_type, vRecv, time_received);
 }
 
 void PeerManagerImpl::ProcessMessage(Peer& p, const std::string& msg_type, DataStream& vRecv,
-                                     const std::chrono::microseconds time_received,
-                                     const std::atomic<bool>& interruptMsgProc)
+                                     const std::chrono::microseconds time_received)
 {
     Peer* peer = &p;
     AssertLockHeld(g_msgproc_mutex);
@@ -4321,7 +4332,7 @@ void PeerManagerImpl::ProcessMessage(Peer& p, const std::string& msg_type, DataS
         {
             LOCK(peer->m_getdata_requests_mutex);
             peer->m_getdata_requests.insert(peer->m_getdata_requests.end(), vInv.begin(), vInv.end());
-            ProcessGetData(*peer, interruptMsgProc);
+            ProcessGetData(*peer);
         }
 
         return;
@@ -5253,7 +5264,7 @@ bool PeerManagerImpl::MaybeDiscourageAndDisconnect(Peer& peer)
     return true;
 }
 
-bool PeerManagerImpl::ProcessMessages(NodeId node_id, std::atomic<bool>& interruptMsgProc)
+bool PeerManagerImpl::ProcessMessages(NodeId node_id)
 {
     AssertLockNotHeld(m_tx_download_mutex);
     AssertLockHeld(g_msgproc_mutex);
@@ -5267,7 +5278,7 @@ bool PeerManagerImpl::ProcessMessages(NodeId node_id, std::atomic<bool>& interru
     {
         LOCK(peer->m_getdata_requests_mutex);
         if (!peer->m_getdata_requests.empty()) {
-            ProcessGetData(*peer, interruptMsgProc);
+            ProcessGetData(*peer);
         }
     }
 
@@ -5311,7 +5322,7 @@ bool PeerManagerImpl::ProcessMessages(NodeId node_id, std::atomic<bool>& interru
     }
 
     try {
-        ProcessMessage(*peer, msg.m_type, msg.m_recv, msg.m_time, interruptMsgProc);
+        ProcessMessage(*peer, msg.m_type, msg.m_recv, msg.m_time);
         if (interruptMsgProc) return false;
         {
             LOCK(peer->m_getdata_requests_mutex);

@@ -148,7 +148,7 @@ public:
 
     /** Process a single message from a peer. Public for fuzz testing */
     virtual void ProcessMessage(NodeId id, const std::string& msg_type, DataStream& vRecv,
-                                const std::chrono::microseconds time_received, const std::atomic<bool>& interruptMsgProc) EXCLUSIVE_LOCKS_REQUIRED(g_msgproc_mutex) = 0;
+                                const std::chrono::microseconds time_received) EXCLUSIVE_LOCKS_REQUIRED(g_msgproc_mutex) = 0;
 
     /** This function is used for testing the stale tip eviction logic, see denialofservice_tests.cpp */
     virtual void UpdateLastBlockAnnounceTime(NodeId node, int64_t time_in_seconds) = 0;
@@ -176,6 +176,7 @@ public:
     */
     virtual ServiceFlags GetDesirableServiceFlags(ServiceFlags services) const = 0;
     virtual bool HandshakeComplete(NodeId) const = 0;
+    virtual void Interrupt() = 0;
 };
 
 #endif // BITCOIN_NET_PROCESSING_H
