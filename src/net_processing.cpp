@@ -645,7 +645,6 @@ public:
         EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_most_recent_block_mutex, !m_headers_presync_mutex, g_msgproc_mutex, !m_tx_download_mutex);
     bool SendMessages(NodeId node_id) override
         EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_most_recent_block_mutex, g_msgproc_mutex, !m_tx_download_mutex);
-    void FinalizeNodes() override EXCLUSIVE_LOCKS_REQUIRED(!m_nodes_to_finalize_mutex, !m_peer_mutex, !m_headers_presync_mutex, !m_tx_download_mutex);
     /** Implement PeerManager */
     void StartScheduledTasks(CScheduler& scheduler) override;
     void CheckForStaleTipAndEvictPeers() EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex) override;
@@ -680,6 +679,7 @@ public:
     void WakeMessageHandler() override EXCLUSIVE_LOCKS_REQUIRED(!mutexMsgProc);
     void ThreadMessageHandler() EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_tx_download_mutex, !m_headers_presync_mutex, !m_most_recent_block_mutex, !m_nodes_to_finalize_mutex, !mutexMsgProc);
 private:
+    void FinalizeNodes() EXCLUSIVE_LOCKS_REQUIRED(!m_nodes_to_finalize_mutex, !m_peer_mutex, !m_headers_presync_mutex, !m_tx_download_mutex);
     void FinalizeNode(NodeId nodeid) EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_headers_presync_mutex, !m_tx_download_mutex);
     /** Consider evicting an outbound peer based on the amount of time they've been behind our tip */
     void ConsiderEviction(Peer& peer, std::chrono::seconds time_in_seconds) EXCLUSIVE_LOCKS_REQUIRED(cs_main, g_msgproc_mutex);

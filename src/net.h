@@ -892,7 +892,6 @@ public:
     */
     virtual bool SendMessages(NodeId node_id) EXCLUSIVE_LOCKS_REQUIRED(g_msgproc_mutex) = 0;
 
-    virtual void FinalizeNodes() = 0;
     virtual bool Interrupted() const = 0;
     virtual void WakeMessageHandler() = 0;
 protected:

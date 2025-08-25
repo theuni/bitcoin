@@ -113,7 +113,6 @@ BOOST_AUTO_TEST_CASE(outbound_slow_chain_eviction)
     BOOST_CHECK(dummyNode1.fDisconnect == true);
 
     peerman.MarkNodeDisconnected(dummyNode1.GetId());
-    peerman.FinalizeNodes();
 }
 
 struct OutboundTest : TestingSetup {
@@ -259,7 +258,6 @@ BOOST_FIXTURE_TEST_CASE(stale_tip_peer_management, OutboundTest)
     for (const auto& node : vNodes) {
         peerLogic->MarkNodeDisconnected(node->GetId());
     }
-    peerLogic->FinalizeNodes();
 
     connman->ClearTestNodes();
 }
@@ -322,7 +320,6 @@ BOOST_FIXTURE_TEST_CASE(block_relay_only_eviction, OutboundTest)
     for (const auto& node : vNodes) {
         peerLogic->MarkNodeDisconnected(node->GetId());
     }
-    peerLogic->FinalizeNodes();
     connman->ClearTestNodes();
 }
 
@@ -441,7 +438,6 @@ BOOST_AUTO_TEST_CASE(peer_discouragement)
     for (auto node : nodes) {
         peerLogic->MarkNodeDisconnected(node->GetId());
     }
-    peerLogic->FinalizeNodes();
 }
 
 BOOST_AUTO_TEST_CASE(DoS_bantime)
@@ -485,7 +481,6 @@ BOOST_AUTO_TEST_CASE(DoS_bantime)
     BOOST_CHECK(banman->IsDiscouraged(addr));
 
     peerLogic->MarkNodeDisconnected(dummyNode.GetId());
-    peerLogic->FinalizeNodes();
 }
 
 BOOST_AUTO_TEST_SUITE_END()

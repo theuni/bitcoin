@@ -175,7 +175,6 @@ BOOST_FIXTURE_TEST_CASE(test_addnode_getaddednodeinfo_and_connection_detection, 
     for (auto node : connman->TestNodes()) {
         peerman->MarkNodeDisconnected(node->GetId());
     }
-    peerman->FinalizeNodes();
     connman->ClearTestNodes();
 }
 
