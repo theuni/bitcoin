@@ -3904,6 +3904,18 @@ bool CConnman::PushMessage(CNode* pnode, CSerializedNetMsg&& msg)
     return true;
 }
 
+std::optional<std::pair<CNetMessage, bool>> CConnman::PollMessage(NodeId node_id)
+{
+      std::shared_ptr<CNode> node;
+      {
+          LOCK(m_nodes_mutex);
+          auto it = std::find_if(m_nodes.begin(), m_nodes.end(), [&node_id](const auto& node) { return node->GetId() == node_id; });
+          if (it == m_nodes.end()) return std::nullopt;
+          node = *it;
+      }
+      return node->PollMessage();
+}
+
 CSipHasher CConnman::GetDeterministicRandomizer(uint64_t id) const
 {
     return CSipHasher(nSeed0, nSeed1).Write(id);

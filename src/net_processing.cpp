@@ -5289,7 +5289,7 @@ bool PeerManagerImpl::ProcessMessages(CNode* pfrom, std::atomic<bool>& interrupt
     // Don't bother if send buffer is too full to respond anyway
     if (peer->m_send_buffer_full) return false;
 
-    auto poll_result{pfrom->PollMessage()};
+    auto poll_result{m_connman.PollMessage(node_id)};
     if (!poll_result) {
         // No message to process
         return false;

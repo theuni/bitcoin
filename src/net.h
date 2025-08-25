@@ -1012,6 +1012,8 @@ public:
     bool PushMessage(CNode* pnode, CSerializedNetMsg&& msg) EXCLUSIVE_LOCKS_REQUIRED(!m_total_bytes_sent_mutex);
     bool PushMessage(NodeId id, CSerializedNetMsg&& msg) EXCLUSIVE_LOCKS_REQUIRED(!m_total_bytes_sent_mutex);
 
+    std::optional<std::pair<CNetMessage, bool>> PollMessage(NodeId node_id);
+
     // Addrman functions
     /**
      * Return all or many randomly selected addresses, optionally by network.
