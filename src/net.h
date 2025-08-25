@@ -894,6 +894,7 @@ public:
 
     virtual void FinalizeNodes() = 0;
     virtual bool Interrupted() const = 0;
+    virtual void WakeMessageHandler() = 0;
 protected:
     /**
      * Protected destructor so that instances can only be deleted by derived classes.
@@ -986,7 +987,7 @@ public:
 
     ~CConnman();
 
-    bool Start(CScheduler& scheduler, const Options& options) EXCLUSIVE_LOCKS_REQUIRED(!m_total_bytes_sent_mutex, !m_added_nodes_mutex, !m_addr_fetches_mutex, !mutexMsgProc);
+    bool Start(CScheduler& scheduler, const Options& options) EXCLUSIVE_LOCKS_REQUIRED(!m_total_bytes_sent_mutex, !m_added_nodes_mutex, !m_addr_fetches_mutex);
 
     void StopThreads();
     void StopNodes() EXCLUSIVE_LOCKS_REQUIRED(!m_nodes_disconnected_mutex);
@@ -996,7 +997,7 @@ public:
         StopNodes();
     };
 
-    void Interrupt() EXCLUSIVE_LOCKS_REQUIRED(!mutexMsgProc);
+    void Interrupt();
     bool GetNetworkActive() const { return fNetworkActive; };
     bool GetUseAddrmanOutgoing() const { return m_use_addrman_outgoing; };
     void SetNetworkActive(bool active);
@@ -1101,9 +1102,6 @@ public:
 
     /** Get a unique deterministic randomizer. */
     CSipHasher GetDeterministicRandomizer(uint64_t id) const;
-
-    void WakeMessageHandler() EXCLUSIVE_LOCKS_REQUIRED(!mutexMsgProc);
-
     /** Return true if we should disconnect the peer for failing an inactivity check. */
     bool ShouldRunInactivityChecks(const CNode& node, std::chrono::seconds now) const;
 
@@ -1140,7 +1138,6 @@ private:
     void AddAddrFetch(const std::string& strDest) EXCLUSIVE_LOCKS_REQUIRED(!m_addr_fetches_mutex);
     void ProcessAddrFetch() EXCLUSIVE_LOCKS_REQUIRED(!m_addr_fetches_mutex, !m_unused_i2p_sessions_mutex);
     void ThreadOpenConnections(std::vector<std::string> connect, std::span<const std::string> seed_nodes) EXCLUSIVE_LOCKS_REQUIRED(!m_addr_fetches_mutex, !m_added_nodes_mutex, !m_nodes_mutex, !m_unused_i2p_sessions_mutex, !m_reconnections_mutex);
-    void ThreadMessageHandler() EXCLUSIVE_LOCKS_REQUIRED(!mutexMsgProc, !m_nodes_disconnected_mutex);
     void ThreadI2PAcceptIncoming();
     void AcceptConnection(const ListenSocket& hListenSocket);
 
@@ -1157,7 +1154,7 @@ private:
                                       const CService& addr_bind,
                                       const CService& addr);
 
-    void DisconnectNodes() EXCLUSIVE_LOCKS_REQUIRED(!m_reconnections_mutex, !m_nodes_mutex, !m_nodes_disconnected_mutex, !mutexMsgProc);
+    void DisconnectNodes() EXCLUSIVE_LOCKS_REQUIRED(!m_reconnections_mutex, !m_nodes_mutex, !m_nodes_disconnected_mutex);
     void NotifyNumConnectionsChanged();
     /** Return true if the peer is inactive and should be disconnected. */
     bool InactivityCheck(const CNode& node) const;
@@ -1172,7 +1169,7 @@ private:
     /**
      * Check connected and listening sockets for IO readiness and process them accordingly.
      */
-    void SocketHandler() EXCLUSIVE_LOCKS_REQUIRED(!m_total_bytes_sent_mutex, !mutexMsgProc);
+    void SocketHandler() EXCLUSIVE_LOCKS_REQUIRED(!m_total_bytes_sent_mutex);
 
     /**
      * Do the read/write for connected sockets that are ready for IO.
@@ -1181,7 +1178,7 @@ private:
      */
     void SocketHandlerConnected(const std::vector<std::shared_ptr<CNode>>& nodes,
                                 const Sock::EventsPerSock& events_per_sock)
-        EXCLUSIVE_LOCKS_REQUIRED(!m_total_bytes_sent_mutex, !mutexMsgProc);
+        EXCLUSIVE_LOCKS_REQUIRED(!m_total_bytes_sent_mutex);
 
     /**
      * Accept incoming connections, one from each read-ready listening socket.
@@ -1189,7 +1186,7 @@ private:
      */
     void SocketHandlerListening(const Sock::EventsPerSock& events_per_sock);
 
-    void ThreadSocketHandler() EXCLUSIVE_LOCKS_REQUIRED(!m_total_bytes_sent_mutex, !mutexMsgProc, !m_nodes_mutex, !m_reconnections_mutex, !m_nodes_disconnected_mutex, !mutexMsgProc);
+    void ThreadSocketHandler() EXCLUSIVE_LOCKS_REQUIRED(!m_total_bytes_sent_mutex, !m_nodes_mutex, !m_reconnections_mutex, !m_nodes_disconnected_mutex);
     void ThreadDNSAddressSeed() EXCLUSIVE_LOCKS_REQUIRED(!m_addr_fetches_mutex, !m_nodes_mutex);
 
     uint64_t CalculateKeyedNetGroup(const CNetAddr& ad) const;
@@ -1244,6 +1241,8 @@ private:
 
     uint16_t GetDefaultPort(Network net) const;
     uint16_t GetDefaultPort(const std::string& addr) const;
+
+    void WakeMessageHandler();
 
     // Network usage totals
     mutable Mutex m_total_bytes_sent_mutex;
@@ -1372,12 +1371,6 @@ private:
     /** SipHasher seeds for deterministic randomness */
     const uint64_t nSeed0, nSeed1;
 
-    /** flag for waking the message processor. */
-    bool fMsgProcWake GUARDED_BY(mutexMsgProc);
-
-    std::condition_variable condMsgProc;
-    Mutex mutexMsgProc;
-
     /**
      * This is signaled when network activity should cease.
      * A pointer to it is saved in `m_i2p_sam_session`, so make sure that
@@ -1397,7 +1390,6 @@ private:
     std::thread threadSocketHandler;
     std::thread threadOpenAddedConnections;
     std::thread threadOpenConnections;
-    std::thread threadMessageHandler;
     std::thread threadI2PAcceptIncoming;
 
     /** flag for deciding to connect to an extra outbound peer,

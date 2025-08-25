@@ -629,7 +629,7 @@ public:
     void BlockDisconnected(const std::shared_ptr<const CBlock> &block, const CBlockIndex* pindex) override
         EXCLUSIVE_LOCKS_REQUIRED(!m_tx_download_mutex);
     void UpdatedBlockTip(const CBlockIndex *pindexNew, const CBlockIndex *pindexFork, bool fInitialDownload) override
-        EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex);
+        EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !mutexMsgProc);
     void BlockChecked(const CBlock& block, const BlockValidationState& state) override
         EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex);
     void NewPoWValidBlock(const CBlockIndex *pindex, const std::shared_ptr<const CBlock>& pblock) override
@@ -675,6 +675,8 @@ public:
     bool Interrupted() const override;
     void Start() override;
     void Stop() override;
+    void WakeMessageHandler() override EXCLUSIVE_LOCKS_REQUIRED(!mutexMsgProc);
+    void ThreadMessageHandler() EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_tx_download_mutex, !m_headers_presync_mutex, !m_most_recent_block_mutex, !m_nodes_to_finalize_mutex, !mutexMsgProc);
 private:
     void FinalizeNode(NodeId nodeid) EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_headers_presync_mutex, !m_tx_download_mutex);
     /** Consider evicting an outbound peer based on the amount of time they've been behind our tip */
@@ -1013,6 +1015,12 @@ private:
 
     std::thread threadMessageHandler;
 
+    /** flag for waking the message processor. */
+    bool fMsgProcWake GUARDED_BY(mutexMsgProc);
+
+    std::condition_variable condMsgProc;
+    Mutex mutexMsgProc;
+
     /** Have we requested this block from a peer */
     bool IsBlockRequested(const uint256& hash) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
@@ -1292,6 +1300,47 @@ void PeerManagerImpl::Stop()
 
 void PeerManagerImpl::ThreadMessageHandler()
 {
+    LOCK(NetEventsInterface::g_msgproc_mutex);
+
+    while (!Interrupted())
+    {
+        bool fMoreWork = false;
+
+        // Finalize nodes that were marked for deletion on another thread
+        FinalizeNodes();
+
+        // Randomize the order in which we process messages from/to our peers.
+        // This prevents attacks in which an attacker exploits having multiple
+        // consecutive connections in the m_nodes list.
+        std::vector<PeerRef> peers;
+        {
+            LOCK(m_peer_mutex);
+            peers.reserve(m_peer_map.size());
+            for (const auto& [_, peer] : m_peer_map) peers.push_back(peer);
+        }
+        std::shuffle(peers.begin(), peers.end(), FastRandomContext{});
+        for (const auto& peer : peers) {
+            if (peer->m_disconnecting)
+                continue;
+            NodeId node_id = peer->m_id;
+            // Receive messages
+            bool fMoreNodeWork = ProcessMessages(node_id);
+            fMoreWork |= (fMoreNodeWork && !peer->m_send_buffer_full);
+            if (Interrupted())
+                return;
+            // Send messages
+            SendMessages(node_id);
+
+            if (Interrupted())
+                return;
+        }
+
+        WAIT_LOCK(mutexMsgProc, lock);
+        if (!fMoreWork) {
+            condMsgProc.wait_until(lock, std::chrono::steady_clock::now() + std::chrono::milliseconds(100), [this]() EXCLUSIVE_LOCKS_REQUIRED(mutexMsgProc) { return fMsgProcWake; });
+        }
+        fMsgProcWake = false;
+    }
 }
 
 void PeerManagerImpl::Interrupt()
@@ -1304,6 +1353,15 @@ bool PeerManagerImpl::Interrupted() const
     return interruptMsgProc;
 }
 
+void PeerManagerImpl::WakeMessageHandler()
+{
+    {
+        LOCK(mutexMsgProc);
+        fMsgProcWake = true;
+    }
+    condMsgProc.notify_one();
+}
+
 bool PeerManagerImpl::CheckIncomingNonce(uint64_t nonce) const
 {
     LOCK(m_peer_mutex);
@@ -1314,6 +1372,7 @@ bool PeerManagerImpl::CheckIncomingNonce(uint64_t nonce) const
     }
     return true;
 }
+
 
 int PeerManagerImpl::GetFullOutboundConnCount() const
 {
@@ -2373,7 +2432,7 @@ void PeerManagerImpl::UpdatedBlockTip(const CBlockIndex *pindexNew, const CBlock
         }
     }
 
-    m_connman.WakeMessageHandler();
+    WakeMessageHandler();
 }
 
 /**
