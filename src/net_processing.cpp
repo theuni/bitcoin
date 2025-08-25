@@ -60,6 +60,7 @@
 #include <util/strencodings.h>
 #include <util/time.h>
 #include <util/trace.h>
+#include <util/thread.h>
 #include <validation.h>
 
 #include <algorithm>
@@ -672,6 +673,8 @@ public:
     void MarkRecvBufferFull(NodeId, bool) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex);
     void Interrupt() override;
     bool Interrupted() const override;
+    void Start() override;
+    void Stop() override;
 private:
     void FinalizeNode(NodeId nodeid) EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_headers_presync_mutex, !m_tx_download_mutex);
     /** Consider evicting an outbound peer based on the amount of time they've been behind our tip */
@@ -1007,6 +1010,9 @@ private:
     bool m_peers_bootstrapped{false};
 
     std::atomic_bool interruptMsgProc{false};
+
+    std::thread threadMessageHandler;
+
     /** Have we requested this block from a peer */
     bool IsBlockRequested(const uint256& hash) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
@@ -1270,6 +1276,22 @@ void PeerManagerImpl::MarkRecvBufferFull(NodeId id, bool full)
                 break;
             }
         }
+}
+
+void PeerManagerImpl::Start()
+{
+    // Process messages
+    threadMessageHandler = std::thread(&util::TraceThread, "msghand", [this] { ThreadMessageHandler(); });
+}
+
+void PeerManagerImpl::Stop()
+{
+    if (threadMessageHandler.joinable())
+        threadMessageHandler.join();
+}
+
+void PeerManagerImpl::ThreadMessageHandler()
+{
 }
 
 void PeerManagerImpl::Interrupt()

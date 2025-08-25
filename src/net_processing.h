@@ -177,6 +177,8 @@ public:
     virtual ServiceFlags GetDesirableServiceFlags(ServiceFlags services) const = 0;
     virtual bool HandshakeComplete(NodeId) const = 0;
     virtual void Interrupt() = 0;
+    virtual void Start() = 0;
+    virtual void Stop() = 0;
 };
 
 #endif // BITCOIN_NET_PROCESSING_H
