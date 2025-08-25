@@ -673,13 +673,13 @@ public:
     void MarkSendBufferFull(NodeId, bool) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex);
     void MarkRecvBufferFull(NodeId, bool) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex);
     void Interrupt() override;
-    bool Interrupted() const override;
     void Start() override;
     void Stop() override EXCLUSIVE_LOCKS_REQUIRED(!m_nodes_to_finalize_mutex, !m_peer_mutex, !m_headers_presync_mutex, !m_tx_download_mutex);
     void WakeMessageHandler() override EXCLUSIVE_LOCKS_REQUIRED(!mutexMsgProc);
     void ThreadMessageHandler() EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_tx_download_mutex, !m_headers_presync_mutex, !m_most_recent_block_mutex, !m_nodes_to_finalize_mutex, !mutexMsgProc);
 private:
     void FinalizeNodes() EXCLUSIVE_LOCKS_REQUIRED(!m_nodes_to_finalize_mutex, !m_peer_mutex, !m_headers_presync_mutex, !m_tx_download_mutex);
+    bool Interrupted() const;
     void FinalizeNode(NodeId nodeid) EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_headers_presync_mutex, !m_tx_download_mutex);
     /** Consider evicting an outbound peer based on the amount of time they've been behind our tip */
     void ConsiderEviction(Peer& peer, std::chrono::seconds time_in_seconds) EXCLUSIVE_LOCKS_REQUIRED(cs_main, g_msgproc_mutex);
