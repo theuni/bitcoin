@@ -2980,14 +2980,14 @@ void CConnman::ThreadMessageHandler()
         for (const auto& pnode : nodes) {
             if (pnode->fDisconnect)
                 continue;
-
+            NodeId node_id = pnode->GetId();
             // Receive messages
-            bool fMoreNodeWork = m_msgproc->ProcessMessages(pnode.get(), flagInterruptMsgProc);
+            bool fMoreNodeWork = m_msgproc->ProcessMessages(node_id, flagInterruptMsgProc);
             fMoreWork |= (fMoreNodeWork && !pnode->fPauseSend);
             if (flagInterruptMsgProc)
                 return;
             // Send messages
-            m_msgproc->SendMessages(pnode.get());
+            m_msgproc->SendMessages(node_id);
 
             if (flagInterruptMsgProc)
                 return;

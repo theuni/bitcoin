@@ -67,6 +67,7 @@ FUZZ_TARGET(process_message, .init = initialize_process_message)
         return;
     }
     auto p2p_node = ConsumeNodeAsSharedPtr(fuzzed_data_provider);
+    NodeId node_id = p2p_node->GetId();
 
     connman.AddTestNode(p2p_node);
     FillNode(fuzzed_data_provider, connman, *p2p_node);
@@ -85,10 +86,10 @@ FUZZ_TARGET(process_message, .init = initialize_process_message)
     while (more_work) {
         p2p_node->fPauseSend = false;
         try {
-            more_work = connman.ProcessMessagesOnce(*p2p_node);
+            more_work = connman.ProcessMessagesOnce(node_id);
         } catch (const std::ios_base::failure&) {
         }
-        g_setup->m_node.peerman->SendMessages(p2p_node.get());
+        g_setup->m_node.peerman->SendMessages(node_id);
     }
     g_setup->m_node.validation_signals->SyncWithValidationInterfaceQueue();
     g_setup->m_node.connman->StopNodes();

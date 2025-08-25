@@ -31,9 +31,9 @@ void ConnmanTestMsg::Handshake(CNode& node,
 {
     auto& peerman{static_cast<PeerManager&>(*m_msgproc)};
     auto& connman{*this};
-
+    NodeId node_id = node.GetId();
     PeerOptions options{
-        .id = node.GetId(),
+        .id = node_id,
         .our_services = local_services,
         .conn_type =node.m_conn_type,
         .addr=node.addr,
@@ -46,7 +46,7 @@ void ConnmanTestMsg::Handshake(CNode& node,
     };
     peerman.InitializeNode(std::move(options));
 
-    peerman.SendMessages(&node);
+    peerman.SendMessages(node_id);
     FlushSendBuffer(node); // Drop the version message added by SendMessages.
 
     CSerializedNetMsg msg_version{
@@ -66,8 +66,8 @@ void ConnmanTestMsg::Handshake(CNode& node,
 
     (void)connman.ReceiveMsgFrom(node, std::move(msg_version));
     node.fPauseSend = false;
-    connman.ProcessMessagesOnce(node);
-    peerman.SendMessages(&node);
+    connman.ProcessMessagesOnce(node_id);
+    peerman.SendMessages(node_id);
     FlushSendBuffer(node); // Drop the verack message added by SendMessages.
     if (node.fDisconnect) return;
     assert(version <= PROTOCOL_VERSION);
@@ -80,9 +80,9 @@ void ConnmanTestMsg::Handshake(CNode& node,
         CSerializedNetMsg msg_verack{NetMsg::Make(NetMsgType::VERACK)};
         (void)connman.ReceiveMsgFrom(node, std::move(msg_verack));
         node.fPauseSend = false;
-        connman.ProcessMessagesOnce(node);
-        peerman.SendMessages(&node);
-        assert(peerman.HandshakeComplete(node.GetId()));
+        connman.ProcessMessagesOnce(node_id);
+        peerman.SendMessages(node_id);
+        assert(peerman.HandshakeComplete(node_id));
     }
 }
 

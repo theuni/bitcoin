@@ -638,9 +638,9 @@ public:
     void InitializeNode(PeerOptions options) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_tx_download_mutex);
     void MarkNodeDisconnected(NodeId nodeid) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_nodes_to_finalize_mutex);
     bool HasAllDesirableServiceFlags(ServiceFlags services) const override;
-    bool ProcessMessages(CNode* pfrom, std::atomic<bool>& interrupt) override
+    bool ProcessMessages(NodeId node_id, std::atomic<bool>& interrupt) override
         EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_most_recent_block_mutex, !m_headers_presync_mutex, g_msgproc_mutex, !m_tx_download_mutex);
-    bool SendMessages(CNode* pto) override
+    bool SendMessages(NodeId node_id) override
         EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_most_recent_block_mutex, g_msgproc_mutex, !m_tx_download_mutex);
     void FinalizeNodes() override EXCLUSIVE_LOCKS_REQUIRED(!m_nodes_to_finalize_mutex, !m_peer_mutex, !m_headers_presync_mutex, !m_tx_download_mutex);
     /** Implement PeerManager */
@@ -5253,11 +5253,10 @@ bool PeerManagerImpl::MaybeDiscourageAndDisconnect(Peer& peer)
     return true;
 }
 
-bool PeerManagerImpl::ProcessMessages(CNode* pfrom, std::atomic<bool>& interruptMsgProc)
+bool PeerManagerImpl::ProcessMessages(NodeId node_id, std::atomic<bool>& interruptMsgProc)
 {
     AssertLockNotHeld(m_tx_download_mutex);
     AssertLockHeld(g_msgproc_mutex);
-    auto node_id = pfrom->GetId();
     PeerRef peer = GetPeerRef(node_id);
     if (peer == nullptr) return false;
 
@@ -5693,12 +5692,10 @@ bool PeerManagerImpl::SetupAddressRelay(Peer& peer)
     return true;
 }
 
-bool PeerManagerImpl::SendMessages(CNode* pto)
+bool PeerManagerImpl::SendMessages(NodeId peer_id)
 {
     AssertLockNotHeld(m_tx_download_mutex);
     AssertLockHeld(g_msgproc_mutex);
-
-    auto peer_id = pto->GetId();
 
     PeerRef peer = GetPeerRef(peer_id);
     if (!peer) return false;

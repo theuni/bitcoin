@@ -93,11 +93,12 @@ void HeadersSyncSetup::SendMessage(FuzzedDataProvider& fuzzed_data_provider, CSe
     connman.FlushSendBuffer(connection);
     (void)connman.ReceiveMsgFrom(connection, std::move(msg));
     connection.fPauseSend = false;
+    NodeId node_id = connection.GetId();
     try {
-        connman.ProcessMessagesOnce(connection);
+        connman.ProcessMessagesOnce(node_id);
     } catch (const std::ios_base::failure&) {
     }
-    m_node.peerman->SendMessages(&connection);
+    m_node.peerman->SendMessages(node_id);
 }
 
 CBlockHeader ConsumeHeader(FuzzedDataProvider& fuzzed_data_provider, const uint256& prev_hash, uint32_t prev_nbits)

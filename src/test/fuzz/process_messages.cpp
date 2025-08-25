@@ -75,6 +75,7 @@ FUZZ_TARGET(process_messages, .init = initialize_process_messages)
         net_msg.data = ConsumeRandomLengthByteVector(fuzzed_data_provider, MAX_PROTOCOL_MESSAGE_LENGTH);
 
         CNode& random_node = *PickValue(fuzzed_data_provider, peers);
+        NodeId node_id = random_node.GetId();
 
         connman.FlushSendBuffer(random_node);
         (void)connman.ReceiveMsgFrom(random_node, std::move(net_msg));
@@ -84,10 +85,10 @@ FUZZ_TARGET(process_messages, .init = initialize_process_messages)
             random_node.fPauseSend = false;
 
             try {
-                more_work = connman.ProcessMessagesOnce(random_node);
+                more_work = connman.ProcessMessagesOnce(node_id);
             } catch (const std::ios_base::failure&) {
             }
-            g_setup->m_node.peerman->SendMessages(&random_node);
+            g_setup->m_node.peerman->SendMessages(node_id);
         }
     }
     g_setup->m_node.validation_signals->SyncWithValidationInterfaceQueue();

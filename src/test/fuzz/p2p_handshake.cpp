@@ -91,6 +91,7 @@ FUZZ_TARGET(p2p_handshake, .init = ::initialize)
             // handshake was already completed.
             continue;
         }
+        NodeId node_id = connection.GetId();
         SetMockTime(GetTime() +
                     fuzzed_data_provider.ConsumeIntegralInRange<int64_t>(
                         -std::chrono::seconds{10min}.count(), // Allow mocktime to go backwards slightly
@@ -108,10 +109,10 @@ FUZZ_TARGET(p2p_handshake, .init = ::initialize)
             connection.fPauseSend = false;
 
             try {
-                more_work = connman.ProcessMessagesOnce(connection);
+                more_work = connman.ProcessMessagesOnce(node_id);
             } catch (const std::ios_base::failure&) {
             }
-            peerman->SendMessages(&connection);
+            peerman->SendMessages(node_id);
         }
     }
 
