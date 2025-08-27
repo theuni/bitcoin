@@ -496,9 +496,9 @@ struct Peer {
 
     bool m_inbound_onion{false};
 
-    explicit Peer(PeerOptions options)
+    explicit Peer(PeerOptions options, ServiceFlags our_services)
         : m_id{options.id}
-        , m_our_services{options.our_services}
+        , m_our_services{our_services}
         , m_conn_type{options.conn_type}
         , m_addr(std::move(options.addr))
         , m_addr_name(std::move(options.addr_name))
@@ -673,6 +673,13 @@ public:
     void Stop() override EXCLUSIVE_LOCKS_REQUIRED(!m_nodes_to_finalize_mutex, !m_peer_mutex, !m_headers_presync_mutex, !m_tx_download_mutex);
     void WakeMessageHandler() override EXCLUSIVE_LOCKS_REQUIRED(!mutexMsgProc);
     void ThreadMessageHandler() EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_tx_download_mutex, !m_headers_presync_mutex, !m_most_recent_block_mutex, !m_nodes_to_finalize_mutex, !mutexMsgProc);
+
+    ServiceFlags GetLocalServices() const override { return m_local_services; }
+
+    //! Updates the local services that this node advertises to other peers
+    //! during connection handshake.
+    void AddLocalServices(ServiceFlags services) override { m_local_services = ServiceFlags(m_local_services | services); };
+    void RemoveLocalServices(ServiceFlags services) override { m_local_services = ServiceFlags(m_local_services & ~services); }
 private:
     void StartScheduledTasks(CScheduler& scheduler);
     void FinalizeNodes() EXCLUSIVE_LOCKS_REQUIRED(!m_nodes_to_finalize_mutex, !m_peer_mutex, !m_headers_presync_mutex, !m_tx_download_mutex);
@@ -1019,6 +1026,19 @@ private:
 
     std::condition_variable condMsgProc;
     Mutex mutexMsgProc;
+
+    /**
+     * Services this node offers.
+     *
+     * This data is replicated in each Peer instance we create.
+     *
+     * This data is not marked const, but after being set it should not
+     * change. Unless AssumeUTXO is started, in which case, the peer
+     * will be limited until the background chain sync finishes.
+     *
+     * \sa Peer::our_services
+     */
+    std::atomic<ServiceFlags> m_local_services;
 
     /** Have we requested this block from a peer */
     bool IsBlockRequested(const uint256& hash) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
@@ -1883,11 +1903,12 @@ void PeerManagerImpl::InitializeNode(PeerOptions options)
     }
     WITH_LOCK(m_tx_download_mutex, m_txdownloadman.CheckIsEmpty(nodeid));
 
+    ServiceFlags our_services = GetLocalServices();
     if (NetPermissions::HasFlag(options.permission_flags, NetPermissionFlags::BloomFilter)) {
-        options.our_services = static_cast<ServiceFlags>(options.our_services | NODE_BLOOM);
+        our_services = static_cast<ServiceFlags>(our_services | NODE_BLOOM);
     }
 
-    PeerRef peer = std::make_shared<Peer>(std::move(options));
+    PeerRef peer = std::make_shared<Peer>(std::move(options), our_services);
     {
         LOCK(m_peer_mutex);
         m_peer_map.emplace_hint(m_peer_map.end(), nodeid, peer);
@@ -2273,6 +2294,7 @@ PeerManagerImpl::PeerManagerImpl(CConnman& connman, AddrMan& addrman, EvictionMa
     if (opts.reconcile_txs) {
         m_txreconciliation = std::make_unique<TxReconciliationTracker>(TXRECONCILIATION_VERSION);
     }
+    m_local_services = m_opts.m_local_services;
 }
 
 void PeerManagerImpl::StartScheduledTasks(CScheduler& scheduler)

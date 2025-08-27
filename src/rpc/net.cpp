@@ -337,9 +337,10 @@ static RPCHelpMan addnode()
 
     NodeContext& node = EnsureAnyNodeContext(request.context);
     CConnman& connman = EnsureConnman(node);
+    PeerManager& peerman = EnsurePeerman(node);
 
     const auto node_arg{self.Arg<std::string>("node")};
-    bool node_v2transport = connman.GetLocalServices() & NODE_P2P_V2;
+    bool node_v2transport = peerman.GetLocalServices() & NODE_P2P_V2;
     bool use_v2transport = self.MaybeArg<bool>("v2transport").value_or(node_v2transport);
 
     if (use_v2transport && !node_v2transport) {
@@ -415,8 +416,9 @@ static RPCHelpMan addconnection()
 
     NodeContext& node = EnsureAnyNodeContext(request.context);
     CConnman& connman = EnsureConnman(node);
+    PeerManager& peerman = EnsurePeerman(node);
 
-    if (use_v2transport && !(connman.GetLocalServices() & NODE_P2P_V2)) {
+    if (use_v2transport && !(peerman.GetLocalServices() & NODE_P2P_V2)) {
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Error: Adding v2transport connections requires -v2transport init flag to be set.");
     }
 
@@ -690,12 +692,10 @@ static RPCHelpMan getnetworkinfo()
     obj.pushKV("subversion",    strSubVersion);
     obj.pushKV("protocolversion",PROTOCOL_VERSION);
     NodeContext& node = EnsureAnyNodeContext(request.context);
-    if (node.connman) {
-        ServiceFlags services = node.connman->GetLocalServices();
+    if (node.peerman) {
+        ServiceFlags services = node.peerman->GetLocalServices();
         obj.pushKV("localservices", strprintf("%016x", services));
         obj.pushKV("localservicesnames", GetServicesNames(services));
-    }
-    if (node.peerman) {
         auto peerman_info{node.peerman->GetInfo()};
         obj.pushKV("localrelay", !peerman_info.ignores_incoming_txs);
         obj.pushKV("timeoffset", Ticks<std::chrono::seconds>(peerman_info.median_outbound_time_offset));

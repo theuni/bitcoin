@@ -139,7 +139,6 @@ FUZZ_TARGET(connman, .init = initialize_connman)
             });
     }
     (void)connman.GetAddedNodeInfo(fuzzed_data_provider.ConsumeBool());
-    (void)connman.GetLocalServices();
     assert(connman.GetMaxOutboundTarget() == max_outbound_limit);
     (void)connman.GetMaxOutboundTimeframe();
     (void)connman.GetMaxOutboundTimeLeftInCycle();

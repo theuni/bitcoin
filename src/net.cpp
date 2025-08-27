@@ -1785,7 +1785,6 @@ void CConnman::CreateNodeFromAcceptedSocket(std::unique_ptr<Sock>&& sock,
                              });
     PeerOptions options{
         .id = pnode->GetId(),
-        .our_services = m_local_services,
         .conn_type =pnode->m_conn_type,
         .addr=pnode->addr,
         .addr_name=pnode->m_addr_name,
@@ -2915,7 +2914,6 @@ void CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFai
 
     PeerOptions options{
         .id = pnode->GetId(),
-        .our_services = m_local_services,
         .conn_type =pnode->m_conn_type,
         .addr=pnode->addr,
         .addr_name=pnode->m_addr_name,
@@ -3658,11 +3656,6 @@ uint64_t CConnman::GetTotalBytesSent() const
     AssertLockNotHeld(m_total_bytes_sent_mutex);
     LOCK(m_total_bytes_sent_mutex);
     return nTotalBytesSent;
-}
-
-ServiceFlags CConnman::GetLocalServices() const
-{
-    return m_local_services;
 }
 
 static std::unique_ptr<Transport> MakeTransport(NodeId id, bool use_v2transport, bool inbound) noexcept

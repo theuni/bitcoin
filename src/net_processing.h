@@ -102,6 +102,7 @@ public:
         uint32_t max_headers_result{MAX_HEADERS_RESULTS};
         //! Number of seconds a peer has to complete the version handshake before being disconnected
         std::chrono::seconds version_handshake_timeout{DEFAULT_VERSION_HANDSHAKE_TIMEOUT};
+        ServiceFlags m_local_services{NODE_NONE};
     };
 
     static std::unique_ptr<PeerManager> make(CConnman& connman, AddrMan& addrman,
@@ -147,6 +148,19 @@ public:
     /** Process a single message from a peer. Public for fuzz testing */
     virtual void ProcessMessage(NodeId id, const std::string& msg_type, DataStream& vRecv,
                                 const std::chrono::microseconds time_received) EXCLUSIVE_LOCKS_REQUIRED(g_msgproc_mutex) = 0;
+
+    //! Used to convey which local services we are offering peers during node
+    //! connection.
+    //!
+    //! The data returned by this is used in CNode construction,
+    //! which is used to advertise which services we are offering
+    //! that peer during `net_processing.cpp:PushNodeVersion()`.
+    virtual ServiceFlags GetLocalServices() const = 0;
+
+    //! Updates the local services that this node advertises to other peers
+    //! during connection handshake.
+    virtual void AddLocalServices(ServiceFlags services) = 0;
+    virtual void RemoveLocalServices(ServiceFlags services) = 0;
 
     /** This function is used for testing the stale tip eviction logic, see denialofservice_tests.cpp */
     virtual void UpdateLastBlockAnnounceTime(NodeId node, int64_t time_in_seconds) = 0;

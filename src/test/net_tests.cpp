@@ -818,7 +818,6 @@ BOOST_AUTO_TEST_CASE(initial_advertise_from_version_message)
 
     PeerOptions options{
         .id = node_id,
-        .our_services = ServiceFlags{NODE_NETWORK | NODE_WITNESS},
         .conn_type =ConnectionType::OUTBOUND_FULL_RELAY,
         .addr=CAddress{CService{peer_in_addr, 8333}, NODE_NETWORK},
         .addr_name={},

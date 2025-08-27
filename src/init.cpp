@@ -1277,7 +1277,7 @@ static ChainstateLoadResult InitAndLoadChainstate(
     chainman.snapshot_download_completed = [&node]() {
         if (!node.chainman->m_blockman.IsPruneMode()) {
             LogPrintf("[snapshot] re-enabling NODE_NETWORK services\n");
-            node.connman->AddLocalServices(NODE_NETWORK);
+            if (node.peerman) node.peerman->AddLocalServices(NODE_NETWORK);
         }
         LogPrintf("[snapshot] restarting indexes\n");
         // Drain the validation interface queue to ensure that the old indexes
@@ -1806,6 +1806,8 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
         }
     }
 
+    peerman_opts.m_local_services = g_local_services;
+
     assert(!node.peerman);
     node.peerman = PeerManager::make(*node.connman, *node.addrman,
                                      *node.evictionman, node.banman.get(), chainman,
@@ -1937,7 +1939,6 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     StartMapPort(args.GetBoolArg("-natpmp", DEFAULT_NATPMP));
 
     CConnman::Options connOptions;
-    connOptions.m_local_services = g_local_services;
     connOptions.m_max_automatic_connections = nMaxConnections;
     connOptions.uiInterface = &uiInterface;
     connOptions.m_banman = node.banman.get();

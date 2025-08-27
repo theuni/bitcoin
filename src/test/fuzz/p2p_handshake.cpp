@@ -69,7 +69,6 @@ FUZZ_TARGET(p2p_handshake, .init = ::initialize)
         const auto& node = peers.back();
         PeerOptions options{
             .id = node->GetId(),
-            .our_services = ServiceFlags{fuzzed_data_provider.ConsumeIntegral<uint64_t>()},
             .conn_type =node->m_conn_type,
             .addr=node->addr,
             .addr_name=node->m_addr_name,
@@ -80,6 +79,8 @@ FUZZ_TARGET(p2p_handshake, .init = ::initialize)
             .inbound_onion=node->m_inbound_onion,
         };
         connman.AddTestNode(node);
+        peerman->AddLocalServices(ServiceFlags{fuzzed_data_provider.ConsumeIntegral<uint64_t>()});
+        peerman->RemoveLocalServices(ServiceFlags{fuzzed_data_provider.ConsumeIntegral<uint64_t>()});
         peerman->InitializeNode(std::move(options));
     }
 

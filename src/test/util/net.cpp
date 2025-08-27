@@ -34,7 +34,6 @@ void ConnmanTestMsg::Handshake(CNode& node,
     NodeId node_id = node.GetId();
     PeerOptions options{
         .id = node_id,
-        .our_services = local_services,
         .conn_type =node.m_conn_type,
         .addr=node.addr,
         .addr_name=node.m_addr_name,
