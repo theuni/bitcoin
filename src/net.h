@@ -929,6 +929,7 @@ public:
         bool m_i2p_accept_incoming = DEFAULT_I2P_ACCEPT_INCOMING;
         bool whitelist_forcerelay = DEFAULT_WHITELISTFORCERELAY;
         bool whitelist_relay = DEFAULT_WHITELISTRELAY;
+        bool enable_encrypted_p2p = true;
     };
 
     void Init(const Options& connOptions) EXCLUSIVE_LOCKS_REQUIRED(!m_added_nodes_mutex, !m_total_bytes_sent_mutex)
@@ -958,14 +959,14 @@ public:
             LOCK(m_added_nodes_mutex);
             // Attempt v2 connection if we support v2 - we'll reconnect with v1 if our
             // peer doesn't support it or immediately disconnects us for another reason.
-            const bool use_v2transport(GetLocalServices() & NODE_P2P_V2);
             for (const std::string& added_node : connOptions.m_added_nodes) {
-                m_added_node_params.push_back({added_node, use_v2transport});
+                m_added_node_params.push_back({added_node, connOptions.enable_encrypted_p2p});
             }
         }
         m_onion_binds = connOptions.onion_binds;
         whitelist_forcerelay = connOptions.whitelist_forcerelay;
         whitelist_relay = connOptions.whitelist_relay;
+        m_enable_encrypted_p2p = connOptions.enable_encrypted_p2p;
     }
 
     int GetMaxOutboundFullRelay() const
@@ -1462,6 +1463,8 @@ private:
     const CChainParams& m_params;
 
     std::atomic_bool m_bootstrapped{false};
+
+    bool m_enable_encrypted_p2p{true};
 
     friend struct ConnmanTestMsg;
 };

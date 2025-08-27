@@ -1768,8 +1768,7 @@ void CConnman::CreateNodeFromAcceptedSocket(std::unique_ptr<Sock>&& sock,
     const bool inbound_onion = std::find(m_onion_binds.begin(), m_onion_binds.end(), addr_bind) != m_onion_binds.end();
     // The V2Transport transparently falls back to V1 behavior when an incoming V1 connection is
     // detected, so use it whenever we signal NODE_P2P_V2.
-    ServiceFlags local_services = GetLocalServices();
-    const bool use_v2transport(local_services & NODE_P2P_V2);
+    const bool use_v2transport(m_enable_encrypted_p2p);
 
     auto pnode = std::make_shared<CNode>(id,
                              std::move(sock),
@@ -2354,7 +2353,7 @@ void CConnman::ProcessAddrFetch()
     }
     // Attempt v2 connection if we support v2 - we'll reconnect with v1 if our
     // peer doesn't support it or immediately disconnects us for another reason.
-    const bool use_v2transport(GetLocalServices() & NODE_P2P_V2);
+    const bool use_v2transport(m_enable_encrypted_p2p);
     CAddress addr;
     CountingSemaphoreGrant<> grant(*semOutbound, /*fTry=*/true);
     if (grant) {
@@ -2424,7 +2423,7 @@ void CConnman::ThreadOpenConnections(const std::vector<std::string> connect, std
     {
         // Attempt v2 connection if we support v2 - we'll reconnect with v1 if our
         // peer doesn't support it or immediately disconnects us for another reason.
-        const bool use_v2transport(GetLocalServices() & NODE_P2P_V2);
+        const bool use_v2transport(m_enable_encrypted_p2p);
         for (int64_t nLoop = 0;; nLoop++)
         {
             for (const std::string& strAddr : connect)
@@ -2776,7 +2775,7 @@ void CConnman::ThreadOpenConnections(const std::vector<std::string> connect, std
             // network connections (if any) belong in the same netgroup, and the size of `outbound_ipv46_peer_netgroups` would only be 1.
             const bool count_failures{((int)outbound_ipv46_peer_netgroups.size() + outbound_privacy_network_peers) >= std::min(m_max_automatic_connections - 1, 2)};
             // Use BIP324 transport when both us and them have NODE_V2_P2P set.
-            const bool use_v2transport(addrConnect.nServices & GetLocalServices() & NODE_P2P_V2);
+            const bool use_v2transport(m_enable_encrypted_p2p && (addrConnect.nServices & NODE_P2P_V2));
             OpenNetworkConnection(addrConnect, count_failures, std::move(grant), /*strDest=*/nullptr, conn_type, use_v2transport);
         }
     }
