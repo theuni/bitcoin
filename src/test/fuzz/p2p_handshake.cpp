@@ -86,7 +86,9 @@ FUZZ_TARGET(p2p_handshake, .init = ::initialize)
     LIMITED_WHILE(fuzzed_data_provider.ConsumeBool(), 100)
     {
         CNode& connection = *PickValue(fuzzed_data_provider, peers);
-        if (connection.fDisconnect || peerman->HandshakeComplete(connection.GetId())) {
+        CNodeStateStats stats;
+        peerman->GetNodeStateStats(connection.GetId(), stats);
+        if (connection.fDisconnect || stats.m_handshake_complete) {
             // Skip if the connection was disconnected or if the version
             // handshake was already completed.
             continue;

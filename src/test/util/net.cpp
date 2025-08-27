@@ -76,13 +76,15 @@ void ConnmanTestMsg::Handshake(CNode& node,
     assert(statestats.nVersion == version);
     assert(statestats.m_relay_txs == (relay_txs && !IsBlockOnlyConn(node.m_conn_type)));
     assert(statestats.their_services == remote_services);
+    assert(!statestats.m_handshake_complete);
     if (successfully_connected) {
         CSerializedNetMsg msg_verack{NetMsg::Make(NetMsgType::VERACK)};
         (void)connman.ReceiveMsgFrom(node, std::move(msg_verack));
         node.fPauseSend = false;
         connman.ProcessMessagesOnce(node_id);
         peerman.SendMessages(node_id);
-        assert(peerman.HandshakeComplete(node_id));
+        assert(peerman.GetNodeStateStats(node.GetId(), statestats));
+        assert(statestats.m_handshake_complete);
     }
 }
 

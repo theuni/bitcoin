@@ -669,7 +669,6 @@ public:
           EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_most_recent_block_mutex, !m_headers_presync_mutex, g_msgproc_mutex, !m_tx_download_mutex) override;
     void UpdateLastBlockAnnounceTime(NodeId node, int64_t time_in_seconds) override;
     ServiceFlags GetDesirableServiceFlags(ServiceFlags services) const override;
-    bool HandshakeComplete(NodeId) const override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex);
     void MarkSendBufferFull(NodeId, bool) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex);
     void MarkRecvBufferFull(NodeId, bool) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex);
     void Interrupt() override;
@@ -2018,12 +2017,6 @@ ServiceFlags PeerManagerImpl::GetDesirableServiceFlags(ServiceFlags services) co
     return ServiceFlags(NODE_NETWORK | NODE_WITNESS);
 }
 
-bool PeerManagerImpl::HandshakeComplete(NodeId id) const
-{
-    auto ref = GetPeerRef(id);
-    return ref && ref->m_handshake_complete;
-}
-
 PeerRef PeerManagerImpl::GetPeerRef(NodeId id) const
 {
     LOCK(m_peer_mutex);
@@ -2104,6 +2097,7 @@ bool PeerManagerImpl::GetNodeStateStats(NodeId nodeid, CNodeStateStats& stats) c
             addr_local.ToStringAddrPort() :
             "";
     stats.m_last_ping_time = peer->m_last_ping_time;
+    stats.m_handshake_complete = peer->m_handshake_complete;
     return true;
 }
 

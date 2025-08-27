@@ -71,6 +71,7 @@ struct CNodeStateStats {
     std::string cleanSubVer;
     std::string m_addr_local;
     std::chrono::microseconds m_last_ping_time;
+    bool m_handshake_complete{false};
 };
 
 struct PeerManagerInfo {
@@ -175,7 +176,6 @@ public:
      * we do not have a confirmed set of service flags.
     */
     virtual ServiceFlags GetDesirableServiceFlags(ServiceFlags services) const = 0;
-    virtual bool HandshakeComplete(NodeId) const = 0;
     virtual void Interrupt() = 0;
     virtual void Start() = 0;
     virtual void Stop() = 0;
