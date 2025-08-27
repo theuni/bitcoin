@@ -82,8 +82,6 @@ FUZZ_TARGET(process_messages, .init = initialize_process_messages)
 
         bool more_work{true};
         while (more_work) { // Ensure that every message is eventually processed in some way or another
-            random_node.fPauseSend = false;
-
             try {
                 more_work = connman.ProcessMessagesOnce(node_id);
             } catch (const std::ios_base::failure&) {

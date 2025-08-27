@@ -3736,7 +3736,6 @@ void CNode::MarkReceivedMsgsForProcessing(std::list<CNetMessage> messages)
 void CConnman::MarkSendBufferFull(CNode& node, bool full) const
 {
     m_msgproc->MarkSendBufferFull(node.GetId(), full);
-    node.fPauseSend = full;
 }
 
 std::optional<std::pair<CNetMessage, bool>> CNode::PollMessage()

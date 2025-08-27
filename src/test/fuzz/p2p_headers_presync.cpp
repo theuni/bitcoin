@@ -92,7 +92,6 @@ void HeadersSyncSetup::SendMessage(FuzzedDataProvider& fuzzed_data_provider, CSe
 
     connman.FlushSendBuffer(connection);
     (void)connman.ReceiveMsgFrom(connection, std::move(msg));
-    connection.fPauseSend = false;
     NodeId node_id = connection.GetId();
     try {
         connman.ProcessMessagesOnce(node_id);

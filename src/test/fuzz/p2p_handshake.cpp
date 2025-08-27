@@ -108,8 +108,6 @@ FUZZ_TARGET(p2p_handshake, .init = ::initialize)
 
         bool more_work{true};
         while (more_work) {
-            connection.fPauseSend = false;
-
             try {
                 more_work = connman.ProcessMessagesOnce(node_id);
             } catch (const std::ios_base::failure&) {

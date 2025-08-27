@@ -65,7 +65,6 @@ void ConnmanTestMsg::Handshake(CNode& node,
     };
 
     (void)connman.ReceiveMsgFrom(node, std::move(msg_version));
-    node.fPauseSend = false;
     connman.ProcessMessagesOnce(node_id);
     peerman.SendMessages(node_id);
     FlushSendBuffer(node); // Drop the verack message added by SendMessages.
@@ -80,7 +79,6 @@ void ConnmanTestMsg::Handshake(CNode& node,
     if (successfully_connected) {
         CSerializedNetMsg msg_verack{NetMsg::Make(NetMsgType::VERACK)};
         (void)connman.ReceiveMsgFrom(node, std::move(msg_verack));
-        node.fPauseSend = false;
         connman.ProcessMessagesOnce(node_id);
         peerman.SendMessages(node_id);
         assert(peerman.GetNodeStateStats(node.GetId(), statestats));

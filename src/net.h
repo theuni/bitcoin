@@ -719,7 +719,6 @@ public:
     CountingSemaphoreGrant<> grantOutbound;
 
     std::atomic_bool fPauseRecv{false};
-    std::atomic_bool fPauseSend{false};
 
     const ConnectionType m_conn_type;
 
