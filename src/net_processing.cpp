@@ -645,7 +645,6 @@ public:
     bool SendMessages(NodeId node_id) override
         EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_most_recent_block_mutex, g_msgproc_mutex, !m_tx_download_mutex);
     /** Implement PeerManager */
-    void StartScheduledTasks(CScheduler& scheduler) override;
     void CheckForStaleTipAndEvictPeers() EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex) override;
     std::optional<std::string> FetchBlock(NodeId peer_id, const CBlockIndex& block_index) override
         EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex);
@@ -670,11 +669,12 @@ public:
     ServiceFlags GetDesirableServiceFlags(ServiceFlags services) const override;
     void MarkSendBufferFull(NodeId, bool) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex);
     void Interrupt() override;
-    void Start() override;
+    void Start(CScheduler& scheduler) override;
     void Stop() override EXCLUSIVE_LOCKS_REQUIRED(!m_nodes_to_finalize_mutex, !m_peer_mutex, !m_headers_presync_mutex, !m_tx_download_mutex);
     void WakeMessageHandler() override EXCLUSIVE_LOCKS_REQUIRED(!mutexMsgProc);
     void ThreadMessageHandler() EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_tx_download_mutex, !m_headers_presync_mutex, !m_most_recent_block_mutex, !m_nodes_to_finalize_mutex, !mutexMsgProc);
 private:
+    void StartScheduledTasks(CScheduler& scheduler);
     void FinalizeNodes() EXCLUSIVE_LOCKS_REQUIRED(!m_nodes_to_finalize_mutex, !m_peer_mutex, !m_headers_presync_mutex, !m_tx_download_mutex);
     bool Interrupted() const;
     void FinalizeNode(NodeId nodeid) EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_headers_presync_mutex, !m_tx_download_mutex);
@@ -1280,10 +1280,11 @@ void PeerManagerImpl::MarkSendBufferFull(NodeId id, bool full)
         }
 }
 
-void PeerManagerImpl::Start()
+void PeerManagerImpl::Start(CScheduler& scheduler)
 {
     // Process messages
     threadMessageHandler = std::thread(&util::TraceThread, "msghand", [this] { ThreadMessageHandler(); });
+    StartScheduledTasks(scheduler);
 }
 
 void PeerManagerImpl::Stop()

@@ -118,9 +118,6 @@ public:
      */
     virtual std::optional<std::string> FetchBlock(NodeId peer_id, const CBlockIndex& block_index) = 0;
 
-    /** Begin running background tasks, should only be called once */
-    virtual void StartScheduledTasks(CScheduler& scheduler) = 0;
-
     /** Get statistics from node state */
     virtual bool GetNodeStateStats(NodeId nodeid, CNodeStateStats& stats) const = 0;
 
@@ -177,7 +174,7 @@ public:
     */
     virtual ServiceFlags GetDesirableServiceFlags(ServiceFlags services) const = 0;
     virtual void Interrupt() = 0;
-    virtual void Start() = 0;
+    virtual void Start(CScheduler& scheduler) = 0;
     virtual void Stop() = 0;
 };
 

@@ -2086,7 +2086,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
 
     connOptions.m_i2p_accept_incoming = args.GetBoolArg("-i2pacceptincoming", DEFAULT_I2P_ACCEPT_INCOMING);
 
-    if (node.peerman) node.peerman->Start();
+    if (node.peerman) node.peerman->Start(scheduler);
     if (!node.connman->Start(scheduler, connOptions)) {
         return false;
     }
@@ -2109,8 +2109,6 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     scheduler.scheduleEvery([banman]{
         banman->DumpBanlist();
     }, DUMP_BANS_INTERVAL);
-
-    if (node.peerman) node.peerman->StartScheduledTasks(scheduler);
 
 #if HAVE_SYSTEM
     StartupNotify(args);
