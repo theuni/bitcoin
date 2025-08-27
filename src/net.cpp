@@ -2135,9 +2135,7 @@ void CConnman::SocketHandlerConnected(const std::vector<std::shared_ptr<CNode>>&
                 RecordBytesRecv(nBytes);
                 if (notify) {
                     std::list<CNetMessage> complete_messages = pnode->GetCompleteMessages();
-                    if(!pnode->MarkReceivedMsgsForProcessing(std::move(complete_messages))) {
-                        MarkRecvBufferFull(*pnode, true);
-                    }
+                    pnode->MarkReceivedMsgsForProcessing(std::move(complete_messages));
                     WakeMessageHandler();
                 }
             }
@@ -3715,7 +3713,7 @@ CNode::CNode(NodeId idIn,
     }
 }
 
-bool CNode::MarkReceivedMsgsForProcessing(std::list<CNetMessage> messages)
+void CNode::MarkReceivedMsgsForProcessing(std::list<CNetMessage> messages)
 {
     AssertLockNotHeld(m_msg_process_queue_mutex);
 
@@ -3730,13 +3728,9 @@ bool CNode::MarkReceivedMsgsForProcessing(std::list<CNetMessage> messages)
     bool recv_buffer_was_full = m_msg_process_queue_size > m_recv_flood_size;
     m_msg_process_queue.splice(m_msg_process_queue.end(), messages);
     m_msg_process_queue_size += nSizeAdded;
-    return !(recv_buffer_was_full && m_msg_process_queue_size <= m_recv_flood_size);
-}
-
-void CConnman::MarkRecvBufferFull(CNode& node, bool full) const
-{
-    m_msgproc->MarkRecvBufferFull(node.GetId(), full);
-    node.fPauseRecv = full;
+    if (!recv_buffer_was_full && m_msg_process_queue_size > m_recv_flood_size) {
+        fPauseRecv = true;
+    }
 }
 
 void CConnman::MarkSendBufferFull(CNode& node, bool full) const

@@ -724,7 +724,7 @@ public:
     const ConnectionType m_conn_type;
 
     /** Move all messages from the received queue to the processing queue. */
-    bool MarkReceivedMsgsForProcessing(std::list<CNetMessage> messages)
+    void MarkReceivedMsgsForProcessing(std::list<CNetMessage> messages)
         EXCLUSIVE_LOCKS_REQUIRED(!m_msg_process_queue_mutex);
 
     /** Poll the next message from the processing queue of this connection.
@@ -867,7 +867,6 @@ public:
     /** Handle removal of a peer (clear state) */
     virtual void MarkNodeDisconnected(NodeId) = 0;
 
-    virtual void MarkRecvBufferFull(NodeId, bool) = 0;
     virtual void MarkSendBufferFull(NodeId, bool) = 0;
 
     /**
@@ -1002,7 +1001,6 @@ public:
     void OpenNetworkConnection(const CAddress& addrConnect, bool fCountFailure, CountingSemaphoreGrant<>&& grant_outbound, const char* strDest, ConnectionType conn_type, bool use_v2transport) EXCLUSIVE_LOCKS_REQUIRED(!m_unused_i2p_sessions_mutex);
     void ASMapHealthCheck();
 
-    void MarkRecvBufferFull(CNode&, bool) const;
     void MarkSendBufferFull(CNode&, bool) const;
 
     // alias for thread safety annotations only, not defined

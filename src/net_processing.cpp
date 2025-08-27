@@ -283,7 +283,6 @@ struct Peer {
     std::atomic<std::chrono::microseconds> m_last_ping_time{0us};
 
     std::atomic_bool m_send_buffer_full{false};
-    std::atomic_bool m_recv_buffer_full{false};
 
     /** Whether this peer relays txs via wtxid */
     std::atomic<bool> m_wtxid_relay{false};
@@ -670,7 +669,6 @@ public:
     void UpdateLastBlockAnnounceTime(NodeId node, int64_t time_in_seconds) override;
     ServiceFlags GetDesirableServiceFlags(ServiceFlags services) const override;
     void MarkSendBufferFull(NodeId, bool) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex);
-    void MarkRecvBufferFull(NodeId, bool) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex);
     void Interrupt() override;
     void Start() override;
     void Stop() override EXCLUSIVE_LOCKS_REQUIRED(!m_nodes_to_finalize_mutex, !m_peer_mutex, !m_headers_presync_mutex, !m_tx_download_mutex);
@@ -1277,17 +1275,6 @@ void PeerManagerImpl::MarkSendBufferFull(NodeId id, bool full)
         for(const auto&[peer_id, peer] : m_peer_map) {
             if (id == peer_id) {
                 peer->m_send_buffer_full = full;
-                break;
-            }
-        }
-}
-
-void PeerManagerImpl::MarkRecvBufferFull(NodeId id, bool full)
-{
-        LOCK(m_peer_mutex);
-        for(const auto&[peer_id, peer] : m_peer_map) {
-            if (id == peer_id) {
-                peer->m_recv_buffer_full = full;
                 break;
             }
         }
