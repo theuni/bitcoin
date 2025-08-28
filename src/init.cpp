@@ -1757,14 +1757,6 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     }
 
     ChainstateManager& chainman = *Assert(node.chainman);
-
-    assert(!node.peerman);
-    node.peerman = PeerManager::make(*node.connman, *node.addrman,
-                                     *node.evictionman, node.banman.get(), chainman,
-                                     *node.mempool, *node.warnings,
-                                     peerman_opts);
-    validation_signals.RegisterValidationInterface(node.peerman.get());
-
     // ********************************************************* Step 8: start indexers
 
     if (args.GetBoolArg("-txindex", DEFAULT_TXINDEX)) {
@@ -1813,6 +1805,14 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
             LogPrintf("Running node in NODE_NETWORK_LIMITED mode until snapshot background sync completes\n");
         }
     }
+
+    assert(!node.peerman);
+    node.peerman = PeerManager::make(*node.connman, *node.addrman,
+                                     *node.evictionman, node.banman.get(), chainman,
+                                     *node.mempool, *node.warnings,
+                                     peerman_opts);
+    validation_signals.RegisterValidationInterface(node.peerman.get());
+
 
     // ********************************************************* Step 11: import blocks
 
