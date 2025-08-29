@@ -160,7 +160,7 @@ uint16_t GetListenPort()
 }
 
 // Determine the "best" local address for a particular peer.
-[[nodiscard]] static std::optional<CService> GetLocal(const CNode& peer)
+[[nodiscard]] static std::optional<CService> GetLocal(const CNetAddr &peer, bool inbound_onion)
 {
     if (!fListen) return std::nullopt;
 
@@ -173,12 +173,15 @@ uint16_t GetListenPort()
             // For privacy reasons, don't advertise our privacy-network address
             // to other networks and don't advertise our other-network address
             // to privacy networks.
-            if (local_addr.GetNetwork() != peer.ConnectedThroughNetwork()
-                && (local_addr.IsPrivacyNet() || peer.IsConnectedThroughPrivacyNet())) {
+            if (inbound_onion) {
+                if (local_addr.GetNetwork() != NET_ONION) continue;
+            }
+            if (local_addr.GetNetwork() != peer.GetNetwork()
+                && (local_addr.IsPrivacyNet() || peer.IsPrivacyNet())) {
                 continue;
             }
             const int nScore{local_service_info.nScore};
-            const int nReachability{local_addr.GetReachabilityFrom(peer.addr)};
+            const int nReachability{local_addr.GetReachabilityFrom(peer)};
             if (nReachability > nBestReachability || (nReachability == nBestReachability && nScore > nBestScore)) {
                 addr.emplace(CService{local_addr, local_service_info.nPort});
                 nBestReachability = nReachability;
@@ -215,9 +218,14 @@ static std::vector<CAddress> ConvertSeeds(const std::vector<uint8_t> &vSeedsIn)
 // If none, return the unroutable 0.0.0.0 but filled in with
 // the normal parameters, since the IP may be changed to a useful
 // one by discovery.
+static CService GetLocalAddress(const CNetAddr &peer, bool inbound_onion)
+{
+    return GetLocal(peer, inbound_onion).value_or(CService{CNetAddr(), GetListenPort()});
+}
+
 CService GetLocalAddress(const CNode& peer)
 {
-    return GetLocal(peer).value_or(CService{CNetAddr(), GetListenPort()});
+    return GetLocalAddress(peer.addr, peer.m_inbound_onion);
 }
 
 static int GetnScore(const CService& addr)
@@ -228,24 +236,24 @@ static int GetnScore(const CService& addr)
 }
 
 // Is our peer's addrLocal potentially useful as an external IP source?
-[[nodiscard]] static bool IsPeerAddrLocalGood(CNode *pnode, const CService& addr_local)
+[[nodiscard]] static bool IsPeerAddrLocalGood(const CNetAddr &peer, const CService& addr_local)
 {
-    return fDiscover && pnode->addr.IsRoutable() && addr_local.IsRoutable() &&
+    return fDiscover && peer.IsRoutable() && addr_local.IsRoutable() &&
            g_reachable_nets.Contains(addr_local);
 }
 
 
-std::optional<CService> GetLocalAddrForPeer(CNode& node, const CService& addr_local)
+std::optional<CService> GetLocalAddrForPeer(const CNetAddr &peer, bool inbound_onion, ConnectionType conn_type, const CService& addr_local)
 {
-    CService addrLocal{GetLocalAddress(node)};
+    CService addrLocal{GetLocalAddress(peer, inbound_onion)};
     // If discovery is enabled, sometimes give our peer the address it
     // tells us that it sees us as in case it has a better idea of our
     // address than we do.
     FastRandomContext rng;
-    if (IsPeerAddrLocalGood(&node, addr_local) && (!addrLocal.IsRoutable() ||
+    if (IsPeerAddrLocalGood(peer, addr_local) && (!addrLocal.IsRoutable() ||
          rng.randbits((GetnScore(addrLocal) > LOCAL_MANUAL) ? 3 : 1) == 0))
     {
-        if (IsInboundConn(node.m_conn_type)) {
+        if (IsInboundConn(conn_type)) {
             // For inbound connections, assume both the address and the port
             // as seen from the peer.
             addrLocal = addr_local;
@@ -258,25 +266,16 @@ std::optional<CService> GetLocalAddrForPeer(CNode& node, const CService& addr_lo
         }
     }
     if (addrLocal.IsRoutable()) {
-        LogDebug(BCLog::NET, "Advertising address %s to peer=%d\n", addrLocal.ToStringAddrPort(), node.GetId());
         return addrLocal;
     }
     // Address is unroutable. Don't advertise.
     return std::nullopt;
 }
 
-std::optional<CService> CConnman::GetLocalAddrForPeer(NodeId id, const CService& addr_local)
+std::optional<CService> GetLocalAddrForPeer(CNode& node, const CService& addr_local)
 {
-    std::shared_ptr<CNode> node;
-    {
-        LOCK(m_nodes_mutex);
-        auto it = std::find_if(m_nodes.begin(), m_nodes.end(), [&id](const auto& node) { return node->GetId() == id; });
-        if (it == m_nodes.end()) return std::nullopt;
-        node = *it;
-    }
-    return ::GetLocalAddrForPeer(*node, addr_local);
+    return GetLocalAddrForPeer(node.addr, node.m_inbound_onion, node.m_conn_type, addr_local);
 }
-
 
 // learn a new local address
 bool AddLocal(const CService& addr_, int nScore)

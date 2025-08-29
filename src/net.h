@@ -162,6 +162,7 @@ enum
 
 /** Returns a local address that we should advertise to this peer. */
 std::optional<CService> GetLocalAddrForPeer(CNode& node, const CService& addr_local);
+std::optional<CService> GetLocalAddrForPeer(const CNetAddr &peer, bool inbound_onion, ConnectionType conn_type, const CService& addr_local);
 
 bool AddLocal(const CService& addr, int nScore = LOCAL_NONE);
 bool AddLocal(const CNetAddr& addr, int nScore = LOCAL_NONE);
@@ -1091,9 +1092,6 @@ public:
     bool MultipleManualOrFullOutboundConns(Network net) const EXCLUSIVE_LOCKS_REQUIRED(m_nodes_mutex);
 
     void SetBootstrapComplete();
-
-    /** Returns a local address that we should advertise to this peer. */
-    std::optional<CService> GetLocalAddrForPeer(NodeId id, const CService& addr_local);
 
 private:
     struct ListenSocket {
