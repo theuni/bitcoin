@@ -1787,6 +1787,7 @@ void CConnman::CreateNodeFromAcceptedSocket(std::unique_ptr<Sock>&& sock,
         .connected=pnode->m_connected,
         .transport=pnode->m_transport->GetInfo().transport_type,
         .inbound_onion=pnode->m_inbound_onion,
+        .mapped_as = GetMappedAS(pnode->addr)
     };
     m_msgproc->InitializeNode(std::move(options));
 
@@ -2927,6 +2928,7 @@ void CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFai
         .connected=pnode->m_connected,
         .transport=pnode->m_transport->GetInfo().transport_type,
         .inbound_onion=pnode->m_inbound_onion,
+        .mapped_as = GetMappedAS(pnode->addr)
     };
     m_msgproc->InitializeNode(std::move(options));
     {

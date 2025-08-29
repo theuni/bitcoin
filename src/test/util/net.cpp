@@ -41,6 +41,7 @@ void ConnmanTestMsg::Handshake(CNode& node,
         .connected=node.m_connected,
         .transport=node.m_transport->GetInfo().transport_type,
         .inbound_onion=node.m_inbound_onion,
+        .mapped_as=GetMappedAS(node.addr),
     };
     peerman.InitializeNode(std::move(options));
 

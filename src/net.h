@@ -841,6 +841,7 @@ struct PeerOptions
     std::chrono::seconds connected;
     TransportProtocolType transport;
     bool inbound_onion;
+    uint32_t mapped_as;
 };
 
 /**

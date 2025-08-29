@@ -497,6 +497,8 @@ struct Peer {
 
     bool m_inbound_onion{false};
 
+    uint32_t m_mapped_as{0};
+
     explicit Peer(PeerOptions options, ServiceFlags our_services, uint64_t local_nonce)
         : m_id{options.id}
         , m_our_services{our_services}
@@ -506,6 +508,7 @@ struct Peer {
         , m_connected(options.connected)
         , m_transport(std::move(options.transport))
         , m_inbound_onion(options.inbound_onion)
+        , m_mapped_as(options.mapped_as)
         , m_permission_flags(options.permission_flags)
         , m_local_nonce(local_nonce)
     {}
@@ -4027,7 +4030,7 @@ void PeerManagerImpl::ProcessMessage(Peer& p, const std::string& msg_type, DataS
             m_addrman.Good(peer->m_addr);
         }
 
-        const auto mapped_as{m_connman.GetMappedAS(peer->m_addr)};
+        const auto mapped_as{peer->m_mapped_as};
         LogDebug(BCLog::NET, "receive version message: %s: version %d, blocks=%d, us=%s, txrelay=%d, peer=%d%s%s\n",
                   cleanSubVer, peer->nVersion,
                   peer->m_starting_height, addrMe.ToStringAddrPort(), fRelay, node_id,
@@ -4070,7 +4073,7 @@ void PeerManagerImpl::ProcessMessage(Peer& p, const std::string& msg_type, DataS
         // Log successful connections unconditionally for outbound, but not for inbound as those
         // can be triggered by an attacker at high rate.
         if (!IsInboundConn(peer->m_conn_type) || LogAcceptCategory(BCLog::NET, BCLog::Level::Debug)) {
-            const auto mapped_as{m_connman.GetMappedAS(peer->m_addr)};
+            const auto mapped_as{peer->m_mapped_as};
             LogPrintf("New %s %s peer connected: version: %d, blocks=%d, peer=%d%s%s\n",
                       ConnectionTypeAsString(peer->m_conn_type),
                       TransportTypeAsString(peer->m_transport),

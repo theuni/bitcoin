@@ -817,6 +817,7 @@ BOOST_AUTO_TEST_CASE(initial_advertise_from_version_message)
         .connected=GetTime<std::chrono::seconds>(),
         .transport=TransportProtocolType::V1,
         .inbound_onion=false,
+        .mapped_as = 0
     };
 
     const uint64_t services{NODE_NETWORK | NODE_WITNESS};
