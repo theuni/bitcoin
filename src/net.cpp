@@ -2359,10 +2359,22 @@ bool CConnman::GetTryNewOutboundPeer() const
     return m_try_another_outbound_peer;
 }
 
-void CConnman::SetTryNewOutboundPeer(bool flag)
+bool CConnman::SetTryNewOutboundPeer(bool flag)
 {
-    m_try_another_outbound_peer = flag;
+    if(flag) {
+        if (!fNetworkActive) {
+            LogDebug(BCLog::NET, "network not active. cannot try another outbound peer.\n");
+            return false;
+        }
+        if (!m_use_addrman_outgoing) {
+            LogDebug(BCLog::NET, "no addrman in use. cannot try another outbound peer.\n");
+            return false;
+        }
+    }
+    bool previous = m_try_another_outbound_peer.exchange(flag);
+    if (previous == flag) return false;
     LogDebug(BCLog::NET, "setting try another outbound peer=%s\n", flag ? "true" : "false");
+    return true;
 }
 
 void CConnman::StartExtraBlockRelayPeers()

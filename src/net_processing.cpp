@@ -5605,11 +5605,11 @@ void PeerManagerImpl::CheckForStaleTipAndEvictPeers()
     if (now > m_stale_tip_check_time) {
         // Check whether our tip is stale, and if so, allow using an extra
         // outbound peer
-        if (!m_chainman.m_blockman.LoadingBlocks() && m_connman.GetNetworkActive() && m_connman.GetUseAddrmanOutgoing() && TipMayBeStale()) {
+        if (!m_chainman.m_blockman.LoadingBlocks() && TipMayBeStale()) {
             LogPrintf("Potential stale tip detected, will try using extra outbound peer (last tip update: %d seconds ago)\n",
                       count_seconds(now - m_last_tip_update.load()));
             m_connman.SetTryNewOutboundPeer(true);
-        } else if (m_connman.GetTryNewOutboundPeer()) {
+        } else {
             m_connman.SetTryNewOutboundPeer(false);
         }
         m_stale_tip_check_time = now + STALE_CHECK_INTERVAL;
