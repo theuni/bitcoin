@@ -343,7 +343,7 @@ TestingSetup::TestingSetup(
     ApplyArgsManOptions(*m_node.args, peerman_opts);
     peerman_opts.deterministic_rng = true;
     peerman_opts.m_local_services = ServiceFlags{NODE_NETWORK | NODE_WITNESS};
-    m_node.peerman = PeerManager::make(*m_node.connman, *m_node.addrman, *m_node.evictionman,
+    m_node.peerman = PeerManager::make(0x1338, 0x1338, *m_node.connman, *m_node.addrman, *m_node.evictionman,
                                        m_node.banman.get(), *m_node.chainman,
                                        *m_node.mempool, *m_node.warnings,
                                        peerman_opts);

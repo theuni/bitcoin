@@ -616,7 +616,7 @@ struct CNodeState {
 class PeerManagerImpl final : public PeerManager
 {
 public:
-    PeerManagerImpl(CConnman& connman, AddrMan& addrman, EvictionManager& evictionman,
+    PeerManagerImpl(uint64_t seed0, uint64_t seed1, CConnman& connman, AddrMan& addrman, EvictionManager& evictionman,
                     BanMan* banman, ChainstateManager& chainman,
                     CTxMemPool& pool, node::Warnings& warnings, Options opts);
 
@@ -1040,6 +1040,9 @@ private:
      */
     std::atomic<ServiceFlags> m_local_services;
 
+    /** SipHasher seeds for deterministic randomness */
+    const uint64_t m_seed0, m_seed1;
+
     /** Have we requested this block from a peer */
     bool IsBlockRequested(const uint256& hash) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
@@ -1262,7 +1265,14 @@ private:
             if (peer->m_handshake_complete && !peer->m_disconnecting) func(*peer);
         }
     };
+
+    CSipHasher GetDeterministicRandomizer(uint64_t id) const;
 };
+
+CSipHasher PeerManagerImpl::GetDeterministicRandomizer(uint64_t id) const
+{
+    return CSipHasher(m_seed0, m_seed1).Write(id);
+}
 
 PeerManagerImpl::~PeerManagerImpl()
 {
@@ -2266,14 +2276,14 @@ std::optional<std::string> PeerManagerImpl::FetchBlock(NodeId peer_id, const CBl
     return std::nullopt;
 }
 
-std::unique_ptr<PeerManager> PeerManager::make(CConnman& connman, AddrMan& addrman, EvictionManager& evictionman,
+std::unique_ptr<PeerManager> PeerManager::make(uint64_t seed0, uint64_t seed1, CConnman& connman, AddrMan& addrman, EvictionManager& evictionman,
                                                BanMan* banman, ChainstateManager& chainman,
                                                CTxMemPool& pool, node::Warnings& warnings, Options opts)
 {
-    return std::make_unique<PeerManagerImpl>(connman, addrman, evictionman, banman, chainman, pool, warnings, opts);
+    return std::make_unique<PeerManagerImpl>(seed0, seed1, connman, addrman, evictionman, banman, chainman, pool, warnings, opts);
 }
 
-PeerManagerImpl::PeerManagerImpl(CConnman& connman, AddrMan& addrman, EvictionManager& evictionman,
+PeerManagerImpl::PeerManagerImpl(uint64_t seed0, uint64_t seed1, CConnman& connman, AddrMan& addrman, EvictionManager& evictionman,
                                  BanMan* banman, ChainstateManager& chainman,
                                  CTxMemPool& pool, node::Warnings& warnings, Options opts)
     : m_rng{opts.deterministic_rng},
@@ -2287,7 +2297,9 @@ PeerManagerImpl::PeerManagerImpl(CConnman& connman, AddrMan& addrman, EvictionMa
       m_mempool(pool),
       m_txdownloadman(node::TxDownloadOptions{pool, m_rng, opts.max_orphan_txs, opts.deterministic_rng}),
       m_warnings{warnings},
-      m_opts{opts}
+      m_opts{opts},
+      m_seed0(seed0),
+      m_seed1(seed1)
 {
     // While Erlay support is incomplete, it must be enabled explicitly via -txreconciliation.
     // This argument can go away after Erlay support is complete.

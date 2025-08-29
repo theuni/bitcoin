@@ -105,7 +105,7 @@ public:
         ServiceFlags m_local_services{NODE_NONE};
     };
 
-    static std::unique_ptr<PeerManager> make(CConnman& connman, AddrMan& addrman,
+    static std::unique_ptr<PeerManager> make(uint64_t seed0, uint64_t seed1, CConnman& connman, AddrMan& addrman,
                                              EvictionManager& evictionman, BanMan* banman, ChainstateManager& chainman,
                                              CTxMemPool& pool, node::Warnings& warnings, Options opts);
     virtual ~PeerManager() = default;

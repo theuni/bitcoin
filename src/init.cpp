@@ -1809,7 +1809,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     peerman_opts.m_local_services = g_local_services;
 
     assert(!node.peerman);
-    node.peerman = PeerManager::make(*node.connman, *node.addrman,
+    node.peerman = PeerManager::make(rng.rand64(), rng.rand64(), *node.connman, *node.addrman,
                                      *node.evictionman, node.banman.get(), chainman,
                                      *node.mempool, *node.warnings,
                                      peerman_opts);
