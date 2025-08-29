@@ -1080,8 +1080,6 @@ public:
     uint64_t GetTotalBytesRecv() const;
     uint64_t GetTotalBytesSent() const EXCLUSIVE_LOCKS_REQUIRED(!m_total_bytes_sent_mutex);
 
-    /** Get a unique deterministic randomizer. */
-    CSipHasher GetDeterministicRandomizer(uint64_t id) const;
     /** Return true if we should disconnect the peer for failing an inactivity check. */
     bool ShouldRunInactivityChecks(const CNode& node, std::chrono::seconds now) const;
 
@@ -1223,6 +1221,9 @@ private:
     uint16_t GetDefaultPort(const std::string& addr) const;
 
     void WakeMessageHandler();
+
+    /** Get a unique deterministic randomizer. */
+    CSipHasher GetDeterministicRandomizer(uint64_t id) const;
 
     // Network usage totals
     mutable Mutex m_total_bytes_sent_mutex;

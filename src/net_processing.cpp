@@ -2565,7 +2565,7 @@ void PeerManagerImpl::RelayAddress(NodeId originator,
     const auto current_time{GetTime<std::chrono::seconds>()};
     // Adding address hash makes exact rotation time different per address, while preserving periodicity.
     const uint64_t time_addr{(static_cast<uint64_t>(count_seconds(current_time)) + hash_addr) / count_seconds(ROTATE_ADDR_RELAY_DEST_INTERVAL)};
-    const CSipHasher hasher{m_connman.GetDeterministicRandomizer(RANDOMIZER_ID_ADDRESS_RELAY)
+    const CSipHasher hasher{GetDeterministicRandomizer(RANDOMIZER_ID_ADDRESS_RELAY)
                                 .Write(hash_addr)
                                 .Write(time_addr)};
 

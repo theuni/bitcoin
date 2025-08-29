@@ -114,9 +114,6 @@ FUZZ_TARGET(connman, .init = initialize_connman)
                 (void)connman.GetAddresses(/*requestor=*/random_node, max_addresses, max_pct);
             },
             [&] {
-                (void)connman.GetDeterministicRandomizer(fuzzed_data_provider.ConsumeIntegral<uint64_t>());
-            },
-            [&] {
                 (void)connman.GetNodeCount(fuzzed_data_provider.PickValueInArray({ConnectionDirection::None, ConnectionDirection::In, ConnectionDirection::Out, ConnectionDirection::Both}));
             },
             [&] {
