@@ -891,13 +891,39 @@ protected:
     ~NetEventsInterface() = default;
 };
 
+struct PeerCountLimits {
+    PeerCountLimits(int max_automatic_connections = DEFAULT_MAX_PEER_CONNECTIONS) : m_max_automatic_connections(max_automatic_connections){}
+/**
+     * Maximum number of automatic connections permitted, excluding manual
+     * connections but including inbounds. May be changed by the user and is
+     * potentially limited by the operating system (number of file descriptors).
+     */
+    int m_max_automatic_connections;
+
+    /*
+     * Maximum number of peers by connection type. Might vary from defaults
+     * based on -maxconnections init value.
+     */
+
+    // How many full-relay (tx, block, addr) outbound peers we want
+    int m_max_outbound_full_relay = std::min(MAX_OUTBOUND_FULL_RELAY_CONNECTIONS, m_max_automatic_connections);
+
+    // How many block-relay only outbound peers we want
+    // We do not relay tx or addr messages with these peers
+    int m_max_outbound_block_relay = std::min(MAX_BLOCK_RELAY_ONLY_CONNECTIONS, m_max_automatic_connections - m_max_outbound_full_relay);
+
+    int m_max_automatic_outbound = m_max_outbound_full_relay + m_max_outbound_block_relay + MAX_FEELER_CONNECTIONS;
+    int m_max_inbound = std::max(0, m_max_automatic_connections - m_max_automatic_outbound);
+};
+
+
 class CConnman
 {
 public:
 
     struct Options
     {
-        int m_max_automatic_connections = DEFAULT_MAX_PEER_CONNECTIONS;
+        PeerCountLimits m_peer_count_limits;
         CClientUIInterface* uiInterface = nullptr;
         NetEventsInterface* m_msgproc = nullptr;
         BanMan* m_banman = nullptr;
@@ -927,11 +953,7 @@ public:
     {
         AssertLockNotHeld(m_total_bytes_sent_mutex);
 
-        m_max_automatic_connections = connOptions.m_max_automatic_connections;
-        m_max_outbound_full_relay = std::min(MAX_OUTBOUND_FULL_RELAY_CONNECTIONS, m_max_automatic_connections);
-        m_max_outbound_block_relay = std::min(MAX_BLOCK_RELAY_ONLY_CONNECTIONS, m_max_automatic_connections - m_max_outbound_full_relay);
-        m_max_automatic_outbound = m_max_outbound_full_relay + m_max_outbound_block_relay + m_max_feeler;
-        m_max_inbound = std::max(0, m_max_automatic_connections - m_max_automatic_outbound);
+        m_peer_count_limits = connOptions.m_peer_count_limits;
         m_use_addrman_outgoing = connOptions.m_use_addrman_outgoing;
         m_client_interface = connOptions.uiInterface;
         m_banman = connOptions.m_banman;
@@ -957,16 +979,6 @@ public:
         whitelist_forcerelay = connOptions.whitelist_forcerelay;
         whitelist_relay = connOptions.whitelist_relay;
         m_enable_encrypted_p2p = connOptions.enable_encrypted_p2p;
-    }
-
-    int GetMaxOutboundFullRelay() const
-    {
-        return m_max_outbound_full_relay;
-    }
-
-    int GetMaxOutboundBlockRelay() const
-    {
-        return m_max_outbound_block_relay;
     }
 
     CConnman(uint64_t seed0, uint64_t seed1, AddrMan& addrman, const NetGroupManager& netgroupman,
@@ -1293,29 +1305,7 @@ private:
     std::unique_ptr<std::counting_semaphore<>> semOutbound;
     std::unique_ptr<std::counting_semaphore<>> semAddnode;
 
-    /**
-     * Maximum number of automatic connections permitted, excluding manual
-     * connections but including inbounds. May be changed by the user and is
-     * potentially limited by the operating system (number of file descriptors).
-     */
-    int m_max_automatic_connections;
-
-    /*
-     * Maximum number of peers by connection type. Might vary from defaults
-     * based on -maxconnections init value.
-     */
-
-    // How many full-relay (tx, block, addr) outbound peers we want
-    int m_max_outbound_full_relay;
-
-    // How many block-relay only outbound peers we want
-    // We do not relay tx or addr messages with these peers
-    int m_max_outbound_block_relay;
-
-    int m_max_addnode{MAX_ADDNODE_CONNECTIONS};
-    int m_max_feeler{MAX_FEELER_CONNECTIONS};
-    int m_max_automatic_outbound;
-    int m_max_inbound;
+    PeerCountLimits m_peer_count_limits;
 
     bool m_use_addrman_outgoing;
     CClientUIInterface* m_client_interface;

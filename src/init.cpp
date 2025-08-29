@@ -1807,6 +1807,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     }
 
     peerman_opts.m_local_services = g_local_services;
+    peerman_opts.m_peer_count_limits = PeerCountLimits(nMaxConnections);
 
     assert(!node.peerman);
     node.peerman = PeerManager::make(rng.rand64(), rng.rand64(), *node.connman, *node.addrman,
@@ -1939,7 +1940,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     StartMapPort(args.GetBoolArg("-natpmp", DEFAULT_NATPMP));
 
     CConnman::Options connOptions;
-    connOptions.m_max_automatic_connections = nMaxConnections;
+    connOptions.m_peer_count_limits = PeerCountLimits(nMaxConnections);
     connOptions.uiInterface = &uiInterface;
     connOptions.m_banman = node.banman.get();
     connOptions.m_msgproc = node.peerman.get();

@@ -1744,13 +1744,13 @@ void CConnman::CreateNodeFromAcceptedSocket(std::unique_ptr<Sock>&& sock,
 
     // Only accept connections from discouraged peers if our inbound slots aren't (almost) full.
     bool discouraged = m_banman && m_banman->IsDiscouraged(addr);
-    if (!NetPermissions::HasFlag(permission_flags, NetPermissionFlags::NoBan) && nInbound + 1 >= m_max_inbound && discouraged)
+    if (!NetPermissions::HasFlag(permission_flags, NetPermissionFlags::NoBan) && nInbound + 1 >= m_peer_count_limits.m_max_inbound && discouraged)
     {
         LogDebug(BCLog::NET, "connection from %s dropped (discouraged)\n", addr.ToStringAddrPort());
         return;
     }
 
-    if (nInbound >= m_max_inbound)
+    if (nInbound >= m_peer_count_limits.m_max_inbound)
     {
         if (!AttemptToEvictConnection()) {
             // No connection to evict, disconnect the new connection
@@ -1825,10 +1825,10 @@ bool CConnman::AddConnection(const std::string& address, ConnectionType conn_typ
     case ConnectionType::MANUAL:
         return false;
     case ConnectionType::OUTBOUND_FULL_RELAY:
-        max_connections = m_max_outbound_full_relay;
+        max_connections = m_peer_count_limits.m_max_outbound_full_relay;
         break;
     case ConnectionType::BLOCK_RELAY:
-        max_connections = m_max_outbound_block_relay;
+        max_connections = m_peer_count_limits.m_max_outbound_block_relay;
         break;
     // no limit for ADDR_FETCH because -seednode has no limit either
     case ConnectionType::ADDR_FETCH:
@@ -2592,12 +2592,12 @@ void CConnman::ThreadOpenConnections(const std::vector<std::string> connect, std
         // block-relay-only peer (to confirm our tip is current, see below) or the next_feeler
         // timer to decide if we should open a FEELER.
 
-        if (!m_anchors.empty() && (nOutboundBlockRelay < m_max_outbound_block_relay)) {
+        if (!m_anchors.empty() && (nOutboundBlockRelay < m_peer_count_limits.m_max_outbound_block_relay)) {
             conn_type = ConnectionType::BLOCK_RELAY;
             anchor = true;
-        } else if (nOutboundFullRelay < m_max_outbound_full_relay) {
+        } else if (nOutboundFullRelay < m_peer_count_limits.m_max_outbound_full_relay) {
             // OUTBOUND_FULL_RELAY
-        } else if (nOutboundBlockRelay < m_max_outbound_block_relay) {
+        } else if (nOutboundBlockRelay < m_peer_count_limits.m_max_outbound_block_relay) {
             conn_type = ConnectionType::BLOCK_RELAY;
         } else if (GetTryNewOutboundPeer()) {
             // OUTBOUND_FULL_RELAY
@@ -2629,8 +2629,8 @@ void CConnman::ThreadOpenConnections(const std::vector<std::string> connect, std
             next_feeler = now + rng.rand_exp_duration(FEELER_INTERVAL);
             conn_type = ConnectionType::FEELER;
             fFeeler = true;
-        } else if (nOutboundFullRelay == m_max_outbound_full_relay &&
-                   m_max_outbound_full_relay == MAX_OUTBOUND_FULL_RELAY_CONNECTIONS &&
+        } else if (nOutboundFullRelay == m_peer_count_limits.m_max_outbound_full_relay &&
+                   m_peer_count_limits.m_max_outbound_full_relay == MAX_OUTBOUND_FULL_RELAY_CONNECTIONS &&
                    now > next_extra_network_peer &&
                    MaybePickPreferredNetwork(preferred_net)) {
             // Full outbound connection management: Attempt to get at least one
@@ -2766,7 +2766,7 @@ void CConnman::ThreadOpenConnections(const std::vector<std::string> connect, std
             // different netgroups in ipv4/ipv6 networks + all peers in Tor/I2P/CJDNS networks.
             // Don't record addrman failure attempts when node is offline. This can be identified since all local
             // network connections (if any) belong in the same netgroup, and the size of `outbound_ipv46_peer_netgroups` would only be 1.
-            const bool count_failures{((int)outbound_ipv46_peer_netgroups.size() + outbound_privacy_network_peers) >= std::min(m_max_automatic_connections - 1, 2)};
+            const bool count_failures{((int)outbound_ipv46_peer_netgroups.size() + outbound_privacy_network_peers) >= std::min(m_peer_count_limits.m_max_automatic_connections - 1, 2)};
             // Use BIP324 transport when both us and them have NODE_V2_P2P set.
             const bool use_v2transport(m_enable_encrypted_p2p && (addrConnect.nServices & NODE_P2P_V2));
             OpenNetworkConnection(addrConnect, count_failures, std::move(grant), /*strDest=*/nullptr, conn_type, use_v2transport);
@@ -3211,11 +3211,11 @@ bool CConnman::Start(CScheduler& scheduler, const Options& connOptions)
 
     if (semOutbound == nullptr) {
         // initialize semaphore
-        semOutbound = std::make_unique<std::counting_semaphore<>>(std::min(m_max_automatic_outbound, m_max_automatic_connections));
+        semOutbound = std::make_unique<std::counting_semaphore<>>(std::min(m_peer_count_limits.m_max_automatic_outbound, m_peer_count_limits.m_max_automatic_connections));
     }
     if (semAddnode == nullptr) {
         // initialize semaphore
-        semAddnode = std::make_unique<std::counting_semaphore<>>(m_max_addnode);
+        semAddnode = std::make_unique<std::counting_semaphore<>>(MAX_ADDNODE_CONNECTIONS);
     }
 
     //
@@ -3287,13 +3287,13 @@ void CConnman::Interrupt()
     g_socks5_interrupt();
 
     if (semOutbound) {
-        for (int i=0; i<m_max_automatic_outbound; i++) {
+        for (int i=0; i<m_peer_count_limits.m_max_automatic_outbound; i++) {
             semOutbound->release();
         }
     }
 
     if (semAddnode) {
-        for (int i=0; i<m_max_addnode; i++) {
+        for (int i=0; i<MAX_ADDNODE_CONNECTIONS; i++) {
             semAddnode->release();
         }
     }

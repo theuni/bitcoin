@@ -103,6 +103,7 @@ public:
         //! Number of seconds a peer has to complete the version handshake before being disconnected
         std::chrono::seconds version_handshake_timeout{DEFAULT_VERSION_HANDSHAKE_TIMEOUT};
         ServiceFlags m_local_services{NODE_NONE};
+        PeerCountLimits m_peer_count_limits{};
     };
 
     static std::unique_ptr<PeerManager> make(uint64_t seed0, uint64_t seed1, CConnman& connman, AddrMan& addrman,
