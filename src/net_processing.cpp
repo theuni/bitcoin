@@ -114,6 +114,7 @@ static constexpr auto MINIMUM_CONNECT_TIME{30s};
 static constexpr uint64_t RANDOMIZER_ID_ADDRESS_RELAY = 0x3cac0035b5866b90ULL;
 /// Age after which a stale block will no longer be served if requested as
 /// protection against fingerprinting. Set to one month, denominated in seconds.
+static constexpr uint64_t RANDOMIZER_ID_LOCALHOSTNONCE = 0xd93e69e2bbfa5735ULL; // SHA256("localhostnonce")[0:8]
 static constexpr int STALE_RELAY_AGE_LIMIT = 30 * 24 * 60 * 60;
 /// Age after which a block is considered historical for purposes of rate
 /// limiting block relay. Set to one week, denominated in seconds.
@@ -496,7 +497,7 @@ struct Peer {
 
     bool m_inbound_onion{false};
 
-    explicit Peer(PeerOptions options, ServiceFlags our_services)
+    explicit Peer(PeerOptions options, ServiceFlags our_services, uint64_t local_nonce)
         : m_id{options.id}
         , m_our_services{our_services}
         , m_conn_type{options.conn_type}
@@ -506,7 +507,7 @@ struct Peer {
         , m_transport(std::move(options.transport))
         , m_inbound_onion(options.inbound_onion)
         , m_permission_flags(options.permission_flags)
-        , m_local_nonce(options.local_nonce)
+        , m_local_nonce(local_nonce)
     {}
 
     CService GetAddrLocal() const
@@ -1918,7 +1919,9 @@ void PeerManagerImpl::InitializeNode(PeerOptions options)
         our_services = static_cast<ServiceFlags>(our_services | NODE_BLOOM);
     }
 
-    PeerRef peer = std::make_shared<Peer>(std::move(options), our_services);
+    uint64_t local_nonce = GetDeterministicRandomizer(RANDOMIZER_ID_LOCALHOSTNONCE).Write(nodeid).Finalize();
+
+    PeerRef peer = std::make_shared<Peer>(std::move(options), our_services, local_nonce);
     {
         LOCK(m_peer_mutex);
         m_peer_map.emplace_hint(m_peer_map.end(), nodeid, peer);

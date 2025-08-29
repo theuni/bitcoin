@@ -73,7 +73,6 @@ FUZZ_TARGET(p2p_handshake, .init = ::initialize)
             .addr=node->addr,
             .addr_name=node->m_addr_name,
             .permission_flags=node->m_permission_flags,
-            .local_nonce=node->GetLocalNonce(),
             .connected=node->m_connected,
             .transport=node->m_transport->GetInfo().transport_type,
             .inbound_onion=node->m_inbound_onion,
