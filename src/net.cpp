@@ -1704,16 +1704,7 @@ void CConnman::CreateNodeFromAcceptedSocket(std::unique_ptr<Sock>&& sock,
                                             const CService& addr_bind,
                                             const CService& addr)
 {
-    int nInbound = 0;
-
     AddWhitelistPermissionFlags(permission_flags, addr, vWhitelistedRangeIncoming);
-
-    {
-        LOCK(m_nodes_mutex);
-        for (const auto& pnode : m_nodes) {
-            if (IsInboundConn(pnode->m_conn_type)) nInbound++;
-        }
-    }
 
     if (!fNetworkActive) {
         LogDebug(BCLog::NET, "connection from %s dropped: not accepting new connections\n", addr.ToStringAddrPort());
@@ -1741,6 +1732,19 @@ void CConnman::CreateNodeFromAcceptedSocket(std::unique_ptr<Sock>&& sock,
         return;
     }
 
+    const bool inbound_onion = std::find(m_onion_binds.begin(), m_onion_binds.end(), addr_bind) != m_onion_binds.end();
+    // The V2Transport transparently falls back to V1 behavior when an incoming V1 connection is
+    // detected, so use it whenever we signal NODE_P2P_V2.
+    const bool use_v2transport(m_enable_encrypted_p2p);
+
+    int nInbound = 0;
+    {
+        LOCK(m_nodes_mutex);
+        for (const auto& pnode : m_nodes) {
+            if (IsInboundConn(pnode->m_conn_type)) nInbound++;
+        }
+    }
+
     // Only accept connections from discouraged peers if our inbound slots aren't (almost) full.
     bool discouraged = m_banman && m_banman->IsDiscouraged(addr);
     if (!NetPermissions::HasFlag(permission_flags, NetPermissionFlags::NoBan) && nInbound + 1 >= m_peer_count_limits.m_max_inbound && discouraged)
@@ -1759,12 +1763,6 @@ void CConnman::CreateNodeFromAcceptedSocket(std::unique_ptr<Sock>&& sock,
     }
 
     NodeId id = GetNewNodeId();
-
-    const bool inbound_onion = std::find(m_onion_binds.begin(), m_onion_binds.end(), addr_bind) != m_onion_binds.end();
-    // The V2Transport transparently falls back to V1 behavior when an incoming V1 connection is
-    // detected, so use it whenever we signal NODE_P2P_V2.
-    const bool use_v2transport(m_enable_encrypted_p2p);
-
     auto pnode = std::make_shared<CNode>(id,
                              std::move(sock),
                              CAddress{addr, NODE_NONE},
