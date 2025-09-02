@@ -65,7 +65,8 @@ BOOST_AUTO_TEST_CASE(cnode_simple_test)
                                                             CAddress(),
                                                             pszDest,
                                                             ConnectionType::OUTBOUND_FULL_RELAY,
-                                                            /*inbound_onion=*/false);
+                                                            /*inbound_onion=*/false,
+                                                            GetTime<std::chrono::seconds>());
     BOOST_CHECK(IsFullOutboundConn(pnode1->m_conn_type) == true);
     BOOST_CHECK(IsManualConn(pnode1->m_conn_type) == false);
     BOOST_CHECK(IsBlockOnlyConn(pnode1->m_conn_type) == false);
@@ -81,7 +82,8 @@ BOOST_AUTO_TEST_CASE(cnode_simple_test)
                                                             CAddress(),
                                                             pszDest,
                                                             ConnectionType::INBOUND,
-                                                            /*inbound_onion=*/false);
+                                                            /*inbound_onion=*/false,
+                                                            GetTime<std::chrono::seconds>());
     BOOST_CHECK(IsFullOutboundConn(pnode2->m_conn_type) == false);
     BOOST_CHECK(IsManualConn(pnode2->m_conn_type) == false);
     BOOST_CHECK(IsBlockOnlyConn(pnode2->m_conn_type) == false);
@@ -97,7 +99,8 @@ BOOST_AUTO_TEST_CASE(cnode_simple_test)
                                                             CAddress(),
                                                             pszDest,
                                                             ConnectionType::OUTBOUND_FULL_RELAY,
-                                                            /*inbound_onion=*/false);
+                                                            /*inbound_onion=*/false,
+                                                            GetTime<std::chrono::seconds>());
     BOOST_CHECK(IsFullOutboundConn(pnode3->m_conn_type) == true);
     BOOST_CHECK(IsManualConn(pnode3->m_conn_type) == false);
     BOOST_CHECK(IsBlockOnlyConn(pnode3->m_conn_type) == false);
@@ -113,7 +116,8 @@ BOOST_AUTO_TEST_CASE(cnode_simple_test)
                                                             CAddress(),
                                                             pszDest,
                                                             ConnectionType::INBOUND,
-                                                            /*inbound_onion=*/true);
+                                                            /*inbound_onion=*/true,
+                                                            GetTime<std::chrono::seconds>());
     BOOST_CHECK(IsFullOutboundConn(pnode4->m_conn_type) == false);
     BOOST_CHECK(IsManualConn(pnode4->m_conn_type) == false);
     BOOST_CHECK(IsBlockOnlyConn(pnode4->m_conn_type) == false);
@@ -603,7 +607,8 @@ BOOST_AUTO_TEST_CASE(ipv4_peer_with_ipv6_addrMe_test)
                                                            CAddress{},
                                                            /*pszDest=*/std::string{},
                                                            ConnectionType::OUTBOUND_FULL_RELAY,
-                                                           /*inbound_onion=*/false);
+                                                           /*inbound_onion=*/false,
+                                                           GetTime<std::chrono::seconds>());
 
     // the peer claims to be reaching us via IPv6
     in6_addr ipv6AddrLocal;
@@ -653,7 +658,8 @@ BOOST_AUTO_TEST_CASE(get_local_addr_for_peer_port)
                    /*addrBindIn=*/CService{},
                    /*addrNameIn=*/std::string{},
                    /*conn_type_in=*/ConnectionType::OUTBOUND_FULL_RELAY,
-                   /*inbound_onion=*/false};
+                   /*inbound_onion=*/false,
+                    GetTime<std::chrono::seconds>()};
 
     // Without the fix peer_us:8333 is chosen instead of the proper peer_us:bind_port.
     auto chosen_local_addr = GetLocalAddrForPeer(peer_out, peer_us);
@@ -670,7 +676,8 @@ BOOST_AUTO_TEST_CASE(get_local_addr_for_peer_port)
                   /*addrBindIn=*/CService{},
                   /*addrNameIn=*/std::string{},
                   /*conn_type_in=*/ConnectionType::INBOUND,
-                  /*inbound_onion=*/false};
+                  /*inbound_onion=*/false,
+                  GetTime<std::chrono::seconds>()};
 
     // Without the fix peer_us:8333 is chosen instead of the proper peer_us:peer_us.GetPort().
     chosen_local_addr = GetLocalAddrForPeer(peer_in, peer_us);
@@ -806,7 +813,8 @@ BOOST_AUTO_TEST_CASE(initial_advertise_from_version_message)
                /*addrBindIn=*/CService{},
                /*addrNameIn=*/std::string{},
                /*conn_type_in=*/ConnectionType::OUTBOUND_FULL_RELAY,
-               /*inbound_onion=*/false};
+               /*inbound_onion=*/false,
+               GetTime<std::chrono::seconds>()};
 
     PeerOptions options{
         .id = node_id,
@@ -889,7 +897,8 @@ BOOST_AUTO_TEST_CASE(advertise_local_address)
                                        CAddress{},
                                        /*pszDest=*/std::string{},
                                        ConnectionType::OUTBOUND_FULL_RELAY,
-                                       /*inbound_onion=*/false);
+                                       /*inbound_onion=*/false,
+                                       GetTime<std::chrono::seconds>());
     };
     g_reachable_nets.Add(NET_CJDNS);
 

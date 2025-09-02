@@ -764,6 +764,7 @@ public:
           const std::string& addrNameIn,
           ConnectionType conn_type_in,
           bool inbound_onion,
+          std::chrono::seconds connected_time,
           CNodeOptions&& node_opts = {});
     CNode(const CNode&) = delete;
     CNode& operator=(const CNode&) = delete;

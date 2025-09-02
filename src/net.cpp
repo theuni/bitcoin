@@ -524,6 +524,7 @@ std::shared_ptr<CNode> CConnman::ConnectNode(CAddress addrConnect, const char *p
         if (!addr_bind.IsValid()) {
             addr_bind = GetBindAddress(*sock);
         }
+        auto connected_time = GetTime<std::chrono::seconds>();
         auto pnode = std::make_shared<CNode>(id,
                                 std::move(sock),
                                 target_addr,
@@ -531,6 +532,7 @@ std::shared_ptr<CNode> CConnman::ConnectNode(CAddress addrConnect, const char *p
                                 pszDest ? pszDest : "",
                                 conn_type,
                                 /*inbound_onion=*/false,
+                                connected_time,
                                 CNodeOptions{
                                     .permission_flags = permission_flags,
                                     .i2p_sam_session = std::move(i2p_transient_session),
@@ -1763,6 +1765,7 @@ void CConnman::CreateNodeFromAcceptedSocket(std::unique_ptr<Sock>&& sock,
     }
 
     NodeId id = GetNewNodeId();
+    auto connected_time = GetTime<std::chrono::seconds>();
     auto pnode = std::make_shared<CNode>(id,
                              std::move(sock),
                              CAddress{addr, NODE_NONE},
@@ -1770,6 +1773,7 @@ void CConnman::CreateNodeFromAcceptedSocket(std::unique_ptr<Sock>&& sock,
                              /*addrNameIn=*/"",
                              ConnectionType::INBOUND,
                              inbound_onion,
+                             connected_time,
                              CNodeOptions{
                                  .permission_flags = permission_flags,
                                  .recv_flood_size = nReceiveFloodSize,
@@ -3678,11 +3682,12 @@ CNode::CNode(NodeId idIn,
              const std::string& addrNameIn,
              ConnectionType conn_type_in,
              bool inbound_onion,
+             std::chrono::seconds connected_time,
              CNodeOptions&& node_opts)
     : m_transport{MakeTransport(idIn, node_opts.use_v2transport, conn_type_in == ConnectionType::INBOUND)},
       m_permission_flags{node_opts.permission_flags},
       m_sock{sock},
-      m_connected{GetTime<std::chrono::seconds>()},
+      m_connected{connected_time},
       addr{addrIn},
       addrBind{addrBindIn},
       m_addr_name{addrNameIn.empty() ? addr.ToStringAddrPort() : addrNameIn},

@@ -251,6 +251,7 @@ auto ConsumeNode(FuzzedDataProvider& fuzzed_data_provider, const std::optional<N
                                        addr_name,
                                        conn_type,
                                        inbound_onion,
+                                       GetTime<std::chrono::seconds>(),
                                        CNodeOptions{ .permission_flags = permission_flags });
     } else {
         return CNode{node_id,
@@ -260,6 +261,7 @@ auto ConsumeNode(FuzzedDataProvider& fuzzed_data_provider, const std::optional<N
                      addr_name,
                      conn_type,
                      inbound_onion,
+                     GetTime<std::chrono::seconds>(),
                      CNodeOptions{ .permission_flags = permission_flags }};
     }
 }

@@ -70,7 +70,8 @@ BOOST_AUTO_TEST_CASE(outbound_slow_chain_eviction)
                      CAddress(),
                      /*addrNameIn=*/"",
                      ConnectionType::OUTBOUND_FULL_RELAY,
-                     /*inbound_onion=*/false};
+                     /*inbound_onion=*/false,
+                     GetTime<std::chrono::seconds>()};
 
     connman->Handshake(
         /*node=*/dummyNode1,
@@ -134,7 +135,8 @@ void AddRandomOutboundPeer(NodeId& id, std::vector<std::shared_ptr<CNode>>& vNod
                                   CAddress(),
                                   /*addrNameIn=*/"",
                                   connType,
-                                  /*inbound_onion=*/false});
+                                  /*inbound_onion=*/false,
+                                  GetTime<std::chrono::seconds>()});
     auto node = vNodes.back();
 
     LOCK(NetEventsInterface::g_msgproc_mutex);
@@ -355,7 +357,8 @@ BOOST_AUTO_TEST_CASE(peer_discouragement)
                          CAddress(),
                          /*addrNameIn=*/"",
                          ConnectionType::INBOUND,
-                         /*inbound_onion=*/false);
+                         /*inbound_onion=*/false,
+                         GetTime<std::chrono::seconds>());
 
     connman->Handshake(
         /*node=*/*nodes[0],
@@ -378,7 +381,8 @@ BOOST_AUTO_TEST_CASE(peer_discouragement)
                          CAddress(),
                          /*addrNameIn=*/"",
                          ConnectionType::INBOUND,
-                         /*inbound_onion=*/false);
+                         /*inbound_onion=*/false,
+                         GetTime<std::chrono::seconds>());
     connman->Handshake(
         /*node=*/*nodes[1],
         /*successfully_connected=*/true,
@@ -410,7 +414,8 @@ BOOST_AUTO_TEST_CASE(peer_discouragement)
                          CAddress(),
                          /*addrNameIn=*/"",
                          ConnectionType::OUTBOUND_FULL_RELAY,
-                         /*inbound_onion=*/false);
+                         /*inbound_onion=*/false,
+                         GetTime<std::chrono::seconds>());
 
     connman->Handshake(
         /*node=*/*nodes[2],
@@ -460,7 +465,8 @@ BOOST_AUTO_TEST_CASE(DoS_bantime)
                     CAddress(),
                     /*addrNameIn=*/"",
                     ConnectionType::INBOUND,
-                    /*inbound_onion=*/false};
+                    /*inbound_onion=*/false,
+                    GetTime<std::chrono::seconds>()};
 
     connman->Handshake(
         /*node=*/dummyNode,

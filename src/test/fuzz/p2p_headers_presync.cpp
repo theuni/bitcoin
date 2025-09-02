@@ -70,7 +70,7 @@ void HeadersSyncSetup::ResetAndInitialize()
 
     for (auto conn_type : conn_types) {
         CAddress addr{};
-        m_connections.push_back(std::make_shared<CNode>(id++, nullptr, addr, addr, "", conn_type, false));
+        m_connections.push_back(std::make_shared<CNode>(id++, nullptr, addr, addr, "", conn_type, false, GetTime<std::chrono::seconds>()));
         auto p2p_node = m_connections.back();
 
         connman.Handshake(

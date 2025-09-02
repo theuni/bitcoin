@@ -70,7 +70,8 @@ void AddPeer(NodeId& id, std::vector<std::shared_ptr<CNode>>& nodes, PeerManager
                                  CAddress{},
                                  /*addrNameIn=*/"",
                                  conn_type,
-                                 /*inbound_onion=*/inbound_onion});
+                                 /*inbound_onion=*/inbound_onion,
+                                 GetTime<std::chrono::seconds>()});
     auto node = nodes.back();
 
     LOCK(NetEventsInterface::g_msgproc_mutex);
