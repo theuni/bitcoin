@@ -499,6 +499,8 @@ struct Peer {
 
     uint32_t m_mapped_as{0};
 
+    Network m_connected_through_net;
+
     explicit Peer(PeerOptions options, ServiceFlags our_services, uint64_t local_nonce)
         : m_id{options.id}
         , m_our_services{our_services}
@@ -509,6 +511,7 @@ struct Peer {
         , m_transport(std::move(options.transport))
         , m_inbound_onion(options.inbound_onion)
         , m_mapped_as(options.mapped_as)
+        , m_connected_through_net(options.connected_through_net)
         , m_permission_flags(options.permission_flags)
         , m_local_nonce(local_nonce)
     {}

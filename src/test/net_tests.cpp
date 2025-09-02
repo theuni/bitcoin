@@ -826,7 +826,8 @@ BOOST_AUTO_TEST_CASE(initial_advertise_from_version_message)
         .transport=TransportProtocolType::V1,
         .inbound_onion=false,
         .mapped_as = 0,
-        .keyed_net_group = 0
+        .keyed_net_group = 0,
+        .connected_through_net=NET_IPV4,
     };
 
     const uint64_t services{NODE_NETWORK | NODE_WITNESS};

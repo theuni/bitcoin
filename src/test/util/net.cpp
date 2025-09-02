@@ -43,6 +43,7 @@ void ConnmanTestMsg::Handshake(CNode& node,
         .inbound_onion=node.m_inbound_onion,
         .mapped_as=GetMappedAS(node.addr),
         .keyed_net_group=CalculateKeyedNetGroup(node.addr),
+        .connected_through_net=node.ConnectedThroughNetwork(),
     };
     peerman.InitializeNode(std::move(options));
 
