@@ -1184,7 +1184,6 @@ private:
      */
     bool AlreadyConnectedToAddress(const CAddress& addr);
 
-    bool AttemptToEvictConnection();
     void AddWhitelistPermissionFlags(NetPermissionFlags& flags, const CNetAddr &addr, const std::vector<NetWhitelistPermissions>& ranges) const;
 
     NodeId GetNewNodeId();

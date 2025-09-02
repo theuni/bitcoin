@@ -91,6 +91,7 @@ using namespace util::hex_literals;
 
 TRACEPOINT_SEMAPHORE(net, inbound_message);
 TRACEPOINT_SEMAPHORE(net, misbehaving_connection);
+TRACEPOINT_SEMAPHORE(net, evicted_inbound_connection);
 
 /** Headers download timeout.
  *  Timeout = base + per_header * (expected number of headers) */
@@ -1279,6 +1280,7 @@ private:
     };
 
     CSipHasher GetDeterministicRandomizer(uint64_t id) const;
+    bool AttemptToEvictConnection() EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex);
 };
 
 CSipHasher PeerManagerImpl::GetDeterministicRandomizer(uint64_t id) const
@@ -1921,8 +1923,66 @@ NodeId PeerManagerImpl::GetNewNodeId()
     return m_last_node_id.fetch_add(1, std::memory_order_relaxed);
 }
 
+/** Try to find a connection to evict when the node is full.
+*  Extreme care must be taken to avoid opening the node to attacker
+*   triggered network partitioning.
+*  The strategy used here is to protect a small number of peers
+*   for each of several distinct characteristics which are difficult
+*   to forge.  In order to partition a node the attacker must be
+*   simultaneously better at all of them than honest peers.
+*/
+bool PeerManagerImpl::AttemptToEvictConnection()
+{
+    const std::optional<NodeId> node_id_to_evict = m_evictionman.SelectNodeToEvict();
+    if (!node_id_to_evict) {
+      return false;
+    }
+    LOCK(m_peer_mutex);
+    for (const auto& [id, peer] : m_peer_map) {
+      if (id == *node_id_to_evict) {
+          LogDebug(BCLog::NET, "selected %s connection for eviction, %s", ConnectionTypeAsString(peer->m_conn_type), peer->DisconnectMsg(fLogIPs));
+          TRACEPOINT(net, evicted_inbound_connection,
+              id,
+              peer->m_addr_name.c_str(),
+              ConnectionTypeAsString(peer->m_conn_type).c_str(),
+              peer->m_connected_through_net,
+              Ticks<std::chrono::seconds>(peer->m_connected));
+          RequestDisconnect(*peer);
+          return true;
+      }
+    }
+    return false;
+}
+
 std::optional<NodeId> PeerManagerImpl::InitializeNode(PeerOptions options)
 {
+    bool discouraged = false;
+    if (IsInboundConn(options.conn_type)) {
+        int nInbound = 0;
+        {
+            LOCK(m_peer_mutex);
+            for (const auto& [_, peer] : m_peer_map) {
+                if (IsInboundConn(peer->m_conn_type)) nInbound++;
+            }
+        }
+
+        // Only accept connections from discouraged peers if our inbound slots aren't (almost) full.
+        discouraged = m_banman && m_banman->IsDiscouraged(options.addr);
+        if (!NetPermissions::HasFlag(options.permission_flags, NetPermissionFlags::NoBan) && nInbound + 1 >= m_peer_count_limits.m_max_inbound && discouraged)
+        {
+            LogDebug(BCLog::NET, "connection from %s dropped (discouraged)\n", options.addr.ToStringAddrPort());
+            return std::nullopt;
+        }
+
+        if (nInbound >= m_peer_count_limits.m_max_inbound)
+        {
+            if (!AttemptToEvictConnection()) {
+                // No connection to evict, disconnect the new connection
+                LogDebug(BCLog::NET, "failed to find an eviction candidate - connection dropped (full)\n");
+                return std::nullopt;
+            }
+        }
+    }
     NodeId nodeid = GetNewNodeId();
     {
         LOCK(cs_main); // For m_node_states
@@ -1942,6 +2002,16 @@ std::optional<NodeId> PeerManagerImpl::InitializeNode(PeerOptions options)
         LOCK(m_peer_mutex);
         m_peer_map.emplace_hint(m_peer_map.end(), nodeid, peer);
     }
+
+    m_evictionman.AddCandidate(
+      /*id=*/nodeid,
+      /*connected=*/peer->m_connected,
+      /*keyed_net_group=*/options.keyed_net_group,
+      /*prefer_evict=*/discouraged,
+      /*is_local=*/peer->m_addr.IsLocal(),
+      /*network=*/options.connected_through_net,
+      /*noban=*/peer->HasPermission(NetPermissionFlags::NoBan),
+      /*conn_type=*/peer->m_conn_type);
 
     return nodeid;
 }
@@ -2037,6 +2107,7 @@ void PeerManagerImpl::FinalizeNode(NodeId nodeid)
         LOCK(m_headers_presync_mutex);
         m_headers_presync_stats.erase(nodeid);
     }
+    m_evictionman.RemoveCandidate(nodeid);
     LogDebug(BCLog::NET, "Cleared nodestate for peer=%d\n", nodeid);
 }
 

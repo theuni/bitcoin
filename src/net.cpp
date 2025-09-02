@@ -47,7 +47,6 @@
 #include <unordered_map>
 
 TRACEPOINT_SEMAPHORE(net, closed_connection);
-TRACEPOINT_SEMAPHORE(net, evicted_inbound_connection);
 TRACEPOINT_SEMAPHORE(net, inbound_connection);
 TRACEPOINT_SEMAPHORE(net, outbound_connection);
 TRACEPOINT_SEMAPHORE(net, outbound_message);
@@ -1481,38 +1480,6 @@ std::pair<size_t, bool> CConnman::SocketSendData(CNode& node) const
     return {nSentSize, data_left};
 }
 
-/** Try to find a connection to evict when the node is full.
- *  Extreme care must be taken to avoid opening the node to attacker
- *   triggered network partitioning.
- *  The strategy used here is to protect a small number of peers
- *   for each of several distinct characteristics which are difficult
- *   to forge.  In order to partition a node the attacker must be
- *   simultaneously better at all of them than honest peers.
- */
-bool CConnman::AttemptToEvictConnection()
-{
-    const std::optional<NodeId> node_id_to_evict = m_evictionman.SelectNodeToEvict();
-    if (!node_id_to_evict) {
-        return false;
-    }
-
-    LOCK(m_nodes_mutex);
-    for (const auto& pnode : m_nodes) {
-        if (pnode->GetId() == *node_id_to_evict) {
-            LogDebug(BCLog::NET, "selected %s connection for eviction, %s", pnode->ConnectionTypeAsString(), pnode->DisconnectMsg(fLogIPs));
-            TRACEPOINT(net, evicted_inbound_connection,
-                pnode->GetId(),
-                pnode->m_addr_name.c_str(),
-                pnode->ConnectionTypeAsString().c_str(),
-                pnode->ConnectedThroughNetwork(),
-                Ticks<std::chrono::seconds>(pnode->m_connected));
-            pnode->fDisconnect = true;
-            return true;
-        }
-    }
-    return false;
-}
-
 void CConnman::AcceptConnection(const ListenSocket& hListenSocket) {
     struct sockaddr_storage sockaddr;
     socklen_t len = sizeof(sockaddr);
@@ -1579,31 +1546,6 @@ void CConnman::CreateNodeFromAcceptedSocket(std::unique_ptr<Sock>&& sock,
     // detected, so use it whenever we signal NODE_P2P_V2.
     const bool use_v2transport(m_enable_encrypted_p2p);
 
-    int nInbound = 0;
-    {
-        LOCK(m_nodes_mutex);
-        for (const auto& pnode : m_nodes) {
-            if (IsInboundConn(pnode->m_conn_type)) nInbound++;
-        }
-    }
-
-    // Only accept connections from discouraged peers if our inbound slots aren't (almost) full.
-    bool discouraged = m_banman && m_banman->IsDiscouraged(addr);
-    if (!NetPermissions::HasFlag(permission_flags, NetPermissionFlags::NoBan) && nInbound + 1 >= m_peer_count_limits.m_max_inbound && discouraged)
-    {
-        LogDebug(BCLog::NET, "connection from %s dropped (discouraged)\n", addr.ToStringAddrPort());
-        return;
-    }
-
-    if (nInbound >= m_peer_count_limits.m_max_inbound)
-    {
-        if (!AttemptToEvictConnection()) {
-            // No connection to evict, disconnect the new connection
-            LogDebug(BCLog::NET, "failed to find an eviction candidate - connection dropped (full)\n");
-            return;
-        }
-    }
-
     auto connected_time = GetTime<std::chrono::seconds>();
 
     PeerOptions options{
@@ -1647,16 +1589,6 @@ void CConnman::CreateNodeFromAcceptedSocket(std::unique_ptr<Sock>&& sock,
         pnode->ConnectionTypeAsString().c_str(),
         pnode->ConnectedThroughNetwork(),
         GetNodeCount(ConnectionDirection::In));
-
-    m_evictionman.AddCandidate(
-        /*id=*/pnode->GetId(),
-        /*connected=*/pnode->m_connected,
-        /*keyed_net_group=*/CalculateKeyedNetGroup(addr),
-        /*prefer_evict=*/discouraged,
-        /*is_local=*/pnode->addr.IsLocal(),
-        /*network=*/pnode->ConnectedThroughNetwork(),
-        /*noban=*/pnode->HasPermission(NetPermissionFlags::NoBan),
-        /*conn_type=*/ConnectionType::INBOUND);
 
     // We received a new connection, harvest entropy from the time (and our peer count)
     RandAddEvent((uint32_t)*id);
@@ -1742,9 +1674,6 @@ void CConnman::DisconnectNodes()
                         .use_v2transport = false});
                     LogDebug(BCLog::NET, "retrying with v1 transport protocol for peer=%d\n", pnode->GetId());
                 }
-                // Tell the eviction manager to forget about this node
-                m_evictionman.RemoveCandidate(pnode->GetId());
-
                 // release outbound grant (if any)
                 pnode->grantOutbound.Release();
 
@@ -2938,15 +2867,6 @@ bool CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFai
         pnode->ConnectedThroughNetwork(),
         GetNodeCount(ConnectionDirection::Out));
 
-    m_evictionman.AddCandidate(
-        /*id=*/pnode->GetId(),
-        /*connected=*/pnode->m_connected,
-        /*keyed_net_group=*/CalculateKeyedNetGroup(addrConnect),
-        /*prefer_evict=*/false,
-        /*is_local=*/pnode->addr.IsLocal(),
-        /*network=*/pnode->ConnectedThroughNetwork(),
-        /*noban=*/pnode->HasPermission(NetPermissionFlags::NoBan),
-        /*conn_type=*/conn_type);
     return true;
 }
 
