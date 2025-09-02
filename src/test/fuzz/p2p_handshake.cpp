@@ -77,6 +77,7 @@ FUZZ_TARGET(p2p_handshake, .init = ::initialize)
             .transport=node->m_transport->GetInfo().transport_type,
             .inbound_onion=node->m_inbound_onion,
             .mapped_as = fuzzed_data_provider.ConsumeIntegral<uint32_t>(),
+            .keyed_net_group = fuzzed_data_provider.ConsumeIntegral<uint64_t>(),
         };
         connman.AddTestNode(node);
         peerman->AddLocalServices(ServiceFlags{fuzzed_data_provider.ConsumeIntegral<uint64_t>()});
