@@ -106,12 +106,12 @@ BOOST_FIXTURE_TEST_CASE(test_addnode_getaddednodeinfo_and_connection_detection, 
         BOOST_REQUIRE(nodes.back() != nullptr);
     }
 
-    // Call ConnectNode(), which is also called by RPC addnode onetry, for a localhost
+    // Call OpenNetworkConnection(), which is also called by RPC addnode onetry, for a localhost
     // address that resolves to multiple IPs, including that of the connected peer.
-    // The connection attempt should consistently fail due to the check in ConnectNode().
+    // The connection attempt should consistently fail due to the check in OpenNetworkConnection().
     for (int i = 0; i < 10; ++i) {
         ASSERT_DEBUG_LOG("Not opening a connection to localhost, already connected to 127.0.0.1:8333");
-        BOOST_CHECK(!connman->ConnectNodePublic(*peerman, "localhost", ConnectionType::MANUAL));
+        BOOST_CHECK(!connman->OpenNetworkConnection(CAddress{}, false, {}, "localhost", ConnectionType::MANUAL, true));
     }
 
     // Add 3 more peer connections.

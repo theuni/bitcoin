@@ -84,9 +84,6 @@ struct ConnmanTestMsg : public CConnman {
     void FlushSendBuffer(CNode& node) const;
 
     bool AlreadyConnectedPublic(const CAddress& addr) { return AlreadyConnectedToAddress(addr); };
-
-    std::shared_ptr<CNode> ConnectNodePublic(PeerManager& peerman, const char* pszDest, ConnectionType conn_type)
-        EXCLUSIVE_LOCKS_REQUIRED(!m_unused_i2p_sessions_mutex);
 };
 
 constexpr ServiceFlags ALL_SERVICE_FLAGS[]{

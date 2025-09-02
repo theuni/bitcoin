@@ -122,22 +122,6 @@ bool ConnmanTestMsg::ReceiveMsgFrom(CNode& node, CSerializedNetMsg&& ser_msg) co
     return complete;
 }
 
-std::shared_ptr<CNode> ConnmanTestMsg::ConnectNodePublic(PeerManager& peerman, const char* pszDest, ConnectionType conn_type)
-{
-    auto node = ConnectNode(CAddress{}, pszDest, /*fCountFailure=*/false, conn_type, /*use_v2transport=*/true);
-    if (!node) return nullptr;
-    LOCK(NetEventsInterface::g_msgproc_mutex);
-    Handshake(
-        /*node=*/*node,
-        /*successfully_connected=*/true,
-        /*remote_services=*/ServiceFlags(NODE_NETWORK | NODE_WITNESS),
-        /*local_services=*/ServiceFlags(NODE_NETWORK | NODE_WITNESS),
-        /*version=*/PROTOCOL_VERSION,
-        /*relay_txs=*/true);
-    AddTestNode(node);
-    return node;
-}
-
 std::vector<NodeEvictionCandidate> GetRandomNodeEvictionCandidates(int n_candidates, FastRandomContext& random_context)
 {
     std::vector<NodeEvictionCandidate> candidates;
