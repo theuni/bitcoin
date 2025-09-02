@@ -1004,7 +1004,7 @@ public:
     void Interrupt();
     bool GetNetworkActive() const { return fNetworkActive; };
     void SetNetworkActive(bool active);
-    void OpenNetworkConnection(const CAddress& addrConnect, bool fCountFailure, CountingSemaphoreGrant<>&& grant_outbound, const char* strDest, ConnectionType conn_type, bool use_v2transport) EXCLUSIVE_LOCKS_REQUIRED(!m_unused_i2p_sessions_mutex);
+    bool OpenNetworkConnection(const CAddress& addrConnect, bool fCountFailure, CountingSemaphoreGrant<>&& grant_outbound, const char* strDest, ConnectionType conn_type, bool use_v2transport) EXCLUSIVE_LOCKS_REQUIRED(!m_unused_i2p_sessions_mutex);
     void ASMapHealthCheck();
 
     void MarkSendBufferFull(CNode&, bool) const;

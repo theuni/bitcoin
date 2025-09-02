@@ -2893,7 +2893,7 @@ void CConnman::ThreadOpenAddedConnections()
 }
 
 // if successful, this moves the passed grant to the constructed node
-void CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFailure, CountingSemaphoreGrant<>&& grant_outbound, const char *pszDest, ConnectionType conn_type, bool use_v2transport)
+bool CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFailure, CountingSemaphoreGrant<>&& grant_outbound, const char *pszDest, ConnectionType conn_type, bool use_v2transport)
 {
     AssertLockNotHeld(m_unused_i2p_sessions_mutex);
     assert(conn_type != ConnectionType::INBOUND);
@@ -2902,23 +2902,23 @@ void CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFai
     // Initiate outbound network connection
     //
     if (interruptNet) {
-        return;
+        return false;
     }
     if (!fNetworkActive) {
-        return;
+        return false;
     }
     if (!pszDest) {
         bool banned_or_discouraged = m_banman && (m_banman->IsDiscouraged(addrConnect) || m_banman->IsBanned(addrConnect));
         if (IsLocal(addrConnect) || banned_or_discouraged || AlreadyConnectedToAddress(addrConnect)) {
-            return;
+            return false;
         }
     } else if (FindNode(std::string(pszDest)))
-        return;
+        return false;
 
     auto pnode = ConnectNode(addrConnect, pszDest, fCountFailure, conn_type, use_v2transport);
 
     if (!pnode)
-        return;
+        return false;
     pnode->grantOutbound = std::move(grant_outbound);
 
 
@@ -2960,6 +2960,7 @@ void CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFai
         /*network=*/pnode->ConnectedThroughNetwork(),
         /*noban=*/pnode->HasPermission(NetPermissionFlags::NoBan),
         /*conn_type=*/conn_type);
+    return true;
 }
 
 Mutex NetEventsInterface::g_msgproc_mutex;
