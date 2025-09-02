@@ -706,7 +706,7 @@ public:
     // Bind address of our side of the connection
     const CService addrBind;
     const std::string m_addr_name;
-    /** The pszDest argument provided to ConnectNode(). Only used for reconnections. */
+    /** The pszDest argument provided to OpenNetworkConnection(). Only used for reconnections. */
     const std::string m_dest;
     //! Whether this peer is an inbound onion, i.e. connected via our Tor onion service.
     const bool m_inbound_onion;
@@ -1186,7 +1186,6 @@ private:
     bool AlreadyConnectedToAddress(const CAddress& addr);
 
     bool AttemptToEvictConnection();
-    std::shared_ptr<CNode> ConnectNode(CAddress addrConnect, const char *pszDest, bool fCountFailure, ConnectionType conn_type, bool use_v2transport) EXCLUSIVE_LOCKS_REQUIRED(!m_unused_i2p_sessions_mutex);
     void AddWhitelistPermissionFlags(NetPermissionFlags& flags, const CNetAddr &addr, const std::vector<NetWhitelistPermissions>& ranges) const;
 
     NodeId GetNewNodeId();
