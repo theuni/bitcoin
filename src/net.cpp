@@ -388,7 +388,7 @@ static CService GetBindAddress(const Sock& sock)
     return addr_bind;
 }
 
-std::shared_ptr<CNode> CConnman::ConnectNode(CAddress addrConnect, const char *pszDest, bool fCountFailure, ConnectionType conn_type, bool use_v2transport)
+std::shared_ptr<CNode> CConnman::ConnectNode(const CAddress& addrConnect, const char *pszDest, bool fCountFailure, ConnectionType conn_type, bool use_v2transport)
 {
     AssertLockNotHeld(m_unused_i2p_sessions_mutex);
     assert(conn_type != ConnectionType::INBOUND);
@@ -424,21 +424,21 @@ std::shared_ptr<CNode> CConnman::ConnectNode(CAddress addrConnect, const char *p
             // If the connection is made by name, it can be the case that the name resolves to more than one address.
             // We don't want to connect any more of them if we are already connected to one
             for (const auto& r : resolved) {
-                addrConnect = CAddress{MaybeFlipIPv6toCJDNS(r), NODE_NONE};
-                if (!addrConnect.IsValid()) {
-                    LogDebug(BCLog::NET, "Resolver returned invalid address %s for %s\n", addrConnect.ToStringAddrPort(), pszDest);
+                CAddress addrResolved = {MaybeFlipIPv6toCJDNS(r), NODE_NONE};
+                if (!addrResolved.IsValid()) {
+                    LogDebug(BCLog::NET, "Resolver returned invalid address %s for %s\n", addrResolved.ToStringAddrPort(), pszDest);
                     return nullptr;
                 }
                 // It is possible that we already have a connection to the IP/port pszDest resolved to.
                 // In that case, drop the connection that was just created.
                 LOCK(m_nodes_mutex);
-                auto pnode = FindNode(static_cast<CService>(addrConnect));
+                auto pnode = FindNode(static_cast<CService>(addrResolved));
                 if (pnode) {
-                    LogPrintf("Not opening a connection to %s, already connected to %s\n", pszDest, addrConnect.ToStringAddrPort());
+                    LogPrintf("Not opening a connection to %s, already connected to %s\n", pszDest, addrResolved.ToStringAddrPort());
                     return nullptr;
                 }
                 // Add the address to the resolved addresses vector so we can try to connect to it later on
-                connect_to.push_back(addrConnect);
+                connect_to.push_back(addrResolved);
             }
         } else {
             // For resolution via proxy
