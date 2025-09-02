@@ -805,19 +805,7 @@ BOOST_AUTO_TEST_CASE(initial_advertise_from_version_message)
     in_addr peer_in_addr;
     peer_in_addr.s_addr = htonl(0x01020304);
 
-    NodeId node_id = 0;
-
-    CNode peer{/*id=*/node_id,
-               /*sock=*/nullptr,
-               /*addrIn=*/CAddress{CService{peer_in_addr, 8333}, NODE_NETWORK},
-               /*addrBindIn=*/CService{},
-               /*addrNameIn=*/std::string{},
-               /*conn_type_in=*/ConnectionType::OUTBOUND_FULL_RELAY,
-               /*inbound_onion=*/false,
-               GetTime<std::chrono::seconds>()};
-
     PeerOptions options{
-        .id = node_id,
         .conn_type =ConnectionType::OUTBOUND_FULL_RELAY,
         .addr=CAddress{CService{peer_in_addr, 8333}, NODE_NETWORK},
         .addr_name={},
@@ -837,7 +825,9 @@ BOOST_AUTO_TEST_CASE(initial_advertise_from_version_message)
     // Otherwise PushAddress() isn't called by PeerManager::ProcessMessage().
     auto& chainman = static_cast<TestChainstateManager&>(*m_node.chainman);
     chainman.JumpOutOfIbd();
-    m_node.peerman->InitializeNode(std::move(options));
+    std::optional<NodeId> id = m_node.peerman->InitializeNode(std::move(options));
+    assert(id);
+    NodeId node_id = *id;
 
     std::chrono::microseconds time_received_dummy{0};
 

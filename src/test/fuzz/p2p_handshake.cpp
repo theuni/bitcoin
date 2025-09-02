@@ -68,7 +68,6 @@ FUZZ_TARGET(p2p_handshake, .init = ::initialize)
         peers.push_back(ConsumeNodeAsSharedPtr(fuzzed_data_provider, i));
         const auto& node = peers.back();
         PeerOptions options{
-            .id = node->GetId(),
             .conn_type =node->m_conn_type,
             .addr=node->addr,
             .addr_name=node->m_addr_name,

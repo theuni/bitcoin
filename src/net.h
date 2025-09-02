@@ -835,7 +835,6 @@ private:
 
 struct PeerOptions
 {
-    NodeId id;
     ConnectionType conn_type;
     CAddress addr;
     std::string addr_name;
@@ -858,7 +857,7 @@ public:
     static Mutex g_msgproc_mutex;
 
     /** Initialize a peer (setup state) */
-    virtual void InitializeNode(PeerOptions options) = 0;
+    virtual std::optional<NodeId> InitializeNode(PeerOptions options) = 0;
 
     /** Handle removal of a peer (clear state) */
     virtual void MarkNodeDisconnected(NodeId) = 0;

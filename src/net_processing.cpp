@@ -501,8 +501,8 @@ struct Peer {
 
     Network m_connected_through_net;
 
-    explicit Peer(PeerOptions options, ServiceFlags our_services, uint64_t local_nonce)
-        : m_id{options.id}
+    explicit Peer(NodeId id, PeerOptions options, ServiceFlags our_services, uint64_t local_nonce)
+        : m_id{id}
         , m_our_services{our_services}
         , m_conn_type{options.conn_type}
         , m_addr(std::move(options.addr))
@@ -644,7 +644,7 @@ public:
         EXCLUSIVE_LOCKS_REQUIRED(!m_most_recent_block_mutex, !m_peer_mutex);
 
     /** Implement NetEventsInterface */
-    void InitializeNode(PeerOptions options) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_tx_download_mutex);
+    std::optional<NodeId> InitializeNode(PeerOptions options) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_tx_download_mutex);
     void MarkNodeDisconnected(NodeId nodeid) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_nodes_to_finalize_mutex);
     bool HasAllDesirableServiceFlags(ServiceFlags services) const override;
     bool ProcessMessages(NodeId node_id) override
@@ -688,6 +688,7 @@ public:
     void AddLocalServices(ServiceFlags services) override { m_local_services = ServiceFlags(m_local_services | services); };
     void RemoveLocalServices(ServiceFlags services) override { m_local_services = ServiceFlags(m_local_services & ~services); }
 private:
+    NodeId GetNewNodeId();
     void StartScheduledTasks(CScheduler& scheduler);
     void FinalizeNodes() EXCLUSIVE_LOCKS_REQUIRED(!m_nodes_to_finalize_mutex, !m_peer_mutex, !m_headers_presync_mutex, !m_tx_download_mutex);
     bool Interrupted() const;
@@ -1051,6 +1052,8 @@ private:
     const uint64_t m_seed0, m_seed1;
 
     PeerCountLimits m_peer_count_limits;
+
+    std::atomic<NodeId> m_last_node_id{0};
 
     /** Have we requested this block from a peer */
     bool IsBlockRequested(const uint256& hash) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
@@ -1913,9 +1916,14 @@ void PeerManagerImpl::UpdateLastBlockAnnounceTime(NodeId node, int64_t time_in_s
     m_evictionman.UpdateLastBlockAnnounceTime(node, std::chrono::seconds{time_in_seconds});
 }
 
-void PeerManagerImpl::InitializeNode(PeerOptions options)
+NodeId PeerManagerImpl::GetNewNodeId()
 {
-    NodeId nodeid = options.id;
+    return m_last_node_id.fetch_add(1, std::memory_order_relaxed);
+}
+
+std::optional<NodeId> PeerManagerImpl::InitializeNode(PeerOptions options)
+{
+    NodeId nodeid = GetNewNodeId();
     {
         LOCK(cs_main); // For m_node_states
         m_node_states.try_emplace(m_node_states.end(), nodeid);
@@ -1929,11 +1937,13 @@ void PeerManagerImpl::InitializeNode(PeerOptions options)
 
     uint64_t local_nonce = GetDeterministicRandomizer(RANDOMIZER_ID_LOCALHOSTNONCE).Write(nodeid).Finalize();
 
-    PeerRef peer = std::make_shared<Peer>(std::move(options), our_services, local_nonce);
+    PeerRef peer = std::make_shared<Peer>(nodeid, std::move(options), our_services, local_nonce);
     {
         LOCK(m_peer_mutex);
         m_peer_map.emplace_hint(m_peer_map.end(), nodeid, peer);
     }
+
+    return nodeid;
 }
 
 void PeerManagerImpl::ReattemptInitialBroadcast(CScheduler& scheduler)

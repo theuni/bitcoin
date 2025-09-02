@@ -31,9 +31,7 @@ void ConnmanTestMsg::Handshake(CNode& node,
 {
     auto& peerman{static_cast<PeerManager&>(*m_msgproc)};
     auto& connman{*this};
-    NodeId node_id = node.GetId();
     PeerOptions options{
-        .id = node_id,
         .conn_type =node.m_conn_type,
         .addr=node.addr,
         .addr_name=node.m_addr_name,
@@ -45,8 +43,9 @@ void ConnmanTestMsg::Handshake(CNode& node,
         .keyed_net_group=CalculateKeyedNetGroup(node.addr),
         .connected_through_net=node.ConnectedThroughNetwork(),
     };
-    peerman.InitializeNode(std::move(options));
-
+    std::optional<NodeId> id = peerman.InitializeNode(std::move(options));
+    assert(id);
+    NodeId node_id = *id;
     peerman.SendMessages(node_id);
     FlushSendBuffer(node); // Drop the version message added by SendMessages.
 

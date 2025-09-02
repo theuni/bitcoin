@@ -1604,9 +1604,26 @@ void CConnman::CreateNodeFromAcceptedSocket(std::unique_ptr<Sock>&& sock,
         }
     }
 
-    NodeId id = GetNewNodeId();
     auto connected_time = GetTime<std::chrono::seconds>();
-    auto pnode = std::make_shared<CNode>(id,
+
+    PeerOptions options{
+        .conn_type =ConnectionType::INBOUND,
+        .addr=CAddress{addr, NODE_NONE},
+        .addr_name="",
+        .permission_flags=permission_flags,
+        .connected=connected_time,
+        .transport= use_v2transport ? TransportProtocolType::V2 : TransportProtocolType::V1,
+        .inbound_onion=inbound_onion,
+        .mapped_as = GetMappedAS(addr),
+        .keyed_net_group=CalculateKeyedNetGroup(addr),
+        .connected_through_net= inbound_onion ? NET_ONION : addr.GetNetClass()
+    };
+
+    std::optional<NodeId> id = m_msgproc->InitializeNode(std::move(options));
+
+    if(!id) return;
+
+    auto pnode = std::make_shared<CNode>(*id,
                              std::move(sock),
                              CAddress{addr, NODE_NONE},
                              addr_bind,
@@ -1619,21 +1636,6 @@ void CConnman::CreateNodeFromAcceptedSocket(std::unique_ptr<Sock>&& sock,
                                  .recv_flood_size = nReceiveFloodSize,
                                  .use_v2transport = use_v2transport,
                              });
-    PeerOptions options{
-        .id = pnode->GetId(),
-        .conn_type =pnode->m_conn_type,
-        .addr=pnode->addr,
-        .addr_name=pnode->m_addr_name,
-        .permission_flags=pnode->m_permission_flags,
-        .connected=pnode->m_connected,
-        .transport=pnode->m_transport->GetInfo().transport_type,
-        .inbound_onion=pnode->m_inbound_onion,
-        .mapped_as = GetMappedAS(pnode->addr),
-        .keyed_net_group=CalculateKeyedNetGroup(pnode->addr),
-        .connected_through_net=pnode->ConnectedThroughNetwork(),
-    };
-    m_msgproc->InitializeNode(std::move(options));
-
     {
         LOCK(m_nodes_mutex);
         m_nodes.push_back(pnode);
@@ -1657,7 +1659,7 @@ void CConnman::CreateNodeFromAcceptedSocket(std::unique_ptr<Sock>&& sock,
         /*conn_type=*/ConnectionType::INBOUND);
 
     // We received a new connection, harvest entropy from the time (and our peer count)
-    RandAddEvent((uint32_t)id);
+    RandAddEvent((uint32_t)*id);
 }
 
 bool CConnman::AddConnection(const std::string& address, ConnectionType conn_type, bool use_v2transport = false)
@@ -2882,9 +2884,30 @@ bool CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFai
     std::vector<NetWhitelistPermissions> whitelist_permissions = conn_type == ConnectionType::MANUAL ? vWhitelistedRangeOutgoing : std::vector<NetWhitelistPermissions>{};
     AddWhitelistPermissionFlags(permission_flags, connect_addr, whitelist_permissions);
 
-    NodeId id = GetNewNodeId();
     auto connected_time = GetTime<std::chrono::seconds>();
-    pnode = std::make_shared<CNode>(id,
+
+
+    PeerOptions options{
+        .conn_type =conn_type,
+        .addr=connect_addr,
+        .addr_name= pszDest ? pszDest : "",
+        .permission_flags=permission_flags,
+        .connected=connected_time,
+        .transport= use_v2transport ? TransportProtocolType::V2 : TransportProtocolType::V1,
+        .inbound_onion=false,
+        .mapped_as = GetMappedAS(connect_addr),
+        .keyed_net_group=CalculateKeyedNetGroup(connect_addr),
+        .connected_through_net= connect_addr.GetNetClass()
+    };
+
+    std::optional<NodeId> id = m_msgproc->InitializeNode(std::move(options));
+
+    if(!id) return false;
+
+    // We're making a new connection, harvest entropy from the time (and our peer count)
+    RandAddEvent((uint32_t)*id);
+
+    pnode = std::make_shared<CNode>(*id,
                             std::move(sock),
                             connect_addr,
                             addr_bind,
@@ -2898,25 +2921,8 @@ bool CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFai
                                 .recv_flood_size = nReceiveFloodSize,
                                 .use_v2transport = use_v2transport,
                             });
-    // We're making a new connection, harvest entropy from the time (and our peer count)
-    RandAddEvent((uint32_t)id);
 
     pnode->grantOutbound = std::move(grant_outbound);
-
-    PeerOptions options{
-        .id = pnode->GetId(),
-        .conn_type =pnode->m_conn_type,
-        .addr=pnode->addr,
-        .addr_name=pnode->m_addr_name,
-        .permission_flags=pnode->m_permission_flags,
-        .connected=pnode->m_connected,
-        .transport=pnode->m_transport->GetInfo().transport_type,
-        .inbound_onion=pnode->m_inbound_onion,
-        .mapped_as = GetMappedAS(pnode->addr),
-        .keyed_net_group = CalculateKeyedNetGroup(addrConnect),
-        .connected_through_net=pnode->ConnectedThroughNetwork(),
-    };
-    m_msgproc->InitializeNode(std::move(options));
     {
         LOCK(m_nodes_mutex);
         m_nodes.push_back(pnode);
