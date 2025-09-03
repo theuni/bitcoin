@@ -811,7 +811,6 @@ BOOST_AUTO_TEST_CASE(initial_advertise_from_version_message)
         .addr_name={},
         .permission_flags=NetPermissionFlags::None,
         .connected=GetTime<std::chrono::seconds>(),
-        .transport=TransportProtocolType::V1,
         .inbound_onion=false,
         .mapped_as = 0,
         .keyed_net_group = 0,

@@ -492,8 +492,6 @@ struct Peer {
      */
     std::string cleanSubVer GUARDED_BY(m_subver_mutex){};
 
-    TransportProtocolType m_transport;
-
     std::atomic_int nVersion{0};
 
     bool m_inbound_onion{false};
@@ -509,7 +507,6 @@ struct Peer {
         , m_addr(std::move(options.addr))
         , m_addr_name(std::move(options.addr_name))
         , m_connected(options.connected)
-        , m_transport(std::move(options.transport))
         , m_inbound_onion(options.inbound_onion)
         , m_mapped_as(options.mapped_as)
         , m_connected_through_net(options.connected_through_net)
@@ -4158,9 +4155,8 @@ void PeerManagerImpl::ProcessMessage(Peer& p, const std::string& msg_type, DataS
         // can be triggered by an attacker at high rate.
         if (!IsInboundConn(peer->m_conn_type) || LogAcceptCategory(BCLog::NET, BCLog::Level::Debug)) {
             const auto mapped_as{peer->m_mapped_as};
-            LogPrintf("New %s %s peer connected: version: %d, blocks=%d, peer=%d%s%s\n",
+            LogPrintf("New %s peer connected: version: %d, blocks=%d, peer=%d%s%s\n",
                       ConnectionTypeAsString(peer->m_conn_type),
-                      TransportTypeAsString(peer->m_transport),
                       peer->nVersion.load(), peer->m_starting_height,
                       node_id, peer->LogIP(fLogIPs),
                       (mapped_as ? strprintf(", mapped_as=%d", mapped_as) : ""));
@@ -5940,11 +5936,7 @@ bool PeerManagerImpl::SendMessages(NodeId peer_id)
     // Don't send anything until the version handshake is complete
     if (!peer->m_handshake_complete) {
         if (peer->m_connected + m_opts.version_handshake_timeout < current_time) {
-            if (peer->m_transport == TransportProtocolType::DETECTING) {
-                LogDebug(BCLog::NET, "V2 handshake timeout, %s\n", peer->DisconnectMsg(fLogIPs));
-            } else {
-                LogDebug(BCLog::NET, "version handshake timeout, %s\n", peer->DisconnectMsg(fLogIPs));
-            }
+            LogDebug(BCLog::NET, "version handshake timeout, %s\n", peer->DisconnectMsg(fLogIPs));
             RequestDisconnect(*peer);
         }
         return true;

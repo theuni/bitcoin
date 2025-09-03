@@ -1554,7 +1554,6 @@ void CConnman::CreateNodeFromAcceptedSocket(std::unique_ptr<Sock>&& sock,
         .addr_name="",
         .permission_flags=permission_flags,
         .connected=connected_time,
-        .transport= use_v2transport ? TransportProtocolType::V2 : TransportProtocolType::V1,
         .inbound_onion=inbound_onion,
         .mapped_as = GetMappedAS(addr),
         .keyed_net_group=CalculateKeyedNetGroup(addr),
@@ -1767,6 +1766,11 @@ bool CConnman::InactivityCheck(const CNode& node) const
             "socket receive timeout: %is, %s\n", count_seconds(now - last_recv),
             node.DisconnectMsg(fLogIPs)
         );
+        return true;
+    }
+
+    if (now > node.m_connected + m_peer_connect_timeout && node.m_transport->GetInfo().transport_type == TransportProtocolType::DETECTING) {
+        LogDebug(BCLog::NET, "V2 handshake timeout, %s\n", node.DisconnectMsg(fLogIPs));
         return true;
     }
 
@@ -2822,7 +2826,6 @@ bool CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFai
         .addr_name= pszDest ? pszDest : "",
         .permission_flags=permission_flags,
         .connected=connected_time,
-        .transport= use_v2transport ? TransportProtocolType::V2 : TransportProtocolType::V1,
         .inbound_onion=false,
         .mapped_as = GetMappedAS(connect_addr),
         .keyed_net_group=CalculateKeyedNetGroup(connect_addr),

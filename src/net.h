@@ -840,7 +840,6 @@ struct PeerOptions
     std::string addr_name;
     NetPermissionFlags permission_flags;
     std::chrono::seconds connected;
-    TransportProtocolType transport;
     bool inbound_onion;
     uint32_t mapped_as;
     uint64_t keyed_net_group;
