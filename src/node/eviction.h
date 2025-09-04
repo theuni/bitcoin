@@ -17,18 +17,6 @@ class EvictionManagerImpl;
 
 typedef int64_t NodeId;
 
-struct BlockRelayEviction
-{
-    NodeId id;
-    std::chrono::seconds last_block_time;
-};
-
-struct FullOutboundEviction
-{
-    NodeId id;
-    std::chrono::seconds last_block_announcement;
-};
-
 class EvictionManager
 {
 private:
@@ -53,8 +41,8 @@ public:
      */
     [[nodiscard]] std::optional<NodeId> SelectNodeToEvict() const;
 
-    [[nodiscard]] std::optional<BlockRelayEviction> SelectBlockRelayNodeToEvict() const;
-    [[nodiscard]] std::optional<FullOutboundEviction> SelectFullOutboundNodeToEvict() const;
+    [[nodiscard]] std::optional<NodeId> SelectBlockRelayNodeToEvict() const;
+    [[nodiscard]] std::optional<NodeId> SelectFullOutboundNodeToEvict() const;
 
     /** A ping-pong round trip has completed successfully. Update the candidate's minimum ping time. */
     void UpdateMinPingTime(NodeId id, std::chrono::microseconds ping_time);

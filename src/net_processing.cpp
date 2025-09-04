@@ -5636,7 +5636,7 @@ void PeerManagerImpl::EvictExtraOutboundPeers(std::chrono::seconds now)
     if (GetExtraBlockRelayCount() > 0) {
         auto to_disconnect = m_evictionman.SelectBlockRelayNodeToEvict();
         if (!to_disconnect) return;
-        auto peer = GetPeerRef(to_disconnect->id);
+        auto peer = GetPeerRef(*to_disconnect);
         auto node_id = peer->m_id;
             AssertLockHeld(::cs_main);
             // Make sure we're not getting a block right now, and that
@@ -5649,7 +5649,7 @@ void PeerManagerImpl::EvictExtraOutboundPeers(std::chrono::seconds now)
                 (now - peer->m_connected >= MINIMUM_CONNECT_TIME && node_state->vBlocksInFlight.empty())) {
                 RequestDisconnect(*peer);
                 LogDebug(BCLog::NET, "disconnecting extra block-relay-only peer=%d (last block received at time %d)\n",
-                         node_id, count_seconds(to_disconnect->last_block_time));
+                         node_id, count_seconds(peer->m_last_block_time));
             } else {
                 LogDebug(BCLog::NET, "keeping block-relay-only peer=%d chosen for eviction (connect time: %d, blocks_in_flight: %d)\n",
                          node_id, count_seconds(peer->m_connected), node_state->vBlocksInFlight.size());
@@ -5666,16 +5666,16 @@ void PeerManagerImpl::EvictExtraOutboundPeers(std::chrono::seconds now)
         // to their network, counting both outbound-full-relay and manual peers.
         auto worst_peer = m_evictionman.SelectFullOutboundNodeToEvict();
         if (worst_peer) {
-            auto peer = GetPeerRef(worst_peer->id);
+            auto peer = GetPeerRef(*worst_peer);
 
             // Only disconnect a peer that has been connected to us for
             // some reasonable fraction of our check-frequency, to give
             // it time for new information to have arrived.
             // Also don't disconnect any peer we're trying to download a
             // block from.
-            CNodeState &state = *State(worst_peer->id);
+            CNodeState &state = *State(peer->m_id);
             if (now - peer->m_connected > MINIMUM_CONNECT_TIME && state.vBlocksInFlight.empty()) {
-                LogDebug(BCLog::NET, "disconnecting extra outbound peer=%d (last block announcement received at time %d)\n", worst_peer->id, worst_peer->last_block_announcement);
+                LogDebug(BCLog::NET, "disconnecting extra outbound peer=%d (last block announcement received at time %d)\n", peer->m_id, peer->m_last_block_time.load());
                 RequestDisconnect(*peer);
                 // If we disconnected an extra peer, that means we successfully
                 // connected to at least one peer after the last time we
@@ -5685,7 +5685,7 @@ void PeerManagerImpl::EvictExtraOutboundPeers(std::chrono::seconds now)
                 m_connman.SetTryNewOutboundPeer(false);
             } else {
                 LogDebug(BCLog::NET, "keeping outbound peer=%d chosen for eviction (connect time: %d, blocks_in_flight: %d)\n",
-                         worst_peer->id, count_seconds(peer->m_connected), state.vBlocksInFlight.size());
+                         peer->m_id, count_seconds(peer->m_connected), state.vBlocksInFlight.size());
             }
         }
     }
