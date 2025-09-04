@@ -1328,6 +1328,32 @@ static ChainstateLoadResult InitAndLoadChainstate(
     return {status, error};
 };
 
+static uint16_t GetListenPort()
+{
+    // If -bind= is provided with ":port" part, use that (first one if multiple are provided).
+    for (const std::string& bind_arg : gArgs.GetArgs("-bind")) {
+        constexpr uint16_t dummy_port = 0;
+
+        const std::optional<CService> bind_addr{Lookup(bind_arg, dummy_port, /*fAllowLookup=*/false)};
+        if (bind_addr.has_value() && bind_addr->GetPort() != dummy_port) return bind_addr->GetPort();
+    }
+
+    // Otherwise, if -whitebind= without NetPermissionFlags::NoBan is provided, use that
+    // (-whitebind= is required to have ":port").
+    for (const std::string& whitebind_arg : gArgs.GetArgs("-whitebind")) {
+        NetWhitebindPermissions whitebind;
+        bilingual_str error;
+        if (NetWhitebindPermissions::TryParse(whitebind_arg, whitebind, error)) {
+            if (!NetPermissions::HasFlag(whitebind.m_flags, NetPermissionFlags::NoBan)) {
+                return whitebind.m_service.GetPort();
+            }
+        }
+    }
+
+    // Otherwise, if -port= is provided, use that. Otherwise use the default port.
+    return static_cast<uint16_t>(gArgs.GetIntArg("-port", Params().GetDefaultPort()));
+}
+
 bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
 {
     const ArgsManager& args = *Assert(node.args);
@@ -1673,8 +1699,10 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
         g_reachable_nets.Remove(NET_ONION);
     }
 
+    auto listen_port = GetListenPort();
+
     for (const std::string& strAddr : args.GetArgs("-externalip")) {
-        const std::optional<CService> addrLocal{Lookup(strAddr, GetListenPort(), fNameLookup)};
+        const std::optional<CService> addrLocal{Lookup(strAddr, listen_port, fNameLookup)};
         if (addrLocal.has_value() && addrLocal->IsValid())
             AddLocal(addrLocal.value(), LOCAL_MANUAL);
         else
@@ -1938,6 +1966,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     if (node.peerman) node.peerman->SetBestBlock(chain_active_height, std::chrono::seconds{best_block_time});
 
     // Map ports with NAT-PMP
+    InitializeMapPort(listen_port);
     StartMapPort(args.GetBoolArg("-natpmp", DEFAULT_NATPMP));
 
     CConnman::Options connOptions;
@@ -1953,6 +1982,8 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     connOptions.whitelist_forcerelay = args.GetBoolArg("-whitelistforcerelay", DEFAULT_WHITELISTFORCERELAY);
     connOptions.whitelist_relay = args.GetBoolArg("-whitelistrelay", DEFAULT_WHITELISTRELAY);
     connOptions.enable_encrypted_p2p = args.GetBoolArg("-v2transport", DEFAULT_V2_TRANSPORT);
+    connOptions.default_listen_port = listen_port;
+    connOptions.chain_default_port = Params().GetDefaultPort();
 
     // Port to bind to if `-bind=addr` is provided without a `:port` suffix.
     const uint16_t default_bind_port =
@@ -2036,7 +2067,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     if (connOptions.bind_on_any) {
         // Only add all IP addresses of the machine if we would be listening on
         // any address - 0.0.0.0 (IPv4) and :: (IPv6).
-        Discover();
+        Discover(listen_port);
     }
 
     for (const auto& net : args.GetArgs("-whitelist")) {

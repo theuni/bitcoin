@@ -61,6 +61,7 @@ FUZZ_TARGET(connman, .init = initialize_connman)
     const uint64_t max_outbound_limit{fuzzed_data_provider.ConsumeIntegral<uint64_t>()};
     CConnman::Options options;
     options.nMaxOutboundLimit = max_outbound_limit;
+    options.chain_default_port = Params().GetDefaultPort();
     connman.Init(options);
 
     CNetAddr random_netaddr;

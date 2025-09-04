@@ -37,18 +37,6 @@ using util::ToString;
 
 BOOST_FIXTURE_TEST_SUITE(net_tests, RegTestingSetup)
 
-BOOST_AUTO_TEST_CASE(cnode_listen_port)
-{
-    // test default
-    uint16_t port{GetListenPort()};
-    BOOST_CHECK(port == Params().GetDefaultPort());
-    // test set port
-    uint16_t altPort = 12345;
-    BOOST_CHECK(gArgs.SoftSetArg("-port", ToString(altPort)));
-    port = GetListenPort();
-    BOOST_CHECK(port == altPort);
-}
-
 BOOST_AUTO_TEST_CASE(cnode_simple_test)
 {
     NodeId id = 0;
@@ -617,7 +605,7 @@ BOOST_AUTO_TEST_CASE(ipv4_peer_with_ipv6_addrMe_test)
     CAddress addrLocal = CAddress(CService(ipv6AddrLocal, 7777), NODE_NETWORK);
 
     // before patch, this causes undefined behavior detectable with clang's -fsanitize=memory
-    GetLocalAddrForPeer(*pnode, addrLocal);
+    GetLocalAddrForPeer(*pnode, addrLocal, 42);
 
     // suppress no-checks-run warning; if this test fails, it's by triggering a sanitizer
     BOOST_CHECK(1);
@@ -662,7 +650,7 @@ BOOST_AUTO_TEST_CASE(get_local_addr_for_peer_port)
                     GetTime<std::chrono::seconds>()};
 
     // Without the fix peer_us:8333 is chosen instead of the proper peer_us:bind_port.
-    auto chosen_local_addr = GetLocalAddrForPeer(peer_out, peer_us);
+    auto chosen_local_addr = GetLocalAddrForPeer(peer_out, peer_us, 8333);
     BOOST_REQUIRE(chosen_local_addr);
     const CService expected{peer_us_addr, bind_port};
     BOOST_CHECK(*chosen_local_addr == expected);
@@ -680,7 +668,7 @@ BOOST_AUTO_TEST_CASE(get_local_addr_for_peer_port)
                   GetTime<std::chrono::seconds>()};
 
     // Without the fix peer_us:8333 is chosen instead of the proper peer_us:peer_us.GetPort().
-    chosen_local_addr = GetLocalAddrForPeer(peer_in, peer_us);
+    chosen_local_addr = GetLocalAddrForPeer(peer_in, peer_us, 8333);
     BOOST_REQUIRE(chosen_local_addr);
     BOOST_CHECK(*chosen_local_addr == peer_us);
 
@@ -936,25 +924,25 @@ BOOST_AUTO_TEST_CASE(advertise_local_address)
 
     // one local clearnet address - advertise to all but privacy peers
     AddLocal(addr_ipv4);
-    BOOST_CHECK(GetLocalAddress(*peer_ipv4) == addr_ipv4);
-    BOOST_CHECK(GetLocalAddress(*peer_ipv6) == addr_ipv4);
-    BOOST_CHECK(GetLocalAddress(*peer_ipv6_tunnel) == addr_ipv4);
-    BOOST_CHECK(GetLocalAddress(*peer_teredo) == addr_ipv4);
-    BOOST_CHECK(GetLocalAddress(*peer_cjdns) == addr_ipv4);
-    BOOST_CHECK(!GetLocalAddress(*peer_onion).IsValid());
-    BOOST_CHECK(!GetLocalAddress(*peer_i2p).IsValid());
+    BOOST_CHECK(GetLocalAddress(*peer_ipv4, 8333) == addr_ipv4);
+    BOOST_CHECK(GetLocalAddress(*peer_ipv6, 8333) == addr_ipv4);
+    BOOST_CHECK(GetLocalAddress(*peer_ipv6_tunnel, 8333) == addr_ipv4);
+    BOOST_CHECK(GetLocalAddress(*peer_teredo, 8333) == addr_ipv4);
+    BOOST_CHECK(GetLocalAddress(*peer_cjdns, 8333) == addr_ipv4);
+    BOOST_CHECK(!GetLocalAddress(*peer_onion, 8333).IsValid());
+    BOOST_CHECK(!GetLocalAddress(*peer_i2p, 8333).IsValid());
     RemoveLocal(addr_ipv4);
 
     // local privacy addresses - don't advertise to clearnet peers
     AddLocal(addr_onion);
     AddLocal(addr_i2p);
-    BOOST_CHECK(!GetLocalAddress(*peer_ipv4).IsValid());
-    BOOST_CHECK(!GetLocalAddress(*peer_ipv6).IsValid());
-    BOOST_CHECK(!GetLocalAddress(*peer_ipv6_tunnel).IsValid());
-    BOOST_CHECK(!GetLocalAddress(*peer_teredo).IsValid());
-    BOOST_CHECK(!GetLocalAddress(*peer_cjdns).IsValid());
-    BOOST_CHECK(GetLocalAddress(*peer_onion) == addr_onion);
-    BOOST_CHECK(GetLocalAddress(*peer_i2p) == addr_i2p);
+    BOOST_CHECK(!GetLocalAddress(*peer_ipv4, 8333).IsValid());
+    BOOST_CHECK(!GetLocalAddress(*peer_ipv6, 8333).IsValid());
+    BOOST_CHECK(!GetLocalAddress(*peer_ipv6_tunnel, 8333).IsValid());
+    BOOST_CHECK(!GetLocalAddress(*peer_teredo, 8333).IsValid());
+    BOOST_CHECK(!GetLocalAddress(*peer_cjdns, 8333).IsValid());
+    BOOST_CHECK(GetLocalAddress(*peer_onion, 8333) == addr_onion);
+    BOOST_CHECK(GetLocalAddress(*peer_i2p, 8333) == addr_i2p);
     RemoveLocal(addr_onion);
     RemoveLocal(addr_i2p);
 
@@ -966,13 +954,13 @@ BOOST_AUTO_TEST_CASE(advertise_local_address)
     AddLocal(addr_onion);
     AddLocal(addr_i2p);
     AddLocal(addr_cjdns);
-    BOOST_CHECK(GetLocalAddress(*peer_ipv4) == addr_ipv4);
-    BOOST_CHECK(GetLocalAddress(*peer_ipv6) == addr_ipv6);
-    BOOST_CHECK(GetLocalAddress(*peer_ipv6_tunnel) == addr_ipv6);
-    BOOST_CHECK(GetLocalAddress(*peer_teredo) == addr_ipv4);
-    BOOST_CHECK(GetLocalAddress(*peer_onion) == addr_onion);
-    BOOST_CHECK(GetLocalAddress(*peer_i2p) == addr_i2p);
-    BOOST_CHECK(GetLocalAddress(*peer_cjdns) == addr_cjdns);
+    BOOST_CHECK(GetLocalAddress(*peer_ipv4, 8333) == addr_ipv4);
+    BOOST_CHECK(GetLocalAddress(*peer_ipv6, 8333) == addr_ipv6);
+    BOOST_CHECK(GetLocalAddress(*peer_ipv6_tunnel, 8333) == addr_ipv6);
+    BOOST_CHECK(GetLocalAddress(*peer_teredo, 8333) == addr_ipv4);
+    BOOST_CHECK(GetLocalAddress(*peer_onion, 8333) == addr_onion);
+    BOOST_CHECK(GetLocalAddress(*peer_i2p, 8333) == addr_i2p);
+    BOOST_CHECK(GetLocalAddress(*peer_cjdns, 8333) == addr_cjdns);
     RemoveLocal(addr_ipv4);
     RemoveLocal(addr_ipv6);
     RemoveLocal(addr_ipv6_tunnel);

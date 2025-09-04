@@ -131,32 +131,6 @@ void CConnman::AddAddrFetch(const std::string& strDest)
     m_addr_fetches.push_back(strDest);
 }
 
-uint16_t GetListenPort()
-{
-    // If -bind= is provided with ":port" part, use that (first one if multiple are provided).
-    for (const std::string& bind_arg : gArgs.GetArgs("-bind")) {
-        constexpr uint16_t dummy_port = 0;
-
-        const std::optional<CService> bind_addr{Lookup(bind_arg, dummy_port, /*fAllowLookup=*/false)};
-        if (bind_addr.has_value() && bind_addr->GetPort() != dummy_port) return bind_addr->GetPort();
-    }
-
-    // Otherwise, if -whitebind= without NetPermissionFlags::NoBan is provided, use that
-    // (-whitebind= is required to have ":port").
-    for (const std::string& whitebind_arg : gArgs.GetArgs("-whitebind")) {
-        NetWhitebindPermissions whitebind;
-        bilingual_str error;
-        if (NetWhitebindPermissions::TryParse(whitebind_arg, whitebind, error)) {
-            if (!NetPermissions::HasFlag(whitebind.m_flags, NetPermissionFlags::NoBan)) {
-                return whitebind.m_service.GetPort();
-            }
-        }
-    }
-
-    // Otherwise, if -port= is provided, use that. Otherwise use the default port.
-    return static_cast<uint16_t>(gArgs.GetIntArg("-port", Params().GetDefaultPort()));
-}
-
 // Determine the "best" local address for a particular peer.
 [[nodiscard]] static std::optional<CService> GetLocal(const CNetAddr &peer, bool inbound_onion)
 {
@@ -216,14 +190,14 @@ static std::vector<CAddress> ConvertSeeds(const std::vector<uint8_t> &vSeedsIn)
 // If none, return the unroutable 0.0.0.0 but filled in with
 // the normal parameters, since the IP may be changed to a useful
 // one by discovery.
-static CService GetLocalAddress(const CNetAddr &peer, bool inbound_onion)
+static CService GetLocalAddress(const CNetAddr &peer, bool inbound_onion, uint16_t fallback_port)
 {
-    return GetLocal(peer, inbound_onion).value_or(CService{CNetAddr(), GetListenPort()});
+    return GetLocal(peer, inbound_onion).value_or(CService{CNetAddr(), fallback_port});
 }
 
-CService GetLocalAddress(const CNode& peer)
+CService GetLocalAddress(const CNode& peer, uint16_t fallback_port)
 {
-    return GetLocalAddress(peer.addr, peer.m_inbound_onion);
+    return GetLocalAddress(peer.addr, peer.m_inbound_onion, fallback_port);
 }
 
 static int GetnScore(const CService& addr)
@@ -241,9 +215,9 @@ static int GetnScore(const CService& addr)
 }
 
 
-std::optional<CService> GetLocalAddrForPeer(const CNetAddr &peer, bool inbound_onion, ConnectionType conn_type, const CService& addr_local)
+std::optional<CService> GetLocalAddrForPeer(const CNetAddr &peer, bool inbound_onion, ConnectionType conn_type, const CService& addr_local, uint16_t fallback_port)
 {
-    CService addrLocal{GetLocalAddress(peer, inbound_onion)};
+    CService addrLocal{GetLocalAddress(peer, inbound_onion, fallback_port)};
     // If discovery is enabled, sometimes give our peer the address it
     // tells us that it sees us as in case it has a better idea of our
     // address than we do.
@@ -270,9 +244,9 @@ std::optional<CService> GetLocalAddrForPeer(const CNetAddr &peer, bool inbound_o
     return std::nullopt;
 }
 
-std::optional<CService> GetLocalAddrForPeer(CNode& node, const CService& addr_local)
+std::optional<CService> GetLocalAddrForPeer(CNode& node, const CService& addr_local, uint16_t fallback_port)
 {
-    return GetLocalAddrForPeer(node.addr, node.m_inbound_onion, node.m_conn_type, addr_local);
+    return GetLocalAddrForPeer(node.addr, node.m_inbound_onion, node.m_conn_type, addr_local, fallback_port);
 }
 
 // learn a new local address
@@ -302,11 +276,6 @@ bool AddLocal(const CService& addr_, int nScore)
     }
 
     return true;
-}
-
-bool AddLocal(const CNetAddr &addr, int nScore)
-{
-    return AddLocal(CService(addr, GetListenPort()), nScore);
 }
 
 void RemoveLocal(const CService& addr)
@@ -2080,7 +2049,7 @@ void CConnman::ThreadDNSAddressSeed()
                 const auto addresses{LookupHost(host, nMaxIPs, true)};
                 if (!addresses.empty()) {
                     for (const CNetAddr& ip : addresses) {
-                        CAddress addr = CAddress(CService(ip, m_params.GetDefaultPort()), requiredServiceBits);
+                        CAddress addr = CAddress(CService(ip, GetDefaultPort()), requiredServiceBits);
                         addr.nTime = rng.rand_uniform_delay(Now<NodeSeconds>() - 3 * 24h, -4 * 24h); // use a random age between 3 and 7 days old
                         vAdd.push_back(addr);
                         found++;
@@ -2700,7 +2669,7 @@ bool CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFai
 
     // Resolve
     const uint16_t default_port{pszDest != nullptr ? GetDefaultPort(pszDest) :
-                                                     m_params.GetDefaultPort()};
+                                                     GetDefaultPort()};
 
     // Collection of addresses to try to connect to: either all dns resolved addresses if a domain name (pszDest) is provided, or addrConnect otherwise.
     std::vector<CAddress> connect_to{};
@@ -2986,13 +2955,13 @@ bool CConnman::BindListenPort(const CService& addrBind, bilingual_str& strError,
     return true;
 }
 
-void Discover()
+void Discover(uint16_t listen_port)
 {
     if (!fDiscover)
         return;
 
     for (const CNetAddr &addr: GetLocalAddresses()) {
-        if (AddLocal(addr, LOCAL_IF))
+        if (AddLocal(CService{addr, listen_port}, LOCAL_IF))
             LogPrintf("%s: %s\n", __func__, addr.ToStringAddr());
     }
 }
@@ -3032,15 +3001,20 @@ NodeId CConnman::GetNewNodeId()
     return nLastNodeId.fetch_add(1, std::memory_order_relaxed);
 }
 
+uint16_t CConnman::GetDefaultPort() const
+{
+    return m_chain_default_port;
+}
+
 uint16_t CConnman::GetDefaultPort(Network net) const
 {
-    return net == NET_I2P ? I2P_SAM31_PORT : m_params.GetDefaultPort();
+    return net == NET_I2P ? I2P_SAM31_PORT : GetDefaultPort();
 }
 
 uint16_t CConnman::GetDefaultPort(const std::string& addr) const
 {
     CNetAddr a;
-    return a.SetSpecial(addr) ? GetDefaultPort(a.GetNetwork()) : m_params.GetDefaultPort();
+    return a.SetSpecial(addr) ? GetDefaultPort(a.GetNetwork()) : GetDefaultPort();
 }
 
 bool CConnman::Bind(const CService& addr_, unsigned int flags, NetPermissionFlags permissions)
@@ -3083,12 +3057,12 @@ bool CConnman::InitBinds(const Options& options)
         // Don't consider errors to bind on IPv6 "::" fatal because the host OS
         // may not have IPv6 support and the user did not explicitly ask us to
         // bind on that.
-        const CService ipv6_any{in6_addr(IN6ADDR_ANY_INIT), GetListenPort()}; // ::
+        const CService ipv6_any{in6_addr(IN6ADDR_ANY_INIT), options.default_listen_port}; // ::
         Bind(ipv6_any, BF_NONE, NetPermissionFlags::None);
 
         struct in_addr inaddr_any;
         inaddr_any.s_addr = htonl(INADDR_ANY);
-        const CService ipv4_any{inaddr_any, GetListenPort()}; // 0.0.0.0
+        const CService ipv4_any{inaddr_any, options.default_listen_port}; // 0.0.0.0
         if (!Bind(ipv4_any, BF_REPORT_ERROR, NetPermissionFlags::None)) {
             return false;
         }
@@ -3795,6 +3769,18 @@ void CConnman::ASMapHealthCheck()
 void CConnman::SetBootstrapComplete()
 {
     m_bootstrapped = true;
+}
+
+std::optional<CService> CConnman::GetLocalAddrForPeer(NodeId node_id, const CService& addr_local)
+{
+    std::shared_ptr<CNode> node;
+    {
+        LOCK(m_nodes_mutex);
+        auto it = std::find_if(m_nodes.begin(), m_nodes.end(), [&node_id](const auto& node) { return node->GetId() == node_id; });
+        if (it == m_nodes.end()) return std::nullopt;
+        node = *it;
+    }
+    return ::GetLocalAddrForPeer(node->addr, node->m_inbound_onion, node->m_conn_type, addr_local, m_default_listen_port);
 }
 
 // Dump binary message to file, with timestamp.

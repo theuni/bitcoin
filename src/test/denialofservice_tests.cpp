@@ -57,6 +57,7 @@ BOOST_AUTO_TEST_CASE(outbound_slow_chain_eviction)
         CConnman::Options opts;
         opts.m_peer_connect_timeout = 99999;
         opts.m_msgproc = peerLogic.get();
+        opts.chain_default_port = Params().GetDefaultPort();
         connman->Init(opts);
     }
 
@@ -173,6 +174,7 @@ BOOST_FIXTURE_TEST_CASE(stale_tip_peer_management, OutboundTest)
     constexpr int max_outbound_full_relay = MAX_OUTBOUND_FULL_RELAY_CONNECTIONS;
     CConnman::Options options;
     options.m_msgproc = peerLogic.get();
+    options.chain_default_port = Params().GetDefaultPort();
     connman->Init(options);
 
     const auto time_init{GetTime<std::chrono::seconds>()};
@@ -275,6 +277,7 @@ BOOST_FIXTURE_TEST_CASE(block_relay_only_eviction, OutboundTest)
 
     CConnman::Options options;
     options.m_msgproc = peerLogic.get();
+    options.chain_default_port = Params().GetDefaultPort();
     connman->Init(options);
 
     std::vector<std::shared_ptr<CNode>> vNodes;
@@ -335,6 +338,7 @@ BOOST_AUTO_TEST_CASE(peer_discouragement)
 
     CConnman::Options options;
     options.m_msgproc = peerLogic.get();
+    options.chain_default_port = Params().GetDefaultPort();
     connman->Init(options);
 
     CNetAddr tor_netaddr;
@@ -452,6 +456,7 @@ BOOST_AUTO_TEST_CASE(DoS_bantime)
 
     CConnman::Options options;
     options.m_msgproc = peerLogic.get();
+    options.chain_default_port = Params().GetDefaultPort();
     connman->Init(options);
 
     banman->ClearBanned();

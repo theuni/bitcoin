@@ -352,6 +352,7 @@ TestingSetup::TestingSetup(
     {
         CConnman::Options options;
         options.m_msgproc = m_node.peerman.get();
+        options.chain_default_port = Params().GetDefaultPort();
         m_node.connman->Init(options);
     }
 }

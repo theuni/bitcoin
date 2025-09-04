@@ -144,9 +144,7 @@ struct CSerializedNetMsg {
  * list of local addresses to self-advertise.
  * The loopback interface is skipped.
  */
-void Discover();
-
-uint16_t GetListenPort();
+void Discover(uint16_t listen_port);
 
 enum
 {
@@ -160,15 +158,14 @@ enum
 };
 
 /** Returns a local address that we should advertise to this peer. */
-std::optional<CService> GetLocalAddrForPeer(CNode& node, const CService& addr_local);
-std::optional<CService> GetLocalAddrForPeer(const CNetAddr &peer, bool inbound_onion, ConnectionType conn_type, const CService& addr_local);
+std::optional<CService> GetLocalAddrForPeer(CNode& node, const CService& addr_local, uint16_t fallback_port);
+std::optional<CService> GetLocalAddrForPeer(const CNetAddr &peer, bool inbound_onion, ConnectionType conn_type, const CService& addr_local, uint16_t fallback_port);
 
 bool AddLocal(const CService& addr, int nScore = LOCAL_NONE);
-bool AddLocal(const CNetAddr& addr, int nScore = LOCAL_NONE);
 void RemoveLocal(const CService& addr);
 bool SeenLocal(const CService& addr);
 bool IsLocal(const CService& addr);
-CService GetLocalAddress(const CNode& peer);
+CService GetLocalAddress(const CNode& peer, uint16_t fallback_port);
 
 extern bool fDiscover;
 extern bool fListen;
@@ -946,6 +943,8 @@ public:
         bool whitelist_forcerelay = DEFAULT_WHITELISTFORCERELAY;
         bool whitelist_relay = DEFAULT_WHITELISTRELAY;
         bool enable_encrypted_p2p = true;
+        uint16_t default_listen_port;
+        uint16_t chain_default_port;
     };
 
     void Init(const Options& connOptions) EXCLUSIVE_LOCKS_REQUIRED(!m_added_nodes_mutex, !m_total_bytes_sent_mutex)
@@ -978,6 +977,8 @@ public:
         whitelist_forcerelay = connOptions.whitelist_forcerelay;
         whitelist_relay = connOptions.whitelist_relay;
         m_enable_encrypted_p2p = connOptions.enable_encrypted_p2p;
+        m_default_listen_port = connOptions.default_listen_port;
+        m_chain_default_port = connOptions.chain_default_port;
     }
 
     CConnman(uint64_t seed0, uint64_t seed1, AddrMan& addrman, const NetGroupManager& netgroupman,
@@ -1089,6 +1090,8 @@ public:
     bool MultipleManualOrFullOutboundConns(Network net) const EXCLUSIVE_LOCKS_REQUIRED(m_nodes_mutex);
 
     void SetBootstrapComplete();
+
+    std::optional<CService> GetLocalAddrForPeer(NodeId id, const CService& addr_local);
 
 private:
     struct ListenSocket {
@@ -1215,6 +1218,7 @@ private:
      */
     bool MaybePickPreferredNetwork(std::optional<Network>& network);
 
+    uint16_t GetDefaultPort() const;
     uint16_t GetDefaultPort(Network net) const;
     uint16_t GetDefaultPort(const std::string& addr) const;
 
@@ -1414,6 +1418,10 @@ private:
     bool m_enable_encrypted_p2p{true};
 
     friend struct ConnmanTestMsg;
+
+    uint16_t m_default_listen_port;
+
+    uint16_t m_chain_default_port;
 };
 /** Defaults to `CaptureMessageToFile()`, but can be overridden by unit tests. */
 extern std::function<void(const CAddress& addr,

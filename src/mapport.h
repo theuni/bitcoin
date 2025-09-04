@@ -5,8 +5,11 @@
 #ifndef BITCOIN_MAPPORT_H
 #define BITCOIN_MAPPORT_H
 
+#include <cstdint>
+
 static constexpr bool DEFAULT_NATPMP = false;
 
+void InitializeMapPort(uint16_t port);
 void StartMapPort(bool enable);
 void InterruptMapPort();
 void StopMapPort();

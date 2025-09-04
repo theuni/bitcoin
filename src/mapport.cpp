@@ -25,6 +25,7 @@
 
 static CThreadInterrupt g_mapport_interrupt;
 static std::thread g_mapport_thread;
+static uint16_t g_default_port;
 
 using namespace std::chrono_literals;
 static constexpr auto PORT_MAPPING_REANNOUNCE_PERIOD{20min};
@@ -38,7 +39,6 @@ static void ProcessPCP()
 
     bool ret = false;
     bool no_resources = false;
-    const uint16_t private_port = GetListenPort();
     // Multiply the reannounce period by two, as we'll try to renew approximately halfway.
     const uint32_t requested_lifetime = std::chrono::seconds(PORT_MAPPING_REANNOUNCE_PERIOD * 2).count();
     uint32_t actual_lifetime = 0;
@@ -74,11 +74,11 @@ static void ProcessPCP()
             // Open a port mapping on whatever local address we have toward the gateway.
             struct in_addr inaddr_any;
             inaddr_any.s_addr = htonl(INADDR_ANY);
-            auto res = PCPRequestPortMap(pcp_nonce, *gateway4, CNetAddr(inaddr_any), private_port, requested_lifetime);
+            auto res = PCPRequestPortMap(pcp_nonce, *gateway4, CNetAddr(inaddr_any), g_default_port, requested_lifetime);
             MappingError* pcp_err = std::get_if<MappingError>(&res);
             if (pcp_err && *pcp_err == MappingError::UNSUPP_VERSION) {
                 LogPrintLevel(BCLog::NET, BCLog::Level::Debug, "portmap: Got unsupported PCP version response, falling back to NAT-PMP\n");
-                res = NATPMPRequestPortMap(*gateway4, private_port, requested_lifetime);
+                res = NATPMPRequestPortMap(*gateway4, g_default_port, requested_lifetime);
             }
             handle_mapping(res);
         }
@@ -93,7 +93,7 @@ static void ProcessPCP()
             // Try to open pinholes for all routable local IPv6 addresses.
             for (const auto &addr: GetLocalAddresses()) {
                 if (!addr.IsRoutable() || !addr.IsIPv6()) continue;
-                auto res = PCPRequestPortMap(pcp_nonce, *gateway6, addr, private_port, requested_lifetime);
+                auto res = PCPRequestPortMap(pcp_nonce, *gateway6, addr, g_default_port, requested_lifetime);
                 handle_mapping(res);
             }
         }
@@ -121,6 +121,7 @@ static void ProcessPCP()
 
 static void ThreadMapPort()
 {
+    assert(g_default_port);
     do {
         ProcessPCP();
     } while (g_mapport_interrupt.sleep_for(PORT_MAPPING_RETRY_PERIOD));
@@ -132,6 +133,12 @@ void StartThreadMapPort()
         assert(!g_mapport_interrupt);
         g_mapport_thread = std::thread(&util::TraceThread, "mapport", &ThreadMapPort);
     }
+}
+
+void InitializeMapPort(uint16_t port)
+{
+    assert(!g_default_port);
+    g_default_port = port;
 }
 
 void StartMapPort(bool enable)

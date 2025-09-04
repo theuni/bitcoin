@@ -90,7 +90,7 @@ FUZZ_TARGET(local_address, .init = initialize_net)
                 (void)IsLocal(service);
             },
             [&] {
-                (void)GetLocalAddress(node);
+                (void)GetLocalAddress(node, fuzzed_data_provider.ConsumeIntegral<uint16_t>());
             });
     }
 }
