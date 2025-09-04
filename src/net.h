@@ -11,7 +11,6 @@
 #include <common/bloom.h>
 #include <compat/compat.h>
 #include <node/connection_types.h>
-#include <node/eviction.h>
 #include <consensus/amount.h>
 #include <crypto/siphash.h>
 #include <hash.h>
@@ -982,7 +981,7 @@ public:
     }
 
     CConnman(uint64_t seed0, uint64_t seed1, AddrMan& addrman, const NetGroupManager& netgroupman,
-             const CChainParams& params, EvictionManager& evictionman, bool network_active = true);
+             const CChainParams& params, bool network_active = true);
 
     ~CConnman();
 
@@ -1251,7 +1250,6 @@ private:
     bool fAddressesInitialized{false};
     AddrMan& addrman;
     const NetGroupManager& m_netgroupman;
-    EvictionManager& m_evictionman;
     std::deque<std::string> m_addr_fetches GUARDED_BY(m_addr_fetches_mutex);
     Mutex m_addr_fetches_mutex;
 

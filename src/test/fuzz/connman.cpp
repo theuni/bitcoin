@@ -40,7 +40,6 @@ FUZZ_TARGET(connman, .init = initialize_connman)
     FuzzedDataProvider fuzzed_data_provider{buffer.data(), buffer.size()};
     SetMockTime(ConsumeTime(fuzzed_data_provider));
     auto netgroupman{ConsumeNetGroupManager(fuzzed_data_provider)};
-    auto evictionman{ConsumeEvictionManager(fuzzed_data_provider)};
     auto addr_man_ptr{std::make_unique<AddrManDeterministic>(netgroupman, fuzzed_data_provider, GetCheckRatio())};
     if (fuzzed_data_provider.ConsumeBool()) {
         const std::vector<uint8_t> serialized_data{ConsumeRandomLengthByteVector(fuzzed_data_provider)};
@@ -57,7 +56,6 @@ FUZZ_TARGET(connman, .init = initialize_connman)
                      addr_man,
                      netgroupman,
                      Params(),
-                     evictionman,
                      fuzzed_data_provider.ConsumeBool()};
 
     const uint64_t max_outbound_limit{fuzzed_data_provider.ConsumeIntegral<uint64_t>()};

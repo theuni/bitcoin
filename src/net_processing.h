@@ -29,6 +29,7 @@ class CBlockIndex;
 class CScheduler;
 class DataStream;
 class uint256;
+class EvictionManager;
 
 namespace node {
 class Warnings;
