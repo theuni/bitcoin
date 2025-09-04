@@ -72,6 +72,9 @@ struct CNodeStateStats {
     std::string m_addr_local;
     std::chrono::microseconds m_last_ping_time;
     bool m_handshake_complete{false};
+    std::chrono::seconds m_last_block_time;
+    std::chrono::seconds m_last_tx_time;
+    std::chrono::microseconds m_min_ping_time;
 };
 
 struct PeerManagerInfo {

@@ -284,6 +284,10 @@ struct Peer {
     /** Last measured round-trip time.*/
     std::atomic<std::chrono::microseconds> m_last_ping_time{0us};
 
+    std::atomic<std::chrono::seconds> m_last_block_time{0s};
+    std::atomic<std::chrono::seconds> m_last_tx_time{0s};
+    std::atomic<std::chrono::microseconds> m_min_ping_time{std::chrono::microseconds::max()};
+
     std::atomic_bool m_send_buffer_full{false};
 
     /** Whether this peer relays txs via wtxid */
@@ -2205,6 +2209,9 @@ bool PeerManagerImpl::GetNodeStateStats(NodeId nodeid, CNodeStateStats& stats) c
             addr_local.ToStringAddrPort() :
             "";
     stats.m_last_ping_time = peer->m_last_ping_time;
+    stats.m_min_ping_time = peer->m_min_ping_time;
+    stats.m_last_tx_time = peer->m_last_tx_time;
+    stats.m_last_block_time = peer->m_last_block_time;
     stats.m_handshake_complete = peer->m_handshake_complete;
     return true;
 }
@@ -3789,7 +3796,9 @@ void PeerManagerImpl::ProcessBlock(Peer& peer, const std::shared_ptr<const CBloc
     bool new_block{false};
     m_chainman.ProcessNewBlock(block, force_processing, min_pow_checked, &new_block);
     if (new_block) {
-        m_evictionman.UpdateLastBlockTime(peer.m_id, GetTime<std::chrono::seconds>());
+        auto now = GetTime<std::chrono::seconds>();
+        peer.m_last_block_time = now;
+        m_evictionman.UpdateLastBlockTime(peer.m_id, now);
         // In case this block came from a different peer than we requested
         // from, we can erase the block request now anyway (as we just stored
         // this block to disk).
@@ -4804,7 +4813,9 @@ void PeerManagerImpl::ProcessMessage(Peer& p, const std::string& msg_type, DataS
 
         if (result.m_result_type == MempoolAcceptResult::ResultType::VALID) {
             ProcessValidTx(node_id, ptx, result.m_replaced_transactions);
-            m_evictionman.UpdateLastTxTime(node_id, GetTime<std::chrono::seconds>());
+            auto now =  GetTime<std::chrono::seconds>();
+            peer->m_last_tx_time = now;
+            m_evictionman.UpdateLastTxTime(node_id, now);
         }
         if (state.IsInvalid()) {
             if (auto package_to_validate{ProcessInvalidTx(node_id, ptx, state, /*first_time_failure=*/true)}) {
@@ -5274,7 +5285,10 @@ void PeerManagerImpl::ProcessMessage(Peer& p, const std::string& msg_type, DataS
                     if (ping_time.count() >= 0) {
                         // Let connman know about this successful ping-pong
                         peer->m_last_ping_time = ping_time;
-                        m_evictionman.UpdateMinPingTime(node_id, ping_time);
+                        if (ping_time < peer->m_min_ping_time.load()) {
+                            peer->m_min_ping_time = ping_time;
+                            m_evictionman.UpdateMinPingTime(node_id, ping_time);
+                        }
                     } else {
                         // This should never happen
                         sProblem = "Timing mishap";

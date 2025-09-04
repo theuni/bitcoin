@@ -3422,18 +3422,6 @@ void CConnman::GetNodeStats(std::vector<CNodeStats>& vstats) const
         vstats.emplace_back();
         pnode->CopyStats(vstats.back());
 
-        if (auto min_ping_time = m_evictionman.GetMinPingTime(pnode->GetId())) {
-            vstats.back().m_min_ping_time = *min_ping_time;
-        }
-
-        if (auto last_block_time = m_evictionman.GetLastBlockTime(pnode->GetId())) {
-            vstats.back().m_last_block_time = *last_block_time;
-        }
-
-        if (auto last_tx_time = m_evictionman.GetLastTxTime(pnode->GetId())) {
-            vstats.back().m_last_tx_time = *last_tx_time;
-        }
-
         vstats.back().m_mapped_as = GetMappedAS(pnode->addr);
     }
 }

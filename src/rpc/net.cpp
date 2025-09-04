@@ -240,8 +240,8 @@ static RPCHelpMan getpeerinfo()
         obj.pushKV("relaytxes", statestats.m_relay_txs);
         obj.pushKV("lastsend", count_seconds(stats.m_last_send));
         obj.pushKV("lastrecv", count_seconds(stats.m_last_recv));
-        obj.pushKV("last_transaction", count_seconds(stats.m_last_tx_time));
-        obj.pushKV("last_block", count_seconds(stats.m_last_block_time));
+        obj.pushKV("last_transaction", count_seconds(statestats.m_last_tx_time));
+        obj.pushKV("last_block", count_seconds(statestats.m_last_block_time));
         obj.pushKV("bytessent", stats.nSendBytes);
         obj.pushKV("bytesrecv", stats.nRecvBytes);
         obj.pushKV("conntime", count_seconds(stats.m_connected));
@@ -249,8 +249,8 @@ static RPCHelpMan getpeerinfo()
         if (statestats.m_last_ping_time > 0us) {
             obj.pushKV("pingtime", Ticks<SecondsDouble>(statestats.m_last_ping_time));
         }
-        if (stats.m_min_ping_time < std::chrono::microseconds::max()) {
-            obj.pushKV("minping", Ticks<SecondsDouble>(stats.m_min_ping_time));
+        if (statestats.m_min_ping_time < std::chrono::microseconds::max()) {
+            obj.pushKV("minping", Ticks<SecondsDouble>(statestats.m_min_ping_time));
         }
         if (statestats.m_ping_wait > 0s) {
             obj.pushKV("pingwait", Ticks<SecondsDouble>(statestats.m_ping_wait));

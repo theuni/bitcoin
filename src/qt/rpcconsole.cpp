@@ -1195,8 +1195,6 @@ void RPCConsole::updateDetailWidget()
     ui->peerHeading->setText(peerAddrDetails);
     const auto time_now{GetTime<std::chrono::seconds>()};
     ui->peerConnTime->setText(GUIUtil::formatDurationStr(time_now - stats->nodeStats.m_connected));
-    ui->peerLastBlock->setText(TimeDurationField(time_now, stats->nodeStats.m_last_block_time));
-    ui->peerLastTx->setText(TimeDurationField(time_now, stats->nodeStats.m_last_tx_time));
     ui->peerLastSend->setText(TimeDurationField(time_now, stats->nodeStats.m_last_send));
     ui->peerLastRecv->setText(TimeDurationField(time_now, stats->nodeStats.m_last_recv));
     ui->peerBytesSent->setText(GUIUtil::formatBytes(stats->nodeStats.nSendBytes));
@@ -1231,6 +1229,8 @@ void RPCConsole::updateDetailWidget()
     // nodeStateStats couldn't be fetched.
     if (stats->fNodeStateStatsAvailable) {
         ui->peerPingTime->setText(GUIUtil::formatPingTime(stats->nodeStateStats.m_last_ping_time));
+        ui->peerLastBlock->setText(TimeDurationField(time_now, stats->nodeStateStats.m_last_block_time));
+        ui->peerLastTx->setText(TimeDurationField(time_now, stats->nodeStateStats.m_last_tx_time));
         ui->timeoffset->setText(GUIUtil::formatTimeOffset(Ticks<std::chrono::seconds>(stats->nodeStateStats.time_offset)));
         ui->peerServices->setText(GUIUtil::formatServicesStr(stats->nodeStateStats.their_services));
         // Sync height is init to -1
