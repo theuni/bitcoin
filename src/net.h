@@ -405,7 +405,7 @@ private:
     size_t m_bytes_sent GUARDED_BY(m_send_mutex) {0};
 
 public:
-    explicit V1Transport(const NodeId node_id) noexcept;
+    explicit V1Transport(const NodeId node_id, MessageStartChars message_start) noexcept;
 
     bool ReceivedMessageComplete() const override EXCLUSIVE_LOCKS_REQUIRED(!m_recv_mutex)
     {
@@ -435,6 +435,7 @@ public:
     void MarkBytesSent(size_t bytes_sent) noexcept override EXCLUSIVE_LOCKS_REQUIRED(!m_send_mutex);
     size_t GetSendMemoryUsage() const noexcept override EXCLUSIVE_LOCKS_REQUIRED(!m_send_mutex);
     bool ShouldReconnectV1() const noexcept override { return false; }
+    const MessageStartChars& GetMagicBytes() const { return m_magic_bytes; }
 };
 
 class V2Transport final : public Transport
@@ -629,10 +630,10 @@ public:
      * @param[in] nodeid      the node's NodeId (only for debug log output).
      * @param[in] initiating  whether we are the initiator side.
      */
-    V2Transport(NodeId nodeid, bool initiating) noexcept;
+    V2Transport(NodeId nodeid, MessageStartChars message_start, bool initiating) noexcept;
 
     /** Construct a V2 transport with specified keys and garbage (test use only). */
-    V2Transport(NodeId nodeid, bool initiating, const CKey& key, std::span<const std::byte> ent32, std::vector<uint8_t> garbage) noexcept;
+    V2Transport(NodeId nodeid, MessageStartChars message_start, bool initiating, const CKey& key, std::span<const std::byte> ent32, std::vector<uint8_t> garbage) noexcept;
 
     // Receive side functions.
     bool ReceivedMessageComplete() const noexcept override EXCLUSIVE_LOCKS_REQUIRED(!m_recv_mutex);
@@ -656,6 +657,7 @@ struct CNodeOptions
     std::unique_ptr<i2p::sam::Session> i2p_sam_session = nullptr;
     size_t recv_flood_size{DEFAULT_MAXRECEIVEBUFFER * 1000};
     bool use_v2transport = false;
+    MessageStartChars message_start;
 };
 
 /** Information about a peer */
@@ -945,6 +947,7 @@ public:
         bool enable_encrypted_p2p = true;
         uint16_t default_listen_port;
         uint16_t chain_default_port;
+        MessageStartChars chain_message_start;
     };
 
     void Init(const Options& connOptions) EXCLUSIVE_LOCKS_REQUIRED(!m_added_nodes_mutex, !m_total_bytes_sent_mutex)
@@ -979,6 +982,7 @@ public:
         m_enable_encrypted_p2p = connOptions.enable_encrypted_p2p;
         m_default_listen_port = connOptions.default_listen_port;
         m_chain_default_port = connOptions.chain_default_port;
+        m_chain_message_start = connOptions.chain_message_start;
     }
 
     CConnman(uint64_t seed0, uint64_t seed1, AddrMan& addrman, const NetGroupManager& netgroupman,
@@ -1422,6 +1426,8 @@ private:
     uint16_t m_default_listen_port;
 
     uint16_t m_chain_default_port;
+
+    MessageStartChars m_chain_message_start;
 };
 /** Defaults to `CaptureMessageToFile()`, but can be overridden by unit tests. */
 extern std::function<void(const CAddress& addr,

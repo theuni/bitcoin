@@ -95,6 +95,7 @@ BOOST_FIXTURE_TEST_CASE(test_addnode_getaddednodeinfo_and_connection_detection, 
     CConnman::Options options;
     options.m_msgproc = peerman.get();
     options.chain_default_port = Params().GetDefaultPort();
+    options.chain_message_start = Params().MessageStart();
     connman->Init(options);
 
     NodeId id{0};

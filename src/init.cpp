@@ -1984,6 +1984,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     connOptions.enable_encrypted_p2p = args.GetBoolArg("-v2transport", DEFAULT_V2_TRANSPORT);
     connOptions.default_listen_port = listen_port;
     connOptions.chain_default_port = Params().GetDefaultPort();
+    connOptions.chain_message_start = Params().MessageStart();
 
     // Port to bind to if `-bind=addr` is provided without a `:port` suffix.
     const uint16_t default_bind_port =

@@ -331,7 +331,7 @@ template <typename... Args>
 void DynSock::Pipe::PushNetMsg(const std::string& type, Args&&... payload)
 {
     auto msg = NetMsg::Make(type, std::forward<Args>(payload)...);
-    V1Transport transport{NodeId{0}};
+    V1Transport transport{NodeId{0}, Params().MessageStart()};
 
     const bool queued{transport.SetMessageToSend(msg)};
     assert(queued);

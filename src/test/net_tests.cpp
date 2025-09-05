@@ -1006,7 +1006,7 @@ public:
     /** Construct a tester object. test_initiator: whether the tested transport is initiator. */
     explicit V2TransportTester(FastRandomContext& rng, bool test_initiator)
         : m_rng{rng},
-          m_transport{0, test_initiator},
+          m_transport{0, Params().MessageStart(), test_initiator},
           m_cipher{GenerateRandomTestKey(m_rng), MakeByteSpan(m_rng.rand256())},
           m_test_initiator(test_initiator) {}
 

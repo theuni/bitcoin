@@ -486,8 +486,8 @@ std::string CNode::DisconnectMsg(bool log_ip) const
                      LogIP(log_ip));
 }
 
-V1Transport::V1Transport(const NodeId node_id) noexcept
-    : m_magic_bytes{Params().MessageStart()}, m_node_id{node_id}
+V1Transport::V1Transport(const NodeId node_id, MessageStartChars message_start) noexcept
+    : m_magic_bytes{std::move(message_start)}, m_node_id{node_id}
 {
     LOCK(m_recv_mutex);
     Reset();
@@ -766,9 +766,9 @@ void V2Transport::StartSendingHandshake() noexcept
     // We cannot wipe m_send_garbage as it will still be used as AAD later in the handshake.
 }
 
-V2Transport::V2Transport(NodeId nodeid, bool initiating, const CKey& key, std::span<const std::byte> ent32, std::vector<uint8_t> garbage) noexcept
+V2Transport::V2Transport(NodeId nodeid, MessageStartChars message_start, bool initiating, const CKey& key, std::span<const std::byte> ent32, std::vector<uint8_t> garbage) noexcept
     : m_cipher{key, ent32}, m_initiating{initiating}, m_nodeid{nodeid},
-      m_v1_fallback{nodeid},
+      m_v1_fallback{nodeid, std::move(message_start)},
       m_recv_state{initiating ? RecvState::KEY : RecvState::KEY_MAYBE_V1},
       m_send_garbage{std::move(garbage)},
       m_send_state{initiating ? SendState::AWAITING_KEY : SendState::MAYBE_V1}
@@ -781,8 +781,8 @@ V2Transport::V2Transport(NodeId nodeid, bool initiating, const CKey& key, std::s
     }
 }
 
-V2Transport::V2Transport(NodeId nodeid, bool initiating) noexcept
-    : V2Transport{nodeid, initiating, GenerateRandomKey(),
+V2Transport::V2Transport(NodeId nodeid, MessageStartChars message_start, bool initiating) noexcept
+    : V2Transport{nodeid, message_start, initiating, GenerateRandomKey(),
                   MakeByteSpan(GetRandHash()), GenerateRandomGarbage()} {}
 
 void V2Transport::SetReceiveState(RecvState recv_state) noexcept
@@ -855,7 +855,7 @@ void V2Transport::ProcessReceivedMaybeV1Bytes() noexcept
     // of a v2 public key. BIP324 specifies that a mismatch with this 16-byte string should trigger
     // sending of the key.
     std::array<uint8_t, V1_PREFIX_LEN> v1_prefix = {0, 0, 0, 0, 'v', 'e', 'r', 's', 'i', 'o', 'n', 0, 0, 0, 0, 0};
-    std::copy(std::begin(Params().MessageStart()), std::end(Params().MessageStart()), v1_prefix.begin());
+    std::copy(std::begin(m_v1_fallback.GetMagicBytes()), std::end(m_v1_fallback.GetMagicBytes()), v1_prefix.begin());
     Assume(m_recv_buffer.size() <= v1_prefix.size());
     if (!std::equal(m_recv_buffer.begin(), m_recv_buffer.end(), v1_prefix.begin())) {
         // Mismatch with v1 prefix, so we can assume a v2 connection.
@@ -1544,6 +1544,7 @@ void CConnman::CreateNodeFromAcceptedSocket(std::unique_ptr<Sock>&& sock,
                                  .permission_flags = permission_flags,
                                  .recv_flood_size = nReceiveFloodSize,
                                  .use_v2transport = use_v2transport,
+                                 .message_start = m_chain_message_start,
                              });
     {
         LOCK(m_nodes_mutex);
@@ -2820,6 +2821,7 @@ bool CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFai
                                 .i2p_sam_session = std::move(i2p_transient_session),
                                 .recv_flood_size = nReceiveFloodSize,
                                 .use_v2transport = use_v2transport,
+                                .message_start = m_chain_message_start,
                             });
 
     pnode->grantOutbound = std::move(grant_outbound);
@@ -3541,12 +3543,12 @@ uint64_t CConnman::GetTotalBytesSent() const
     return nTotalBytesSent;
 }
 
-static std::unique_ptr<Transport> MakeTransport(NodeId id, bool use_v2transport, bool inbound) noexcept
+static std::unique_ptr<Transport> MakeTransport(NodeId id, MessageStartChars message_start, bool use_v2transport, bool inbound) noexcept
 {
     if (use_v2transport) {
-        return std::make_unique<V2Transport>(id, /*initiating=*/!inbound);
+        return std::make_unique<V2Transport>(id, std::move(message_start), /*initiating=*/!inbound);
     } else {
-        return std::make_unique<V1Transport>(id);
+        return std::make_unique<V1Transport>(id, std::move(message_start));
     }
 }
 
@@ -3559,7 +3561,7 @@ CNode::CNode(NodeId idIn,
              bool inbound_onion,
              std::chrono::seconds connected_time,
              CNodeOptions&& node_opts)
-    : m_transport{MakeTransport(idIn, node_opts.use_v2transport, conn_type_in == ConnectionType::INBOUND)},
+    : m_transport{MakeTransport(idIn, node_opts.message_start, node_opts.use_v2transport, conn_type_in == ConnectionType::INBOUND)},
       m_permission_flags{node_opts.permission_flags},
       m_sock{sock},
       m_connected{connected_time},

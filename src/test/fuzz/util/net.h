@@ -252,7 +252,7 @@ auto ConsumeNode(FuzzedDataProvider& fuzzed_data_provider, const std::optional<N
                                        conn_type,
                                        inbound_onion,
                                        GetTime<std::chrono::seconds>(),
-                                       CNodeOptions{ .permission_flags = permission_flags });
+                                       CNodeOptions{ .permission_flags = permission_flags, .message_start = Params().MessageStart() });
     } else {
         return CNode{node_id,
                      sock,
@@ -262,7 +262,7 @@ auto ConsumeNode(FuzzedDataProvider& fuzzed_data_provider, const std::optional<N
                      conn_type,
                      inbound_onion,
                      GetTime<std::chrono::seconds>(),
-                     CNodeOptions{ .permission_flags = permission_flags }};
+                     CNodeOptions{ .permission_flags = permission_flags, .message_start = Params().MessageStart() }};
     }
 }
 inline std::shared_ptr<CNode> ConsumeNodeAsSharedPtr(FuzzedDataProvider& fdp, const std::optional<NodeId>& node_id_in = std::nullopt) { return ConsumeNode<true>(fdp, node_id_in); }

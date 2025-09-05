@@ -275,7 +275,7 @@ ssize_t DynSock::Pipe::GetBytes(void* buf, size_t len, int flags)
 
 std::optional<CNetMessage> DynSock::Pipe::GetNetMsg()
 {
-    V1Transport transport{NodeId{0}};
+    V1Transport transport{NodeId{0}, Params().MessageStart()};
 
     {
         WAIT_LOCK(m_mutex, lock);
