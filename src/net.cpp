@@ -1960,7 +1960,7 @@ void CConnman::ThreadDNSAddressSeed()
     }
 
     FastRandomContext rng;
-    std::vector<std::string> seeds = m_params.DNSSeeds();
+    std::vector<std::string> seeds = m_dns_seeds;
     std::shuffle(seeds.begin(), seeds.end(), rng);
     int seeds_right_now = 0; // Number of seeds left before testing if we have enough connections
 
@@ -2202,8 +2202,8 @@ void CConnman::ThreadOpenConnections(const std::vector<std::string> connect, std
     auto next_feeler = start + rng.rand_exp_duration(FEELER_INTERVAL);
     auto next_extra_block_relay = start + rng.rand_exp_duration(EXTRA_BLOCK_RELAY_ONLY_PEER_INTERVAL);
     auto next_extra_network_peer{start + rng.rand_exp_duration(EXTRA_NETWORK_PEER_INTERVAL)};
-    const bool dnsseed = gArgs.GetBoolArg("-dnsseed", DEFAULT_DNSSEED);
-    bool add_fixed_seeds = gArgs.GetBoolArg("-fixedseeds", DEFAULT_FIXEDSEEDS);
+    const bool dnsseed = !m_dns_seeds.empty();
+    bool add_fixed_seeds = m_fixed_seeds.has_value();
     const bool use_seednodes{!gArgs.GetArgs("-seednode").empty()};
 
     auto seed_node_timer = NodeClock::now();
@@ -2262,7 +2262,7 @@ void CConnman::ThreadOpenConnections(const std::vector<std::string> connect, std
             }
 
             if (add_fixed_seeds_now) {
-                std::vector<CAddress> seed_addrs{ConvertSeeds(m_params.FixedSeeds())};
+                std::vector<CAddress> seed_addrs{ConvertSeeds(*m_fixed_seeds)};
                 // We will not make outgoing connections to peers that are unreachable
                 // (e.g. because of -onlynet configuration).
                 // Therefore, we do not add them to addrman in the first place.

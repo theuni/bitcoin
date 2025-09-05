@@ -948,6 +948,8 @@ public:
         uint16_t default_listen_port;
         uint16_t chain_default_port;
         MessageStartChars chain_message_start;
+        std::vector<std::string> dns_seeds;
+        std::optional<std::vector<uint8_t>> fixed_seeds;
     };
 
     void Init(const Options& connOptions) EXCLUSIVE_LOCKS_REQUIRED(!m_added_nodes_mutex, !m_total_bytes_sent_mutex)
@@ -983,6 +985,8 @@ public:
         m_default_listen_port = connOptions.default_listen_port;
         m_chain_default_port = connOptions.chain_default_port;
         m_chain_message_start = connOptions.chain_message_start;
+        m_dns_seeds = connOptions.dns_seeds;
+        m_fixed_seeds = connOptions.fixed_seeds;
     }
 
     CConnman(uint64_t seed0, uint64_t seed1, AddrMan& addrman, const NetGroupManager& netgroupman,
@@ -1428,6 +1432,10 @@ private:
     uint16_t m_chain_default_port;
 
     MessageStartChars m_chain_message_start;
+
+    std::vector<std::string> m_dns_seeds;
+
+    std::optional<std::vector<uint8_t>> m_fixed_seeds;
 };
 /** Defaults to `CaptureMessageToFile()`, but can be overridden by unit tests. */
 extern std::function<void(const CAddress& addr,

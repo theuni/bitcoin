@@ -2000,6 +2000,13 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
                          port);
     };
 
+    if (args.GetBoolArg("-dnsseed", DEFAULT_DNSSEED)) {
+        connOptions.dns_seeds = Params().DNSSeeds();
+    }
+    if (args.GetBoolArg("-fixedseeds", DEFAULT_FIXEDSEEDS)) {
+        connOptions.fixed_seeds.emplace(Params().FixedSeeds());
+    }
+
     for (const std::string& bind_arg : args.GetArgs("-bind")) {
         std::optional<CService> bind_addr;
         const size_t index = bind_arg.rfind('=');
