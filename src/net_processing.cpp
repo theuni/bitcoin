@@ -5481,7 +5481,7 @@ bool PeerManagerImpl::MaybeDiscourageAndDisconnect(Peer& peer)
     // Normal case: Disconnect the peer and discourage all nodes sharing the address
     LogDebug(BCLog::NET, "Disconnecting and discouraging peer %d!\n", peer.m_id);
     if (m_banman) m_banman->Discourage(peer.m_addr);
-    m_connman.DisconnectNode(peer.m_addr);
+    m_connman.DisconnectNode(peer.m_id);
     return true;
 }
 
