@@ -339,7 +339,7 @@ TestingSetup::TestingSetup(
                                                m_node.args->GetIntArg("-checkaddrman", 0));
     m_node.banman = std::make_unique<BanMan>(m_args.GetDataDirBase() / "banlist", nullptr, DEFAULT_MISBEHAVING_BANTIME);
     m_node.evictionman = std::make_unique<EvictionManager>();
-    m_node.connman = std::make_unique<ConnmanTestMsg>(0x1337, 0x1337, *m_node.addrman, *m_node.netgroupman, Params()); // Deterministic randomness for tests.
+    m_node.connman = std::make_unique<ConnmanTestMsg>(0x1337, 0x1337, *m_node.addrman, *m_node.netgroupman); // Deterministic randomness for tests.
     PeerManager::Options peerman_opts;
     ApplyArgsManOptions(*m_node.args, peerman_opts);
     peerman_opts.deterministic_rng = true;

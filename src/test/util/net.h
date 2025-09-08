@@ -5,6 +5,7 @@
 #ifndef BITCOIN_TEST_UTIL_NET_H
 #define BITCOIN_TEST_UTIL_NET_H
 
+#include <chainparams.h>
 #include <compat/compat.h>
 #include <netmessagemaker.h>
 #include <net.h>

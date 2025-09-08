@@ -7,7 +7,6 @@
 #define BITCOIN_NET_H
 
 #include <bip324.h>
-#include <chainparams.h>
 #include <common/bloom.h>
 #include <compat/compat.h>
 #include <node/connection_types.h>
@@ -50,7 +49,6 @@
 
 class AddrMan;
 class BanMan;
-class CChainParams;
 class CNode;
 class CScheduler;
 struct bilingual_str;
@@ -990,7 +988,7 @@ public:
     }
 
     CConnman(uint64_t seed0, uint64_t seed1, AddrMan& addrman, const NetGroupManager& netgroupman,
-             const CChainParams& params, bool network_active = true);
+             bool network_active = true);
 
     ~CConnman();
 
@@ -1418,8 +1416,6 @@ private:
      * unexpectedly use too much memory.
      */
     static constexpr size_t MAX_UNUSED_I2P_SESSIONS_SIZE{10};
-
-    const CChainParams& m_params;
 
     std::atomic_bool m_bootstrapped{false};
 

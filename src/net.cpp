@@ -2984,12 +2984,11 @@ void CConnman::SetNetworkActive(bool active)
 }
 
 CConnman::CConnman(uint64_t nSeed0In, uint64_t nSeed1In, AddrMan& addrman_in,
-                   const NetGroupManager& netgroupman, const CChainParams& params, bool network_active)
+                   const NetGroupManager& netgroupman, bool network_active)
     : addrman(addrman_in)
     , m_netgroupman{netgroupman}
     , nSeed0(nSeed0In)
     , nSeed1(nSeed1In)
-    , m_params(params)
 {
     SetTryNewOutboundPeer(false);
 
