@@ -110,7 +110,7 @@ public:
         PeerCountLimits m_peer_count_limits{};
     };
 
-    static std::unique_ptr<PeerManager> make(uint64_t seed0, uint64_t seed1, CConnman& connman, AddrMan& addrman,
+    static std::unique_ptr<PeerManager> make(uint64_t seed0, uint64_t seed1, NetManagerEvents& connman, AddrMan& addrman,
                                              EvictionManager& evictionman, BanMan* banman, ChainstateManager& chainman,
                                              CTxMemPool& pool, node::Warnings& warnings, Options opts);
     virtual ~PeerManager() = default;

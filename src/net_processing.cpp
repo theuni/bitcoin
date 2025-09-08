@@ -230,7 +230,7 @@ struct Peer {
 
     /** Services we offered to this peer.
      *
-     *  This is supplied by CConnman during peer initialization. It's const
+     *  This is supplied by NetManagerEvents during peer initialization. It's const
      *  because there is no protocol defined for renegotiating services
      *  initially offered to a peer. The set of local services we offer should
      *  not change after initialization.
@@ -625,7 +625,7 @@ struct CNodeState {
 class PeerManagerImpl final : public PeerManager
 {
 public:
-    PeerManagerImpl(uint64_t seed0, uint64_t seed1, CConnman& connman, AddrMan& addrman, EvictionManager& evictionman,
+    PeerManagerImpl(uint64_t seed0, uint64_t seed1, NetManagerEvents& connman, AddrMan& addrman, EvictionManager& evictionman,
                     BanMan* banman, ChainstateManager& chainman,
                     CTxMemPool& pool, node::Warnings& warnings, Options opts);
 
@@ -894,7 +894,7 @@ private:
     FeeFilterRounder m_fee_filter_rounder GUARDED_BY(NetEventsInterface::g_msgproc_mutex);
 
     const CChainParams& m_chainparams;
-    CConnman& m_connman;
+    NetManagerEvents& m_connman;
     AddrMan& m_addrman;
     EvictionManager& m_evictionman;
     /** Pointer to this node's banman. May be nullptr - check existence before dereferencing. */
@@ -2372,14 +2372,14 @@ std::optional<std::string> PeerManagerImpl::FetchBlock(NodeId peer_id, const CBl
     return std::nullopt;
 }
 
-std::unique_ptr<PeerManager> PeerManager::make(uint64_t seed0, uint64_t seed1, CConnman& connman, AddrMan& addrman, EvictionManager& evictionman,
+std::unique_ptr<PeerManager> PeerManager::make(uint64_t seed0, uint64_t seed1, NetManagerEvents& connman, AddrMan& addrman, EvictionManager& evictionman,
                                                BanMan* banman, ChainstateManager& chainman,
                                                CTxMemPool& pool, node::Warnings& warnings, Options opts)
 {
     return std::make_unique<PeerManagerImpl>(seed0, seed1, connman, addrman, evictionman, banman, chainman, pool, warnings, opts);
 }
 
-PeerManagerImpl::PeerManagerImpl(uint64_t seed0, uint64_t seed1, CConnman& connman, AddrMan& addrman, EvictionManager& evictionman,
+PeerManagerImpl::PeerManagerImpl(uint64_t seed0, uint64_t seed1, NetManagerEvents& connman, AddrMan& addrman, EvictionManager& evictionman,
                                  BanMan* banman, ChainstateManager& chainman,
                                  CTxMemPool& pool, node::Warnings& warnings, Options opts)
     : m_rng{opts.deterministic_rng},
