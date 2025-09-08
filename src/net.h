@@ -862,22 +862,6 @@ public:
      */
     virtual bool HasAllDesirableServiceFlags(ServiceFlags services) const = 0;
 
-    /**
-    * Process protocol messages received from a given node
-    *
-    * @param[in]   node_id         The id of the node which we have received messages from.
-    * @return                      True if there is more work to be done
-    */
-    virtual bool ProcessMessages(NodeId node_id) EXCLUSIVE_LOCKS_REQUIRED(g_msgproc_mutex) = 0;
-
-    /**
-    * Send queued protocol messages to a given node.
-    *
-    * @param[in]   node_id         The id of the node which we are sending messages to.
-    * @return                      True if there is more work to be done
-    */
-    virtual bool SendMessages(NodeId node_id) EXCLUSIVE_LOCKS_REQUIRED(g_msgproc_mutex) = 0;
-
     virtual void WakeMessageHandler() = 0;
 protected:
     /**

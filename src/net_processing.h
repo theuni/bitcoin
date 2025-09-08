@@ -154,6 +154,22 @@ public:
     virtual void ProcessMessage(NodeId id, const std::string& msg_type, DataStream& vRecv,
                                 const std::chrono::microseconds time_received) EXCLUSIVE_LOCKS_REQUIRED(g_msgproc_mutex) = 0;
 
+    /**
+    * Process protocol messages received from a given node. Public for testing
+    *
+    * @param[in]   node_id         The id of the node which we have received messages from.
+    * @return                      True if there is more work to be done
+    */
+    virtual bool ProcessMessages(NodeId node_id) EXCLUSIVE_LOCKS_REQUIRED(g_msgproc_mutex) = 0;
+
+    /**
+    * Send queued protocol messages to a given node. Public for testing
+    *
+    * @param[in]   node_id         The id of the node which we are sending messages to.
+    * @return                      True if there is more work to be done
+    */
+    virtual bool SendMessages(NodeId node_id) EXCLUSIVE_LOCKS_REQUIRED(g_msgproc_mutex) = 0;
+
     //! Used to convey which local services we are offering peers during node
     //! connection.
     //!
