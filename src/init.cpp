@@ -1578,7 +1578,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
             return InitError(strprintf(_("User Agent comment (%s) contains unsafe characters."), cmt));
         uacomments.push_back(cmt);
     }
-    strSubVersion = FormatSubVersion(UA_NAME, CLIENT_VERSION, uacomments);
+    std::string strSubVersion = FormatSubVersion(UA_NAME, CLIENT_VERSION, uacomments);
     if (strSubVersion.size() > MAX_SUBVERSION_LENGTH) {
         return InitError(strprintf(_("Total length of network version string (%i) exceeds maximum length (%i). Reduce the number or size of uacomments."),
             strSubVersion.size(), MAX_SUBVERSION_LENGTH));
@@ -1837,7 +1837,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
 
     peerman_opts.m_local_services = g_local_services;
     peerman_opts.m_peer_count_limits = PeerCountLimits(nMaxConnections);
-
+    peerman_opts.strSubVersion = strSubVersion;
     assert(!node.peerman);
     node.peerman = PeerManager::make(rng.rand64(), rng.rand64(), *node.connman, *node.addrman,
                                      *node.evictionman, node.banman.get(), chainman,

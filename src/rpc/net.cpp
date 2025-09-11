@@ -689,10 +689,10 @@ static RPCHelpMan getnetworkinfo()
     LOCK(cs_main);
     UniValue obj(UniValue::VOBJ);
     obj.pushKV("version",       CLIENT_VERSION);
-    obj.pushKV("subversion",    strSubVersion);
     obj.pushKV("protocolversion",PROTOCOL_VERSION);
     NodeContext& node = EnsureAnyNodeContext(request.context);
     if (node.peerman) {
+        obj.pushKV("subversion", node.peerman->GetSubVersion());
         ServiceFlags services = node.peerman->GetLocalServices();
         obj.pushKV("localservices", strprintf("%016x", services));
         obj.pushKV("localservicesnames", GetServicesNames(services));

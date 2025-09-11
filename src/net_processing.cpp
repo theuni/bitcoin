@@ -12,6 +12,7 @@
 #include <blockfilter.h>
 #include <chain.h>
 #include <chainparams.h>
+#include <clientversion.h>
 #include <common/bloom.h>
 #include <consensus/amount.h>
 #include <consensus/params.h>
@@ -689,6 +690,8 @@ public:
     void ThreadMessageHandler() EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_tx_download_mutex, !m_headers_presync_mutex, !m_most_recent_block_mutex, !m_nodes_to_finalize_mutex, !mutexMsgProc);
 
     ServiceFlags GetLocalServices() const override { return m_local_services; }
+
+    virtual std::string GetSubVersion() const override;
 
     //! Updates the local services that this node advertises to other peers
     //! during connection handshake.
@@ -1420,6 +1423,11 @@ void PeerManagerImpl::WakeMessageHandler()
     condMsgProc.notify_one();
 }
 
+std::string PeerManagerImpl::GetSubVersion() const
+{
+    return m_opts.strSubVersion;
+}
+
 bool PeerManagerImpl::CheckIncomingNonce(uint64_t nonce) const
 {
     LOCK(m_peer_mutex);
@@ -1907,7 +1915,7 @@ void PeerManagerImpl::PushNodeVersion(const Peer& peer)
     MakeAndPushMessage(peer.m_id, NetMsgType::VERSION, PROTOCOL_VERSION, my_services, nTime,
             your_services, CNetAddr::V1(addr_you), // Together the pre-version-31402 serialization of CAddress "addrYou" (without nTime)
             my_services, CNetAddr::V1(CService{}), // Together the pre-version-31402 serialization of CAddress "addrMe" (without nTime)
-            nonce, strSubVersion, nNodeStartingHeight, tx_relay);
+            nonce, GetSubVersion(), nNodeStartingHeight, tx_relay);
 
     if (fLogIPs) {
         LogDebug(BCLog::NET, "send version message: version %d, blocks=%d, them=%s, txrelay=%d, peer=%d\n", PROTOCOL_VERSION, nNodeStartingHeight, addr_you.ToStringAddrPort(), tx_relay, nodeid);

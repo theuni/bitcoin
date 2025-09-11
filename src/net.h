@@ -61,8 +61,6 @@ static constexpr auto FEELER_INTERVAL = 2min;
 static constexpr auto EXTRA_BLOCK_RELAY_ONLY_PEER_INTERVAL = 5min;
 /** Maximum length of incoming protocol messages (no message over 4 MB is currently acceptable). */
 static const unsigned int MAX_PROTOCOL_MESSAGE_LENGTH = 4 * 1000 * 1000;
-/** Maximum length of the user agent string in `version` message */
-static const unsigned int MAX_SUBVERSION_LENGTH = 256;
 /** Maximum number of addnode outgoing nodes */
 static const int MAX_ADDNODE_CONNECTIONS = 8;
 /** -listen default */
@@ -134,9 +132,6 @@ CService GetLocalAddress(const CNode& peer, uint16_t fallback_port);
 
 extern bool fDiscover;
 extern bool fListen;
-
-/** Subversion as sent to the P2P network in `version` messages */
-extern std::string strSubVersion;
 
 struct LocalServiceInfo {
     int nScore;

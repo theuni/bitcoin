@@ -54,6 +54,8 @@ static const unsigned int MAX_HEADERS_RESULTS = 2000;
 static const std::chrono::seconds DEFAULT_VERSION_HANDSHAKE_TIMEOUT{60s};
 /** Default for blocks only*/
 static const bool DEFAULT_BLOCKSONLY = false;
+/** Maximum length of the user agent string in `version` message */
+static const unsigned int MAX_SUBVERSION_LENGTH = 256;
 
 struct CNodeStateStats {
     int nVersion = 0;
@@ -109,6 +111,8 @@ public:
         std::chrono::seconds version_handshake_timeout{DEFAULT_VERSION_HANDSHAKE_TIMEOUT};
         ServiceFlags m_local_services{NODE_NONE};
         PeerCountLimits m_peer_count_limits{};
+        /** Subversion as sent to the P2P network in `version` messages */
+        std::string strSubVersion;
     };
 
     static std::unique_ptr<PeerManager> make(uint64_t seed0, uint64_t seed1, NetManagerEvents& connman, AddrMan& addrman,
@@ -178,6 +182,8 @@ public:
     //! which is used to advertise which services we are offering
     //! that peer during `net_processing.cpp:PushNodeVersion()`.
     virtual ServiceFlags GetLocalServices() const = 0;
+
+    virtual std::string GetSubVersion() const = 0;
 
     //! Updates the local services that this node advertises to other peers
     //! during connection handshake.

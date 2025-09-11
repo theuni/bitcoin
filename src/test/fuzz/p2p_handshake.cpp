@@ -3,6 +3,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <addrman.h>
+#include <clientversion.h>
 #include <consensus/consensus.h>
 #include <net.h>
 #include <net_processing.h>
@@ -57,6 +58,7 @@ FUZZ_TARGET(p2p_handshake, .init = ::initialize)
                                      PeerManager::Options{
                                          .reconcile_txs = true,
                                          .deterministic_rng = true,
+                                         .strSubVersion = FormatSubVersion(UA_NAME, CLIENT_VERSION, {})
                                      });
     connman.SetMsgProc(peerman.get());
 
