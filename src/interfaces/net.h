@@ -5,6 +5,7 @@
 #ifndef BITCOIN_INTERFACES_NET_H
 #define BITCOIN_INTERFACES_NET_H
 
+#include <interfaces/nodeid.h>
 #include <netaddress.h>
 #include <node/connection_types.h>
 #include <protocol.h>
@@ -20,8 +21,6 @@ class CAddress;
 class CNetMessage;
 class CService;
 enum class NetPermissionFlags : uint32_t;
-
-typedef int64_t NodeId;
 
 struct PeerOptions
 {
