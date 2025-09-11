@@ -6,9 +6,10 @@
 #define BITCOIN_TXORPHANAGE_H
 
 #include <consensus/validation.h>
-#include <net.h>
+#include <interfaces/nodeid.h>
 #include <primitives/block.h>
 #include <primitives/transaction.h>
+#include <random.h>
 #include <sync.h>
 #include <util/time.h>
 

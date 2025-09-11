@@ -8,10 +8,11 @@
 #include <common/settings.h>
 #include <consensus/amount.h>
 #include <logging.h>
-#include <net.h>
+#include <interfaces/nodeid.h>
 #include <net_types.h>
 #include <netaddress.h>
 #include <netbase.h>
+#include <primitives/transaction.h>
 #include <support/allocators/secure.h>
 #include <util/translation.h>
 
@@ -30,6 +31,7 @@ class Coin;
 class RPCTimerInterface;
 class UniValue;
 class Proxy;
+struct LocalServiceInfo;
 enum class SynchronizationState;
 struct CNodeStateStats;
 struct bilingual_str;
