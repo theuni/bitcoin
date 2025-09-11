@@ -458,6 +458,10 @@ bool CNode::ReceiveMsgBytes(std::span<const uint8_t> msg_bytes, bool& complete)
             assert(i != mapRecvBytesPerMsgType.end());
             i->second += msg.m_raw_message_size;
 
+            if (gArgs.GetBoolArg("-capturemessages", false)) {
+                CaptureMessage(addr, msg.m_type, MakeUCharSpan(msg.m_recv), /*is_incoming=*/true);
+            }
+
             // push the message to the process queue,
             vRecvMsg.push_back(std::move(msg));
 

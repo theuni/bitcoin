@@ -5540,10 +5540,6 @@ bool PeerManagerImpl::ProcessMessages(NodeId node_id)
         msg.m_recv.data()
     );
 
-    if (m_opts.capture_messages) {
-        CaptureMessage(peer->m_addr, msg.m_type, MakeUCharSpan(msg.m_recv), /*is_incoming=*/true);
-    }
-
     try {
         ProcessMessage(*peer, msg.m_type, msg.m_recv, msg.m_time);
         if (interruptMsgProc) return false;
