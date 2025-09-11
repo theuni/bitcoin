@@ -5,7 +5,9 @@
 #include <node/txreconciliation.h>
 
 #include <common/system.h>
+#include <hash.h>
 #include <logging.h>
+#include <random.h>
 #include <util/check.h>
 
 #include <unordered_map>

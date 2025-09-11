@@ -8,6 +8,7 @@
 #include <logging.h>
 #include <policy/policy.h>
 #include <primitives/transaction.h>
+#include <util/check.h>
 #include <util/time.h>
 
 #include <cassert>

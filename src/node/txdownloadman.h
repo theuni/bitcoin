@@ -5,8 +5,9 @@
 #ifndef BITCOIN_NODE_TXDOWNLOADMAN_H
 #define BITCOIN_NODE_TXDOWNLOADMAN_H
 
-#include <net.h>
 #include <policy/packages.h>
+#include <random.h>
+#include <tinyformat.h>
 #include <txorphanage.h>
 
 #include <cstdint>

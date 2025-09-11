@@ -5,7 +5,7 @@
 #ifndef BITCOIN_NODE_TXRECONCILIATION_H
 #define BITCOIN_NODE_TXRECONCILIATION_H
 
-#include <net.h>
+#include <interfaces/nodeid.h>
 #include <sync.h>
 
 #include <memory>

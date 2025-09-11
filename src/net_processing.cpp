@@ -26,7 +26,6 @@
 #include <kernel/chain.h>
 #include <logging.h>
 #include <merkleblock.h>
-#include <net.h>
 #include <net_permissions.h>
 #include <netaddress.h>
 #include <netbase.h>

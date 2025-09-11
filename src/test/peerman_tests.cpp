@@ -4,6 +4,7 @@
 
 #include <chainparams.h>
 #include <node/miner.h>
+#include <net.h>
 #include <net_processing.h>
 #include <pow.h>
 #include <test/util/setup_common.h>
