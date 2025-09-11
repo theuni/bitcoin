@@ -760,7 +760,7 @@ private:
     std::unique_ptr<i2p::sam::Session> m_i2p_sam_session GUARDED_BY(m_sock_mutex);
 };
 
-class CConnman : public NetManagerEvents
+class CConnman : public interfaces::NetManagerEvents
 {
 public:
 

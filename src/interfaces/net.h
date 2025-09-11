@@ -69,6 +69,8 @@ protected:
     ~NetEventsInterface() = default;
 };
 
+namespace interfaces {
+
 struct NetManagerEvents
 {
     virtual bool PushMessage(NodeId, CSerializedNetMsg&&) = 0;
@@ -84,5 +86,6 @@ struct NetManagerEvents
     virtual bool SeenLocal(const CService& addr) = 0;
 };
 
+} // namespace interfaces
 
 #endif // BITCOIN_INTERFACES_NET_H
