@@ -803,6 +803,7 @@ BOOST_AUTO_TEST_CASE(initial_advertise_from_version_message)
         .mapped_as = 0,
         .keyed_net_group = 0,
         .connected_through_net=NET_IPV4,
+        .send_local_address=fListen,
     };
 
     const uint64_t services{NODE_NETWORK | NODE_WITNESS};

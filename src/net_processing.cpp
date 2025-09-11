@@ -506,6 +506,8 @@ struct Peer {
 
     Network m_connected_through_net;
 
+    bool m_send_local_address;
+
     explicit Peer(NodeId id, PeerOptions options, ServiceFlags our_services, uint64_t local_nonce)
         : m_id{id}
         , m_our_services{our_services}
@@ -516,6 +518,7 @@ struct Peer {
         , m_inbound_onion(options.inbound_onion)
         , m_mapped_as(options.mapped_as)
         , m_connected_through_net(options.connected_through_net)
+        , m_send_local_address(options.send_local_address)
         , m_permission_flags(options.permission_flags)
         , m_local_nonce(local_nonce)
     {}
@@ -5756,7 +5759,7 @@ void PeerManagerImpl::MaybeSendAddr(Peer& peer, std::chrono::microseconds curren
 
     LOCK(peer.m_addr_send_times_mutex);
     // Periodically advertise our local address to the peer.
-    if (fListen && !m_chainman.IsInitialBlockDownload() &&
+    if (peer.m_send_local_address && !m_chainman.IsInitialBlockDownload() &&
         peer.m_next_local_addr_send < current_time) {
         // If we've sent before, clear the bloom filter for the peer, so that our
         // self-announcement will actually go out.

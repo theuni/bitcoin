@@ -1523,7 +1523,8 @@ void CConnman::CreateNodeFromAcceptedSocket(std::unique_ptr<Sock>&& sock,
         .inbound_onion=inbound_onion,
         .mapped_as = GetMappedAS(addr),
         .keyed_net_group=CalculateKeyedNetGroup(addr),
-        .connected_through_net= inbound_onion ? NET_ONION : addr.GetNetClass()
+        .connected_through_net= inbound_onion ? NET_ONION : addr.GetNetClass(),
+        .send_local_address=fListen
     };
 
     std::optional<NodeId> id = m_msgproc->InitializeNode(std::move(options));
@@ -2796,7 +2797,8 @@ bool CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFai
         .inbound_onion=false,
         .mapped_as = GetMappedAS(connect_addr),
         .keyed_net_group=CalculateKeyedNetGroup(connect_addr),
-        .connected_through_net= connect_addr.GetNetClass()
+        .connected_through_net= connect_addr.GetNetClass(),
+        .send_local_address= fListen
     };
 
     std::optional<NodeId> id = m_msgproc->InitializeNode(std::move(options));
