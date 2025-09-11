@@ -164,6 +164,7 @@ add_library(bitcoin_common STATIC EXCLUDE_FROM_ALL
   net_permissions.cpp
   net_types.cpp
   netaddress.cpp
+  netmessage.cpp
   netbase.cpp
   outputtype.cpp
   policy/feerate.cpp

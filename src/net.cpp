@@ -118,15 +118,6 @@ GlobalMutex g_maplocalhost_mutex;
 std::map<CNetAddr, LocalServiceInfo> mapLocalHost GUARDED_BY(g_maplocalhost_mutex);
 std::string strSubVersion;
 
-size_t CSerializedNetMsg::GetMemoryUsage() const noexcept
-{
-    return sizeof(*this) + memusage::DynamicUsage(m_type) + memusage::DynamicUsage(data);
-}
-
-size_t CNetMessage::GetMemoryUsage() const noexcept
-{
-    return sizeof(*this) + memusage::DynamicUsage(m_type) + m_recv.GetMemoryUsage();
-}
 
 void CConnman::AddAddrFetch(const std::string& strDest)
 {
