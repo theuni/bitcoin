@@ -10,7 +10,7 @@
 #include <interfaces/chain.h>
 #include <interfaces/init.h>
 #include <interfaces/wallet.h>
-#include <net.h>
+#include <net_processing.h>
 #include <node/context.h>
 #include <node/interface_ui.h>
 #include <outputtype.h>

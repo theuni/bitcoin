@@ -72,8 +72,6 @@ static const unsigned int DEFAULT_MAX_UPLOAD_TARGET{0};
 /* Whether to accept inbound I2P connections (if I2P SAM proxy is enabled) */
 static const bool DEFAULT_I2P_ACCEPT_INCOMING{true};
 
-/** Default for blocks only*/
-static const bool DEFAULT_BLOCKSONLY = false;
 /** -peertimeout default */
 static const int64_t DEFAULT_PEER_CONNECT_TIMEOUT = 60;
 /** Number of file descriptors required for message capture **/

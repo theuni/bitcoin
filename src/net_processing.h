@@ -52,6 +52,8 @@ static const unsigned int MAX_CMPCTBLOCKS_INFLIGHT_PER_BLOCK = 3;
 static const unsigned int MAX_HEADERS_RESULTS = 2000;
 /** Time allowed for peers to complete the version handshake procedure */
 static const std::chrono::seconds DEFAULT_VERSION_HANDSHAKE_TIMEOUT{60s};
+/** Default for blocks only*/
+static const bool DEFAULT_BLOCKSONLY = false;
 
 struct CNodeStateStats {
     int nVersion = 0;
