@@ -22,6 +22,7 @@
 #include <netmessage.h>
 #include <node/connection_types.h>
 #include <node/protocol_version.h>
+#include <peercountlimits.h>
 #include <policy/feerate.h>
 #include <protocol.h>
 #include <random.h>
@@ -62,18 +63,10 @@ static constexpr auto EXTRA_BLOCK_RELAY_ONLY_PEER_INTERVAL = 5min;
 static const unsigned int MAX_PROTOCOL_MESSAGE_LENGTH = 4 * 1000 * 1000;
 /** Maximum length of the user agent string in `version` message */
 static const unsigned int MAX_SUBVERSION_LENGTH = 256;
-/** Maximum number of automatic outgoing nodes over which we'll relay everything (blocks, tx, addrs, etc) */
-static const int MAX_OUTBOUND_FULL_RELAY_CONNECTIONS = 8;
 /** Maximum number of addnode outgoing nodes */
 static const int MAX_ADDNODE_CONNECTIONS = 8;
-/** Maximum number of block-relay-only outgoing connections */
-static const int MAX_BLOCK_RELAY_ONLY_CONNECTIONS = 2;
-/** Maximum number of feeler connections */
-static const int MAX_FEELER_CONNECTIONS = 1;
 /** -listen default */
 static const bool DEFAULT_LISTEN = true;
-/** The maximum number of peer connections to maintain. */
-static const unsigned int DEFAULT_MAX_PEER_CONNECTIONS = 125;
 /** The default (in MB) for -maxuploadtarget. 0 = Unlimited */
 static const unsigned int DEFAULT_MAX_UPLOAD_TARGET{0};
 /* Whether to accept inbound I2P connections (if I2P SAM proxy is enabled) */
@@ -818,31 +811,6 @@ protected:
      * If that restriction is no longer desired, this should be made public and virtual.
      */
     ~NetEventsInterface() = default;
-};
-
-struct PeerCountLimits {
-    PeerCountLimits(int max_automatic_connections = DEFAULT_MAX_PEER_CONNECTIONS) : m_max_automatic_connections(max_automatic_connections){}
-/**
-     * Maximum number of automatic connections permitted, excluding manual
-     * connections but including inbounds. May be changed by the user and is
-     * potentially limited by the operating system (number of file descriptors).
-     */
-    int m_max_automatic_connections;
-
-    /*
-     * Maximum number of peers by connection type. Might vary from defaults
-     * based on -maxconnections init value.
-     */
-
-    // How many full-relay (tx, block, addr) outbound peers we want
-    int m_max_outbound_full_relay = std::min(MAX_OUTBOUND_FULL_RELAY_CONNECTIONS, m_max_automatic_connections);
-
-    // How many block-relay only outbound peers we want
-    // We do not relay tx or addr messages with these peers
-    int m_max_outbound_block_relay = std::min(MAX_BLOCK_RELAY_ONLY_CONNECTIONS, m_max_automatic_connections - m_max_outbound_full_relay);
-
-    int m_max_automatic_outbound = m_max_outbound_full_relay + m_max_outbound_block_relay + MAX_FEELER_CONNECTIONS;
-    int m_max_inbound = std::max(0, m_max_automatic_connections - m_max_automatic_outbound);
 };
 
 struct NetManagerEvents

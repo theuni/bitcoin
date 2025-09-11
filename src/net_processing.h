@@ -8,6 +8,7 @@
 
 #include <consensus/amount.h>
 #include <net.h>
+#include <peercountlimits.h>
 #include <protocol.h>
 #include <threadsafety.h>
 #include <txorphanage.h>
