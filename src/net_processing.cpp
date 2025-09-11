@@ -4005,7 +4005,7 @@ void PeerManagerImpl::ProcessMessage(Peer& p, const std::string& msg_type, DataS
 
         if (IsInboundConn(peer->m_conn_type) && addrMe.IsRoutable())
         {
-            SeenLocal(addrMe);
+            m_connman.SeenLocal(addrMe);
         }
 
         // Inbound peers send us their version message when they connect.

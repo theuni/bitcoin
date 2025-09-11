@@ -826,6 +826,7 @@ struct NetManagerEvents
     virtual bool SetTryNewOutboundPeer(bool) = 0;
     virtual void StartExtraBlockRelayPeers() = 0;
     virtual std::optional<CService> GetLocalAddrForPeer(NodeId, const CService&) = 0;
+    virtual bool SeenLocal(const CService& addr) = 0;
 };
 
 class CConnman : public NetManagerEvents
@@ -1013,6 +1014,8 @@ public:
     void SetBootstrapComplete() override;
 
     std::optional<CService> GetLocalAddrForPeer(NodeId id, const CService& addr_local) override;
+
+    bool SeenLocal(const CService& addr) override;
 
 private:
     struct ListenSocket {

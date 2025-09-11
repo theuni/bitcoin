@@ -3784,6 +3784,11 @@ std::optional<CService> CConnman::GetLocalAddrForPeer(NodeId node_id, const CSer
     return ::GetLocalAddrForPeer(node->addr, node->m_inbound_onion, node->m_conn_type, addr_local, m_default_listen_port);
 }
 
+bool CConnman::SeenLocal(const CService& addr)
+{
+    return ::SeenLocal(addr);
+}
+
 // Dump binary message to file, with timestamp.
 static void CaptureMessageToFile(const CAddress& addr,
                                  const std::string& msg_type,
