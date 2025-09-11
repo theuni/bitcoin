@@ -122,6 +122,8 @@ static constexpr int STALE_RELAY_AGE_LIMIT = 30 * 24 * 60 * 60;
 static constexpr int HISTORICAL_BLOCK_AGE = 7 * 24 * 60 * 60;
 /** Time between pings automatically sent out for latency probing and keepalive */
 static constexpr auto PING_INTERVAL{2min};
+/** Time after which to disconnect, after waiting for a ping response. */
+static constexpr std::chrono::minutes PING_TIMEOUT_INTERVAL{20};
 /** The maximum number of entries in a locator */
 static const unsigned int MAX_LOCATOR_SZ = 101;
 /** The maximum number of entries in an 'inv' protocol message */
@@ -5963,7 +5965,7 @@ bool PeerManagerImpl::SendMessages(NodeId peer_id)
     }
 
     if (peer->m_ping_nonce_sent &&
-        current_time > peer->m_ping_start.load() + TIMEOUT_INTERVAL)
+        current_time > peer->m_ping_start.load() + PING_TIMEOUT_INTERVAL)
     {
         // The ping timeout is using mocktime. To disable the check during
         // testing, increase -peertimeout.

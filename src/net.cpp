@@ -87,6 +87,9 @@ static constexpr auto FEELER_SLEEP_WINDOW{1s};
 /** Frequency to attempt extra connections to reachable networks we're not connected to yet **/
 static constexpr auto EXTRA_NETWORK_PEER_INTERVAL{5min};
 
+/** Time after which to disconnect, after no activity. */
+static constexpr std::chrono::minutes INACTIVITY_TIMEOUT_INTERVAL{20};
+
 /** Used to pass flags to the Bind() function */
 enum BindFlags {
     BF_NONE         = 0,
@@ -1722,7 +1725,7 @@ bool CConnman::InactivityCheck(const CNode& node) const
         return true;
     }
 
-    if (now > last_send + TIMEOUT_INTERVAL) {
+    if (now > last_send + INACTIVITY_TIMEOUT_INTERVAL) {
         LogDebug(BCLog::NET,
             "socket sending timeout: %is, %s\n", count_seconds(now - last_send),
             node.DisconnectMsg(fLogIPs)
@@ -1730,7 +1733,7 @@ bool CConnman::InactivityCheck(const CNode& node) const
         return true;
     }
 
-    if (now > last_recv + TIMEOUT_INTERVAL) {
+    if (now > last_recv + INACTIVITY_TIMEOUT_INTERVAL) {
         LogDebug(BCLog::NET,
             "socket receive timeout: %is, %s\n", count_seconds(now - last_recv),
             node.DisconnectMsg(fLogIPs)

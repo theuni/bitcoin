@@ -97,8 +97,8 @@ FUZZ_TARGET(p2p_handshake, .init = ::initialize)
         NodeId node_id = connection.GetId();
         SetMockTime(GetTime() +
                     fuzzed_data_provider.ConsumeIntegralInRange<int64_t>(
-                        -std::chrono::seconds{10min}.count(), // Allow mocktime to go backwards slightly
-                        std::chrono::seconds{TIMEOUT_INTERVAL}.count()));
+                        -std::chrono::seconds{DEFAULT_VERSION_HANDSHAKE_TIMEOUT / 2}.count(), // Allow mocktime to go backwards slightly
+                        std::chrono::seconds{DEFAULT_VERSION_HANDSHAKE_TIMEOUT}.count()));
 
         CSerializedNetMsg net_msg;
         net_msg.m_type = PickValue(fuzzed_data_provider, ALL_NET_MESSAGE_TYPES);
