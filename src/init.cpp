@@ -664,61 +664,7 @@ static bool AppInitServers(NodeContext& node)
 // Parameter interaction based on rules
 void InitParameterInteraction(ArgsManager& args)
 {
-    // when specifying an explicit binding address, you want to listen on it
-    // even when -connect or -proxy is specified
-    if (!args.GetArgs("-bind").empty()) {
-        if (args.SoftSetBoolArg("-listen", true))
-            LogInfo("parameter interaction: -bind set -> setting -listen=1\n");
-    }
-    if (!args.GetArgs("-whitebind").empty()) {
-        if (args.SoftSetBoolArg("-listen", true))
-            LogInfo("parameter interaction: -whitebind set -> setting -listen=1\n");
-    }
-
-    if (!args.GetArgs("-connect").empty() || args.IsArgNegated("-connect") || args.GetIntArg("-maxconnections", DEFAULT_MAX_PEER_CONNECTIONS) <= 0) {
-        // when only connecting to trusted nodes, do not seed via DNS, or listen by default
-        // do the same when connections are disabled
-        if (args.SoftSetBoolArg("-dnsseed", false))
-            LogInfo("parameter interaction: -connect or -maxconnections=0 set -> setting -dnsseed=0\n");
-        if (args.SoftSetBoolArg("-listen", false))
-            LogInfo("parameter interaction: -connect or -maxconnections=0 set -> setting -listen=0\n");
-    }
-
-    std::string proxy_arg = args.GetArg("-proxy", "");
-    if (proxy_arg != "" && proxy_arg != "0") {
-        // to protect privacy, do not listen by default if a default proxy server is specified
-        if (args.SoftSetBoolArg("-listen", false))
-            LogInfo("parameter interaction: -proxy set -> setting -listen=0\n");
-        // to protect privacy, do not map ports when a proxy is set. The user may still specify -listen=1
-        // to listen locally, so don't rely on this happening through -listen below.
-        if (args.SoftSetBoolArg("-natpmp", false)) {
-            LogInfo("parameter interaction: -proxy set -> setting -natpmp=0\n");
-        }
-        // to protect privacy, do not discover addresses by default
-        if (args.SoftSetBoolArg("-discover", false))
-            LogInfo("parameter interaction: -proxy set -> setting -discover=0\n");
-    }
-
-    if (!args.GetBoolArg("-listen", DEFAULT_LISTEN)) {
-        // do not map ports or try to retrieve public IP when not listening (pointless)
-        if (args.SoftSetBoolArg("-natpmp", false)) {
-            LogInfo("parameter interaction: -listen=0 -> setting -natpmp=0\n");
-        }
-        if (args.SoftSetBoolArg("-discover", false))
-            LogInfo("parameter interaction: -listen=0 -> setting -discover=0\n");
-        if (args.SoftSetBoolArg("-listenonion", false))
-            LogInfo("parameter interaction: -listen=0 -> setting -listenonion=0\n");
-        if (args.SoftSetBoolArg("-i2pacceptincoming", false)) {
-            LogInfo("parameter interaction: -listen=0 -> setting -i2pacceptincoming=0\n");
-        }
-    }
-
-    if (!args.GetArgs("-externalip").empty()) {
-        // if an explicit public IP is specified, do not try to find others
-        if (args.SoftSetBoolArg("-discover", false))
-            LogInfo("parameter interaction: -externalip set -> setting -discover=0\n");
-    }
-
+    InitP2PParameterInteraction(args);
     if (args.GetBoolArg("-blocksonly", DEFAULT_BLOCKSONLY)) {
         // disable whitelistrelay in blocksonly mode
         if (args.SoftSetBoolArg("-whitelistrelay", false))
@@ -726,22 +672,6 @@ void InitParameterInteraction(ArgsManager& args)
         // Reduce default mempool size in blocksonly mode to avoid unexpected resource usage
         if (args.SoftSetArg("-maxmempool", ToString(DEFAULT_BLOCKSONLY_MAX_MEMPOOL_SIZE_MB)))
             LogInfo("parameter interaction: -blocksonly=1 -> setting -maxmempool=%d\n", DEFAULT_BLOCKSONLY_MAX_MEMPOOL_SIZE_MB);
-    }
-
-    // Forcing relay from whitelisted hosts implies we will accept relays from them in the first place.
-    if (args.GetBoolArg("-whitelistforcerelay", DEFAULT_WHITELISTFORCERELAY)) {
-        if (args.SoftSetBoolArg("-whitelistrelay", true))
-            LogInfo("parameter interaction: -whitelistforcerelay=1 -> setting -whitelistrelay=1\n");
-    }
-    const auto onlynets = args.GetArgs("-onlynet");
-    if (!onlynets.empty()) {
-        bool clearnet_reachable = std::any_of(onlynets.begin(), onlynets.end(), [](const auto& net) {
-            const auto n = ParseNetwork(net);
-            return n == NET_IPV4 || n == NET_IPV6;
-        });
-        if (!clearnet_reachable && args.SoftSetBoolArg("-dnsseed", false)) {
-            LogInfo("parameter interaction: -onlynet excludes IPv4 and IPv6 -> setting -dnsseed=0\n");
-        }
     }
 }
 
