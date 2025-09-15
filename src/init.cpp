@@ -1998,21 +1998,6 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
         connOptions.onion_binds.push_back(onion_service_target);
     }
 
-    if (args.GetBoolArg("-listenonion", DEFAULT_LISTEN_ONION)) {
-        if (connOptions.onion_binds.size() > 1) {
-            InitWarning(strprintf(_("More than one onion bind address is provided. Using %s "
-                                    "for the automatically created Tor onion service."),
-                                  onion_service_target.ToStringAddrPort()));
-        }
-        StartTorControl(onion_service_target);
-    }
-
-    if (connOptions.bind_on_any) {
-        // Only add all IP addresses of the machine if we would be listening on
-        // any address - 0.0.0.0 (IPv4) and :: (IPv6).
-        Discover(listen_port);
-    }
-
     for (const auto& net : args.GetArgs("-whitelist")) {
         NetWhitelistPermissions subnet;
         ConnectionDirection connection_direction;
@@ -2063,6 +2048,21 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     }
 
     connOptions.m_i2p_accept_incoming = args.GetBoolArg("-i2pacceptincoming", DEFAULT_I2P_ACCEPT_INCOMING);
+
+    if (args.GetBoolArg("-listenonion", DEFAULT_LISTEN_ONION)) {
+        if (connOptions.onion_binds.size() > 1) {
+            InitWarning(strprintf(_("More than one onion bind address is provided. Using %s "
+                                    "for the automatically created Tor onion service."),
+                                  onion_service_target.ToStringAddrPort()));
+        }
+        StartTorControl(onion_service_target);
+    }
+
+    if (connOptions.bind_on_any) {
+        // Only add all IP addresses of the machine if we would be listening on
+        // any address - 0.0.0.0 (IPv4) and :: (IPv6).
+        Discover(listen_port);
+    }
 
     if (node.peerman) node.peerman->Start(scheduler);
     if (!node.connman->Start(scheduler, connOptions)) {
