@@ -14,7 +14,6 @@
 #include <addrman.h>
 
 static const char* DEFAULT_ASMAP_FILENAME="ip_asn.map";
-static constexpr bool DEFAULT_PROXYRANDOMIZE{true};
 
 using util::Join;
 
