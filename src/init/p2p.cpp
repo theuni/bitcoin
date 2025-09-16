@@ -3,19 +3,31 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include <bitcoin-build-config.h> // IWYU pragma: keep
+
 #include <common/args.h>
+#include <init/common.h>
 #include <init/p2p.h>
 #include <net.h>
 #include <banman.h>
 #include <chainparamsbase.h>
 #include <chainparams.h>
+#include <common/messages.h>
+#include <node/interface_ui.h>
 #include <torcontrol.h>
 #include <mapport.h>
 #include <addrman.h>
+#include <util/fs_helpers.h>
+#include <logging.h>
 
 static const char* DEFAULT_ASMAP_FILENAME="ip_asn.map";
 
 using util::Join;
+using common::ResolveErrMsg;
+
+static int nMaxConnections;
+static int available_fds;
+static int64_t peer_connect_timeout;
 
 void AddP2POptions(ArgsManager& argsman)
 {
@@ -173,4 +185,221 @@ void InitP2PParameterInteraction(ArgsManager& args)
             LogInfo("parameter interaction: -onlynet excludes IPv4 and IPv6 -> setting -dnsseed=0\n");
         }
     }
+}
+
+bool AppInitP2PParameterInteraction(const ArgsManager& args, int reserved_fds)
+{
+      // If -forcednsseed is set to true, ensure -dnsseed has not been set to false
+      if (args.GetBoolArg("-forcednsseed", DEFAULT_FORCEDNSSEED) && !args.GetBoolArg("-dnsseed", DEFAULT_DNSSEED)){
+          return InitError(_("Cannot set -forcednsseed to true when setting -dnsseed to false."));
+      }
+
+      // -bind and -whitebind can't be set when not listening
+      size_t nUserBind = args.GetArgs("-bind").size() + args.GetArgs("-whitebind").size();
+      if (nUserBind != 0 && !args.GetBoolArg("-listen", DEFAULT_LISTEN)) {
+          return InitError(Untranslated("Cannot set -bind or -whitebind together with -listen=0"));
+      }
+
+      // if listen=0, then disallow listenonion=1
+      if (!args.GetBoolArg("-listen", DEFAULT_LISTEN) && args.GetBoolArg("-listenonion", DEFAULT_LISTEN_ONION)) {
+          return InitError(Untranslated("Cannot set -listen=0 together with -listenonion=1"));
+      }
+
+      // Make sure enough file descriptors are available. We need to reserve enough FDs to account for the bare minimum,
+      // plus all manual connections and all bound interfaces. Any remainder will be available for connection sockets
+
+      // Number of bound interfaces (we have at least one)
+      int nBind = std::max(nUserBind, size_t(1));
+      // Maximum number of connections with other nodes, this accounts for all types of outbounds and inbounds except for manual
+      int user_max_connection = args.GetIntArg("-maxconnections", DEFAULT_MAX_PEER_CONNECTIONS);
+      if (user_max_connection < 0) {
+          return InitError(Untranslated("-maxconnections must be greater or equal than zero"));
+      }
+      // Reserve enough FDs to account for the bare minimum, plus any manual connections, plus the bound interfaces
+      int min_required_fds = reserved_fds + MAX_ADDNODE_CONNECTIONS + nBind;
+
+      // Try raising the FD limit to what we need (available_fds may be smaller than the requested amount if this fails)
+      available_fds = RaiseFileDescriptorLimit(user_max_connection + min_required_fds);
+      // If we are using select instead of poll, our actual limit may be even smaller
+  #ifndef USE_POLL
+      available_fds = std::min(FD_SETSIZE, available_fds);
+  #endif
+      if (available_fds < min_required_fds)
+          return InitError(strprintf(_("Not enough file descriptors available. %d available, %d required."), available_fds, min_required_fds));
+
+      // Trim requested connection counts, to fit into system limitations
+      nMaxConnections = std::min(available_fds - min_required_fds, user_max_connection);
+
+
+      if (nMaxConnections < user_max_connection)
+          InitWarning(strprintf(_("Reducing -maxconnections from %d to %d, because of system limitations."), user_max_connection, nMaxConnections));
+
+      nConnectTimeout = args.GetIntArg("-timeout", DEFAULT_CONNECT_TIMEOUT);
+      if (nConnectTimeout <= 0) {
+          nConnectTimeout = DEFAULT_CONNECT_TIMEOUT;
+      }
+
+      if (auto result{init::SetLoggingCategories(args)}; !result) return InitError(util::ErrorString(result));
+      if (auto result{init::SetLoggingLevel(args)}; !result) return InitError(util::ErrorString(result));
+
+      peer_connect_timeout = args.GetIntArg("-peertimeout", DEFAULT_PEER_CONNECT_TIMEOUT);
+      if (peer_connect_timeout <= 0) {
+          return InitError(Untranslated("peertimeout must be a positive integer."));
+      }
+      return true;
+}
+
+static uint16_t GetListenPort()
+{
+    // If -bind= is provided with ":port" part, use that (first one if multiple are provided).
+    for (const std::string& bind_arg : gArgs.GetArgs("-bind")) {
+        constexpr uint16_t dummy_port = 0;
+
+        const std::optional<CService> bind_addr{Lookup(bind_arg, dummy_port, /*fAllowLookup=*/false)};
+        if (bind_addr.has_value() && bind_addr->GetPort() != dummy_port) return bind_addr->GetPort();
+    }
+
+    // Otherwise, if -whitebind= without NetPermissionFlags::NoBan is provided, use that
+    // (-whitebind= is required to have ":port").
+    for (const std::string& whitebind_arg : gArgs.GetArgs("-whitebind")) {
+        NetWhitebindPermissions whitebind;
+        bilingual_str error;
+        if (NetWhitebindPermissions::TryParse(whitebind_arg, whitebind, error)) {
+            if (!NetPermissions::HasFlag(whitebind.m_flags, NetPermissionFlags::NoBan)) {
+                return whitebind.m_service.GetPort();
+            }
+        }
+    }
+
+    // Otherwise, if -port= is provided, use that. Otherwise use the default port.
+    return static_cast<uint16_t>(gArgs.GetIntArg("-port", Params().GetDefaultPort()));
+}
+
+bool CreateP2POptions(const ArgsManager& args, CConnman::Options& connOptions)
+{
+    auto opt_max_upload = ParseByteUnits(args.GetArg("-maxuploadtarget", std::to_string(DEFAULT_MAX_UPLOAD_TARGET) + "M"), ByteUnit::M);
+    if (!opt_max_upload) {
+        return InitError(strprintf(_("Unable to parse -maxuploadtarget: '%s'"), args.GetArg("-maxuploadtarget", "")));
+    }
+
+    connOptions.m_peer_count_limits = PeerCountLimits(nMaxConnections);
+    connOptions.nSendBufferMaxSize = 1000 * args.GetIntArg("-maxsendbuffer", DEFAULT_MAXSENDBUFFER);
+    connOptions.nReceiveFloodSize = 1000 * args.GetIntArg("-maxreceivebuffer", DEFAULT_MAXRECEIVEBUFFER);
+    connOptions.m_added_nodes = args.GetArgs("-addnode");
+    connOptions.nMaxOutboundLimit = *opt_max_upload;
+    connOptions.m_peer_connect_timeout = peer_connect_timeout;
+    connOptions.whitelist_forcerelay = args.GetBoolArg("-whitelistforcerelay", DEFAULT_WHITELISTFORCERELAY);
+    connOptions.whitelist_relay = args.GetBoolArg("-whitelistrelay", DEFAULT_WHITELISTRELAY);
+    connOptions.enable_encrypted_p2p = args.GetBoolArg("-v2transport", DEFAULT_V2_TRANSPORT);
+    connOptions.default_listen_port = GetListenPort();
+    connOptions.chain_default_port = Params().GetDefaultPort();
+    connOptions.chain_message_start = Params().MessageStart();
+
+    // Port to bind to if `-bind=addr` is provided without a `:port` suffix.
+    const uint16_t default_bind_port =
+        static_cast<uint16_t>(args.GetIntArg("-port", Params().GetDefaultPort()));
+
+    const uint16_t default_bind_port_onion = default_bind_port + 1;
+
+    const auto BadPortWarning = [](const char* prefix, uint16_t port) {
+        return strprintf(_("%s request to listen on port %u. This port is considered \"bad\" and "
+                           "thus it is unlikely that any peer will connect to it. See "
+                           "doc/p2p-bad-ports.md for details and a full list."),
+                         prefix,
+                         port);
+    };
+
+    if (args.GetBoolArg("-dnsseed", DEFAULT_DNSSEED)) {
+        connOptions.dns_seeds = Params().DNSSeeds();
+    }
+    if (args.GetBoolArg("-fixedseeds", DEFAULT_FIXEDSEEDS)) {
+        connOptions.fixed_seeds.emplace(Params().FixedSeeds());
+    }
+
+    for (const std::string& bind_arg : args.GetArgs("-bind")) {
+        std::optional<CService> bind_addr;
+        const size_t index = bind_arg.rfind('=');
+        if (index == std::string::npos) {
+            bind_addr = Lookup(bind_arg, default_bind_port, /*fAllowLookup=*/false);
+            if (bind_addr.has_value()) {
+                connOptions.vBinds.push_back(bind_addr.value());
+                if (IsBadPort(bind_addr.value().GetPort())) {
+                    InitWarning(BadPortWarning("-bind", bind_addr.value().GetPort()));
+                }
+                continue;
+            }
+        } else {
+            const std::string network_type = bind_arg.substr(index + 1);
+            if (network_type == "onion") {
+                const std::string truncated_bind_arg = bind_arg.substr(0, index);
+                bind_addr = Lookup(truncated_bind_arg, default_bind_port_onion, false);
+                if (bind_addr.has_value()) {
+                    connOptions.onion_binds.push_back(bind_addr.value());
+                    continue;
+                }
+            }
+        }
+        return InitError(ResolveErrMsg("bind", bind_arg));
+    }
+
+    for (const std::string& strBind : args.GetArgs("-whitebind")) {
+        NetWhitebindPermissions whitebind;
+        bilingual_str error;
+        if (!NetWhitebindPermissions::TryParse(strBind, whitebind, error)) return InitError(error);
+        connOptions.vWhiteBinds.push_back(whitebind);
+    }
+
+    // If the user did not specify -bind= or -whitebind= then we bind
+    // on any address - 0.0.0.0 (IPv4) and :: (IPv6).
+    connOptions.bind_on_any = args.GetArgs("-bind").empty() && args.GetArgs("-whitebind").empty();
+
+    // Emit a warning if a bad port is given to -port= but only if -bind and -whitebind are not
+    // given, because if they are, then -port= is ignored.
+    if (connOptions.bind_on_any && args.IsArgSet("-port")) {
+        const uint16_t port_arg = args.GetIntArg("-port", 0);
+        if (IsBadPort(port_arg)) {
+            InitWarning(BadPortWarning("-port", port_arg));
+        }
+    }
+
+    if (connOptions.onion_binds.empty() && connOptions.vBinds.empty()) {
+        CService onion_service_target = DefaultOnionServiceTarget(default_bind_port_onion);
+        connOptions.onion_binds.push_back(onion_service_target);
+    }
+
+    for (const auto& net : args.GetArgs("-whitelist")) {
+        NetWhitelistPermissions subnet;
+        ConnectionDirection connection_direction;
+        bilingual_str error;
+        if (!NetWhitelistPermissions::TryParse(net, subnet, connection_direction, error)) return InitError(error);
+        if (connection_direction & ConnectionDirection::In) {
+            connOptions.vWhitelistedRangeIncoming.push_back(subnet);
+        }
+        if (connection_direction & ConnectionDirection::Out) {
+            connOptions.vWhitelistedRangeOutgoing.push_back(subnet);
+        }
+    }
+
+    connOptions.vSeedNodes = args.GetArgs("-seednode");
+
+    const auto connect = args.GetArgs("-connect");
+    if (!connect.empty() || args.IsArgNegated("-connect")) {
+        // Do not initiate other outgoing connections when connecting to trusted
+        // nodes, or when -noconnect is specified.
+        connOptions.m_use_addrman_outgoing = false;
+
+        if (connect.size() != 1 || connect[0] != "0") {
+            connOptions.m_specified_outgoing = connect;
+        }
+        if (!connOptions.m_specified_outgoing.empty() && !connOptions.vSeedNodes.empty()) {
+            LogPrintf("-seednode is ignored when -connect is used\n");
+        }
+
+        if (args.IsArgSet("-dnsseed") && args.GetBoolArg("-dnsseed", DEFAULT_DNSSEED) && args.IsArgSet("-proxy")) {
+            LogPrintf("-dnsseed is ignored when -connect is used and -proxy is specified\n");
+        }
+    }
+
+    connOptions.m_i2p_accept_incoming = args.GetBoolArg("-i2pacceptincoming", DEFAULT_I2P_ACCEPT_INCOMING);
+    return true;
 }

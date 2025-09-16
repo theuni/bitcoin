@@ -388,6 +388,62 @@ if(ENABLE_IPC AND BUILD_TESTS)
     add_dependencies(bitcoin_ipc_test bitcoin_ipc_headers)
 endif()
 
+if(BUILD_BITCOIN_P2P)
+  add_executable(bitcoin-p2p
+    addrdb.cpp
+    addrman.cpp
+    banman.cpp
+    bip324.cpp
+    bitcoin-p2p.cpp
+    chainparams.cpp
+    chainparamsbase.cpp
+    common/args.cpp
+    common/config.cpp
+    common/init.cpp
+    common/settings.cpp
+    common/messages.cpp
+    common/netif.cpp
+    common/pcp.cpp
+    common/bloom.cpp
+    common/system.cpp
+    deploymentinfo.cpp
+    i2p.cpp
+    init/common.cpp
+    init/p2p.cpp
+    key.cpp
+    kernel/chainparams.cpp
+    mapport.cpp
+    netbase.cpp
+    netaddress.cpp
+    netgroup.cpp
+    netmessage.cpp
+    net_permissions.cpp
+    net_types.cpp
+    net.cpp
+    node/interface_ui.cpp
+    node/connection_types.cpp
+    noui.cpp
+    protocol.cpp
+    scheduler.cpp
+    script/solver.cpp
+    torcontrol.cpp
+  )
+  target_link_libraries(bitcoin-p2p
+  PRIVATE
+    core_interface
+    bitcoin_consensus
+    bitcoin_ipc
+    bitcoin_util
+    univalue
+    secp256k1
+    Boost::headers
+    $<TARGET_NAME_IF_EXISTS:USDT::headers>
+    $<TARGET_NAME_IF_EXISTS:libevent::core>
+    $<TARGET_NAME_IF_EXISTS:libevent::extra>
+    $<TARGET_NAME_IF_EXISTS:libevent::pthreads>
+    $<$<PLATFORM_ID:Windows>:ws2_32>
+)
+endif()
 
 add_library(bitcoin_cli STATIC EXCLUDE_FROM_ALL
   compat/stdin.cpp

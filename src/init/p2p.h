@@ -6,8 +6,13 @@
 #ifndef BITCOIN_INIT_P2P_H
 #define BITCOIN_INIT_P2P_H
 
+#include <net.h>
+
 class ArgsManager;
 
 void AddP2POptions(ArgsManager& argsman);
+void InitP2PParameterInteraction(ArgsManager& args);
+bool CreateP2POptions(const ArgsManager& args, CConnman::Options& connOptions);
+bool AppInitP2PParameterInteraction(const ArgsManager& args, int reserved_fds);
 
 #endif // BITCOIN_INIT_P2P_H
