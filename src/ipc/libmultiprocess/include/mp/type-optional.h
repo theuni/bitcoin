@@ -28,6 +28,7 @@ decltype(auto) CustomReadField(TypeList<std::optional<LocalType>>,
     InvokeContext& invoke_context,
     Input&& input,
     ReadDest&& read_dest)
+requires std::default_initializable<LocalType>
 {
     return read_dest.update([&](auto& value) {
         if (!input.has()) {

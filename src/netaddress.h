@@ -29,7 +29,7 @@
  * over all enum values and also `GetExtNetwork()` "extends" this enum by
  * introducing standalone constants starting from `NET_MAX`.
  */
-enum Network {
+enum Network : int32_t {
     /// Addresses from these networks are not publicly routable on the global Internet.
     NET_UNROUTABLE = 0,
 

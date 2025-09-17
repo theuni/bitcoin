@@ -11,6 +11,8 @@
 #include <common/messages.h>
 #include <init/common.h>
 #include <init/p2p.h>
+#include <interfaces/init.h>
+#include <interfaces/ipc.h>
 #include <netgroup.h>
 #include <random.h>
 #include <util/translation.h>
@@ -65,18 +67,18 @@ static bool g_generated_pid{false};
 class IPCMsgProc final : public NetEventsInterface
 {
     /** Initialize a peer (setup state) */
-    std::optional<NodeId> InitializeNode(PeerOptions options) override
+    std::optional<NodeId> initializeNode(PeerOptions options) override
     {
         printf("connected to node\n");
         return std::nullopt;
     }
 
     /** Handle removal of a peer (clear state) */
-    void MarkNodeDisconnected(NodeId) override
+    void markNodeDisconnected(NodeId) override
     {
     }
 
-    void MarkSendBufferFull(NodeId, bool) override
+    void markSendBufferFull(NodeId, bool) override
     {
     }
 
@@ -84,12 +86,12 @@ class IPCMsgProc final : public NetEventsInterface
      * Callback to determine whether the given set of service flags are sufficient
      * for a peer to be "relevant".
      */
-    bool HasAllDesirableServiceFlags(ServiceFlags services) const override
+    bool hasAllDesirableServiceFlags(ServiceFlags services) override
     {
         return true;
     }
 
-    void WakeMessageHandler() override
+    void wakeMessageHandler() override
     {
     }
 };
@@ -98,9 +100,11 @@ static std::unique_ptr<NetGroupManager> netgroupman;
 static std::unique_ptr<AddrMan> addrman;
 static std::unique_ptr<CConnman> connman;
 static std::unique_ptr<BanMan> banman;
-static std::unique_ptr<IPCMsgProc> peerman;
 static std::unique_ptr<CScheduler> scheduler;
 static std::unique_ptr<ECC_Context> ecc_context;
+static std::unique_ptr<interfaces::Init> p2p_init;
+static std::unique_ptr<interfaces::Init> node_init;
+static std::unique_ptr<interfaces::NetEventsInterface> msgproc;
 
 static fs::path GetPidFile(const ArgsManager& args)
 {
@@ -265,17 +269,8 @@ static void SetupP2PArgs(ArgsManager& argsman)
     init::AddLoggingArgs(argsman);
     argsman.AddArg("-version", "Print version and exit", ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
 
-#if HAVE_DECL_FORK
-    argsman.AddArg("-daemon", strprintf("Run in the background as a daemon and accept commands (default: %d)", DEFAULT_DAEMON), ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
-    argsman.AddArg("-daemonwait", strprintf("Wait for initialization to be finished before exiting. This implies -daemon (default: %d)", DEFAULT_DAEMONWAIT), ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
-#else
-    std::vector<std::string> hidden_args = {
-    hidden_args.emplace_back("-daemon");
-    hidden_args.emplace_back("-daemonwait");
-
-    // Add the hidden options
-    argsman.AddHiddenArgs(hidden_args);
-#endif
+    argsman.AddArg("-ipcconnect=<address>", "Connect to bitcoin-node process in the background to perform online operations. Valid <address> values are 'unix' to connect to the default socket, 'unix:<socket path>' to connect to a socket at a nonstandard path. Default value: unix", ArgsManager::ALLOW_ANY, OptionsCategory::IPC);
+    argsman.AddArg("-ipcbind=<address>", "Bind to Unix socket address and listen for incoming connections. Valid address values are \"unix\" to listen on the default path, <datadir>/node.sock, or \"unix:/custom/path\" to specify a custom path. Can be specified multiple times to listen on multiple paths. Default behavior is not to listen on any path. If relative paths are specified, they are interpreted relative to the network data directory. If paths include any parent directory components and the parent directories do not exist, they will be created.", ArgsManager::ALLOW_ANY, OptionsCategory::IPC);
 
     AddP2POptions(argsman);
     SetupChainParamsBaseOptions(argsman);
@@ -382,7 +377,7 @@ static bool AppInitSanityChecks()
     return true;
 }
 
-static bool AppInitP2P(const ArgsManager& args)
+static bool AppInitP2P(const ArgsManager& args, int argc, char** argv)
 {
     // ********************************************************* Step 4a: application initialization
     if (!CreatePidFile(args)) {
@@ -481,8 +476,6 @@ static bool AppInitP2P(const ArgsManager& args)
     FastRandomContext rng;
     connman = std::make_unique<CConnman>(rng.rand64(),rng.rand64(), *addrman, *netgroupman, true);
     banman = std::make_unique<BanMan>(args.GetDataDirNet() / "banlist", &uiInterface, args.GetIntArg("-bantime", DEFAULT_MISBEHAVING_BANTIME));
-
-    peerman = std::make_unique<IPCMsgProc>();
 
     for (const std::string& socket_addr : args.GetArgs("-bind")) {
         std::string host_out;
@@ -612,7 +605,6 @@ static bool AppInitP2P(const ArgsManager& args)
     CConnman::Options connOptions;
     connOptions.uiInterface = &uiInterface;
     connOptions.m_banman = banman.get();
-    connOptions.m_msgproc = peerman.get();
     if (!CreateP2POptions(args, connOptions)) return InitError(Untranslated("Failed to create CConnman options"));
 
     auto listen_port = connOptions.default_listen_port;
@@ -666,20 +658,49 @@ static bool AppInitP2P(const ArgsManager& args)
         Discover(listen_port);
     }
 
+    scheduler->scheduleEvery([]{
+        banman->DumpBanlist();
+    }, DUMP_BANS_INTERVAL);
+
+
+    // Connect to existing bitcoin-node process or spawn new one.
+    p2p_init = interfaces::MakeP2PServerInit(*connman, "bitcoin-p2p", argc > 0 ? argv[0] : "");
+    assert(p2p_init);
+
+    for (std::string address : gArgs.GetArgs("-ipcbind")) {
+        try {
+            p2p_init->ipc()->listenAddress(address);
+        } catch (const std::exception& e) {
+            return InitError(Untranslated(strprintf("Unable to bind to IPC address '%s'. %s", address, e.what())));
+        }
+        LogPrintf("Listening for IPC requests on address %s\n", address);
+    }
+
+    try {
+        std::string address{args.GetArg("-ipcconnect", "unix")};
+        node_init = p2p_init->ipc()->connectAddress(address);
+    } catch (const std::exception& exception) {
+        tfm::format(std::cerr, "Error: %s\n", exception.what());
+        tfm::format(std::cerr, "Probably bitcoin-node is not running or not listening on a unix socket. Can be started with:\n\n");
+        tfm::format(std::cerr, "    bitcoin-node -chain=%s -ipcbind=unix\n", args.GetChainTypeString());
+        return EXIT_FAILURE;
+    }
+    assert(node_init);
+    tfm::format(std::cout, "Connected to bitcoin-node\n");
+    msgproc = {node_init->makePeerMan()};
+    assert(msgproc);
+    connOptions.m_msgproc = msgproc.get();
+
     if (!connman->Start(*scheduler, connOptions)) {
         return false;
     }
 
     uiInterface.InitMessage(_("Done loading"));
 
-    scheduler->scheduleEvery([]{
-        banman->DumpBanlist();
-    }, DUMP_BANS_INTERVAL);
-
     return true;
 }
 
-static bool AppInit(ArgsManager& args)
+static bool AppInit(ArgsManager& args, int argc, char** argv)
 {
     bool fRet = false;
 
@@ -742,7 +763,7 @@ static bool AppInit(ArgsManager& args)
             return InitError(Untranslated("-daemon is not supported on this operating system"));
 #endif // HAVE_DECL_FORK
         }
-        fRet = AppInitP2P(args);
+        fRet = AppInitP2P(args, argc, argv);
     }
     catch (const std::exception& e) {
         PrintExceptionContinue(&e, "AppInit()");
@@ -791,11 +812,13 @@ static void Shutdown(ArgsManager& args)
 
     // After the threads that potentially access these pointers have been stopped,
     // destruct and reset all to nullptr.
-    peerman.reset();
+    msgproc.reset();
     connman.reset();
     banman.reset();
     addrman.reset();
     netgroupman.reset();
+    p2p_init.reset();
+    node_init.reset();
     scheduler.reset();
     ecc_context.reset();
     RemovePidFile(args);
@@ -827,7 +850,7 @@ MAIN_FUNCTION
     if (ProcessInitCommands(args)) return EXIT_SUCCESS;
 
     // Start application
-    if (!AppInit(args) || !Assert(g_shutdown->wait())) {
+    if (!AppInit(args, argc, argv) || !Assert(g_shutdown->wait())) {
         exit_status = EXIT_FAILURE;
     }
     Interrupt();

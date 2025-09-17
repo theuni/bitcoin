@@ -256,7 +256,7 @@ public:
     bool disconnectById(NodeId id) override
     {
         if (m_context->connman) {
-            return m_context->connman->DisconnectNode(id);
+            return m_context->connman->disconnectNode(id);
         }
         return false;
     }
@@ -998,6 +998,41 @@ public:
     KernelNotifications& notifications() { return *Assert(m_node.notifications); }
     NodeContext& m_node;
 };
+
+class PeerManImpl : public NetEventsInterface
+{
+public:
+    explicit PeerManImpl(NodeContext& node) : m_node(node) {}
+
+    std::optional<NodeId> initializeNode(PeerOptions options) override
+    {
+        return m_node.peerman->initializeNode(std::move(options));
+    }
+
+    void markNodeDisconnected(NodeId node_id) override
+    {
+        return m_node.peerman->markNodeDisconnected(node_id);
+    }
+
+    void markSendBufferFull(NodeId node_id, bool full) override
+    {
+        return m_node.peerman->markSendBufferFull(node_id, full);
+    }
+
+    bool hasAllDesirableServiceFlags(ServiceFlags services) override
+    {
+        return m_node.peerman->hasAllDesirableServiceFlags(services);
+    }
+
+    void wakeMessageHandler() override
+    {
+        return m_node.peerman->wakeMessageHandler();
+    }
+private:
+    NodeContext& m_node;
+
+};
+
 } // namespace
 } // namespace node
 
@@ -1005,4 +1040,5 @@ namespace interfaces {
 std::unique_ptr<Node> MakeNode(node::NodeContext& context) { return std::make_unique<node::NodeImpl>(context); }
 std::unique_ptr<Chain> MakeChain(node::NodeContext& context) { return std::make_unique<node::ChainImpl>(context); }
 std::unique_ptr<Mining> MakeMining(node::NodeContext& context) { return std::make_unique<node::MinerImpl>(context); }
+std::unique_ptr<NetEventsInterface> MakePeerMan(node::NodeContext& context) { return std::make_unique<node::PeerManImpl>(context); }
 } // namespace interfaces

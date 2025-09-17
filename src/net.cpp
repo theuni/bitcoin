@@ -1525,7 +1525,7 @@ void CConnman::CreateNodeFromAcceptedSocket(std::unique_ptr<Sock>&& sock,
         .send_local_address=fListen
     };
 
-    std::optional<NodeId> id = m_msgproc->InitializeNode(std::move(options));
+    std::optional<NodeId> id = m_msgproc->initializeNode(std::move(options));
 
     if(!id) return;
 
@@ -1662,7 +1662,7 @@ void CConnman::DisconnectNodes()
     {
         for (const auto& node : nodes_disconnected)
         {
-            m_msgproc->MarkNodeDisconnected(node->GetId());
+            m_msgproc->markNodeDisconnected(node->GetId());
         }
         WakeMessageHandler();
     }
@@ -1929,7 +1929,7 @@ void CConnman::ThreadSocketHandler()
 
 void CConnman::WakeMessageHandler()
 {
-    m_msgproc->WakeMessageHandler();
+    m_msgproc->wakeMessageHandler();
 }
 
 void CConnman::ThreadDNSAddressSeed()
@@ -2104,7 +2104,7 @@ bool CConnman::GetTryNewOutboundPeer() const
     return m_try_another_outbound_peer;
 }
 
-bool CConnman::SetTryNewOutboundPeer(bool flag)
+bool CConnman::setTryNewOutboundPeer(bool flag)
 {
     if(flag) {
         if (!fNetworkActive) {
@@ -2122,7 +2122,7 @@ bool CConnman::SetTryNewOutboundPeer(bool flag)
     return true;
 }
 
-void CConnman::StartExtraBlockRelayPeers()
+void CConnman::startExtraBlockRelayPeers()
 {
     LogDebug(BCLog::NET, "enabling extra block-relay-only peers\n");
     m_start_extra_block_relay_peers = true;
@@ -2414,7 +2414,7 @@ void CConnman::ThreadOpenConnections(const std::vector<std::string> connect, std
                 const CAddress addr = m_anchors.back();
                 m_anchors.pop_back();
                 if (!addr.IsValid() || IsLocal(addr) || !g_reachable_nets.Contains(addr) ||
-                    !m_msgproc->HasAllDesirableServiceFlags(addr.nServices) ||
+                    !m_msgproc->hasAllDesirableServiceFlags(addr.nServices) ||
                     outbound_ipv46_peer_netgroups.count(m_netgroupman.GetGroup(addr))) continue;
                 addrConnect = addr;
                 LogDebug(BCLog::NET, "Trying to make an anchor connection to %s\n", addrConnect.ToStringAddrPort());
@@ -2482,7 +2482,7 @@ void CConnman::ThreadOpenConnections(const std::vector<std::string> connect, std
             // for non-feelers, require all the services we'll want,
             // for feelers, only require they be a full node (only because most
             // SPV clients don't have a good address DB available)
-            if (!fFeeler && !m_msgproc->HasAllDesirableServiceFlags(addr.nServices)) {
+            if (!fFeeler && !m_msgproc->hasAllDesirableServiceFlags(addr.nServices)) {
                 continue;
             } else if (fFeeler && !MayHaveUsefulAddressDB(addr.nServices)) {
                 continue;
@@ -2799,7 +2799,7 @@ bool CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFai
         .send_local_address= fListen
     };
 
-    std::optional<NodeId> id = m_msgproc->InitializeNode(std::move(options));
+    std::optional<NodeId> id = m_msgproc->initializeNode(std::move(options));
 
     if(!id) return false;
 
@@ -2988,7 +2988,7 @@ CConnman::CConnman(uint64_t nSeed0In, uint64_t nSeed1In, AddrMan& addrman_in,
     , nSeed0(nSeed0In)
     , nSeed1(nSeed1In)
 {
-    SetTryNewOutboundPeer(false);
+    setTryNewOutboundPeer(false);
 
     Options connOptions;
     Init(connOptions);
@@ -3252,6 +3252,11 @@ CConnman::~CConnman()
     Stop();
 }
 
+std::vector<CAddress> CConnman::getAddresses(size_t max_addresses, size_t max_pct)
+{
+    return GetAddresses(max_addresses, max_pct, std::nullopt);
+}
+
 std::vector<CAddress> CConnman::GetAddresses(size_t max_addresses, size_t max_pct, std::optional<Network> network, const bool filtered) const
 {
     std::vector<CAddress> addresses = addrman.GetAddr(max_addresses, max_pct, network, filtered);
@@ -3263,7 +3268,7 @@ std::vector<CAddress> CConnman::GetAddresses(size_t max_addresses, size_t max_pc
     return addresses;
 }
 
-std::vector<CAddress> CConnman::GetAddresses(NodeId id, size_t max_addresses, size_t max_pct)
+std::vector<CAddress> CConnman::getAddressesForPeer(NodeId id, size_t max_addresses, size_t max_pct)
 {
     std::shared_ptr<CNode> requestor;
     {
@@ -3427,7 +3432,7 @@ bool CConnman::DisconnectNode(const CNetAddr& addr)
     return DisconnectNode(CSubNet(addr));
 }
 
-bool CConnman::DisconnectNode(NodeId id)
+bool CConnman::disconnectNode(NodeId id)
 {
     LOCK(m_nodes_mutex);
     for(const auto& pnode : m_nodes) {
@@ -3497,7 +3502,7 @@ std::chrono::seconds CConnman::GetMaxOutboundTimeLeftInCycle_() const
     return (cycleEndTime < now) ? 0s : cycleEndTime - now;
 }
 
-bool CConnman::OutboundTargetReached(bool historicalBlockServingLimit) const
+bool CConnman::outboundTargetReached(bool historicalBlockServingLimit)
 {
     AssertLockNotHeld(m_total_bytes_sent_mutex);
     LOCK(m_total_bytes_sent_mutex);
@@ -3608,10 +3613,10 @@ void CNode::MarkReceivedMsgsForProcessing(std::list<CNetMessage> messages)
 
 void CConnman::MarkSendBufferFull(CNode& node, bool full) const
 {
-    m_msgproc->MarkSendBufferFull(node.GetId(), full);
+    m_msgproc->markSendBufferFull(node.GetId(), full);
 }
 
-std::optional<std::pair<CNetMessage, bool>> CNode::PollMessage()
+std::optional<interfaces::PollMessageResult> CNode::PollMessage()
 {
     LOCK(m_msg_process_queue_mutex);
     if (m_msg_process_queue.empty()) return std::nullopt;
@@ -3626,8 +3631,15 @@ std::optional<std::pair<CNetMessage, bool>> CNode::PollMessage()
     if (recv_buffer_was_full && m_msg_process_queue_size <= m_recv_flood_size) {
         fPauseRecv = false;
     }
-
-    return std::make_pair(std::move(msgs.front()), !m_msg_process_queue.empty());
+    CNetMessage& msg{msgs.front()};
+    return interfaces::PollMessageResult {
+        .m_recv = {msg.m_recv.begin(), msg.m_recv.end()},
+        .m_time = msg.m_time.count(),
+        .m_message_size = msg.m_message_size,
+        .m_raw_message_size = msg.m_raw_message_size,
+        .m_type = msg.m_type,
+        .m_more = !m_msg_process_queue.empty()
+    };
 }
 
 std::list<CNetMessage> CNode::GetCompleteMessages()
@@ -3637,7 +3649,7 @@ std::list<CNetMessage> CNode::GetCompleteMessages()
     return complete_messages;
 }
 
-bool CConnman::PushMessage(NodeId id, CSerializedNetMsg&& msg)
+bool CConnman::pushMessage(NodeId id, CSerializedNetMsg&& msg)
 {
     std::shared_ptr<CNode> node;
     {
@@ -3701,7 +3713,7 @@ bool CConnman::PushMessage(CNode* pnode, CSerializedNetMsg&& msg)
     return true;
 }
 
-std::optional<std::pair<CNetMessage, bool>> CConnman::PollMessage(NodeId node_id)
+std::optional<interfaces::PollMessageResult> CConnman::pollMessage(NodeId node_id)
 {
       std::shared_ptr<CNode> node;
       {
@@ -3765,12 +3777,12 @@ void CConnman::ASMapHealthCheck()
     m_netgroupman.ASMapHealthCheck(clearnet_addrs);
 }
 
-void CConnman::SetBootstrapComplete()
+void CConnman::setBootstrapComplete()
 {
     m_bootstrapped = true;
 }
 
-std::optional<CService> CConnman::GetLocalAddrForPeer(NodeId node_id, const CService& addr_local)
+std::optional<CService> CConnman::getLocalAddrForPeer(NodeId node_id, const CService& addr_local)
 {
     std::shared_ptr<CNode> node;
     {
@@ -3782,7 +3794,7 @@ std::optional<CService> CConnman::GetLocalAddrForPeer(NodeId node_id, const CSer
     return ::GetLocalAddrForPeer(node->addr, node->m_inbound_onion, node->m_conn_type, addr_local, m_default_listen_port);
 }
 
-bool CConnman::SeenLocal(const CService& addr)
+bool CConnman::seenLocal(const CService& addr)
 {
     return ::SeenLocal(addr);
 }

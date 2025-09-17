@@ -84,7 +84,7 @@ FUZZ_TARGET(p2p_handshake, .init = ::initialize)
         connman.AddTestNode(node);
         peerman->AddLocalServices(ServiceFlags{fuzzed_data_provider.ConsumeIntegral<uint64_t>()});
         peerman->RemoveLocalServices(ServiceFlags{fuzzed_data_provider.ConsumeIntegral<uint64_t>()});
-        peerman->InitializeNode(std::move(options));
+        peerman->initializeNode(std::move(options));
     }
 
     LIMITED_WHILE(fuzzed_data_provider.ConsumeBool(), 100)

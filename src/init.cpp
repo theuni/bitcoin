@@ -1703,7 +1703,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     peerman_opts.m_peer_count_limits = PeerCountLimits(nMaxConnections);
     peerman_opts.strSubVersion = strSubVersion;
     assert(!node.peerman);
-    node.peerman = PeerManager::make(rng.rand64(), rng.rand64(), *node.connman, *node.addrman,
+    node.peerman = PeerManager::make(rng.rand64(), rng.rand64(), node.connman.get(), *node.addrman,
                                      *node.evictionman, node.banman.get(), chainman,
                                      *node.mempool, *node.warnings,
                                      peerman_opts);

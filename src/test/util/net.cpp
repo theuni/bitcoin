@@ -43,7 +43,7 @@ void ConnmanTestMsg::Handshake(CNode& node,
         .connected_through_net=node.ConnectedThroughNetwork(),
         .send_local_address=fListen,
     };
-    std::optional<NodeId> id = peerman.InitializeNode(std::move(options));
+    std::optional<NodeId> id = peerman.initializeNode(std::move(options));
     assert(id);
     NodeId node_id = *id;
     peerman.SendMessages(node_id);

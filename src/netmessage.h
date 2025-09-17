@@ -53,6 +53,20 @@ struct CSerializedNetMsg {
         return copy;
     }
 
+    template <typename Stream>
+    void Serialize(Stream& s) const
+    {
+        s << data;
+        s << m_type;
+    }
+
+    template <typename Stream>
+    CSerializedNetMsg(deserialize_type, Stream& s)
+    {
+        s >> data;
+        s >> m_type;
+    }
+
     std::vector<unsigned char> data;
     std::string m_type;
 

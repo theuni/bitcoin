@@ -90,7 +90,7 @@ FUZZ_TARGET(connman, .init = initialize_connman)
                 connman.AddNode({random_string, fuzzed_data_provider.ConsumeBool()});
             },
             [&] {
-                connman.DisconnectNode(fuzzed_data_provider.ConsumeIntegral<NodeId>());
+                connman.disconnectNode(fuzzed_data_provider.ConsumeIntegral<NodeId>());
             },
             [&] {
                 connman.DisconnectNode(random_netaddr);
@@ -116,7 +116,7 @@ FUZZ_TARGET(connman, .init = initialize_connman)
                 (void)connman.GetNodeCount(fuzzed_data_provider.PickValueInArray({ConnectionDirection::None, ConnectionDirection::In, ConnectionDirection::Out, ConnectionDirection::Both}));
             },
             [&] {
-                (void)connman.OutboundTargetReached(fuzzed_data_provider.ConsumeBool());
+                (void)connman.outboundTargetReached(fuzzed_data_provider.ConsumeBool());
             },
             [&] {
                 CSerializedNetMsg serialized_net_msg;
@@ -131,7 +131,7 @@ FUZZ_TARGET(connman, .init = initialize_connman)
                 connman.SetNetworkActive(fuzzed_data_provider.ConsumeBool());
             },
             [&] {
-                connman.SetTryNewOutboundPeer(fuzzed_data_provider.ConsumeBool());
+                connman.setTryNewOutboundPeer(fuzzed_data_provider.ConsumeBool());
             });
     }
     (void)connman.GetAddedNodeInfo(fuzzed_data_provider.ConsumeBool());

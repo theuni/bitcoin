@@ -410,6 +410,7 @@ if(BUILD_BITCOIN_P2P)
     i2p.cpp
     init/common.cpp
     init/p2p.cpp
+    init/p2pserver.cpp
     key.cpp
     kernel/chainparams.cpp
     mapport.cpp
@@ -424,6 +425,7 @@ if(BUILD_BITCOIN_P2P)
     node/connection_types.cpp
     noui.cpp
     protocol.cpp
+    p2pinterface.cpp
     scheduler.cpp
     script/solver.cpp
     torcontrol.cpp

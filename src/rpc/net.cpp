@@ -470,7 +470,7 @@ static RPCHelpMan disconnectnode()
     } else if (!id_arg.isNull() && (address_arg.isNull() || (address_arg.isStr() && address_arg.get_str().empty()))) {
         /* handle disconnect-by-id */
         NodeId nodeid = (NodeId) id_arg.getInt<int64_t>();
-        success = connman.DisconnectNode(nodeid);
+        success = connman.disconnectNode(nodeid);
     } else {
         throw JSONRPCError(RPC_INVALID_PARAMS, "Only one of address and nodeid should be provided.");
     }
@@ -598,8 +598,8 @@ static RPCHelpMan getnettotals()
     UniValue outboundLimit(UniValue::VOBJ);
     outboundLimit.pushKV("timeframe", count_seconds(connman.GetMaxOutboundTimeframe()));
     outboundLimit.pushKV("target", connman.GetMaxOutboundTarget());
-    outboundLimit.pushKV("target_reached", connman.OutboundTargetReached(false));
-    outboundLimit.pushKV("serve_historical_blocks", !connman.OutboundTargetReached(true));
+    outboundLimit.pushKV("target_reached", const_cast<CConnman&>(connman).outboundTargetReached(false));
+    outboundLimit.pushKV("serve_historical_blocks", !const_cast<CConnman&>(connman).outboundTargetReached(true));
     outboundLimit.pushKV("bytes_left_in_cycle", connman.GetOutboundTargetBytesLeft());
     outboundLimit.pushKV("time_left_in_cycle", count_seconds(connman.GetMaxOutboundTimeLeftInCycle()));
     obj.pushKV("uploadtarget", std::move(outboundLimit));
@@ -1062,7 +1062,7 @@ static RPCHelpMan sendmsgtopeer()
             msg_ser.data = msg.value();
             msg_ser.m_type = msg_type;
 
-            bool success = connman.PushMessage(peer_id, std::move(msg_ser));
+            bool success = connman.pushMessage(peer_id, std::move(msg_ser));
 
             if (!success) {
                 throw JSONRPCError(RPC_MISC_ERROR, "Error: Could not send message to peer");

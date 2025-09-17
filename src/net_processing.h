@@ -115,7 +115,7 @@ public:
         std::string strSubVersion;
     };
 
-    static std::unique_ptr<PeerManager> make(uint64_t seed0, uint64_t seed1, interfaces::NetManagerEvents& connman, AddrMan& addrman,
+    static std::unique_ptr<PeerManager> make(uint64_t seed0, uint64_t seed1, interfaces::NetManagerEvents* connman, AddrMan& addrman,
                                              EvictionManager& evictionman, BanMan* banman, ChainstateManager& chainman,
                                              CTxMemPool& pool, node::Warnings& warnings, Options opts);
     virtual ~PeerManager() = default;
@@ -156,7 +156,7 @@ public:
     virtual void CheckForStaleTipAndEvictPeers() = 0;
 
     /** Process a single message from a peer. Public for fuzz testing */
-    virtual void ProcessMessage(NodeId id, const std::string& msg_type, DataStream& vRecv,
+    virtual void ProcessMessage(NodeId id, const std::string& msg_type, std::span<std::byte> vRecv,
                                 const std::chrono::microseconds time_received) EXCLUSIVE_LOCKS_REQUIRED(g_msgproc_mutex) = 0;
 
     /**
@@ -184,6 +184,8 @@ public:
     virtual ServiceFlags GetLocalServices() const = 0;
 
     virtual std::string GetSubVersion() const = 0;
+
+    virtual void SetConnman(interfaces::NetManagerEvents* connman) = 0;
 
     //! Updates the local services that this node advertises to other peers
     //! during connection handshake.

@@ -660,7 +660,7 @@ public:
      * Returns std::nullopt if the processing queue is empty, or a pair
      * consisting of the message and a bool that indicates if the processing
      * queue has more entries. */
-    std::optional<std::pair<CNetMessage, bool>> PollMessage()
+    std::optional<interfaces::PollMessageResult> PollMessage()
         EXCLUSIVE_LOCKS_REQUIRED(!m_msg_process_queue_mutex);
 
     /** Account for the total size of a sent message in the per msg type connection stats. */
@@ -862,9 +862,9 @@ public:
     RecursiveMutex& GetNodesMutex() const LOCK_RETURNED(m_nodes_mutex);
 
     bool PushMessage(CNode* pnode, CSerializedNetMsg&& msg) EXCLUSIVE_LOCKS_REQUIRED(!m_total_bytes_sent_mutex);
-    bool PushMessage(NodeId id, CSerializedNetMsg&& msg) EXCLUSIVE_LOCKS_REQUIRED(!m_total_bytes_sent_mutex) override;
+    bool pushMessage(NodeId id, CSerializedNetMsg&& msg) EXCLUSIVE_LOCKS_REQUIRED(!m_total_bytes_sent_mutex) override;
 
-    std::optional<std::pair<CNetMessage, bool>> PollMessage(NodeId node_id) override;
+    std::optional<interfaces::PollMessageResult> pollMessage(NodeId node_id) override;
 
     // Addrman functions
     /**
@@ -875,7 +875,8 @@ public:
      * @param[in] network        Select only addresses of this network (nullopt = all).
      * @param[in] filtered       Select only addresses that are considered high quality (false = all).
      */
-    std::vector<CAddress> GetAddresses(size_t max_addresses, size_t max_pct, std::optional<Network> network, const bool filtered = true) const override;
+    std::vector<CAddress> GetAddresses(size_t max_addresses, size_t max_pct, std::optional<Network> network, const bool filtered = true) const;
+    std::vector<CAddress> getAddresses(size_t max_addresses, size_t max_pct) override;
     /**
      * Cache is used to minimize topology leaks, so it should
      * be used for all non-trusted calls, for example, p2p.
@@ -884,13 +885,13 @@ public:
      */
     std::vector<CAddress> GetAddresses(CNode& requestor, size_t max_addresses, size_t max_pct);
 
-    std::vector<CAddress> GetAddresses(NodeId id, size_t max_addresses, size_t max_pct) override;
+    std::vector<CAddress> getAddressesForPeer(NodeId id, size_t max_addresses, size_t max_pct) override;
     // This allows temporarily exceeding m_max_outbound_full_relay, with the goal of finding
     // a peer that is better than all our current peers.
-    bool SetTryNewOutboundPeer(bool flag) override;
+    bool setTryNewOutboundPeer(bool flag) override;
     bool GetTryNewOutboundPeer() const;
 
-    void StartExtraBlockRelayPeers() override;
+    void startExtraBlockRelayPeers() override;
 
     bool AddNode(const AddedNodeParams& add) EXCLUSIVE_LOCKS_REQUIRED(!m_added_nodes_mutex);
     bool RemoveAddedNode(const std::string& node) EXCLUSIVE_LOCKS_REQUIRED(!m_added_nodes_mutex);
@@ -919,7 +920,7 @@ public:
     bool DisconnectNode(const std::string& node);
     bool DisconnectNode(const CSubNet& subnet);
     bool DisconnectNode(const CNetAddr& addr);
-    bool DisconnectNode(NodeId id) override;
+    bool disconnectNode(NodeId id) override;
 
     uint64_t GetMaxOutboundTarget() const EXCLUSIVE_LOCKS_REQUIRED(!m_total_bytes_sent_mutex);
     std::chrono::seconds GetMaxOutboundTimeframe() const;
@@ -927,7 +928,7 @@ public:
     //! check if the outbound target is reached
     //! if param historicalBlockServingLimit is set true, the function will
     //! response true if the limit for serving historical blocks has been reached
-    bool OutboundTargetReached(bool historicalBlockServingLimit) const EXCLUSIVE_LOCKS_REQUIRED(!m_total_bytes_sent_mutex) override;
+    bool outboundTargetReached(bool historicalBlockServingLimit) EXCLUSIVE_LOCKS_REQUIRED(!m_total_bytes_sent_mutex) override;
 
     //! response the bytes left in the current max outbound cycle
     //! in case of no limit, it will always response 0
@@ -943,11 +944,11 @@ public:
 
     bool MultipleManualOrFullOutboundConns(Network net) const EXCLUSIVE_LOCKS_REQUIRED(m_nodes_mutex);
 
-    void SetBootstrapComplete() override;
+    void setBootstrapComplete() override;
 
-    std::optional<CService> GetLocalAddrForPeer(NodeId id, const CService& addr_local) override;
+    std::optional<CService> getLocalAddrForPeer(NodeId id, const CService& addr_local) override;
 
-    bool SeenLocal(const CService& addr) override;
+    bool seenLocal(const CService& addr) override;
 
 private:
     struct ListenSocket {

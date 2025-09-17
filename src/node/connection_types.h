@@ -16,7 +16,7 @@
  * If adding or removing types, please update CONNECTION_TYPE_DOC in
  * src/rpc/net.cpp and src/qt/rpcconsole.cpp, as well as the descriptions in
  * src/qt/guiutil.cpp and src/bitcoin-cli.cpp::NetinfoRequestHandler. */
-enum class ConnectionType {
+enum class ConnectionType : int32_t {
     /**
      * Inbound connections are those initiated by a peer. This is the only
      * property we know at the time of connection, until P2P messages are

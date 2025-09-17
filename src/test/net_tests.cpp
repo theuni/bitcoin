@@ -813,7 +813,7 @@ BOOST_AUTO_TEST_CASE(initial_advertise_from_version_message)
     // Otherwise PushAddress() isn't called by PeerManager::ProcessMessage().
     auto& chainman = static_cast<TestChainstateManager&>(*m_node.chainman);
     chainman.JumpOutOfIbd();
-    std::optional<NodeId> id = m_node.peerman->InitializeNode(std::move(options));
+    std::optional<NodeId> id = m_node.peerman->initializeNode(std::move(options));
     assert(id);
     NodeId node_id = *id;
 

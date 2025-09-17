@@ -627,10 +627,18 @@ struct CNodeState {
     int64_t m_last_block_announcement{0};
 };
 
+struct NewlyConnectedNode
+{
+  NodeId id;
+  bool discouraged;
+  PeerOptions options;
+};
+
+
 class PeerManagerImpl final : public PeerManager
 {
 public:
-    PeerManagerImpl(uint64_t seed0, uint64_t seed1, interfaces::NetManagerEvents& connman, AddrMan& addrman, EvictionManager& evictionman,
+    PeerManagerImpl(uint64_t seed0, uint64_t seed1, interfaces::NetManagerEvents* connman, AddrMan& addrman, EvictionManager& evictionman,
                     BanMan* banman, ChainstateManager& chainman,
                     CTxMemPool& pool, node::Warnings& warnings, Options opts);
 
@@ -651,9 +659,9 @@ public:
         EXCLUSIVE_LOCKS_REQUIRED(!m_most_recent_block_mutex, !m_peer_mutex);
 
     /** Implement NetEventsInterface */
-    std::optional<NodeId> InitializeNode(PeerOptions options) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_tx_download_mutex);
-    void MarkNodeDisconnected(NodeId nodeid) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_nodes_to_finalize_mutex);
-    bool HasAllDesirableServiceFlags(ServiceFlags services) const override;
+    std::optional<NodeId> initializeNode(PeerOptions options) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_tx_download_mutex, !m_added_and_removed_nodes_mutex);
+    void markNodeDisconnected(NodeId nodeid) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_added_and_removed_nodes_mutex);
+    bool hasAllDesirableServiceFlags(ServiceFlags services) override;
     bool ProcessMessages(NodeId node_id) override
         EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_most_recent_block_mutex, !m_headers_presync_mutex, g_msgproc_mutex, !m_tx_download_mutex);
     bool SendMessages(NodeId node_id) override
@@ -673,20 +681,20 @@ public:
         m_best_block_time = time;
     };
     void UnitTestMisbehaving(NodeId peer_id) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex) { Misbehaving(*Assert(GetPeerRef(peer_id)), ""); };
-    void ProcessMessage(Peer& peer, const std::string& msg_type, DataStream& vRecv,
+    void ProcessMessage(Peer& peer, const std::string& msg_type, std::span<std::byte> vRecv,
                         const std::chrono::microseconds time_received)
           EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_most_recent_block_mutex, !m_headers_presync_mutex, g_msgproc_mutex, !m_tx_download_mutex);
-    void ProcessMessage(NodeId id, const std::string& msg_type, DataStream& vRecv,
+    void ProcessMessage(NodeId id, const std::string& msg_type, std::span<std::byte> vRecv,
                           const std::chrono::microseconds time_received)
           EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_most_recent_block_mutex, !m_headers_presync_mutex, g_msgproc_mutex, !m_tx_download_mutex) override;
     void UpdateLastBlockAnnounceTime(NodeId node, int64_t time_in_seconds) override;
     ServiceFlags GetDesirableServiceFlags(ServiceFlags services) const override;
-    void MarkSendBufferFull(NodeId, bool) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex);
+    void markSendBufferFull(NodeId, bool) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex);
     void Interrupt() override;
     void Start(CScheduler& scheduler) override;
-    void Stop() override EXCLUSIVE_LOCKS_REQUIRED(!m_nodes_to_finalize_mutex, !m_peer_mutex, !m_headers_presync_mutex, !m_tx_download_mutex);
-    void WakeMessageHandler() override EXCLUSIVE_LOCKS_REQUIRED(!mutexMsgProc);
-    void ThreadMessageHandler() EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_tx_download_mutex, !m_headers_presync_mutex, !m_most_recent_block_mutex, !m_nodes_to_finalize_mutex, !mutexMsgProc);
+    void Stop() override EXCLUSIVE_LOCKS_REQUIRED(!m_added_and_removed_nodes_mutex, !m_peer_mutex, !m_headers_presync_mutex, !m_tx_download_mutex);
+    void wakeMessageHandler() override EXCLUSIVE_LOCKS_REQUIRED(!mutexMsgProc);
+    void ThreadMessageHandler() EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_tx_download_mutex, !m_headers_presync_mutex, !m_most_recent_block_mutex, !m_added_and_removed_nodes_mutex, !mutexMsgProc);
 
     ServiceFlags GetLocalServices() const override { return m_local_services; }
 
@@ -699,7 +707,6 @@ public:
 private:
     NodeId GetNewNodeId();
     void StartScheduledTasks(CScheduler& scheduler);
-    void FinalizeNodes() EXCLUSIVE_LOCKS_REQUIRED(!m_nodes_to_finalize_mutex, !m_peer_mutex, !m_headers_presync_mutex, !m_tx_download_mutex);
     bool Interrupted() const;
     void FinalizeNode(NodeId nodeid) EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_headers_presync_mutex, !m_tx_download_mutex);
     /** Consider evicting an outbound peer based on the amount of time they've been behind our tip */
@@ -862,12 +869,14 @@ private:
 
     void SendBlockTransactions(Peer& peer, const CBlock& block, const BlockTransactionsRequest& req);
 
-    void PushMessage(NodeId id, CSerializedNetMsg&& msg) const { m_connman.PushMessage(id, std::move(msg)); }
+    void PushMessage(NodeId id, CSerializedNetMsg&& msg) const { m_connman->pushMessage(id, std::move(msg)); }
     template <typename... Args>
     void MakeAndPushMessage(NodeId id, std::string msg_type, Args&&... args) const
     {
-        m_connman.PushMessage(id, NetMsg::Make(std::move(msg_type), std::forward<Args>(args)...));
+        m_connman->pushMessage(id, NetMsg::Make(std::move(msg_type), std::forward<Args>(args)...));
     }
+
+    void SetConnman(interfaces::NetManagerEvents* connman) override { m_connman = connman; }
 
     /** Send a version message to a peer */
     void PushNodeVersion(const Peer& peer);
@@ -896,12 +905,15 @@ private:
     /** Send `feefilter` message. */
     void MaybeSendFeefilter(Peer& peer, std::chrono::microseconds current_time) EXCLUSIVE_LOCKS_REQUIRED(g_msgproc_mutex);
 
+    void AddInitializedNode(NewlyConnectedNode init) EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_tx_download_mutex);
+    void InitAndFinalizeNodes() EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_tx_download_mutex, !m_added_and_removed_nodes_mutex, !m_headers_presync_mutex);
+
     FastRandomContext m_rng GUARDED_BY(NetEventsInterface::g_msgproc_mutex);
 
     FeeFilterRounder m_fee_filter_rounder GUARDED_BY(NetEventsInterface::g_msgproc_mutex);
 
     const CChainParams& m_chainparams;
-    interfaces::NetManagerEvents& m_connman;
+    interfaces::NetManagerEvents* m_connman;
     AddrMan& m_addrman;
     EvictionManager& m_evictionman;
     /** Pointer to this node's banman. May be nullptr - check existence before dereferencing. */
@@ -1025,8 +1037,8 @@ private:
     /** The m_headers_presync_stats improved, and needs signalling. */
     std::atomic_bool m_headers_presync_should_signal{false};
 
-    Mutex m_nodes_to_finalize_mutex;
-    std::vector<NodeId> m_nodes_to_finalize GUARDED_BY(m_nodes_to_finalize_mutex);
+    Mutex m_added_and_removed_nodes_mutex;
+    std::vector<NodeId> m_nodes_to_finalize GUARDED_BY(m_added_and_removed_nodes_mutex);
 
     /** Height of the highest block announced using BIP 152 high-bandwidth mode. */
     int m_highest_fast_announce GUARDED_BY(::cs_main){0};
@@ -1063,6 +1075,8 @@ private:
     PeerCountLimits m_peer_count_limits;
 
     std::atomic<NodeId> m_last_node_id{0};
+
+    std::vector<NewlyConnectedNode> m_newly_connected_nodes GUARDED_BY(m_added_and_removed_nodes_mutex);
 
     /** Have we requested this block from a peer */
     bool IsBlockRequested(const uint256& hash) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
@@ -1220,7 +1234,7 @@ private:
      * @param[in]   peer            The peer that we received the request from
      * @param[in]   vRecv           The raw message received
      */
-    void ProcessGetCFilters(Peer& peer, DataStream& vRecv);
+    void ProcessGetCFilters(Peer& peer, SpanReader& vRecv);
 
     /**
      * Handle a cfheaders request.
@@ -1230,7 +1244,7 @@ private:
      * @param[in]   peer            The peer that we received the request from
      * @param[in]   vRecv           The raw message received
      */
-    void ProcessGetCFHeaders(Peer& peer, DataStream& vRecv);
+    void ProcessGetCFHeaders(Peer& peer, SpanReader& vRecv);
 
     /**
      * Handle a getcfcheckpt request.
@@ -1240,7 +1254,7 @@ private:
      * @param[in]   peer            The peer that we received the request from
      * @param[in]   vRecv           The raw message received
      */
-    void ProcessGetCFCheckPt(Peer& peer, DataStream& vRecv);
+    void ProcessGetCFCheckPt(Peer& peer, SpanReader& vRecv);
 
     /** Checks if address relay is permitted with peer. If needed, initializes
      * the m_addr_known bloom filter and sets m_addr_relay_enabled to true.
@@ -1321,7 +1335,7 @@ int PeerManagerImpl::GetExtraBlockRelayCount() const
     return std::max(block_relay_peers - m_peer_count_limits.m_max_outbound_block_relay, 0);
 }
 
-void PeerManagerImpl::MarkSendBufferFull(NodeId id, bool full)
+void PeerManagerImpl::markSendBufferFull(NodeId id, bool full)
 {
         LOCK(m_peer_mutex);
         for(const auto&[peer_id, peer] : m_peer_map) {
@@ -1344,7 +1358,7 @@ void PeerManagerImpl::Stop()
     if (threadMessageHandler.joinable())
         threadMessageHandler.join();
 
-    WITH_LOCK(m_nodes_to_finalize_mutex, m_nodes_to_finalize.clear());
+    WITH_LOCK(m_added_and_removed_nodes_mutex, m_nodes_to_finalize.clear());
     std::vector<NodeId> ids_to_finalize;
     {
         LOCK(m_peer_mutex);
@@ -1366,8 +1380,7 @@ void PeerManagerImpl::ThreadMessageHandler()
     {
         bool fMoreWork = false;
 
-        // Finalize nodes that were marked for deletion on another thread
-        FinalizeNodes();
+        InitAndFinalizeNodes();
 
         // Randomize the order in which we process messages from/to our peers.
         // This prevents attacks in which an attacker exploits having multiple
@@ -1413,7 +1426,7 @@ bool PeerManagerImpl::Interrupted() const
     return interruptMsgProc;
 }
 
-void PeerManagerImpl::WakeMessageHandler()
+void PeerManagerImpl::wakeMessageHandler()
 {
     {
         LOCK(mutexMsgProc);
@@ -1967,7 +1980,7 @@ bool PeerManagerImpl::AttemptToEvictConnection()
     return false;
 }
 
-std::optional<NodeId> PeerManagerImpl::InitializeNode(PeerOptions options)
+std::optional<NodeId> PeerManagerImpl::initializeNode(PeerOptions options)
 {
     bool discouraged = false;
     if (IsInboundConn(options.conn_type)) {
@@ -1997,36 +2010,72 @@ std::optional<NodeId> PeerManagerImpl::InitializeNode(PeerOptions options)
         }
     }
     NodeId nodeid = GetNewNodeId();
+    LOCK(m_added_and_removed_nodes_mutex);
+    m_newly_connected_nodes.emplace_back(nodeid, discouraged, std::move(options));
+
+    return nodeid;
+}
+
+void PeerManagerImpl::AddInitializedNode(NewlyConnectedNode init)
+{
     {
         LOCK(cs_main); // For m_node_states
-        m_node_states.try_emplace(m_node_states.end(), nodeid);
+        m_node_states.try_emplace(m_node_states.end(), init.id);
     }
-    WITH_LOCK(m_tx_download_mutex, m_txdownloadman.CheckIsEmpty(nodeid));
+
+    WITH_LOCK(m_tx_download_mutex, m_txdownloadman.CheckIsEmpty(init.id));
 
     ServiceFlags our_services = GetLocalServices();
-    if (NetPermissions::HasFlag(options.permission_flags, NetPermissionFlags::BloomFilter)) {
+    if (NetPermissions::HasFlag(init.options.permission_flags, NetPermissionFlags::BloomFilter)) {
         our_services = static_cast<ServiceFlags>(our_services | NODE_BLOOM);
     }
 
-    uint64_t local_nonce = GetDeterministicRandomizer(RANDOMIZER_ID_LOCALHOSTNONCE).Write(nodeid).Finalize();
+    uint64_t local_nonce = GetDeterministicRandomizer(RANDOMIZER_ID_LOCALHOSTNONCE).Write(init.id).Finalize();
+    auto keyed_net_group = init.options.keyed_net_group;
 
-    PeerRef peer = std::make_shared<Peer>(nodeid, std::move(options), our_services, local_nonce);
+    PeerRef peer = std::make_shared<Peer>(init.id, std::move(init.options), our_services, local_nonce);
     {
         LOCK(m_peer_mutex);
-        m_peer_map.emplace_hint(m_peer_map.end(), nodeid, peer);
+        m_peer_map.emplace_hint(m_peer_map.end(), init.id, peer);
     }
 
     m_evictionman.AddCandidate(
-      /*id=*/nodeid,
+      /*id=*/init.id,
       /*connected=*/peer->m_connected,
-      /*keyed_net_group=*/options.keyed_net_group,
-      /*prefer_evict=*/discouraged,
+      /*keyed_net_group=*/keyed_net_group,
+      /*prefer_evict=*/init.discouraged,
       /*is_local=*/peer->m_addr.IsLocal(),
-      /*network=*/options.connected_through_net,
+      /*network=*/peer->m_connected_through_net,
       /*noban=*/peer->HasPermission(NetPermissionFlags::NoBan),
       /*conn_type=*/peer->m_conn_type);
+}
 
-    return nodeid;
+void PeerManagerImpl::InitAndFinalizeNodes()
+{
+    std::optional<decltype(m_newly_connected_nodes)> nodes_to_add;
+    std::optional<decltype(m_nodes_to_finalize)> nodes_to_finalize;
+    {
+        LOCK(m_added_and_removed_nodes_mutex);
+        if (!m_newly_connected_nodes.empty()) {
+            nodes_to_add.emplace(std::move(m_newly_connected_nodes));
+            m_newly_connected_nodes.clear();
+
+        }
+        if (!m_nodes_to_finalize.empty()) {
+            nodes_to_finalize.emplace(std::move(m_nodes_to_finalize));
+            m_nodes_to_finalize.clear();
+        }
+    }
+    if (nodes_to_add) {
+        for(auto&& node : *nodes_to_add) {
+            AddInitializedNode(std::move(node));
+        }
+    }
+    if (nodes_to_finalize) {
+        for(auto nodeid : *nodes_to_finalize) {
+            FinalizeNode(nodeid);
+        }
+    }
 }
 
 void PeerManagerImpl::ReattemptInitialBroadcast(CScheduler& scheduler)
@@ -2124,7 +2173,7 @@ void PeerManagerImpl::FinalizeNode(NodeId nodeid)
     LogDebug(BCLog::NET, "Cleared nodestate for peer=%d\n", nodeid);
 }
 
-bool PeerManagerImpl::HasAllDesirableServiceFlags(ServiceFlags services) const
+bool PeerManagerImpl::hasAllDesirableServiceFlags(ServiceFlags services)
 {
     // Shortcut for (services & GetDesirableServiceFlags(services)) == GetDesirableServiceFlags(services)
     return !(GetDesirableServiceFlags(services) & (~services));
@@ -2268,7 +2317,7 @@ void PeerManagerImpl::Misbehaving(Peer& peer, const std::string& message)
 void PeerManagerImpl::RequestDisconnect(Peer& peer)
 {
     peer.m_disconnecting = true;
-    m_connman.DisconnectNode(peer.m_id);
+    m_connman->disconnectNode(peer.m_id);
 }
 
 void PeerManagerImpl::MaybePunishNodeForBlock(NodeId nodeid, const BlockValidationState& state,
@@ -2384,14 +2433,14 @@ std::optional<std::string> PeerManagerImpl::FetchBlock(NodeId peer_id, const CBl
     return std::nullopt;
 }
 
-std::unique_ptr<PeerManager> PeerManager::make(uint64_t seed0, uint64_t seed1, interfaces::NetManagerEvents& connman, AddrMan& addrman, EvictionManager& evictionman,
+std::unique_ptr<PeerManager> PeerManager::make(uint64_t seed0, uint64_t seed1, interfaces::NetManagerEvents* connman, AddrMan& addrman, EvictionManager& evictionman,
                                                BanMan* banman, ChainstateManager& chainman,
                                                CTxMemPool& pool, node::Warnings& warnings, Options opts)
 {
     return std::make_unique<PeerManagerImpl>(seed0, seed1, connman, addrman, evictionman, banman, chainman, pool, warnings, opts);
 }
 
-PeerManagerImpl::PeerManagerImpl(uint64_t seed0, uint64_t seed1, interfaces::NetManagerEvents& connman, AddrMan& addrman, EvictionManager& evictionman,
+PeerManagerImpl::PeerManagerImpl(uint64_t seed0, uint64_t seed1, interfaces::NetManagerEvents* connman, AddrMan& addrman, EvictionManager& evictionman,
                                  BanMan* banman, ChainstateManager& chainman,
                                  CTxMemPool& pool, node::Warnings& warnings, Options opts)
     : m_rng{opts.deterministic_rng},
@@ -2578,7 +2627,7 @@ void PeerManagerImpl::UpdatedBlockTip(const CBlockIndex *pindexNew, const CBlock
         }
     }
 
-    WakeMessageHandler();
+    wakeMessageHandler();
 }
 
 /**
@@ -2752,7 +2801,7 @@ void PeerManagerImpl::ProcessGetBlockData(Peer& peer, const CInv& inv)
             return;
         }
         // disconnect node in case we have reached the outbound limit for serving historical blocks
-        if (m_connman.OutboundTargetReached(true) &&
+        if (m_connman->outboundTargetReached(true) &&
             (((m_chainman.m_best_header != nullptr) && (m_chainman.m_best_header->GetBlockTime() - pindex->GetBlockTime() > HISTORICAL_BLOCK_AGE)) || inv.IsMsgFilteredBlk()) &&
             !peer.HasPermission(NetPermissionFlags::Download) // nodes with the download permission may exceed target
         ) {
@@ -3694,7 +3743,7 @@ bool PeerManagerImpl::PrepareBlockFilterRequest(Peer& peer,
     return true;
 }
 
-void PeerManagerImpl::ProcessGetCFilters(Peer& peer, DataStream& vRecv)
+void PeerManagerImpl::ProcessGetCFilters(Peer& peer, SpanReader& vRecv)
 {
     uint8_t filter_type_ser;
     uint32_t start_height;
@@ -3723,7 +3772,7 @@ void PeerManagerImpl::ProcessGetCFilters(Peer& peer, DataStream& vRecv)
     }
 }
 
-void PeerManagerImpl::ProcessGetCFHeaders(Peer& peer, DataStream& vRecv)
+void PeerManagerImpl::ProcessGetCFHeaders(Peer& peer, SpanReader& vRecv)
 {
     uint8_t filter_type_ser;
     uint32_t start_height;
@@ -3765,7 +3814,7 @@ void PeerManagerImpl::ProcessGetCFHeaders(Peer& peer, DataStream& vRecv)
               filter_hashes);
 }
 
-void PeerManagerImpl::ProcessGetCFCheckPt(Peer& peer, DataStream& vRecv)
+void PeerManagerImpl::ProcessGetCFCheckPt(Peer& peer, SpanReader& vRecv)
 {
     uint8_t filter_type_ser;
     uint256 stop_hash;
@@ -3923,17 +3972,18 @@ void PeerManagerImpl::LogBlockHeader(const CBlockIndex& index, const Peer& peer,
     }
 }
 
-void PeerManagerImpl::ProcessMessage(NodeId id, const std::string& msg_type, DataStream& vRecv,
+void PeerManagerImpl::ProcessMessage(NodeId id, const std::string& msg_type, std::span<std::byte> vRecv,
                                    const std::chrono::microseconds time_received)
 {
     auto peer = GetPeerRef(id);
     ProcessMessage(*peer, msg_type, vRecv, time_received);
 }
 
-void PeerManagerImpl::ProcessMessage(Peer& p, const std::string& msg_type, DataStream& vRecv,
+void PeerManagerImpl::ProcessMessage(Peer& p, const std::string& msg_type, std::span<std::byte> msg,
                                      const std::chrono::microseconds time_received)
 {
     Peer* peer = &p;
+    SpanReader vRecv{msg};
     AssertLockHeld(g_msgproc_mutex);
     auto node_id = peer->m_id;
     LogDebug(BCLog::NET, "received: %s (%u bytes) peer=%d\n", SanitizeString(msg_type), vRecv.size(), node_id);
@@ -3967,7 +4017,7 @@ void PeerManagerImpl::ProcessMessage(Peer& p, const std::string& msg_type, DataS
             // messages are only ever added but cannot replace existing ones.
             m_addrman.SetServices(peer->m_addr, nServices);
         }
-        if (peer->ExpectServicesFromConn() && !HasAllDesirableServiceFlags(nServices))
+        if (peer->ExpectServicesFromConn() && !hasAllDesirableServiceFlags(nServices))
         {
             LogDebug(BCLog::NET, "peer does not offer the expected services (%08x offered, %08x expected), %s\n",
                      nServices,
@@ -4012,7 +4062,7 @@ void PeerManagerImpl::ProcessMessage(Peer& p, const std::string& msg_type, DataS
 
         if (IsInboundConn(peer->m_conn_type) && addrMe.IsRoutable())
         {
-            m_connman.SeenLocal(addrMe);
+            m_connman->seenLocal(addrMe);
         }
 
         // Inbound peers send us their version message when they connect.
@@ -4039,7 +4089,7 @@ void PeerManagerImpl::ProcessMessage(Peer& p, const std::string& msg_type, DataS
             MakeAndPushMessage(peer->m_id, NetMsgType::SENDADDRV2);
         }
 
-        m_evictionman.UpdateRelevantServices(node_id, HasAllDesirableServiceFlags(nServices));
+        m_evictionman.UpdateRelevantServices(node_id, hasAllDesirableServiceFlags(nServices));
         peer->m_their_services = nServices;
 		peer->SetAddrLocal(addrMe);
         {
@@ -4230,7 +4280,7 @@ void PeerManagerImpl::ProcessMessage(Peer& p, const std::string& msg_type, DataS
         if (!m_peers_bootstrapped && GetFullOutboundConnCount() >= OUTBOUND_CONNECTION_BOOTSTRAP_THRESHOLD) {
             LogPrintf("P2P peers available. Finished fetching data from seed nodes.\n");
             m_peers_bootstrapped = true;
-            m_connman.SetBootstrapComplete();
+            m_connman->setBootstrapComplete();
         }
         return;
     }
@@ -4413,7 +4463,7 @@ void PeerManagerImpl::ProcessMessage(Peer& p, const std::string& msg_type, DataS
             // We only bother storing full nodes, though this may include
             // things which we would not make an outbound connection to, in
             // part because we may make feeler connections to them.
-            if (!MayHaveUsefulAddressDB(addr.nServices) && !HasAllDesirableServiceFlags(addr.nServices))
+            if (!MayHaveUsefulAddressDB(addr.nServices) && !hasAllDesirableServiceFlags(addr.nServices))
                 continue;
 
             if (addr.nTime <= NodeSeconds{100000000s} || addr.nTime > current_a_time + 10min) {
@@ -5218,9 +5268,9 @@ void PeerManagerImpl::ProcessMessage(Peer& p, const std::string& msg_type, DataS
         peer->m_addrs_to_send.clear();
         std::vector<CAddress> vAddr;
         if (peer->HasPermission(NetPermissionFlags::Addr)) {
-            vAddr = m_connman.GetAddresses(MAX_ADDR_TO_SEND, MAX_PCT_ADDR_TO_SEND, /*network=*/std::nullopt);
+            vAddr = m_connman->getAddresses(MAX_ADDR_TO_SEND, MAX_PCT_ADDR_TO_SEND);
         } else {
-            vAddr = m_connman.GetAddresses(node_id, MAX_ADDR_TO_SEND, MAX_PCT_ADDR_TO_SEND);
+            vAddr = m_connman->getAddressesForPeer(node_id, MAX_ADDR_TO_SEND, MAX_PCT_ADDR_TO_SEND);
         }
         for (const CAddress &addr : vAddr) {
             PushAddress(*peer, addr);
@@ -5241,7 +5291,7 @@ void PeerManagerImpl::ProcessMessage(Peer& p, const std::string& msg_type, DataS
             return;
         }
 
-        if (m_connman.OutboundTargetReached(false) && !peer->HasPermission(NetPermissionFlags::Mempool))
+        if (m_connman->outboundTargetReached(false) && !peer->HasPermission(NetPermissionFlags::Mempool))
         {
             if (!peer->HasPermission(NetPermissionFlags::NoBan))
             {
@@ -5281,7 +5331,7 @@ void PeerManagerImpl::ProcessMessage(Peer& p, const std::string& msg_type, DataS
     if (msg_type == NetMsgType::PONG) {
         const auto ping_end = time_received;
         uint64_t nonce = 0;
-        size_t nAvail = vRecv.in_avail();
+        size_t nAvail = vRecv.size();
         bool bPingFinished = false;
         std::string sProblem;
 
@@ -5493,7 +5543,7 @@ bool PeerManagerImpl::MaybeDiscourageAndDisconnect(Peer& peer)
     // Normal case: Disconnect the peer and discourage all nodes sharing the address
     LogDebug(BCLog::NET, "Disconnecting and discouraging peer %d!\n", peer.m_id);
     if (m_banman) m_banman->Discourage(peer.m_addr);
-    m_connman.DisconnectNode(peer.m_id);
+    m_connman->disconnectNode(peer.m_id);
     return true;
 }
 
@@ -5532,14 +5582,14 @@ bool PeerManagerImpl::ProcessMessages(NodeId node_id)
     // Don't bother if send buffer is too full to respond anyway
     if (peer->m_send_buffer_full) return false;
 
-    auto poll_result{m_connman.PollMessage(node_id)};
+    auto poll_result{m_connman->pollMessage(node_id)};
     if (!poll_result) {
         // No message to process
         return false;
     }
 
-    CNetMessage& msg{poll_result->first};
-    bool fMoreWork = poll_result->second;
+    auto& msg{*poll_result};
+    bool fMoreWork = msg.m_more;
 
     TRACEPOINT(net, inbound_message,
         node_id,
@@ -5551,7 +5601,7 @@ bool PeerManagerImpl::ProcessMessages(NodeId node_id)
     );
 
     try {
-        ProcessMessage(*peer, msg.m_type, msg.m_recv, msg.m_time);
+        ProcessMessage(*peer, msg.m_type, msg.m_recv, std::chrono::microseconds{msg.m_time});
         if (interruptMsgProc) return false;
         {
             LOCK(peer->m_getdata_requests_mutex);
@@ -5690,7 +5740,7 @@ void PeerManagerImpl::EvictExtraOutboundPeers(std::chrono::seconds now)
                 // detected a stale tip. Don't try any more extra peers until
                 // we next detect a stale tip, to limit the load we put on the
                 // network from these extra connections.
-                m_connman.SetTryNewOutboundPeer(false);
+                m_connman->setTryNewOutboundPeer(false);
             } else {
                 LogDebug(BCLog::NET, "keeping outbound peer=%d chosen for eviction (connect time: %d, blocks_in_flight: %d)\n",
                          peer->m_id, count_seconds(peer->m_connected), state.vBlocksInFlight.size());
@@ -5713,15 +5763,15 @@ void PeerManagerImpl::CheckForStaleTipAndEvictPeers()
         if (!m_chainman.m_blockman.LoadingBlocks() && TipMayBeStale()) {
             LogPrintf("Potential stale tip detected, will try using extra outbound peer (last tip update: %d seconds ago)\n",
                       count_seconds(now - m_last_tip_update.load()));
-            m_connman.SetTryNewOutboundPeer(true);
+            m_connman->setTryNewOutboundPeer(true);
         } else {
-            m_connman.SetTryNewOutboundPeer(false);
+            m_connman->setTryNewOutboundPeer(false);
         }
         m_stale_tip_check_time = now + STALE_CHECK_INTERVAL;
     }
 
     if (!m_initial_sync_finished && CanDirectFetch()) {
-        m_connman.StartExtraBlockRelayPeers();
+        m_connman->startExtraBlockRelayPeers();
         m_initial_sync_finished = true;
     }
 }
@@ -5777,7 +5827,7 @@ void PeerManagerImpl::MaybeSendAddr(Peer& peer, std::chrono::microseconds curren
         if (peer.m_next_local_addr_send != 0us) {
             peer.m_addr_known->reset();
         }
-        if (std::optional<CService> local_service = m_connman.GetLocalAddrForPeer(peer.m_id, peer.GetAddrLocal())) {
+        if (std::optional<CService> local_service = m_connman->getLocalAddrForPeer(peer.m_id, peer.GetAddrLocal())) {
             CAddress local_addr{*local_service, peer.m_our_services, Now<NodeSeconds>()};
             PushAddress(peer, local_addr);
         }
@@ -6437,20 +6487,10 @@ bool PeerManagerImpl::SendMessages(NodeId peer_id)
     return true;
 }
 
-void PeerManagerImpl::MarkNodeDisconnected(NodeId nodeid)
+void PeerManagerImpl::markNodeDisconnected(NodeId nodeid)
 {
     auto peer = GetPeerRef(nodeid);
     assert(peer);
     peer->m_disconnecting = true;
-    WITH_LOCK(m_nodes_to_finalize_mutex,  m_nodes_to_finalize.push_back(nodeid));
+    WITH_LOCK(m_added_and_removed_nodes_mutex,  m_nodes_to_finalize.push_back(nodeid));
 }
-
-void PeerManagerImpl::FinalizeNodes()
-{
-    decltype(m_nodes_to_finalize) nodes_to_finalize;
-    WITH_LOCK(m_nodes_to_finalize_mutex, nodes_to_finalize.swap(m_nodes_to_finalize));
-    for(auto nodeid : nodes_to_finalize) {
-        FinalizeNode(nodeid);
-    }
-}
-

@@ -10,6 +10,7 @@
 #include <interfaces/mining.h>
 #include <interfaces/node.h>
 #include <interfaces/wallet.h>
+#include <interfaces/net.h>
 
 #include <memory>
 
@@ -27,6 +28,7 @@ class Ipc;
 //! (bitcoin-gui, bitcoin-node, bitcoin-wallet, bitcoind, bitcoin-qt) and each
 //! implementation can implement the make methods for interfaces it supports.
 //! The default make methods all return null.
+
 class Init
 {
 public:
@@ -36,6 +38,9 @@ public:
     virtual std::unique_ptr<Mining> makeMining() { return nullptr; }
     virtual std::unique_ptr<WalletLoader> makeWalletLoader(Chain& chain) { return nullptr; }
     virtual std::unique_ptr<Echo> makeEcho() { return nullptr; }
+    virtual std::unique_ptr<NetEventsInterface> makePeerMan() { return nullptr; }
+    virtual std::unique_ptr<NetManagerEvents> makeConnman() { return nullptr; }
+
     virtual Ipc* ipc() { return nullptr; }
     virtual bool canListenIpc() { return false; }
 };
@@ -53,6 +58,9 @@ std::unique_ptr<Init> MakeWalletInit(int argc, char* argv[], int& exit_status);
 
 //! Return implementation of Init interface for the gui process.
 std::unique_ptr<Init> MakeGuiInit(int argc, char* argv[]);
+
+//! Return implementation of Init interface for the p2p process.
+std::unique_ptr<Init> MakeP2PServerInit(CConnman& connman, const char* exe_name, const char* process_argv0="");
 } // namespace interfaces
 
 #endif // BITCOIN_INTERFACES_INIT_H
