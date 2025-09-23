@@ -133,9 +133,15 @@ struct LogOptions {
     //! External logging callback.
     LogFn log_fn;
 
+    //! External verbose logging callback.
+    LogFn verbose_log_fn{nullptr};
+
     //! Maximum number of characters to use when representing
     //! request and response structs as strings.
     size_t max_chars{200};
+
+    //! Enable verbose logging which may affect performance
+    bool verbose{false};
 };
 
 std::string LongThreadName(const char* exe_name);
@@ -170,6 +176,10 @@ class EventLoop
 public:
     //! Construct event loop object.
     EventLoop(const char* exe_name, LogFn log_fn, void* context = nullptr);
+
+    //! Construct event loop object with logging options.
+    EventLoop(const char* exe_name, LogOptions log_opts, void* context = nullptr);
+
     ~EventLoop();
 
     //! Run event loop. Does not return until shutdown. This should only be
@@ -210,13 +220,13 @@ public:
     //! Check if loop should exit.
     bool done() const MP_REQUIRES(m_mutex);
 
-    Logger log()
+    Logger log(bool verbose = false)
     {
-        Logger logger(false, m_log_opts.log_fn);
+        Logger logger(false, verbose ? m_log_opts.verbose_log_fn : m_log_opts.log_fn);
         logger << "{" << LongThreadName(m_exe_name) << "} ";
         return logger;
     }
-    Logger logPlain() { return {false, m_log_opts.log_fn}; }
+    Logger logPlain(bool verbose = false) { return {false, verbose ? m_log_opts.verbose_log_fn : m_log_opts.log_fn}; }
     Logger raise() { return {true, m_log_opts.log_fn}; }
 
     //! Process name included in thread names so combined debug output from
