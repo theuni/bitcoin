@@ -36,6 +36,12 @@ void IpcLogFn(bool raise, std::string message)
     if (raise) throw Exception(message);
 }
 
+void IpcTraceLogFn(bool raise, std::string message)
+{
+    LogTrace(BCLog::IPC, "%s\n", message);
+    assert(!raise);
+}
+
 class CapnpProtocol : public Protocol
 {
 public:
@@ -61,8 +67,13 @@ public:
     void serve(int fd, const char* exe_name, interfaces::Init& init, const std::function<void()>& ready_fn = {}) override
     {
         assert(!m_loop);
+        mp::LogOptions log_options {
+            .log_fn = &IpcLogFn,
+            .verbose_log_fn = &IpcTraceLogFn,
+            .verbose = LogAcceptCategory(BCLog::IPC, BCLog::Level::Trace)
+        };
         mp::g_thread_context.thread_name = mp::ThreadName(exe_name);
-        m_loop.emplace(exe_name, &IpcLogFn, &m_context);
+        m_loop.emplace(exe_name, log_options, &m_context);
         if (ready_fn) ready_fn();
         mp::ServeStream<messages::Init>(*m_loop, fd, init);
         m_parent_connection = &m_loop->m_incoming_connections.back();
@@ -88,9 +99,14 @@ public:
     {
         if (m_loop) return;
         std::promise<void> promise;
+        mp::LogOptions log_options {
+            .log_fn = &IpcLogFn,
+            .verbose_log_fn = &IpcTraceLogFn,
+            .verbose = LogAcceptCategory(BCLog::IPC, BCLog::Level::Trace)
+        };
         m_loop_thread = std::thread([&] {
             util::ThreadRename("capnp-loop");
-            m_loop.emplace(exe_name, &IpcLogFn, &m_context);
+            m_loop.emplace(exe_name, log_options, &m_context);
             m_loop_ref.emplace(*m_loop);
             promise.set_value();
             m_loop->loop();
