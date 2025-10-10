@@ -16,6 +16,7 @@
 static const uint64_t BUFFER_SIZE_TINY  = 64;
 static const uint64_t BUFFER_SIZE_SMALL = 256;
 static const uint64_t BUFFER_SIZE_LARGE = 1024*1024;
+static const uint64_t BUFFER_SIZE_XLARGE = 1024*1024*4;
 
 static void CHACHA20(benchmark::Bench& bench, size_t buffersize)
 {
@@ -56,6 +57,11 @@ static void CHACHA20_1MB(benchmark::Bench& bench)
     CHACHA20(bench, BUFFER_SIZE_LARGE);
 }
 
+static void CHACHA20_4MB(benchmark::Bench& bench)
+{
+    CHACHA20(bench, BUFFER_SIZE_XLARGE);
+}
+
 static void FSCHACHA20POLY1305_64BYTES(benchmark::Bench& bench)
 {
     FSCHACHA20POLY1305(bench, BUFFER_SIZE_TINY);
@@ -74,6 +80,7 @@ static void FSCHACHA20POLY1305_1MB(benchmark::Bench& bench)
 BENCHMARK(CHACHA20_64BYTES, benchmark::PriorityLevel::HIGH);
 BENCHMARK(CHACHA20_256BYTES, benchmark::PriorityLevel::HIGH);
 BENCHMARK(CHACHA20_1MB, benchmark::PriorityLevel::HIGH);
+BENCHMARK(CHACHA20_4MB, benchmark::PriorityLevel::HIGH);
 BENCHMARK(FSCHACHA20POLY1305_64BYTES, benchmark::PriorityLevel::HIGH);
 BENCHMARK(FSCHACHA20POLY1305_256BYTES, benchmark::PriorityLevel::HIGH);
 BENCHMARK(FSCHACHA20POLY1305_1MB, benchmark::PriorityLevel::HIGH);
