@@ -25,7 +25,7 @@
 class ChaCha20Aligned
 {
 private:
-    uint32_t input[12];
+    alignas(32) uint32_t input[12];
 
 public:
     /** Expected key length in constructor and SetKey. */
