@@ -41,6 +41,9 @@ if(HAVE_AVX2)
   set_property(SOURCE sha256_avx2.cpp PROPERTY
     COMPILE_OPTIONS ${AVX2_CXXFLAGS}
   )
+  set_property(SOURCE chacha20.cpp PROPERTY
+    COMPILE_OPTIONS ${AVX2_CXXFLAGS}
+  )
 endif()
 
 if(HAVE_SSE41 AND HAVE_X86_SHANI)
