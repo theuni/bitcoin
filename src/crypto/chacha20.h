@@ -13,6 +13,8 @@
 #include <cstdlib>
 #include <utility>
 
+#include <immintrin.h>
+
 // classes for ChaCha20 256-bit stream cipher developed by Daniel J. Bernstein
 // https://cr.yp.to/chacha/chacha-20080128.pdf.
 //
@@ -26,6 +28,8 @@ class ChaCha20Aligned
 {
 private:
     alignas(32) uint32_t input[12];
+    alignas(32) __m256i m_next_block[2];
+    bool m_calculated_next_block{false};
 
 public:
     /** Expected key length in constructor and SetKey. */

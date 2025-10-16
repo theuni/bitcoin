@@ -39,6 +39,7 @@ void ChaCha20Aligned::SetKey(std::span<const std::byte> key) noexcept
     input[9] = 0;
     input[10] = 0;
     input[11] = 0;
+    m_calculated_next_block = false;
 }
 
 ChaCha20Aligned::~ChaCha20Aligned()
@@ -57,6 +58,7 @@ void ChaCha20Aligned::Seek(Nonce96 nonce, uint32_t block_counter) noexcept
     input[9] = nonce.first;
     input[10] = nonce.second;
     input[11] = nonce.second >> 32;
+    m_calculated_next_block = false;
 }
 
 namespace {
@@ -190,6 +192,7 @@ inline void ChaCha20Aligned::Keystream(std::span<std::byte> output) noexcept
     uint32_t j4, j5, j6, j7, j8, j9, j10, j11, j12, j13, j14, j15;
 
     if (!blocks) return;
+    m_calculated_next_block = false;
 
     j4 = input[0];
     j5 = input[1];
@@ -301,6 +304,20 @@ inline void ChaCha20Aligned::Crypt(std::span<const std::byte> in_bytes, std::spa
     static constexpr auto row1 = _mm256_set_epi32(0, 0, 0, 2, 0, 0, 0, 3);
     static constexpr auto row2 = _mm256_set_epi32(0, 0, 0, 4, 0, 0, 0, 5);
 
+    if (m_calculated_next_block) {
+        auto x256v = _mm256_xor_si256(m_next_block[0], _mm256_loadu_si256((__m256i*)(m + 0)));
+        _mm256_storeu_si256((__m256i*)(&c[0]), x256v);
+
+        x256v = _mm256_xor_si256(m_next_block[1], _mm256_loadu_si256((__m256i*)(m + 32)));
+        _mm256_storeu_si256((__m256i*)(&c[32]), x256v);
+
+        state2 = _mm256_add_epi64(state2, _mm256_set_epi32(0, 0, 0, 1, 0, 0, 0, 1));
+        blocks -= 1;
+        c += BLOCKLEN;
+        m += BLOCKLEN;
+
+        m_calculated_next_block = false;
+    }
     while(blocks >= 6) {
         std::array<__m256i, 3> xv0, xv1, xv2, xv3;
 
@@ -422,7 +439,7 @@ inline void ChaCha20Aligned::Crypt(std::span<const std::byte> in_bytes, std::spa
     }
 
 
-    while (blocks >= 2) {
+    while (blocks) {
         __m256i xv0, xv1, xv2, xv3;
         xv0 = nums256;
         xv1 = state0;
@@ -447,43 +464,26 @@ inline void ChaCha20Aligned::Crypt(std::span<const std::byte> in_bytes, std::spa
         x256v = _mm256_xor_si256(x256v, _mm256_loadu_si256((__m256i*)(m + 32)));
         _mm256_storeu_si256((__m256i*)(&c[32]), x256v);
 
-        x256v = _mm256_permute2x128_si256(xv0, xv1, 0 + (2 << 4));
-        x256v = _mm256_xor_si256(x256v, _mm256_loadu_si256((__m256i*)(m + 64)));
-        _mm256_storeu_si256((__m256i*)(&c[64]), x256v);
+        if (blocks > 1) {
+            x256v = _mm256_permute2x128_si256(xv0, xv1, 0 + (2 << 4));
+            x256v = _mm256_xor_si256(x256v, _mm256_loadu_si256((__m256i*)(m + 64)));
+            _mm256_storeu_si256((__m256i*)(&c[64]), x256v);
 
-        x256v = _mm256_permute2x128_si256(xv2, xv3, 0 + (2 << 4));
-        x256v = _mm256_xor_si256(x256v, _mm256_loadu_si256((__m256i*)(m + 96)));
-        _mm256_storeu_si256((__m256i*)(&c[96]), x256v);
+            x256v = _mm256_permute2x128_si256(xv2, xv3, 0 + (2 << 4));
+            x256v = _mm256_xor_si256(x256v, _mm256_loadu_si256((__m256i*)(m + 96)));
+            _mm256_storeu_si256((__m256i*)(&c[96]), x256v);
 
-        state2 = _mm256_add_epi32(state2, _mm256_set_epi32(0, 0, 0, 2, 0, 0, 0, 2));
-        blocks -= 2;
-        c += BLOCKLEN * 2;
-        m += BLOCKLEN * 2;
-    }
-
-    if (blocks) {
-        __m128i xv0, xv1, xv2, xv3;
-        xv0 = _mm256_extracti128_si256(nums256, 0);
-        xv1 = _mm256_extracti128_si256(state0, 0);
-        xv2 = _mm256_extracti128_si256(state1, 0);
-        xv3 = _mm256_extracti128_si256(state2, 0);
-
-        // The 20 inner ChaCha20 rounds are unrolled here for performance.
-        REPEAT10(
-            doubleround(xv0, xv1, xv2, xv3);
-        );
-
-        auto data = _mm256_loadu_si256((__m256i*)(m));
-        auto mixin = _mm256_permute2x128_si256(nums256, state0, 1 + (3 << 4));
-        auto x256v = _mm256_xor_si256(_mm256_add_epi32(_mm256_set_m128i(xv1, xv0), mixin), data);
-        _mm256_storeu_si256((__m256i*)(&c[0]), x256v);
-
-        data = _mm256_loadu_si256((__m256i*)(m+32));
-        mixin = _mm256_permute2x128_si256(state1, state2,  0 + (2 << 4));
-        x256v = _mm256_xor_si256(_mm256_add_epi32(_mm256_set_m128i(xv3, xv2), mixin), data);
-        _mm256_storeu_si256((__m256i*)(&c[32]), x256v);
-
-        state2 = _mm256_add_epi32(state2, _mm256_set_epi32(0, 0, 0, 1, 0, 0, 0, 1));
+            state2 = _mm256_add_epi32(state2, _mm256_set_epi32(0, 0, 0, 2, 0, 0, 0, 2));
+            blocks -= 2;
+            c += BLOCKLEN * 2;
+            m += BLOCKLEN * 2;
+        } else {
+            state2 = _mm256_add_epi32(state2, _mm256_set_epi32(0, 0, 0, 1, 0, 0, 0, 1));
+            blocks -= 1;
+            m_next_block[0] = _mm256_permute2x128_si256(xv0, xv1, 0 + (2 << 4));
+            m_next_block[1] = _mm256_permute2x128_si256(xv2, xv3, 0 + (2 << 4));
+            m_calculated_next_block = true;
+        }
     }
     _mm_storeu_si64(&input[8], _mm256_castsi256_si128(state2));
 }
