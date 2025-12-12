@@ -10,6 +10,10 @@
 #include <crypto/chacha20_vec.h>
 #include <support/cleanse.h>
 
+#if defined(ENABLE_CHACHA20_VEC) && defined(ENABLE_AVX2)
+#include <compat/cpuid.h>
+#endif
+
 #include <algorithm>
 #include <bit>
 #include <cassert>
@@ -24,6 +28,27 @@ static_assert(ChaCha20Aligned::BLOCKLEN == CHACHA20_VEC_BLOCKLEN);
   c += d; b = std::rotl(b ^ c, 7);
 
 #define REPEAT10(a) do { {a}; {a}; {a}; {a}; {a}; {a}; {a}; {a}; {a}; {a}; } while(0)
+
+namespace {
+
+#if defined(ENABLE_CHACHA20_VEC)
+
+#if defined(ENABLE_AVX2)
+bool AVX2Enabled()
+{
+#if defined(HAVE_GETCPUID)
+    uint32_t eax, ebx, ecx, edx;
+    GetCPUID(7, 0, eax, ebx, ecx, edx);
+    return (ebx >> 5) & 1;
+#else
+    return false;
+#endif
+}
+#endif // ENABLE_AVX2
+
+#endif // ENABLE_CHACHA20_VEC
+
+} // namespace
 
 void ChaCha20Aligned::SetKey(std::span<const std::byte> key) noexcept
 {
@@ -292,11 +317,23 @@ inline void ChaCha20Aligned::Crypt(std::span<const std::byte> in_bytes, std::spa
 #ifdef ENABLE_CHACHA20_VEC
     // Only use the vectorized implementations if the counter will not overflow.
     const bool overflow = static_cast<uint64_t>(input[8]) + blocks > std::numeric_limits<uint32_t>::max();
-    if (blocks > 1 && !overflow) {
+    if (!overflow) {
         const auto state = std::to_array(input);
-        chacha20_vec_base::chacha20_crypt_vectorized(in_bytes, out_bytes, state);
-        const size_t blocks_written = blocks - (out_bytes.size() / ChaCha20Aligned::BLOCKLEN);
-        input[8] += blocks_written;
+#if defined(ENABLE_AVX2)
+        static const bool avx2_enabled = AVX2Enabled();
+        if (avx2_enabled && blocks > 1) {
+            chacha20_vec_avx2::chacha20_crypt_vectorized(in_bytes, out_bytes, state);
+            const size_t blocks_written = blocks - (out_bytes.size() / ChaCha20Aligned::BLOCKLEN);
+            input[8] += blocks_written;
+            blocks -= blocks_written;
+        }
+#endif
+        if (blocks > 1) {
+            chacha20_vec_base::chacha20_crypt_vectorized(in_bytes, out_bytes, state);
+            const size_t blocks_written = blocks - (out_bytes.size() / ChaCha20Aligned::BLOCKLEN);
+            input[8] += blocks_written;
+            blocks -= blocks_written;
+        }
     }
 #endif
     if (in_bytes.size()) {
