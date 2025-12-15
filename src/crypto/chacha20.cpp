@@ -48,6 +48,19 @@ bool AVX2Enabled()
 
 #endif // ENABLE_CHACHA20_VEC
 
+#if defined(ENABLE_AVX512VL)
+bool AVX512VLEnabled()
+{
+#if defined(HAVE_GETCPUID)
+    uint32_t eax, ebx, ecx, edx;
+    GetCPUID(7, 0, eax, ebx, ecx, edx);
+    return (ebx >> 31) & 1;
+#else
+    return false;
+#endif
+}
+#endif // ENABLE_AVX512VL
+
 } // namespace
 
 void ChaCha20Aligned::SetKey(std::span<const std::byte> key) noexcept
@@ -319,6 +332,15 @@ inline void ChaCha20Aligned::Crypt(std::span<const std::byte> in_bytes, std::spa
     const bool overflow = static_cast<uint64_t>(input[8]) + blocks > std::numeric_limits<uint32_t>::max();
     if (!overflow) {
         const auto state = std::to_array(input);
+#if defined(ENABLE_AVX512VL)
+        static const bool avx512vl_enabled = AVX512VLEnabled();
+        if (avx512vl_enabled && blocks > 1) {
+            chacha20_vec_avx512vl::chacha20_crypt_vectorized(in_bytes, out_bytes, state);
+            const size_t blocks_written = blocks - (out_bytes.size() / ChaCha20Aligned::BLOCKLEN);
+            input[8] += blocks_written;
+            blocks -= blocks_written;
+        }
+#endif
 #if defined(ENABLE_AVX2)
         static const bool avx2_enabled = AVX2Enabled();
         if (avx2_enabled && blocks > 1) {

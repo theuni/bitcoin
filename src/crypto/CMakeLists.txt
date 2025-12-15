@@ -44,6 +44,15 @@ if(HAVE_AVX2)
   )
 endif()
 
+if(HAVE_AVX512VL)
+  target_compile_definitions(bitcoin_crypto PRIVATE ENABLE_AVX512VL)
+  target_sources(bitcoin_crypto PRIVATE chacha20_vec_avx512vl.cpp)
+  set_property(SOURCE chacha20_vec_avx512vl.cpp PROPERTY
+    COMPILE_OPTIONS ${AVX512VL_CXXFLAGS}
+  )
+endif()
+
+
 if(HAVE_SSE41 AND HAVE_X86_SHANI)
   target_compile_definitions(bitcoin_crypto PRIVATE ENABLE_SSE41 ENABLE_X86_SHANI)
   target_sources(bitcoin_crypto PRIVATE sha256_x86_shani.cpp)

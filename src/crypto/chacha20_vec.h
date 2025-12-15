@@ -32,6 +32,14 @@ namespace chacha20_vec_avx2
 }
 #endif
 
+
+#ifdef ENABLE_AVX512VL
+namespace chacha20_vec_avx512vl
+{
+    void chacha20_crypt_vectorized(std::span<const std::byte>& in_bytes, std::span<std::byte>& out_bytes, const std::array<uint32_t, 12>& input) noexcept;
+}
+#endif
+
 #endif // ENABLE_CHACHA20_VEC
 
 #endif // BITCOIN_CRYPTO_CHACHA20_VEC_H
