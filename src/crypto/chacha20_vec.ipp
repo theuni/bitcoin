@@ -35,32 +35,191 @@
 
 namespace {
 
-using vec256 = uint32_t __attribute__((__vector_size__(32)));
+#if defined(__AVX__)
+static constexpr bool enable_avx = true;
+#else
+static constexpr bool enable_avx = false;
+#endif
+
+#if defined(__AVX2__)
+static constexpr bool enable_avx2 = true;
+#else
+static constexpr bool enable_avx2 = false;
+#endif
+
+static constexpr bool enable_256bit_operations = enable_avx2;
+
+class [[maybe_unused]] vec256_4x32x2
+{
+    using vec_type = uint32_t __attribute__((__vector_size__(16)));
+    vec_type m_vec0;
+    vec_type m_vec1;
+public:
+
+    [[maybe_unused]] ALWAYS_INLINE constexpr vec256_4x32x2(uint32_t x0, uint32_t x1, uint32_t x2, uint32_t x3, uint32_t x4, uint32_t x5, uint32_t x6, uint32_t x7)
+        : m_vec0{x0, x1, x2, x3}, m_vec1{x4, x5, x6, x7} {}
+
+    [[maybe_unused]] ALWAYS_INLINE constexpr vec256_4x32x2() noexcept = default;
+
+    [[maybe_unused]] ALWAYS_INLINE constexpr vec256_4x32x2& operator+=(const vec256_4x32x2& rhs)
+    {
+        m_vec0 += rhs.m_vec0;
+        m_vec1 += rhs.m_vec1;
+        return *this;
+    }
+    [[maybe_unused]] ALWAYS_INLINE constexpr vec256_4x32x2& operator^=(const vec256_4x32x2& rhs)
+    {
+        m_vec0 ^= rhs.m_vec0;
+        m_vec1 ^= rhs.m_vec1;
+        return *this;
+    }
+
+    /** Left-rotate vector */
+    template <int BITS>
+    ALWAYS_INLINE
+    constexpr void rotl()
+    {
+        using vec128_u8 = uint8_t __attribute__((__vector_size__(16)));
+        if constexpr(enable_avx && BITS == 16) {
+            m_vec0 = (vec_type)__builtin_shufflevector(reinterpret_cast<vec128_u8>(m_vec0), vec128_u8{}, 2,3,0,1,6,7,4,5,10,11,8,9,14,15,12,13);
+            m_vec1 = (vec_type)__builtin_shufflevector(reinterpret_cast<vec128_u8>(m_vec1), vec128_u8{}, 2,3,0,1,6,7,4,5,10,11,8,9,14,15,12,13);
+        } else if constexpr(enable_avx && BITS == 8) {
+            m_vec0 = (vec_type)__builtin_shufflevector(reinterpret_cast<vec128_u8>(m_vec0), vec128_u8{}, 3,0,1,2,7,4,5,6,11,8,9,10,15,12,13,14);
+            m_vec1 = (vec_type)__builtin_shufflevector(reinterpret_cast<vec128_u8>(m_vec1), vec128_u8{}, 3,0,1,2,7,4,5,6,11,8,9,10,15,12,13,14);
+        } else {
+            m_vec0 = (m_vec0 << BITS) | (m_vec0 >> (32 - BITS));
+            m_vec1 = (m_vec1 << BITS) | (m_vec1 >> (32 - BITS));
+        }
+    }
+
+    template <int A, int B, int C, int D>
+    ALWAYS_INLINE constexpr void shuf()
+    {
+        m_vec0 = vec_type{m_vec0[A], m_vec0[B], m_vec0[C], m_vec0[D]};
+        m_vec1 = vec_type{m_vec1[A], m_vec1[B], m_vec1[C], m_vec1[D]};
+    }
+
+    [[maybe_unused]] ALWAYS_INLINE constexpr void xor_write(std::span<uint32_t, 8> data)
+    {
+        byteswap(m_vec0);
+        byteswap(m_vec1);
+        m_vec0 ^= (vec_type){data[0], data[1], data[2], data[3]};
+        m_vec1 ^= (vec_type){data[4], data[5], data[6], data[7]};
+        data[0] = m_vec0[0];
+        data[1] = m_vec0[1];
+        data[2] = m_vec0[2];
+        data[3] = m_vec0[3];
+        data[4] = m_vec1[0];
+        data[5] = m_vec1[1];
+        data[6] = m_vec1[2];
+        data[7] = m_vec1[3];
+    }
+
+    [[maybe_unused]] ALWAYS_INLINE constexpr void split(vec256_4x32x2& rhs)
+    {
+        vec_type temp = rhs.m_vec1;
+        rhs.m_vec1 = rhs.m_vec0;
+        rhs.m_vec0 = m_vec0;
+        m_vec0 = m_vec1;
+        m_vec1 = temp;
+    }
+
+
+    ALWAYS_INLINE static constexpr void byteswap(vec_type& vec)
+    {
+        if constexpr (std::endian::native == std::endian::big)
+        {
+            vec[0] = __builtin_bswap32(vec[0]);
+            vec[1] = __builtin_bswap32(vec[1]);
+            vec[2] = __builtin_bswap32(vec[2]);
+            vec[3] = __builtin_bswap32(vec[3]);
+        }
+    }
+};
+
+
+class vec256_8x32x1
+{
+    using vec_type = uint32_t __attribute__((__vector_size__(32)));
+    vec_type m_vec;
+public:
+
+    [[maybe_unused]] ALWAYS_INLINE constexpr vec256_8x32x1(uint32_t x0, uint32_t x1, uint32_t x2, uint32_t x3, uint32_t x4, uint32_t x5, uint32_t x6, uint32_t x7) : m_vec{x0, x1, x2, x3, x4, x5, x6, x7}
+    {}
+
+    [[maybe_unused]] ALWAYS_INLINE constexpr vec256_8x32x1() noexcept = default;
+
+    [[maybe_unused]] ALWAYS_INLINE constexpr vec256_8x32x1& operator+=(const vec256_8x32x1& rhs)
+    {
+        m_vec += rhs.m_vec;
+        return *this;
+    }
+    [[maybe_unused]] ALWAYS_INLINE constexpr vec256_8x32x1& operator^=(const vec256_8x32x1& rhs)
+    {
+        m_vec ^= rhs.m_vec;
+        return *this;
+    }
+
+    /** Left-rotate vector */
+    template <int BITS>
+    ALWAYS_INLINE constexpr void rotl()
+    {
+        using vec256_u8 = uint8_t __attribute__((__vector_size__(32)));
+
+        if constexpr(enable_avx2 && BITS == 16) {
+            m_vec = (vec_type)__builtin_shufflevector(reinterpret_cast<vec256_u8>(m_vec), vec256_u8{}, 2,3,0,1,6,7,4,5,10,11,8,9,14,15,12,13,18,19,16,17,22,23,20,21,26,27,24,25,30,31,28,29);
+        } else if constexpr(enable_avx2 && BITS == 8) {
+            m_vec = (vec_type)__builtin_shufflevector(reinterpret_cast<vec256_u8>(m_vec), vec256_u8{}, 3,0,1,2,7,4,5,6,11,8,9,10,15,12,13,14,19,16,17,18,23,20,21,22,27,24,25,26,31,28,29,30);
+        } else {
+            m_vec = (m_vec << BITS) | (m_vec >> (32 - BITS));
+        }
+    }
+
+    template <int A, int B, int C, int D>
+    ALWAYS_INLINE constexpr void shuf()
+    {
+        m_vec = vec_type{m_vec[A], m_vec[B], m_vec[C], m_vec[D], m_vec[A + 4], m_vec[B + 4], m_vec[C + 4], m_vec[D + 4]};
+    }
+
+    [[maybe_unused]] ALWAYS_INLINE constexpr void xor_write(std::span<uint32_t, 8> data)
+    {
+        byteswap(m_vec);
+        m_vec ^= (vec_type){data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7]};
+        data[0] = m_vec[0];
+        data[1] = m_vec[1];
+        data[2] = m_vec[2];
+        data[3] = m_vec[3];
+        data[4] = m_vec[4];
+        data[5] = m_vec[5];
+        data[6] = m_vec[6];
+        data[7] = m_vec[7];
+    }
+
+    [[maybe_unused]] ALWAYS_INLINE constexpr void split(vec256_8x32x1& rhs)
+    {
+        vec_type temp{m_vec[4], m_vec[5], m_vec[6], m_vec[7], rhs.m_vec[4], rhs.m_vec[5], rhs.m_vec[6], rhs.m_vec[7]};
+        rhs.m_vec = vec_type{m_vec[0], m_vec[1], m_vec[2], m_vec[3], rhs.m_vec[0], rhs.m_vec[1], rhs.m_vec[2], rhs.m_vec[3]};
+        m_vec = temp;
+    }
 
 /** Endian-conversion for big-endian */
-ALWAYS_INLINE void vec_byteswap(vec256& vec)
-{
-    if constexpr (std::endian::native == std::endian::big)
+    ALWAYS_INLINE static constexpr void byteswap(vec_type& vec)
     {
-        vec256 ret;
-        ret[0] = __builtin_bswap32(vec[0]);
-        ret[1] = __builtin_bswap32(vec[1]);
-        ret[2] = __builtin_bswap32(vec[2]);
-        ret[3] = __builtin_bswap32(vec[3]);
-        ret[4] = __builtin_bswap32(vec[4]);
-        ret[5] = __builtin_bswap32(vec[5]);
-        ret[6] = __builtin_bswap32(vec[6]);
-        ret[7] = __builtin_bswap32(vec[7]);
-        vec = ret;
+        if constexpr (std::endian::native == std::endian::big)
+        {
+            vec[0] = __builtin_bswap32(vec[0]);
+            vec[1] = __builtin_bswap32(vec[1]);
+            vec[2] = __builtin_bswap32(vec[2]);
+            vec[3] = __builtin_bswap32(vec[3]);
+            vec[4] = __builtin_bswap32(vec[4]);
+            vec[5] = __builtin_bswap32(vec[5]);
+            vec[6] = __builtin_bswap32(vec[6]);
+            vec[7] = __builtin_bswap32(vec[7]);
+        }
     }
-}
+};
 
-/** Left-rotate vector */
-template <size_t BITS>
-ALWAYS_INLINE void vec_rotl(vec256& vec)
-{
-    vec = (vec << BITS) | (vec >> (32 - BITS));
-}
+using vec256 = std::conditional<enable_256bit_operations, vec256_8x32x1, vec256_4x32x2>::type;
 
 /** Store a vector in all array elements */
 template <size_t I, size_t ITER = 0>
@@ -96,7 +255,7 @@ ALWAYS_INLINE void arr_add_xor_rot(std::array<vec256, I>& arr0, const std::array
 
     x += y;
     z ^= x;
-    vec_rotl<BITS>(z);
+    z.rotl<BITS>();
 
     if constexpr(ITER + 1 < I ) arr_add_xor_rot<BITS, I, ITER + 1>(arr0, arr1, arr2);
 }
@@ -125,8 +284,7 @@ template <size_t I, size_t ITER = 0>
 ALWAYS_INLINE void arr_shuf0(std::array<vec256, I>& arr)
 {
     vec256& x = std::get<ITER>(arr);
-    x = vec256{x[1], x[2], x[3], x[0], x[5], x[6], x[7], x[4]};
-
+    x.shuf<1, 2, 3, 0>();
     if constexpr(ITER + 1 < I ) arr_shuf0<I, ITER + 1>(arr);
 }
 
@@ -134,7 +292,7 @@ template <size_t I, size_t ITER = 0>
 ALWAYS_INLINE void arr_shuf1(std::array<vec256, I>& arr)
 {
     vec256& x = std::get<ITER>(arr);
-    x = vec256{x[2], x[3], x[0], x[1], x[6], x[7], x[4], x[5]};
+    x.shuf<2, 3, 0, 1>();
 
     if constexpr(ITER + 1 < I ) arr_shuf1<I, ITER + 1>(arr);
 }
@@ -143,7 +301,7 @@ template <size_t I, size_t ITER = 0>
 ALWAYS_INLINE void arr_shuf2(std::array<vec256, I>& arr)
 {
     vec256& x = std::get<ITER>(arr);
-    x = vec256{x[3], x[0], x[1], x[2], x[7], x[4], x[5], x[6]};
+    x.shuf<3, 0, 1, 2>();
 
     if constexpr(ITER + 1 < I ) arr_shuf2<I, ITER + 1>(arr);
 }
@@ -166,39 +324,28 @@ ALWAYS_INLINE void doubleround(std::array<vec256, I>& arr0, std::array<vec256, I
     arr_shuf2(arr1);
     arr_shuf1(arr2);
     arr_shuf0(arr3);
+
     if constexpr (ITER + 1 < 10) doubleround<I, ITER + 1>(arr0, arr1, arr2, arr3);
 }
 
-/* Read 32bytes of input, xor with calculated state, write to output. Assumes
-   that input and output are unaligned, and makes no assumptions about the
-   internal layout of vec256;
-*/
-ALWAYS_INLINE void vec_read_xor_write(std::span<const std::byte, 32> in_bytes, std::span<std::byte, 32> out_bytes, const vec256& vec)
-{
-    std::array<uint32_t, 8> temparr;
-    memcpy(temparr.data(), in_bytes.data(), in_bytes.size());
-    vec256 tempvec = vec;
-    vec_byteswap(tempvec);
-    tempvec ^= (vec256){temparr[0], temparr[1], temparr[2], temparr[3], temparr[4], temparr[5], temparr[6], temparr[7]};
-    temparr = {tempvec[0], tempvec[1], tempvec[2], tempvec[3], tempvec[4], tempvec[5], tempvec[6], tempvec[7]};
-    memcpy(out_bytes.data(), temparr.data(), out_bytes.size());
-}
-
-/* Merge the 128 bit lanes from 2 states to the proper order, then pass each vec_read_xor_write */
+/* Merge the 128 bit lanes from 2 states to the proper order, then pass each vec_xor_write */
 template <size_t I, size_t ITER = 0>
-ALWAYS_INLINE void arr_read_xor_write(std::span<const std::byte> in_bytes, std::span<std::byte> out_bytes, const std::array<vec256, I>& arr0, const std::array<vec256, I>& arr1, const std::array<vec256, I>& arr2, const std::array<vec256, I>& arr3)
+ALWAYS_INLINE void arr_xor_write(std::span<uint32_t, (I - ITER) * 32> data, std::array<vec256, I>& arr0, std::array<vec256, I>& arr1, std::array<vec256, I>& arr2, std::array<vec256, I>& arr3)
 {
-    const vec256& w = std::get<ITER>(arr0);
-    const vec256& x = std::get<ITER>(arr1);
-    const vec256& y = std::get<ITER>(arr2);
-    const vec256& z = std::get<ITER>(arr3);
+    vec256& w = std::get<ITER>(arr0);
+    vec256& x = std::get<ITER>(arr1);
+    vec256& y = std::get<ITER>(arr2);
+    vec256& z = std::get<ITER>(arr3);
 
-    vec_read_xor_write(in_bytes.first<32>(), out_bytes.first<32>(), __builtin_shufflevector(w, x, 4, 5, 6, 7, 12, 13, 14, 15));
-    vec_read_xor_write(in_bytes.subspan<32, 32>(), out_bytes.subspan<32, 32>(), __builtin_shufflevector(y, z, 4, 5, 6, 7, 12, 13, 14, 15));
-    vec_read_xor_write(in_bytes.subspan<64, 32>(), out_bytes.subspan<64, 32>(), __builtin_shufflevector(w, x, 0, 1, 2, 3, 8, 9, 10, 11));
-    vec_read_xor_write(in_bytes.subspan<96, 32>(), out_bytes.subspan<96, 32>(), __builtin_shufflevector(y, z, 0, 1, 2, 3, 8, 9, 10, 11));
+    w.split(x);
+    y.split(z);
 
-    if constexpr(ITER + 1 < I ) arr_read_xor_write<I, ITER + 1>(in_bytes.subspan<128>(), out_bytes.subspan<128>(), arr0, arr1, arr2, arr3);
+    w.xor_write(data.template first<8>());
+    y.xor_write(data.template subspan<8, 8>());
+    x.xor_write(data.template subspan<16, 8>());
+    z.xor_write(data.template subspan<24, 8>());
+
+    if constexpr(ITER + 1 < I ) arr_xor_write<I, ITER + 1>(data.template subspan<32>(), arr0, arr1, arr2, arr3);
 }
 
 /* Compile-time helper to create addend vectors which used to increment the states
@@ -215,7 +362,7 @@ consteval std::array<vec256, SIZE> generate_increments()
     std::array<vec256, SIZE> rows;
     for (uint32_t i = 0; i < SIZE; i ++)
     {
-        rows[i] = (i * (vec256){2, 0, 0, 0, 2, 0, 0, 0}) + (vec256){1, 0, 0, 0, 0, 0, 0, 0};
+        rows[i] = {(2U * i) + 1U, 0, 0, 0, 2U * i, 0, 0, 0};
     }
     return rows;
 }
@@ -255,7 +402,7 @@ consteval std::array<vec256, SIZE> generate_increments()
     and written to its output.
 */
 template <size_t STATES>
-ALWAYS_INLINE void multi_block_crypt(std::span<const std::byte> in_bytes, std::span<std::byte> out_bytes, const vec256& state0, const vec256& state1, const vec256& state2)
+ALWAYS_INLINE void multi_block_crypt(std::span<uint32_t, 16 * STATES> data, const vec256& state0, const vec256& state1, const vec256& state2)
 {
     static constexpr size_t HALF_STATES = STATES / 2;
     static constexpr vec256 nums256 = (vec256){0x61707865, 0x3320646e, 0x79622d32, 0x6b206574, 0x61707865, 0x3320646e, 0x79622d32, 0x6b206574};
@@ -279,7 +426,7 @@ ALWAYS_INLINE void multi_block_crypt(std::span<const std::byte> in_bytes, std::s
 
     arr_add_arr(arr3, increments);
 
-    arr_read_xor_write(in_bytes, out_bytes, arr0, arr1, arr2, arr3);
+    arr_xor_write(data, arr0, arr1, arr2, arr3);
 }
 
 } // anonymous namespace
@@ -296,44 +443,60 @@ void chacha20_crypt_vectorized(std::span<const std::byte>& in_bytes, std::span<s
     const vec256 state0 =  (vec256){input[0], input[1], input[2], input[3], input[0], input[1], input[2], input[3]};
     const vec256 state1 =  (vec256){input[4], input[5], input[6], input[7], input[4], input[5], input[6], input[7]};
     vec256 state2 =  (vec256){input[8], input[9], input[10], input[11], input[8], input[9], input[10], input[11]};
+    std::array<uint32_t, 16 * 16> out_uints;
 #if !defined(CHACHA20_VEC_DISABLE_STATES_16)
     while(in_bytes.size() >= CHACHA20_VEC_BLOCKLEN * 16) {
-        multi_block_crypt<16>(in_bytes, out_bytes, state0, state1, state2);
-        state2 += (vec256){16, 0, 0, 0, 16, 0, 0, 0};
+        auto out = std::span(out_uints).first<16 * 16>();
+        memcpy(out.data(), in_bytes.data(), CHACHA20_VEC_BLOCKLEN * 16);
+        multi_block_crypt<16>(out, state0, state1, state2);
+        memcpy(out_bytes.data(), out.data(), CHACHA20_VEC_BLOCKLEN * 16);
         in_bytes = in_bytes.subspan(CHACHA20_VEC_BLOCKLEN * 16);
         out_bytes = out_bytes.subspan(CHACHA20_VEC_BLOCKLEN * 16);
+        state2 += (vec256){16, 0, 0, 0, 16, 0, 0, 0};
     }
 #endif
 #if !defined(CHACHA20_VEC_DISABLE_STATES_8)
     while(in_bytes.size() >= CHACHA20_VEC_BLOCKLEN * 8) {
-        multi_block_crypt<8>(in_bytes, out_bytes, state0, state1, state2);
-        state2 += (vec256){8, 0, 0, 0, 8, 0, 0, 0};
+        auto out = std::span(out_uints).first<16 * 8>();
+        memcpy(out.data(), in_bytes.data(), CHACHA20_VEC_BLOCKLEN * 8);
+        multi_block_crypt<8>(out, state0, state1, state2);
+        memcpy(out_bytes.data(), out.data(), CHACHA20_VEC_BLOCKLEN * 8);
         in_bytes = in_bytes.subspan(CHACHA20_VEC_BLOCKLEN * 8);
         out_bytes = out_bytes.subspan(CHACHA20_VEC_BLOCKLEN * 8);
+        state2 += (vec256){8, 0, 0, 0, 8, 0, 0, 0};
     }
 #endif
 #if !defined(CHACHA20_VEC_DISABLE_STATES_6)
     while(in_bytes.size() >= CHACHA20_VEC_BLOCKLEN * 6) {
-        multi_block_crypt<6>(in_bytes, out_bytes, state0, state1, state2);
-        state2 += (vec256){6, 0, 0, 0, 6, 0, 0, 0};
+        auto out = std::span(out_uints).first<16 * 6>();
+        memcpy(out.data(), in_bytes.data(), CHACHA20_VEC_BLOCKLEN * 6);
+        multi_block_crypt<6>(out, state0, state1, state2);
+        memcpy(out_bytes.data(), out.data(), CHACHA20_VEC_BLOCKLEN * 6);
         in_bytes = in_bytes.subspan(CHACHA20_VEC_BLOCKLEN * 6);
         out_bytes = out_bytes.subspan(CHACHA20_VEC_BLOCKLEN * 6);
+        state2 += (vec256){6, 0, 0, 0, 6, 0, 0, 0};
     }
 #endif
 #if !defined(CHACHA20_VEC_DISABLE_STATES_4)
     while(in_bytes.size() >= CHACHA20_VEC_BLOCKLEN * 4) {
-        multi_block_crypt<4>(in_bytes, out_bytes, state0, state1, state2);
-        state2 += (vec256){4, 0, 0, 0, 4, 0, 0, 0};
+        auto out = std::span(out_uints).first<16 * 4>();
+        memcpy(out.data(), in_bytes.data(), CHACHA20_VEC_BLOCKLEN * 4);
+        multi_block_crypt<4>(out, state0, state1, state2);
+        memcpy(out_bytes.data(), out.data(), CHACHA20_VEC_BLOCKLEN * 4);
         in_bytes = in_bytes.subspan(CHACHA20_VEC_BLOCKLEN * 4);
         out_bytes = out_bytes.subspan(CHACHA20_VEC_BLOCKLEN * 4);
+        state2 += (vec256){4, 0, 0, 0, 4, 0, 0, 0};
     }
 #endif
 #if !defined(CHACHA20_VEC_DISABLE_STATES_2)
     while(in_bytes.size() >= CHACHA20_VEC_BLOCKLEN * 2) {
-        multi_block_crypt<2>(in_bytes, out_bytes, state0, state1, state2);
-        state2 += (vec256){2, 0, 0, 0, 2, 0, 0, 0};
+        auto out = std::span(out_uints).first<16 * 2>();
+        memcpy(out.data(), in_bytes.data(), CHACHA20_VEC_BLOCKLEN * 2);
+        multi_block_crypt<2>(out, state0, state1, state2);
+        memcpy(out_bytes.data(), out.data(), CHACHA20_VEC_BLOCKLEN * 2);
         in_bytes = in_bytes.subspan(CHACHA20_VEC_BLOCKLEN * 2);
         out_bytes = out_bytes.subspan(CHACHA20_VEC_BLOCKLEN * 2);
+        state2 += (vec256){2, 0, 0, 0, 2, 0, 0, 0};
     }
 #endif
 #endif // CHACHA20_VEC_ALL_MULTI_STATES_DISABLED
