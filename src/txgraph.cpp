@@ -1222,13 +1222,12 @@ Cluster* GenericClusterImpl::CopyToStaging(TxGraphImpl& graph) const noexcept
 {
     // Construct an empty Cluster.
     auto cluster = graph.CreateEmptyGenericCluster();
-    auto ret = cluster.get();
     // Copy depgraph, mapping, and linearization.
     cluster->m_depgraph = m_depgraph;
     cluster->m_mapping = m_mapping;
     cluster->m_linearization = m_linearization;
     // Insert the new Cluster into the graph.
-    graph.InsertCluster(/*level=*/1, std::move(cluster), m_quality);
+    auto ret = graph.InsertCluster(/*level=*/1, std::move(cluster), m_quality);
     // Update its Locators.
     ret->Updated(graph, /*level=*/1, /*rename=*/false);
     // Update memory usage.
@@ -1240,12 +1239,11 @@ Cluster* SingletonClusterImpl::CopyToStaging(TxGraphImpl& graph) const noexcept
 {
     // Construct an empty Cluster.
     auto cluster = graph.CreateEmptySingletonCluster();
-    auto ret = cluster.get();
     // Copy data.
     cluster->m_graph_index = m_graph_index;
     cluster->m_feerate = m_feerate;
     // Insert the new Cluster into the graph.
-    graph.InsertCluster(/*level=*/1, std::move(cluster), m_quality);
+    auto ret = graph.InsertCluster(/*level=*/1, std::move(cluster), m_quality);
     // Update its Locators.
     ret->Updated(graph, /*level=*/1, /*rename=*/false);
     // Update memory usage.
@@ -2094,9 +2092,7 @@ void TxGraphImpl::Merge(std::span<Cluster*> to_merge, int level) noexcept
         // The into_merge cluster is too small to fit all transactions being merged. Construct a
         // a new Cluster using an implementation that matches the total size, and merge everything
         // in there.
-        auto new_cluster = CreateEmptyCluster(total_size);
-        into_cluster = new_cluster.get();
-        InsertCluster(level, std::move(new_cluster), QualityLevel::OPTIMAL);
+        into_cluster = InsertCluster(level, CreateEmptyCluster(total_size), QualityLevel::OPTIMAL);
         start_idx = 0;
     }
 
@@ -2243,10 +2239,9 @@ void TxGraphImpl::AddTransaction(Ref& arg, const FeePerWeight& feerate) noexcept
     bool oversized = uint64_t(feerate.size) > m_max_cluster_size;
     auto cluster = CreateEmptyCluster(1);
     cluster->AppendTransaction(idx, feerate);
-    auto cluster_ptr = cluster.get();
     int level = GetTopLevel();
     auto& clusterset = GetClusterSet(level);
-    InsertCluster(level, std::move(cluster), oversized ? QualityLevel::OVERSIZED_SINGLETON : QualityLevel::OPTIMAL);
+    auto cluster_ptr = InsertCluster(level, std::move(cluster), oversized ? QualityLevel::OVERSIZED_SINGLETON : QualityLevel::OPTIMAL);
     cluster_ptr->Updated(*this, /*level=*/level, /*rename=*/false);
     clusterset.m_cluster_usage += cluster_ptr->TotalMemoryUsage();
     ++clusterset.m_txcount;
