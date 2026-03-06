@@ -1221,36 +1221,36 @@ std::vector<Cluster*> TxGraphImpl::GetConflicts() const noexcept
 Cluster* GenericClusterImpl::CopyToStaging(TxGraphImpl& graph) const noexcept
 {
     // Construct an empty Cluster.
-    auto ret = graph.CreateEmptyGenericCluster();
-    auto ptr = ret.get();
+    auto cluster = graph.CreateEmptyGenericCluster();
+    auto ret = cluster.get();
     // Copy depgraph, mapping, and linearization.
-    ptr->m_depgraph = m_depgraph;
-    ptr->m_mapping = m_mapping;
-    ptr->m_linearization = m_linearization;
+    cluster->m_depgraph = m_depgraph;
+    cluster->m_mapping = m_mapping;
+    cluster->m_linearization = m_linearization;
     // Insert the new Cluster into the graph.
-    graph.InsertCluster(/*level=*/1, std::move(ret), m_quality);
+    graph.InsertCluster(/*level=*/1, std::move(cluster), m_quality);
     // Update its Locators.
-    ptr->Updated(graph, /*level=*/1, /*rename=*/false);
+    ret->Updated(graph, /*level=*/1, /*rename=*/false);
     // Update memory usage.
-    graph.GetClusterSet(/*level=*/1).m_cluster_usage += ptr->TotalMemoryUsage();
-    return ptr;
+    graph.GetClusterSet(/*level=*/1).m_cluster_usage += ret->TotalMemoryUsage();
+    return ret;
 }
 
 Cluster* SingletonClusterImpl::CopyToStaging(TxGraphImpl& graph) const noexcept
 {
     // Construct an empty Cluster.
-    auto ret = graph.CreateEmptySingletonCluster();
-    auto ptr = ret.get();
+    auto cluster = graph.CreateEmptySingletonCluster();
+    auto ret = cluster.get();
     // Copy data.
-    ptr->m_graph_index = m_graph_index;
-    ptr->m_feerate = m_feerate;
+    cluster->m_graph_index = m_graph_index;
+    cluster->m_feerate = m_feerate;
     // Insert the new Cluster into the graph.
-    graph.InsertCluster(/*level=*/1, std::move(ret), m_quality);
+    graph.InsertCluster(/*level=*/1, std::move(cluster), m_quality);
     // Update its Locators.
-    ptr->Updated(graph, /*level=*/1, /*rename=*/false);
+    ret->Updated(graph, /*level=*/1, /*rename=*/false);
     // Update memory usage.
-    graph.GetClusterSet(/*level=*/1).m_cluster_usage += ptr->TotalMemoryUsage();
-    return ptr;
+    graph.GetClusterSet(/*level=*/1).m_cluster_usage += ret->TotalMemoryUsage();
+    return ret;
 }
 
 void GenericClusterImpl::ApplyRemovals(TxGraphImpl& graph, int level, std::span<GraphIndex>& to_remove) noexcept
