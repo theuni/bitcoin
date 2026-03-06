@@ -671,8 +671,8 @@ public:
     std::unique_ptr<Cluster> ExtractCluster(int level, QualityLevel quality, ClusterSetIndex setindex) noexcept;
     /** Delete a Cluster. */
     void DeleteCluster(Cluster& cluster, int level) noexcept;
-    /** Insert a Cluster into its ClusterSet. */
-    ClusterSetIndex InsertCluster(int level, std::unique_ptr<Cluster>&& cluster, QualityLevel quality) noexcept;
+    /** Insert a Cluster into its ClusterSet. Return a pointer to the newly-inserted cluster. */
+    Cluster* InsertCluster(int level, std::unique_ptr<Cluster>&& cluster, QualityLevel quality) noexcept;
     /** Change the QualityLevel of a Cluster (identified by old_quality and old_index). */
     void SetClusterQuality(int level, QualityLevel old_quality, ClusterSetIndex old_index, QualityLevel new_quality) noexcept;
     /** Get the index of the top level ClusterSet (staging if it exists, main otherwise). */
@@ -1635,7 +1635,7 @@ std::unique_ptr<Cluster> TxGraphImpl::ExtractCluster(int level, QualityLevel qua
     return ret;
 }
 
-ClusterSetIndex TxGraphImpl::InsertCluster(int level, std::unique_ptr<Cluster>&& cluster, QualityLevel quality) noexcept
+Cluster* TxGraphImpl::InsertCluster(int level, std::unique_ptr<Cluster>&& cluster, QualityLevel quality) noexcept
 {
     // Cannot insert with quality level NONE (as that would mean not inserted).
     Assume(quality != QualityLevel::NONE);
@@ -1645,11 +1645,10 @@ ClusterSetIndex TxGraphImpl::InsertCluster(int level, std::unique_ptr<Cluster>&&
     // Append it at the end of the relevant TxGraphImpl::m_cluster.
     auto& clusterset = GetClusterSet(level);
     auto& quality_clusters = clusterset.m_clusters[int(quality)];
-    ClusterSetIndex ret = quality_clusters.size();
     cluster->m_quality = quality;
-    cluster->m_setindex = ret;
-    quality_clusters.push_back(std::move(cluster));
-    return ret;
+    cluster->m_setindex = quality_clusters.size();
+    auto& ret = quality_clusters.emplace_back(std::move(cluster));
+    return ret.get();
 }
 
 void TxGraphImpl::SetClusterQuality(int level, QualityLevel old_quality, ClusterSetIndex old_index, QualityLevel new_quality) noexcept
