@@ -40,6 +40,10 @@ public:
     using result_type = std::conditional_t<std::is_void_v<T>, void, std::optional<T>>;
 };
 
+/*
+ * Base class for storing connection status.
+ */
+
 template <typename Signature, typename Combiner = optional_last_value<typename std::function<Signature>::result_type>>
 class signal;
 
@@ -53,22 +57,20 @@ class connection
     template <typename Signature, typename Combiner>
     friend class signal;
 
-    /*
-     * Tag for the constructor used by signal.
-     */
-    struct enabled_tag_type {
+    struct status
+    {
+        std::atomic_bool m_connected{true};
     };
-    static constexpr enabled_tag_type enabled_tag{};
 
     /**
      * connections have shared_ptr-like copy and move semantics.
      */
-    std::shared_ptr<std::atomic_bool> m_connected{};
+    std::shared_ptr<status> m_data{};
 
     /**
      * Only a signal can create an enabled connection.
      */
-    explicit connection(enabled_tag_type /*unused*/) : m_connected{std::make_shared<std::atomic_bool>(true)} {}
+    explicit connection(std::shared_ptr<status> ptr) : m_data{std::move(ptr)}{}
 
 public:
     /**
@@ -88,8 +90,8 @@ public:
      */
     void disconnect()
     {
-        if (m_connected) {
-            m_connected->store(false);
+        if (m_data) {
+            m_data->m_connected.store(false);
         }
     }
 
@@ -99,7 +101,7 @@ public:
      */
     bool connected() const
     {
-        return m_connected && m_connected->load();
+        return m_data && m_data->m_connected.load();
     }
 };
 
@@ -144,24 +146,23 @@ class signal
     static_assert(std::is_same_v<Combiner, optional_last_value<typename function_type::result_type>>, "only the optional_last_value combiner is supported");
 
     /*
-     * Helper struct for maintaining a callback and its associated connection
+     * Helper struct for maintaining a callback and its associated connection status
      */
-    struct connection_holder {
+    struct callback_holder : connection::status {
         template <typename Callable>
-        connection_holder(Callable&& callback) : m_callback{std::forward<Callable>(callback)}
+        callback_holder(Callable&& callback) : m_callback{std::forward<Callable>(callback)}
         {
         }
 
-        connection m_connection{connection::enabled_tag};
-        function_type m_callback;
+        const function_type m_callback;
     };
 
     mutable Mutex m_mutex;
 
-    /* Store connection_holders as shared_ptrs to avoid having to copy them by
+    /* Store callback_holders as shared_ptrs to avoid having to copy them by
      * value in operator().
      */
-    std::vector<std::shared_ptr<connection_holder>> m_connections GUARDED_BY(m_mutex){};
+    std::vector<std::shared_ptr<callback_holder>> m_connections GUARDED_BY(m_mutex){};
 
 public:
     using result_type = Combiner::result_type;
@@ -197,21 +198,21 @@ public:
     template <typename... Args>
     result_type operator()(Args&&... args) const EXCLUSIVE_LOCKS_REQUIRED(!m_mutex)
     {
-        std::vector<std::shared_ptr<connection_holder>> connections;
+        std::vector<std::shared_ptr<callback_holder>> connections;
         {
             LOCK(m_mutex);
             connections = m_connections;
         }
         if constexpr (std::is_void_v<result_type>) {
             for (const auto& connection : connections) {
-                if (connection->m_connection.connected()) {
+                if (connection->m_connected) {
                     connection->m_callback(args...);
                 }
             }
         } else {
             result_type ret{std::nullopt};
             for (const auto& connection : connections) {
-                if (connection->m_connection.connected()) {
+                if (connection->m_connected) {
                     ret.emplace(connection->m_callback(args...));
                 }
             }
@@ -229,10 +230,10 @@ public:
         LOCK(m_mutex);
 
         // Garbage-collect disconnected signals to prevent unbounded growth
-        std::erase_if(m_connections, [](const auto& holder) { return !holder->m_connection.connected(); });
+        std::erase_if(m_connections, [](const auto& holder) { return !holder->m_connected; });
 
-        const auto& connection = m_connections.emplace_back(std::make_shared<connection_holder>(std::forward<Callable>(func)));
-        return connection->m_connection;
+        const auto& entry = m_connections.emplace_back(std::make_shared<callback_holder>(std::forward<Callable>(func)));
+        return connection(entry);
     }
 
     /*
@@ -242,7 +243,7 @@ public:
     {
         LOCK(m_mutex);
         for (const auto& connection : m_connections) {
-            if (connection->m_connection.connected()) {
+            if (connection->m_connected) {
                 return false;
             }
         }
