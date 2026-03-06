@@ -625,10 +625,9 @@ void DBImpl::TEST_CompactRange(int level, const Slice* begin,
       background_work_finished_signal_.Wait();
     }
   }
-  if (manual_compaction_ == &manual) {
-    // Cancel my manual compaction since we aborted early for some reason.
-    manual_compaction_ = nullptr;
-  }
+
+  // Reset my manual compaction since in case we aborted early for some reason.
+  manual_compaction_ = nullptr;
 }
 
 Status DBImpl::TEST_CompactMemTable() {
