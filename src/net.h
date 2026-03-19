@@ -15,6 +15,7 @@
 #include <hash.h>
 #include <i2p.h>
 #include <kernel/messagestartchars.h>
+#include <local_addresses.h>
 #include <net_permissions.h>
 #include <netaddress.h>
 #include <netbase.h>
@@ -176,12 +177,6 @@ extern bool fListen;
 
 /** Subversion as sent to the P2P network in `version` messages */
 extern std::string strSubVersion;
-
-struct LocalServiceInfo {
-    int nScore;
-    uint16_t nPort;
-};
-
 extern const std::string NET_MESSAGE_TYPE_OTHER;
 using mapMsgTypeSize = std::map</* message type */ std::string, /* total bytes */ uint64_t>;
 
