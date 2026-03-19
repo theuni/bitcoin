@@ -715,9 +715,9 @@ static RPCHelpMan getnetworkinfo()
         obj.pushKV("incrementalfee", ValueFromAmount(node.mempool->m_opts.incremental_relay_feerate.GetFeePerK()));
     }
     UniValue localAddresses(UniValue::VARR);
-    {
-        LOCK(g_maplocalhost_mutex);
-        for (const std::pair<const CNetAddr, LocalServiceInfo> &item : mapLocalHost)
+    if (node.connman) {
+        auto local_addresses = node.connman->getNetLocalAddresses();
+        for (const std::pair<const CNetAddr, LocalServiceInfo> &item : local_addresses)
         {
             UniValue rec(UniValue::VOBJ);
             rec.pushKV("address", item.first.ToStringAddr());
