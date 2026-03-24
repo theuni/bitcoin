@@ -298,7 +298,7 @@ public:
     }
     std::map<CNetAddr, LocalServiceInfo> getNetLocalAddresses() override
     {
-        return ::getNetLocalAddresses();
+        return g_localaddressman.GetAll();
     }
     int getNumBlocks() override
     {

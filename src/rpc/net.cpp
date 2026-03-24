@@ -716,7 +716,7 @@ static RPCHelpMan getnetworkinfo()
     }
     UniValue localAddresses(UniValue::VARR);
     {
-        auto addresses = getNetLocalAddresses();
+        auto addresses = g_localaddressman.GetAll();
         for (const std::pair<const CNetAddr, LocalServiceInfo> &item : addresses)
         {
             UniValue rec(UniValue::VOBJ);
