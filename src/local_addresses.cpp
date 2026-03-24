@@ -57,7 +57,7 @@ bool LocalAddressManager::Add(const CService& addr_, int nScore)
     if (!g_reachable_nets.Contains(addr))
         return false;
 
-    LogInfo("AddLocal(%s,%i)\n", addr.ToStringAddrPort(), nScore);
+    LogInfo("LocalAddressManager::Add(%s,%i)\n", addr.ToStringAddrPort(), nScore);
 
     {
         LOCK(m_mutex);
@@ -75,7 +75,7 @@ bool LocalAddressManager::Add(const CService& addr_, int nScore)
 void LocalAddressManager::Remove(const CService& addr)
 {
     LOCK(m_mutex);
-    LogInfo("RemoveLocal(%s)\n", addr.ToStringAddrPort());
+    LogInfo("LocalAddressManager::Remove(%s)\n", addr.ToStringAddrPort());
     m_addresses.erase(addr);
 }
 
