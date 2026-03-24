@@ -102,3 +102,9 @@ int GetnScore(const CService& addr)
     const auto it = mapLocalHost.find(addr);
     return (it != mapLocalHost.end()) ? it->second.nScore : 0;
 }
+
+std::map<CNetAddr, LocalServiceInfo> getNetLocalAddresses()
+{
+    LOCK(g_maplocalhost_mutex);
+    return mapLocalHost;
+}
