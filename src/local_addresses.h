@@ -32,14 +32,55 @@ struct LocalServiceInfo {
     uint16_t nPort;
 };
 
-void ClearLocal();
-bool AddLocal(const CService& addr, int nScore = LOCAL_NONE);
-void RemoveLocal(const CService& addr);
-bool SeenLocal(const CService& addr);
-bool IsLocal(const CService& addr);
-std::optional<CService> GetLocalAddress(const CAddress& addr, const Network& network);
-int GetnScore(const CService& addr);
-std::map<CNetAddr, LocalServiceInfo> getNetLocalAddresses();
+class LocalAddressManager
+{
+public:
+    using map_type = std::map<CNetAddr, LocalServiceInfo>;
 
+    // learn a new local address
+    bool Add(const CService& addr_, int nScore = LOCAL_NONE) EXCLUSIVE_LOCKS_REQUIRED(!g_maplocalhost_mutex);
+
+    void Remove(const CService& addr) EXCLUSIVE_LOCKS_REQUIRED(!g_maplocalhost_mutex);
+
+    /** vote for a local address */
+    bool Seen(const CService& addr) EXCLUSIVE_LOCKS_REQUIRED(!g_maplocalhost_mutex);
+
+    /** check whether a given address is potentially local */
+    bool Contains(const CService& addr) const EXCLUSIVE_LOCKS_REQUIRED(!g_maplocalhost_mutex);
+
+    // Determine the "best" local address for a particular peer.
+    [[nodiscard]] std::optional<CService> Get(const CAddress& addr, const Network& connected_through) const EXCLUSIVE_LOCKS_REQUIRED(!g_maplocalhost_mutex);
+
+    void Clear() EXCLUSIVE_LOCKS_REQUIRED(!g_maplocalhost_mutex);
+
+    int GetnScore(const CService& addr) const EXCLUSIVE_LOCKS_REQUIRED(!g_maplocalhost_mutex);
+
+    map_type GetAll() const EXCLUSIVE_LOCKS_REQUIRED(!g_maplocalhost_mutex);
+
+private:
+    mutable Mutex g_maplocalhost_mutex;
+    map_type mapLocalHost GUARDED_BY(g_maplocalhost_mutex);
+};
+
+extern LocalAddressManager g_localaddressman;
+
+
+// Temporary forwarding functions
+
+inline void ClearLocal() { return g_localaddressman.Clear(); }
+
+inline bool AddLocal(const CService& addr, int nScore = LOCAL_NONE) { return g_localaddressman.Add(addr, nScore); }
+
+inline void RemoveLocal(const CService& addr) { return g_localaddressman.Remove(addr); }
+
+inline bool SeenLocal(const CService& addr) { return g_localaddressman.Seen(addr); }
+
+inline bool IsLocal(const CService& addr) { return g_localaddressman.Contains(addr); }
+
+inline std::optional<CService> GetLocalAddress(const CAddress& addr, const Network& network) { return g_localaddressman.Get(addr, network); }
+
+inline int GetnScore(const CService& addr) { return g_localaddressman.GetnScore(addr); }
+
+inline LocalAddressManager::map_type getNetLocalAddresses() { return g_localaddressman.GetAll(); }
 
 #endif // BITCOIN_LOCAL_ADDRESSES_H
