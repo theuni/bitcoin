@@ -38,28 +38,28 @@ public:
     using map_type = std::map<CNetAddr, LocalServiceInfo>;
 
     // learn a new local address
-    bool Add(const CService& addr_, int nScore = LOCAL_NONE) EXCLUSIVE_LOCKS_REQUIRED(!g_maplocalhost_mutex);
+    bool Add(const CService& addr_, int nScore = LOCAL_NONE) EXCLUSIVE_LOCKS_REQUIRED(!m_mutex);
 
-    void Remove(const CService& addr) EXCLUSIVE_LOCKS_REQUIRED(!g_maplocalhost_mutex);
+    void Remove(const CService& addr) EXCLUSIVE_LOCKS_REQUIRED(!m_mutex);
 
     /** vote for a local address */
-    bool Seen(const CService& addr) EXCLUSIVE_LOCKS_REQUIRED(!g_maplocalhost_mutex);
+    bool Seen(const CService& addr) EXCLUSIVE_LOCKS_REQUIRED(!m_mutex);
 
     /** check whether a given address is potentially local */
-    bool Contains(const CService& addr) const EXCLUSIVE_LOCKS_REQUIRED(!g_maplocalhost_mutex);
+    bool Contains(const CService& addr) const EXCLUSIVE_LOCKS_REQUIRED(!m_mutex);
 
     // Determine the "best" local address for a particular peer.
-    [[nodiscard]] std::optional<CService> Get(const CAddress& addr, const Network& connected_through) const EXCLUSIVE_LOCKS_REQUIRED(!g_maplocalhost_mutex);
+    [[nodiscard]] std::optional<CService> Get(const CAddress& addr, const Network& connected_through) const EXCLUSIVE_LOCKS_REQUIRED(!m_mutex);
 
-    void Clear() EXCLUSIVE_LOCKS_REQUIRED(!g_maplocalhost_mutex);
+    void Clear() EXCLUSIVE_LOCKS_REQUIRED(!m_mutex);
 
-    int GetnScore(const CService& addr) const EXCLUSIVE_LOCKS_REQUIRED(!g_maplocalhost_mutex);
+    int GetnScore(const CService& addr) const EXCLUSIVE_LOCKS_REQUIRED(!m_mutex);
 
-    map_type GetAll() const EXCLUSIVE_LOCKS_REQUIRED(!g_maplocalhost_mutex);
+    map_type GetAll() const EXCLUSIVE_LOCKS_REQUIRED(!m_mutex);
 
 private:
-    mutable Mutex g_maplocalhost_mutex;
-    map_type mapLocalHost GUARDED_BY(g_maplocalhost_mutex);
+    mutable Mutex m_mutex;
+    map_type m_addresses GUARDED_BY(m_mutex);
 };
 
 extern LocalAddressManager g_localaddressman;
