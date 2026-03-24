@@ -158,8 +158,6 @@ extern bool fListen;
 
 /** Subversion as sent to the P2P network in `version` messages */
 extern std::string strSubVersion;
-extern GlobalMutex g_maplocalhost_mutex;
-extern std::map<CNetAddr, LocalServiceInfo> mapLocalHost GUARDED_BY(g_maplocalhost_mutex);
 
 extern const std::string NET_MESSAGE_TYPE_OTHER;
 using mapMsgTypeSize = std::map</* message type */ std::string, /* total bytes */ uint64_t>;
