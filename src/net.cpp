@@ -298,11 +298,6 @@ bool AddLocal(const CService& addr_, int nScore)
     return true;
 }
 
-bool AddLocal(const CNetAddr &addr, int nScore)
-{
-    return AddLocal(CService(addr, GetListenPort()), nScore);
-}
-
 void RemoveLocal(const CService& addr)
 {
     LOCK(g_maplocalhost_mutex);
@@ -3345,7 +3340,7 @@ void Discover()
         return;
 
     for (const CNetAddr &addr: GetLocalAddresses()) {
-        if (AddLocal(addr, LOCAL_IF))
+        if (AddLocal(CService(addr, GetListenPort()), LOCAL_IF))
             LogInfo("%s: %s\n", __func__, addr.ToStringAddr());
     }
 }
