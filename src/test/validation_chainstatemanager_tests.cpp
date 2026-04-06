@@ -280,7 +280,7 @@ struct SnapshotTestSetup : TestChain100Setup {
                 // vout index
                 (void)ReadCompactSize(auto_infile);
                 Coin coin;
-                auto_infile >> coin;
+                auto_infile >> Coin::V1(coin);
         }));
 
         BOOST_CHECK(!node::FindAssumeutxoChainstateDir(chainman.m_options.datadir));

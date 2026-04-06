@@ -21,6 +21,7 @@
 #include <utility>
 
 static constexpr uint8_t DB_COIN{'C'};
+static constexpr uint8_t DB_COINV2{'D'};
 static constexpr uint8_t DB_BEST_BLOCK{'B'};
 static constexpr uint8_t DB_HEAD_BLOCKS{'H'};
 // Keys used in previous version that might still be found in the DB:
@@ -42,8 +43,8 @@ namespace {
 
 struct CoinEntry {
     COutPoint* outpoint;
-    uint8_t key{DB_COIN};
-    explicit CoinEntry(const COutPoint* ptr) : outpoint(const_cast<COutPoint*>(ptr)) {}
+    uint8_t key;
+    explicit CoinEntry(const COutPoint* ptr, uint8_t coin_key) : outpoint(const_cast<COutPoint*>(ptr)), key{coin_key} {}
 
     SERIALIZE_METHODS(CoinEntry, obj) { READWRITE(obj.key, obj.outpoint->hash, VARINT(obj.outpoint->n)); }
 };
@@ -71,7 +72,10 @@ void CCoinsViewDB::ResizeCache(size_t new_cache_size)
 
 std::optional<Coin> CCoinsViewDB::GetCoin(const COutPoint& outpoint) const
 {
-    if (Coin coin; m_db->Read(CoinEntry(&outpoint), coin)) {
+    uint8_t db_coin_key = m_options.use_v1 ? DB_COIN : DB_COINV2;
+    Coin coin;
+    ParamsWrapper wrap(m_options.use_v1 ? Coin::V1 : Coin::V2, coin);
+    if (m_db->Read(CoinEntry(&outpoint, db_coin_key), wrap)) {
         Assert(!coin.IsSpent()); // The UTXO database should never contain spent coins
         return coin;
     }
@@ -79,7 +83,8 @@ std::optional<Coin> CCoinsViewDB::GetCoin(const COutPoint& outpoint) const
 }
 
 bool CCoinsViewDB::HaveCoin(const COutPoint &outpoint) const {
-    return m_db->Exists(CoinEntry(&outpoint));
+    uint8_t db_coin_key = m_options.use_v1 ? DB_COIN : DB_COINV2;
+    return m_db->Exists(CoinEntry(&outpoint, db_coin_key));
 }
 
 uint256 CCoinsViewDB::GetBestBlock() const {
@@ -128,13 +133,15 @@ void CCoinsViewDB::BatchWrite(CoinsViewCacheCursor& cursor, const uint256& hashB
     batch.Erase(DB_BEST_BLOCK);
     batch.Write(DB_HEAD_BLOCKS, Vector(hashBlock, old_tip));
 
+    uint8_t db_coin_key = m_options.use_v1 ? DB_COIN : DB_COINV2;
     for (auto it{cursor.Begin()}; it != cursor.End();) {
         if (it->second.IsDirty()) {
-            CoinEntry entry(&it->first);
+            CoinEntry entry(&it->first, db_coin_key);
             if (it->second.coin.IsSpent()) {
                 batch.Erase(entry);
             } else {
-                batch.Write(entry, it->second.coin);
+                ParamsWrapper wrap(m_options.use_v1 ? Coin::V1 : Coin::V2, it->second.coin);
+                batch.Write(entry, wrap);
             }
         }
         count++;
@@ -165,7 +172,8 @@ void CCoinsViewDB::BatchWrite(CoinsViewCacheCursor& cursor, const uint256& hashB
 
 size_t CCoinsViewDB::EstimateSize() const
 {
-    return m_db->EstimateSize(DB_COIN, uint8_t(DB_COIN + 1));
+    uint8_t db_coin_key = m_options.use_v1 ? DB_COIN : DB_COINV2;
+    return m_db->EstimateSize(db_coin_key, uint8_t(db_coin_key + 1));
 }
 
 /** Specialization of CCoinsViewCursor to iterate over a CCoinsViewDB */
@@ -174,8 +182,8 @@ class CCoinsViewDBCursor: public CCoinsViewCursor
 public:
     // Prefer using CCoinsViewDB::Cursor() since we want to perform some
     // cache warmup on instantiation.
-    CCoinsViewDBCursor(CDBIterator* pcursorIn, const uint256&hashBlockIn):
-        CCoinsViewCursor(hashBlockIn), pcursor(pcursorIn) {}
+    CCoinsViewDBCursor(CDBIterator* pcursorIn, const uint256&hashBlockIn, bool use_v1):
+        CCoinsViewCursor(hashBlockIn), pcursor(pcursorIn), m_use_v1{use_v1} {}
     ~CCoinsViewDBCursor() = default;
 
     bool GetKey(COutPoint &key) const override;
@@ -189,19 +197,21 @@ private:
     std::pair<char, COutPoint> keyTmp;
 
     friend class CCoinsViewDB;
+    bool m_use_v1;
 };
 
 std::unique_ptr<CCoinsViewCursor> CCoinsViewDB::Cursor() const
 {
+    uint8_t db_coin_key = m_options.use_v1 ? DB_COIN : DB_COINV2;
     auto i = std::make_unique<CCoinsViewDBCursor>(
-        const_cast<CDBWrapper&>(*m_db).NewIterator(), GetBestBlock());
+        const_cast<CDBWrapper&>(*m_db).NewIterator(), GetBestBlock(), m_options.use_v1);
     /* It seems that there are no "const iterators" for LevelDB.  Since we
        only need read operations on it, use a const-cast to get around
        that restriction.  */
-    i->pcursor->Seek(DB_COIN);
+    i->pcursor->Seek(db_coin_key);
     // Cache key of first record
     if (i->pcursor->Valid()) {
-        CoinEntry entry(&i->keyTmp.second);
+        CoinEntry entry(&i->keyTmp.second, db_coin_key);
         i->pcursor->GetKey(entry);
         i->keyTmp.first = entry.key;
     } else {
@@ -213,7 +223,8 @@ std::unique_ptr<CCoinsViewCursor> CCoinsViewDB::Cursor() const
 bool CCoinsViewDBCursor::GetKey(COutPoint &key) const
 {
     // Return cached key
-    if (keyTmp.first == DB_COIN) {
+    uint8_t db_coin_key = m_use_v1 ? DB_COIN : DB_COINV2;
+    if (keyTmp.first == db_coin_key) {
         key = keyTmp.second;
         return true;
     }
@@ -222,18 +233,21 @@ bool CCoinsViewDBCursor::GetKey(COutPoint &key) const
 
 bool CCoinsViewDBCursor::GetValue(Coin &coin) const
 {
-    return pcursor->GetValue(coin);
+    ParamsWrapper wrap(m_use_v1 ? Coin::V1 : Coin::V2, coin);
+    return pcursor->GetValue(wrap);
 }
 
 bool CCoinsViewDBCursor::Valid() const
 {
-    return keyTmp.first == DB_COIN;
+    uint8_t db_coin_key = m_use_v1 ? DB_COIN : DB_COINV2;
+    return keyTmp.first == db_coin_key;
 }
 
 void CCoinsViewDBCursor::Next()
 {
+    uint8_t db_coin_key = m_use_v1 ? DB_COIN : DB_COINV2;
     pcursor->Next();
-    CoinEntry entry(&keyTmp.second);
+    CoinEntry entry(&keyTmp.second, db_coin_key);
     if (!pcursor->Valid() || !pcursor->GetKey(entry)) {
         keyTmp.first = 0; // Invalidate cached key after last record so that Valid() and GetKey() return false
     } else {

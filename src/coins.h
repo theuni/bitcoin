@@ -43,6 +43,8 @@ public:
     //! at which height this containing transaction was included in the active block chain
     uint32_t nHeight : 31;
 
+    uint32_t nTime{0};
+
     //! construct a Coin from a CTxOut and height/coinbase information.
     Coin(CTxOut&& outIn, int nHeightIn, bool fCoinBaseIn) : out(std::move(outIn)), fCoinBase(fCoinBaseIn), nHeight(nHeightIn) {}
     Coin(const CTxOut& outIn, int nHeightIn, bool fCoinBaseIn) : out(outIn), fCoinBase(fCoinBaseIn),nHeight(nHeightIn) {}
@@ -52,6 +54,17 @@ public:
         fCoinBase = false;
         nHeight = 0;
     }
+
+    enum class Encoding {
+        V1,
+        V2, //!< BIP155 encoding
+    };
+    struct SerParams {
+        const Encoding enc;
+        SER_PARAMS_OPFUNC
+    };
+    static constexpr SerParams V1{Encoding::V1};
+    static constexpr SerParams V2{Encoding::V2};
 
     //! empty constructor
     Coin() : fCoinBase(false), nHeight(0) { }
@@ -63,17 +76,32 @@ public:
     template<typename Stream>
     void Serialize(Stream &s) const {
         assert(!IsSpent());
-        uint32_t code = nHeight * uint32_t{2} + fCoinBase;
-        ::Serialize(s, VARINT(code));
+        if (s.template GetParams<SerParams>().enc == Encoding::V1) {
+            uint32_t code = nHeight * uint32_t{2} + fCoinBase;
+            ::Serialize(s, VARINT(code));
+            ::Serialize(s, Using<TxOutCompression>(out));
+        } else {
+            uint64_t code = nHeight * uint32_t{2} + fCoinBase;
+            code |= uint64_t{nTime} << 32;
+            ::Serialize(s, code);
+        }
         ::Serialize(s, Using<TxOutCompression>(out));
     }
 
     template<typename Stream>
     void Unserialize(Stream &s) {
-        uint32_t code = 0;
-        ::Unserialize(s, VARINT(code));
-        nHeight = code >> 1;
-        fCoinBase = code & 1;
+        if (s.template GetParams<SerParams>().enc == Encoding::V1) {
+            uint32_t code = 0;
+            ::Unserialize(s, VARINT(code));
+            nHeight = code >> 1;
+            fCoinBase = code & 1;
+        } else {
+            uint64_t code = 0;
+            ::Unserialize(s, code);
+            nHeight = (code >> 1) & 0xffffffff;
+            fCoinBase = code & 1;
+            nTime = code >> 32;
+        }
         ::Unserialize(s, Using<TxOutCompression>(out));
     }
 

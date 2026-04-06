@@ -3305,7 +3305,7 @@ UniValue WriteUTXOSnapshot(
         WriteCompactSize(afile, coins.size());
         for (const auto& [n, coin] : coins) {
             WriteCompactSize(afile, n);
-            afile << coin;
+            afile << Coin::V1(coin);
             ++written_coins_count;
         }
     };

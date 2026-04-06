@@ -28,6 +28,7 @@ struct CoinsViewOptions {
     size_t batch_write_bytes{DEFAULT_DB_CACHE_BATCH};
     //! If non-zero, randomly exit when the database is flushed with (1/ratio) probability.
     int simulate_crash_ratio{0};
+    bool use_v1{true};
 };
 
 /** CCoinsView backed by the coin database (chainstate/) */
