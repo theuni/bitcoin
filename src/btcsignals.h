@@ -31,9 +31,6 @@
 namespace btcsignals {
 
 /*
- * optional_last_value is the default and only supported combiner.
- * As such, its behavior is embedded into the signal functor.
- *
  * Because optional<void> is undefined, void must be special-cased.
  */
 
@@ -42,6 +39,44 @@ class optional_last_value
 {
 public:
     using result_type = std::conditional_t<std::is_void_v<T>, void, std::optional<T>>;
+    using value_type = std::conditional_t<std::is_void_v<T>, void, T>;
+
+    template<typename InputIterator>
+    result_type operator()(InputIterator first, InputIterator last) const
+    {
+        if constexpr (!std::is_void_v<result_type>) {
+            if (first == last) {
+                return std::nullopt;
+            }
+            return std::move(*make_reverse_iterator(last));
+        }
+    }
+};
+
+template <typename T>
+class optional_any_of
+{
+public:
+    using result_type = std::conditional_t<std::is_void_v<T>, void, std::optional<T>>;
+    using value_type = std::conditional_t<std::is_void_v<T>, void, T>;
+
+    static_assert(std::is_same<value_type, bool>());
+
+    template<typename InputIterator>
+    result_type operator()(InputIterator first, InputIterator last) const
+    {
+        if constexpr (!std::is_void_v<result_type>) {
+            if (first == last) {
+                return std::nullopt;
+            }
+            for (auto it = first; it != last; ++it) {
+                if (*it) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
 };
 
 template <typename Signature, typename Combiner = optional_last_value<typename std::function<Signature>::result_type>>
@@ -150,8 +185,6 @@ class signal
 {
     using function_type = std::function<Signature>;
 
-    static_assert(std::is_same_v<Combiner, optional_last_value<typename function_type::result_type>>, "only the optional_last_value combiner is supported");
-
     /*
      * Helper struct for maintaining a callback and its associated connection liveness
      */
@@ -170,6 +203,7 @@ class signal
 
 public:
     using result_type = Combiner::result_type;
+    using value_type = Combiner::value_type;
 
     constexpr signal() noexcept = default;
     ~signal() = default;
@@ -183,10 +217,7 @@ public:
     signal& operator=(signal&&) = delete;
 
     /*
-     * Execute all enabled callbacks for the signal. Rather than allowing for
-     * custom combiners, the behavior of optional_last_value is hard-coded
-     * here. Return the value of the last executed callback, or nullopt if none
-     * were executed.
+     * Execute all enabled callbacks for the signal.
      *
      * Callbacks which return void require special handling.
      *
@@ -214,13 +245,13 @@ public:
                 }
             }
         } else {
-            result_type ret{std::nullopt};
+            std::vector<value_type> ret;
             for (const auto& connection : connections) {
                 if (connection->connected()) {
-                    ret.emplace(connection->m_callback(args...));
+                    ret.push_back(connection->m_callback(args...));
                 }
             }
-            return ret;
+            return Combiner()(ret.begin(), ret.end());
         }
     }
 
