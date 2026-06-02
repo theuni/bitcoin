@@ -19,18 +19,12 @@
 #include <primitives/transaction.h>
 #include <primitives/transaction_identifier.h>
 #include <sync.h>
+#include <tmi.h>
 #include <txgraph.h>
 #include <util/feefrac.h>
 #include <util/hasher.h>
 #include <util/result.h>
 
-#include <boost/multi_index/hashed_index.hpp>
-#include <boost/multi_index/identity.hpp>
-#include <boost/multi_index/indexed_by.hpp>
-#include <boost/multi_index/ordered_index.hpp>
-#include <boost/multi_index/sequenced_index.hpp>
-#include <boost/multi_index/tag.hpp>
-#include <boost/multi_index_container.hpp>
 
 #include <atomic>
 #include <map>
@@ -171,7 +165,7 @@ struct TxMempoolInfo
  * (Many of these interfaces are just wrappers around corresponding TxGraph
  * functions.)
  *
- * Within CTxMemPool, the mempool entries are stored in a boost::multi_index
+ * Within CTxMemPool, the mempool entries are stored in a tmi
  * mapTx, which sorts the mempool on 3 criteria:
  * - transaction hash (txid)
  * - witness-transaction hash (wtxid)
@@ -211,21 +205,21 @@ public:
 
     static const int ROLLING_FEE_HALFLIFE = 60 * 60 * 12; // public only for testing
 
-    using indexed_transaction_set = boost::multi_index_container<
+    using indexed_transaction_set = tmi::multi_index_container<
         CTxMemPoolEntry,
-        boost::multi_index::indexed_by<
+        tmi::indexed_by<
             // sorted by txid
-            boost::multi_index::hashed_unique<mempoolentry_txid, SaltedTxidHasher>,
+            tmi::hashed_unique<mempoolentry_txid, SaltedTxidHasher>,
             // sorted by wtxid
-            boost::multi_index::hashed_unique<
-                boost::multi_index::tag<index_by_wtxid>,
+            tmi::hashed_unique<
+                tmi::tag<index_by_wtxid>,
                 mempoolentry_wtxid,
                 SaltedWtxidHasher
             >,
             // sorted by entry time
-            boost::multi_index::ordered_non_unique<
-                boost::multi_index::tag<entry_time>,
-                boost::multi_index::identity<CTxMemPoolEntry>,
+            tmi::ordered_non_unique<
+                tmi::tag<entry_time>,
+                tmi::identity<CTxMemPoolEntry>,
                 CompareTxMemPoolEntryByEntryTime
             >
         >

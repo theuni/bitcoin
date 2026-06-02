@@ -7,15 +7,11 @@
 #include <consensus/validation.h>
 #include <policy/policy.h>
 #include <primitives/transaction.h>
+#include <tmi.h>
 #include <util/feefrac.h>
 #include <util/hasher.h>
 #include <util/log.h>
 #include <util/time.h>
-
-#include <boost/multi_index/indexed_by.hpp>
-#include <boost/multi_index/ordered_index.hpp>
-#include <boost/multi_index/tag.hpp>
-#include <boost/multi_index_container.hpp>
 
 #include <cassert>
 #include <cmath>
@@ -91,11 +87,11 @@ class TxOrphanageImpl final : public TxOrphanage {
         }
     };
 
-    using AnnouncementMap = boost::multi_index::multi_index_container<
+    using AnnouncementMap = tmi::multi_index_container<
         Announcement,
-        boost::multi_index::indexed_by<
-            boost::multi_index::ordered_unique<boost::multi_index::tag<ByWtxid>, WtxidExtractor>,
-            boost::multi_index::ordered_unique<boost::multi_index::tag<ByPeer>, ByPeerViewExtractor>
+        tmi::indexed_by<
+            tmi::ordered_unique<tmi::tag<ByWtxid>, WtxidExtractor>,
+            tmi::ordered_unique<tmi::tag<ByPeer>, ByPeerViewExtractor>
         >
     >;
     template<typename Tag>
