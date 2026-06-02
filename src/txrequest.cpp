@@ -223,6 +223,8 @@ using Index = boost::multi_index_container<
 template<typename Tag>
 using Iter = typename Index::index<Tag>::type::iterator;
 
+using PeerIndex = Index::nth_index<0>::type;
+
 /** Per-peer statistics object. */
 struct PeerInfo {
     size_t m_total = 0; //!< Total number of announcements for this peer.
@@ -257,7 +259,7 @@ bool operator==(const PeerInfo& a, const PeerInfo& b)
 };
 
 /** (Re)compute the PeerInfo map from the index. Only used for sanity checking. */
-std::unordered_map<NodeId, PeerInfo> RecomputePeerInfo(const Index& index)
+std::unordered_map<NodeId, PeerInfo> RecomputePeerInfo(const PeerIndex& index)
 {
     std::unordered_map<NodeId, PeerInfo> ret;
     for (const Announcement& ann : index) {
@@ -270,7 +272,7 @@ std::unordered_map<NodeId, PeerInfo> RecomputePeerInfo(const Index& index)
 }
 
 /** Compute the TxHashInfo map. Only used for sanity checking. */
-std::map<uint256, TxHashInfo> ComputeTxHashInfo(const Index& index, const PriorityComputer& computer)
+std::map<uint256, TxHashInfo> ComputeTxHashInfo(const PeerIndex& index, const PriorityComputer& computer)
 {
     std::map<uint256, TxHashInfo> ret;
     for (const Announcement& ann : index) {
@@ -306,6 +308,7 @@ class TxRequestTracker::Impl {
 
     //! This tracker's main data structure. See SanityCheck() for the invariants that apply to it.
     Index m_index;
+    PeerIndex& m_peer_index;
 
     //! Map with this tracker's per-peer statistics.
     std::unordered_map<NodeId, PeerInfo> m_peerinfo;
@@ -315,10 +318,10 @@ public:
     {
         // Recompute m_peerdata from m_index. This verifies the data in it as it should just be caching statistics
         // on m_index. It also verifies the invariant that no PeerInfo announcements with m_total==0 exist.
-        assert(m_peerinfo == RecomputePeerInfo(m_index));
+        assert(m_peerinfo == RecomputePeerInfo(m_peer_index));
 
         // Calculate per-txhash statistics from m_index, and validate invariants.
-        for (auto& item : ComputeTxHashInfo(m_index, m_computer)) {
+        for (auto& item : ComputeTxHashInfo(m_peer_index, m_computer)) {
             TxHashInfo& info = item.second;
 
             // Cannot have only COMPLETED peer (txhash should have been forgotten already)
@@ -347,7 +350,7 @@ public:
 
     void PostGetRequestableSanityCheck(std::chrono::microseconds now) const
     {
-        for (const Announcement& ann : m_index) {
+        for (const Announcement& ann : m_peer_index) {
             if (ann.IsWaiting()) {
                 // REQUESTED and CANDIDATE_DELAYED must have a time in the future (they should have been converted
                 // to COMPLETED/CANDIDATE_READY respectively).
@@ -485,7 +488,7 @@ private:
 
         // Iterate over all CANDIDATE_DELAYED and REQUESTED from old to new, as long as they're in the past,
         // and convert them to CANDIDATE_READY and COMPLETED respectively.
-        while (!m_index.empty()) {
+        while (!m_peer_index.empty()) {
             auto it = m_index.get<ByTime>().begin();
             if (it->GetState() == State::CANDIDATE_DELAYED && it->m_time <= now) {
                 PromoteCandidateReady(m_index.project<ByTxHash>(it));
@@ -497,7 +500,7 @@ private:
             }
         }
 
-        while (!m_index.empty()) {
+        while (!m_peer_index.empty()) {
             // If time went backwards, we may need to demote CANDIDATE_BEST and CANDIDATE_READY announcements back
             // to CANDIDATE_DELAYED. This is an unusual edge case, and unlikely to matter in production. However,
             // it makes it much easier to specify and test TxRequestTracker::Impl's behaviour.
@@ -518,7 +521,8 @@ public:
             boost::make_tuple(ByPeerViewExtractor(), std::less<ByPeerView>()),
             boost::make_tuple(ByTxHashViewExtractor(m_computer), std::less<ByTxHashView>()),
             boost::make_tuple(ByTimeViewExtractor(), std::less<ByTimeView>())
-        )) {}
+        ))
+        , m_peer_index(m_index.get<0>()){}
 
     // Disable copying and assigning (a default copy won't work due the stateful ByTxHashViewExtractor).
     Impl(const Impl&) = delete;
@@ -698,7 +702,7 @@ public:
     }
 
     //! Count how many announcements are being tracked in total across all peers and transactions.
-    size_t Size() const { return m_index.size(); }
+    size_t Size() const { return m_peer_index.size(); }
 
     uint64_t ComputePriority(const uint256& txhash, NodeId peer, bool preferred) const
     {

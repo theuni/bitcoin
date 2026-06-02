@@ -288,7 +288,7 @@ TxOrphanage::Usage TxOrphanageImpl::UsageByPeer(NodeId peer) const
     return it == m_peer_orphanage_info.end() ? 0 : it->second.m_total_usage;
 }
 
-TxOrphanage::Count TxOrphanageImpl::CountAnnouncements() const { return m_orphans.size(); }
+TxOrphanage::Count TxOrphanageImpl::CountAnnouncements() const { return m_orphans.get<0>().size(); }
 
 TxOrphanage::Usage TxOrphanageImpl::TotalOrphanUsage() const { return m_unique_orphan_usage; }
 
@@ -339,7 +339,7 @@ bool TxOrphanageImpl::AddTx(const CTransactionRef& tx, NodeId peer)
         m_unique_rounded_input_scores += iter->GetLatencyScore() - 1;
 
         LogDebug(BCLog::TXPACKAGES, "stored orphan tx %s (wtxid=%s), weight: %u (mapsz %u outsz %u)\n",
-                    txid.ToString(), wtxid.ToString(), sz, m_orphans.size(), m_outpoint_to_orphan_wtxids.size());
+                    txid.ToString(), wtxid.ToString(), sz, m_orphans.get<0>().size(), m_outpoint_to_orphan_wtxids.size());
         Assume(IsUnique(iter));
     } else {
         LogDebug(BCLog::TXPACKAGES, "added peer=%d as announcer of orphan tx %s (wtxid=%s)\n",
@@ -614,7 +614,7 @@ bool TxOrphanageImpl::HaveTxToReconsider(NodeId peer)
 
 void TxOrphanageImpl::EraseForBlock(const CBlock& block)
 {
-    if (m_orphans.empty()) return;
+    if (m_orphans.get<0>().empty()) return;
 
     std::set<Wtxid> wtxids_to_erase;
     for (const CTransactionRef& ptx : block.vtx) {
@@ -704,7 +704,7 @@ void TxOrphanageImpl::SanityCheck() const
     std::set<COutPoint> all_outpoints;
     std::set<Wtxid> reconstructed_reconsiderable_wtxids;
 
-    for (auto it = m_orphans.begin(); it != m_orphans.end(); ++it) {
+    for (auto it = m_orphans.get<0>().begin(); it != m_orphans.get<0>().end(); ++it) {
         for (const auto& input : it->m_tx->vin) {
             all_outpoints.insert(input.prevout);
         }
@@ -741,8 +741,8 @@ void TxOrphanageImpl::SanityCheck() const
     }
 
     // Cached m_unique_orphans value is correct.
-    assert(m_orphans.size() >= m_unique_orphans);
-    assert(m_orphans.size() <= m_peer_orphanage_info.size() * m_unique_orphans);
+    assert(m_orphans.get<0>().size() >= m_unique_orphans);
+    assert(m_orphans.get<0>().size() <= m_peer_orphanage_info.size() * m_unique_orphans);
     assert(unique_wtxids_to_scores.size() == m_unique_orphans);
 
     const auto calculated_dedup_usage = std::accumulate(unique_wtxids_to_scores.begin(), unique_wtxids_to_scores.end(),
@@ -762,13 +762,13 @@ void TxOrphanageImpl::SanityCheck() const
     // Global latency score is deduplicated, should be less than or equal to the sum of all per-peer latency scores.
     const auto summed_peer_latency_score = std::accumulate(m_peer_orphanage_info.begin(), m_peer_orphanage_info.end(),
         TxOrphanage::Count{0}, [](TxOrphanage::Count sum, const auto pair) { return sum + pair.second.m_total_latency_score; });
-    assert(summed_peer_latency_score >= m_unique_rounded_input_scores + m_orphans.size());
+    assert(summed_peer_latency_score >= m_unique_rounded_input_scores + m_orphans.get<0>().size());
 
     assert(!NeedsTrim());
 }
 
 TxOrphanage::Count TxOrphanageImpl::MaxGlobalLatencyScore() const { return m_max_global_latency_score; }
-TxOrphanage::Count TxOrphanageImpl::TotalLatencyScore() const { return m_unique_rounded_input_scores + m_orphans.size(); }
+TxOrphanage::Count TxOrphanageImpl::TotalLatencyScore() const { return m_unique_rounded_input_scores + m_orphans.get<0>().size(); }
 TxOrphanage::Usage TxOrphanageImpl::ReservedPeerUsage() const { return m_reserved_usage_per_peer; }
 TxOrphanage::Count TxOrphanageImpl::MaxPeerLatencyScore() const { return m_max_global_latency_score / std::max<unsigned int>(m_peer_orphanage_info.size(), 1); }
 TxOrphanage::Usage TxOrphanageImpl::MaxGlobalUsage() const { return m_reserved_usage_per_peer * std::max<int64_t>(m_peer_orphanage_info.size(), 1); }

@@ -259,6 +259,7 @@ public:
     std::unique_ptr<TxGraph> m_txgraph GUARDED_BY(cs);
     mutable std::unique_ptr<TxGraph::BlockBuilder> m_builder GUARDED_BY(cs);
     indexed_transaction_set mapTx GUARDED_BY(cs);
+    indexed_transaction_set::nth_index<0>::type& txid_index;
 
     using txiter = indexed_transaction_set::nth_index<0>::type::const_iterator;
     std::vector<std::pair<Wtxid, txiter>> txns_randomized GUARDED_BY(cs); //!< All transactions in mapTx with their wtxids, in arbitrary order
@@ -276,14 +277,14 @@ public:
     std::vector<CTxMemPoolEntry::CTxMemPoolEntryRef> GetParents(const CTxMemPoolEntry &entry) const;
 
 private:
-    std::vector<indexed_transaction_set::const_iterator> GetSortedScoreWithTopology() const EXCLUSIVE_LOCKS_REQUIRED(cs);
+    std::vector<txiter> GetSortedScoreWithTopology() const EXCLUSIVE_LOCKS_REQUIRED(cs);
 
     /**
      * Track locally submitted transactions to periodically retry initial broadcast.
      */
     std::set<Txid> m_unbroadcast_txids GUARDED_BY(cs);
 
-    static TxMempoolInfo GetInfo(CTxMemPool::indexed_transaction_set::const_iterator it)
+    static TxMempoolInfo GetInfo(txiter it)
     {
         return TxMempoolInfo{it->GetSharedTx(), it->GetTime(), it->GetFee(), it->GetTxSize(), it->GetModifiedFee() - it->GetFee()};
     }
@@ -483,7 +484,7 @@ public:
     unsigned long size() const
     {
         LOCK(cs);
-        return mapTx.size();
+        return txid_index.size();
     }
 
     uint64_t GetTotalTxSize() const EXCLUSIVE_LOCKS_REQUIRED(cs)
@@ -501,7 +502,7 @@ public:
     bool exists(const Txid& txid) const
     {
         LOCK(cs);
-        return (mapTx.count(txid) != 0);
+        return (txid_index.count(txid) != 0);
     }
 
     bool exists(const Wtxid& wtxid) const
