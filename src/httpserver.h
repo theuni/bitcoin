@@ -522,6 +522,11 @@ public:
     bool ShouldDisconnect(std::chrono::time_point<MockableSteadyClock> now, std::chrono::seconds rpcservertimeout, bool disconnect_all) const;
 
     /**
+     * Flag this client for disconnection due to a socket-level error
+     */
+    void DisconnectForError();
+
+    /**
      * Try to read an HTTPRequest from a client's receive buffer.
      * Only complete requests are returned, incomplete requests are
      * left in the buffer to wait for more data. Some read errors

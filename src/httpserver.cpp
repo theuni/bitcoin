@@ -903,6 +903,11 @@ void HTTPServer::SocketHandlerConnected(const IOReadiness& io_readiness) const
         bool recv_ready = events.occurred & Sock::RecvEvent;
         bool err_ready = events.occurred & Sock::ErrorEvent;
 
+        if (err_ready) {
+            client->DisconnectForError();
+            continue;
+        }
+
         if (send_ready) {
             // Try to send as much data as is ready for this client.
             // If there's an error we can skip the receive phase for this client
@@ -912,7 +917,7 @@ void HTTPServer::SocketHandlerConnected(const IOReadiness& io_readiness) const
             }
         }
 
-        if (recv_ready || err_ready) {
+        if (recv_ready) {
             client->Receive();
         }
         // Process as much received data as we can.
@@ -925,6 +930,16 @@ void HTTPServer::SocketHandlerConnected(const IOReadiness& io_readiness) const
             m_request_dispatcher(std::move(request));
         }
     }
+}
+
+void HTTPRemoteClient::DisconnectForError()
+{
+    LogDebug(
+        BCLog::HTTP,
+        "Unknown error from %s (id=%llu)",
+        m_origin,
+        m_id);
+    m_disconnect = true;
 }
 
 void HTTPRemoteClient::Receive()
