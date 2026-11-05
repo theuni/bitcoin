@@ -187,13 +187,13 @@ bool Sock::WaitMany(std::chrono::milliseconds timeout, EventsPerSock& events_per
     for (auto& [sock, events] : events_per_sock) {
         assert(sock->m_socket == static_cast<SOCKET>(pfds[i].fd));
         events.occurred = 0;
-        if (pfds[i].revents & POLLIN) {
+        if (pfds[i].revents & (POLLIN | POLLHUP)) {
             events.occurred |= RecvEvent;
         }
         if (pfds[i].revents & POLLOUT) {
             events.occurred |= SendEvent;
         }
-        if (pfds[i].revents & (POLLERR | POLLHUP)) {
+        if (pfds[i].revents & POLLERR) {
             events.occurred |= ErrorEvent;
         }
         ++i;
