@@ -2201,6 +2201,14 @@ void CConnman::SocketHandlerConnected(const std::vector<CNode*>& nodes,
             }
         }
 
+        if (errorSet) {
+            if (!pnode->fDisconnect) {
+                LogDebug(BCLog::NET, "socket recv exception, %s", pnode->DisconnectMsg());
+            }
+            pnode->CloseSocketDisconnect();
+            continue;
+        }
+
         if (sendSet) {
             // Send data
             auto [bytes_sent, data_left] = WITH_LOCK(pnode->cs_vSend, return SocketSendData(*pnode));
@@ -2218,7 +2226,7 @@ void CConnman::SocketHandlerConnected(const std::vector<CNode*>& nodes,
             }
         }
 
-        if (recvSet || errorSet)
+        if (recvSet)
         {
             // typical socket buffer is 8K-64K
             uint8_t pchBuf[0x10000];
