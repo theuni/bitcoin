@@ -161,6 +161,17 @@ public:
      */
     static constexpr Event ErrorEvent = 0b100;
 
+    using EventFlag = uint8_t;
+
+    /**
+     * If passed to `Wait()`, then it will wait for connection failures on the socket.
+     * This flag is only necessary for detecting new connection failures when
+     * using select(), as it is implicitly added by RecvEvent and SendEvent
+     * when the `poll()` backend is used.
+     * This flag should not be used on established connections.
+     */
+    static constexpr EventFlag ConnErrorEventFlag = 0b10000;
+
     /**
      * Maximum timeout supported by `Wait()` and `WaitMany()` (about 24.8 days).
      * Longer timeouts are capped because `poll()` takes an `int` timeout in
