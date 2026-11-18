@@ -22,7 +22,7 @@
 #include <utility>
 #include <vector>
 
-#ifdef USE_POLL
+#if defined(USE_POLL) && !defined(WIN32)
 #include <poll.h>
 #endif
 
@@ -165,6 +165,14 @@ bool Sock::WaitMany(std::chrono::milliseconds timeout, EventsPerSock& events_per
     timeout = std::min<std::chrono::milliseconds>(timeout, MAX_WAIT_TIMEOUT);
 
 #ifdef USE_POLL
+
+// Some OS's use POLLRDHUP to report closed connections. Unlike POLLHUP, it must be present
+// in the requested events.
+
+#ifndef POLLRDHUP
+#define POLLRDHUP 0
+#endif
+
     std::vector<pollfd> pfds;
     for (const auto& [sock, events] : events_per_sock) {
         pfds.emplace_back();
@@ -176,6 +184,7 @@ bool Sock::WaitMany(std::chrono::milliseconds timeout, EventsPerSock& events_per
         if (events.requested & SendEvent) {
             pfd.events |= POLLOUT;
         }
+        pfd.events |= POLLRDHUP;
     }
 
     if (poll(pfds.data(), pfds.size(), count_milliseconds(timeout)) == SOCKET_ERROR) {
@@ -193,7 +202,10 @@ bool Sock::WaitMany(std::chrono::milliseconds timeout, EventsPerSock& events_per
         if (pfds[i].revents & POLLOUT) {
             events.occurred |= SendEvent;
         }
-        if (pfds[i].revents & (POLLERR | POLLHUP)) {
+        if (pfds[i].revents & (POLLHUP | POLLRDHUP)) {
+            events.occurred |= HUPEvent;
+        }
+        if (pfds[i].revents & POLLERR) {
             events.occurred |= ErrorEvent;
         }
         ++i;

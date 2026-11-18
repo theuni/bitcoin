@@ -2185,9 +2185,11 @@ void CConnman::SocketHandlerConnected(const std::vector<CNode*>& nodes,
         //
         // Receive
         //
+        bool recvReq = false;
         bool recvSet = false;
         bool sendSet = false;
         bool errorSet = false;
+        bool HUPSet = false;
         {
             LOCK(pnode->m_sock_mutex);
             if (!pnode->m_sock) {
@@ -2195,26 +2197,46 @@ void CConnman::SocketHandlerConnected(const std::vector<CNode*>& nodes,
             }
             const auto it = events_per_sock.find(pnode->m_sock);
             if (it != events_per_sock.end()) {
+                recvReq = it->second.requested & Sock::RecvEvent;
                 recvSet = it->second.occurred & Sock::RecvEvent;
                 sendSet = it->second.occurred & Sock::SendEvent;
                 errorSet = it->second.occurred & Sock::ErrorEvent;
+                HUPSet = it->second.occurred & Sock::HUPEvent;
             }
         }
 
-        // Only poll() reports errors here: select() does not monitor exceptions
-        // on established connections. poll() always reports POLLERR/POLLHUP,
-        // whichever events we requested.
+        bool sockError = false;
         // If we requested POLLIN, then recv() below can read buffered data
         // before it detects the disconnect, unless a failed send disconnects
         // first. If receiving is paused, we did not request POLLIN, so
         // disconnect now: sending on a broken connection would fail anyway.
-        if (errorSet && !recvSet) {
+        //
+        // Some platforms may emit POLLERR and/or POLLHUP (with or without POLLIN)
+        // when the remote has disconnected. In that case, give the socket a chance
+        // to be drained or closed by recv, if not closed by a failed write first.
+        // Since POLLIN may not be emitted in that case, recvReq is checked here rather
+        // than recvSet, as we still want errors/hangups to cause disconnections if
+        // receiving is paused.
+        if (!recvReq && (errorSet || HUPSet)) {
+            sockError = true;
+        }
+
+        // An error with no associated send/recv/hup event indicates an unknown poll result.
+        // Disconnect to be safe.
+        if (errorSet && !(sendSet || recvSet || HUPSet)) {
+            sockError = true;
+        }
+
+        if (sockError) {
             LogDebug(BCLog::NET, "socket error or hangup, %s", pnode->DisconnectMsg());
             pnode->CloseSocketDisconnect();
             continue;
         }
 
-        if (sendSet) {
+
+        // If a shutdown has been detected, don't bother writing as it will fail anyway.
+        // In that case, receiving will drain the buffer until empty and disconnect.
+        if (sendSet && !HUPSet && !errorSet) {
             // Send data
             auto [bytes_sent, data_left] = WITH_LOCK(pnode->cs_vSend, return SocketSendData(*pnode));
             if (bytes_sent) {
@@ -2231,7 +2253,7 @@ void CConnman::SocketHandlerConnected(const std::vector<CNode*>& nodes,
             }
         }
 
-        if (recvSet)
+        if (recvSet || errorSet || HUPSet)
         {
             // typical socket buffer is 8K-64K
             uint8_t pchBuf[0x10000];

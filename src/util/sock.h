@@ -161,6 +161,14 @@ public:
      * requested. With `select()` it reports an exceptional condition, and only
      * if `ConnErrorEventFlag` was requested.
      */
+    static constexpr Event HUPEvent = 0b01000;
+
+    /**
+     * Ignored if passed to `Wait()`, but could be set in the occurred events.
+     * With `poll()` it reports an error or hangup, whichever events were
+     * requested. With `select()` it reports an exceptional condition, and only
+     * if `ConnErrorEventFlag` was requested.
+     */
     static constexpr Event ErrorEvent = 0b100;
 
     /**
