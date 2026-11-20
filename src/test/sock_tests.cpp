@@ -132,6 +132,11 @@ struct TcpSocketPair {
         BOOST_CHECK_EQUAL(receiver.Recv(recv_buf, sizeof(recv_buf), 0), msg_len);
         BOOST_CHECK_EQUAL(strncmp(msg, recv_buf, msg_len), 0);
     }
+
+    void close_sender()
+    {
+        sender = Sock(INVALID_SOCKET);
+    }
 };
 
 BOOST_AUTO_TEST_CASE(send_and_receive)
@@ -153,6 +158,75 @@ BOOST_AUTO_TEST_CASE(wait)
     BOOST_REQUIRE_EQUAL(socks.sender.Send("a", 1, 0), 1);
 
     waiter.join();
+}
+
+BOOST_AUTO_TEST_CASE(waitmany)
+{
+    TcpSocketPair socks = TcpSocketPair{};
+
+    Sock::EventsPerSock events_per_sock;
+
+    std::shared_ptr<const Sock> receiver{std::shared_ptr<const Sock>{}, &socks.receiver};
+    std::shared_ptr<const Sock> sender{std::shared_ptr<const Sock>{}, &socks.sender};
+
+    events_per_sock.emplace(receiver, Sock::Events{Sock::RecvEvent});
+
+    BOOST_REQUIRE_EQUAL(sender->Send("a", 1, 0), 1);
+    BOOST_REQUIRE(receiver->WaitMany(24h, events_per_sock));
+    const auto it = events_per_sock.find(receiver);
+    BOOST_REQUIRE(it != events_per_sock.end());
+    BOOST_REQUIRE(it->second.occurred & Sock::RecvEvent);
+
+}
+
+BOOST_AUTO_TEST_CASE(wait_hangup)
+{
+    // A remote disconnect should cause us to wake with Recv and HUP events.
+    // A subsequent read should return 0 to indicate the socket can be closed.
+    TcpSocketPair socks = TcpSocketPair{};
+
+    Sock::EventsPerSock events_per_sock;
+
+    std::shared_ptr<const Sock> receiver{std::shared_ptr<const Sock>{}, &socks.receiver};
+    std::shared_ptr<const Sock> sender{std::shared_ptr<const Sock>{}, &socks.sender};
+
+    events_per_sock.emplace(receiver, Sock::Events{Sock::RecvEvent});
+
+    socks.close_sender();
+    BOOST_REQUIRE(receiver->WaitMany(24h, events_per_sock));
+    const auto it = events_per_sock.find(receiver);
+    BOOST_REQUIRE(it != events_per_sock.end());
+    BOOST_REQUIRE(it->second.occurred & Sock::RecvEvent);
+    BOOST_REQUIRE(it->second.occurred & Sock::HUPEvent);
+    uint8_t pchBuf[0x2];
+    BOOST_REQUIRE(receiver->Recv(pchBuf, sizeof(pchBuf), MSG_DONTWAIT) == 0);
+}
+
+BOOST_AUTO_TEST_CASE(wait_hangup_drain)
+{
+    // A remote disconnect should cause us to wake with Recv and HUP events.
+    // Unread data should still be readable.
+    // A subsequent read should return 0 to indicate the socket can be closed.
+    TcpSocketPair socks = TcpSocketPair{};
+
+    Sock::EventsPerSock events_per_sock;
+
+    std::shared_ptr<const Sock> receiver{std::shared_ptr<const Sock>{}, &socks.receiver};
+    std::shared_ptr<const Sock> sender{std::shared_ptr<const Sock>{}, &socks.sender};
+
+    events_per_sock.emplace(receiver, Sock::Events{Sock::RecvEvent});
+
+    BOOST_REQUIRE_EQUAL(sender->Send("a", 1, 0), 1);
+    socks.close_sender();
+    BOOST_REQUIRE(receiver->WaitMany(24h, events_per_sock));
+    uint8_t pchBuf[0x2];
+    const auto it = events_per_sock.find(receiver);
+    BOOST_REQUIRE(it != events_per_sock.end());
+    BOOST_REQUIRE(it->second.occurred & Sock::RecvEvent);
+    BOOST_REQUIRE(it->second.occurred & Sock::HUPEvent);
+    BOOST_REQUIRE(receiver->Recv(pchBuf, sizeof(pchBuf), MSG_DONTWAIT) == 1);
+    BOOST_REQUIRE(pchBuf[0] = 'a');
+    BOOST_REQUIRE(receiver->Recv(pchBuf, sizeof(pchBuf), MSG_DONTWAIT) == 0);
 }
 
 BOOST_AUTO_TEST_CASE(recv_until_terminator_limit)
